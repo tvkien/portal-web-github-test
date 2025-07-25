@@ -51,6 +51,10 @@ using LinkIt.BubbleSheetPortal.Web.Constant;
 using LinkIt.BubbleSheetPortal.Services.Reporting;
 using static LinkIt.BubbleSheetPortal.Common.Constanst;
 using LinkIt.BubbleSheetPortal.Web.Helpers.SAML;
+using LinkIt.BubbleSheetPortal.Services.MfaServices;
+using LinkIt.BubbleSheetPortal.Models.DTOs.MfaSettings;
+using LinkIt.BubbleSheetPortal.Web.ViewModels.MfaSettings;
+using iTextSharp.text.pdf.security;
 
 namespace LinkIt.BubbleSheetPortal.Web.Controllers
 {
@@ -77,6 +81,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
         private readonly LTISingleSignOnService _ltiSingleSignOnService;
         private readonly IVaultProvider _vaultProvider;
         private readonly IReportingHttpClient _reportingHttpClient;
+        private readonly IMfaService _mfaService;
 
         public AccountController(UserService userService,
             IFormsAuthenticationService formsAuthenticationService,
@@ -96,7 +101,8 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
              StudentService studentService,
              LTISingleSignOnService ltiSingleSignOnService,
              IVaultProvider vaultProvider,
-             IReportingHttpClient reportingHttpClient)
+             IReportingHttpClient reportingHttpClient,
+             IMfaService mfaService)
         {
             this.userService = userService;
             this.formsAuthenticationService = formsAuthenticationService;
@@ -117,6 +123,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
             _ltiSingleSignOnService = ltiSingleSignOnService;
             _vaultProvider = vaultProvider;
             _reportingHttpClient = reportingHttpClient;
+            _mfaService = mfaService;
         }
 
         private const string AutoLogOnLabel = "AutoLogOn";
@@ -211,7 +218,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
         [HttpPost]
         public ActionResult LogOn(LoginAccountViewModel model)
         {
-            return ProcessLogon(model);
+            return ProcessLogon(model, isCheckMFA: true);
         }
 
         [HttpGet]
@@ -427,7 +434,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
                     beforeLoginSession.Item1.Password = model.Password;
                 if (beforeLoginSession.Item1.IsNotNull() && isFromStudentLogin && beforeLoginSession.Item1.RoleId == 0)
                     beforeLoginSession.Item1.RoleId = beforeLoginSession.Item3;
-                AuthenticateUser(beforeLoginSession.Item1, user, true, isFromStudentLogin);
+                var mfaSetting = AuthenticateUser(beforeLoginSession.Item1, user, true, isFromStudentLogin, isCheckMFA: true);
 
                 // Redirect to home page when update student information (the same student login page)
                 if (isFromStudentLogin)
@@ -441,6 +448,14 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
 
                 HttpContext.Session.Remove("BeforeLoginSession");
                 HttpContext.Session.Remove("StudentBeforeLoginSession");
+
+                if (mfaSetting?.IsEnableMfa == true)
+                {
+                    beforeLoginSession.Item1.RedirectUrl = model.RedirectUrl;
+                    Session["LoginAccountViewModel"] = beforeLoginSession.Item1;
+                    Session["MfaSetting"] = mfaSetting;
+                    model.RedirectUrl = new UrlHelper(Request.RequestContext).Action("MfaVerification", "Account");
+                }
 
                 return new SetUserInformationResultDto()
                 {
@@ -481,27 +496,27 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
             }
         }
 
-        private void AuthenticateUser(LoginAccountViewModel model, User currentUser, bool isForceUpdateLastLogin = false, bool isStudenlogin = false, bool isSSO = false)
+        private MfaSettingDto AuthenticateUser(LoginAccountViewModel model, User currentUser, bool isForceUpdateLastLogin = false, bool isStudenlogin = false, bool isSSO = false, bool isCheckMFA = false)
         {
             if (!string.IsNullOrEmpty(model.Password))
                 model.Password = model.Password.Trim();
 
-            if (currentUser == null || (!userService.IsValidUser(currentUser, model.Password) && !isSSO)) return;
+            if (currentUser == null || (!userService.IsValidUser(currentUser, model.Password) && !isSSO)) return null;
             if (!currentUser.UserStatusId.Equals((int)UserStatus.Active))
             {
                 model.Message = "Your username and password do not match our records.";
-                return;
+                return null;
             }
 
             // Prevented user is student
             if (!isStudenlogin && currentUser.IsStudent && !isSSO)
             {
-                return;
+                return null;
             }
 
             if (currentUser.IsParent && !isSSO)
             {
-                return;
+                return null;
             }
 
             User user = null;
@@ -588,6 +603,27 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
             }
             else
             {
+                if (isCheckMFA)
+                {
+                    var isShowDisclaimer = !user.TermOfUseAccepted.HasValue &&
+                        !model.TermsOfUse &&
+                        districtDecodeService.GetDistrictDecodeOrConfigurationByLabel(user.DistrictId ?? 0, DistrictDecodeLabelConstant.FistLogin_ShowDisclaimerContent);
+
+                    var isNeedSetAccountInformation = !model.HasEmailAddress || !model.HasSecurityQuestion || model.HasTemporaryPassword;
+
+                    if (isStudenlogin || (!isShowDisclaimer && !isNeedSetAccountInformation))
+                    {
+                        var cognitoCredentialSetting = LinkitConfigurationManager.GetLinkitSettings().CognitoCredentialSetting;
+                        var mfaSetting = _mfaService.CheckFlowMfa(cognitoCredentialSetting, user);
+                        if (mfaSetting.IsEnableMfa)
+                        {
+                            model.IsAuthenticated = true;
+                            model.UserID = user.Id;
+                            return mfaSetting;
+                        }
+                    }
+                }
+
                 formsAuthenticationService.SignIn(user, model.IsKeepLoggedIn);
             }
 
@@ -612,6 +648,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
             }
 
             model.UserID = user.Id;
+            return null;
         }
 
         private void LoadUserMetaData(User currentUser)
@@ -1507,7 +1544,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
             }
         }
 
-        private JsonResult ProcessLogon(LoginAccountViewModel model, bool isSSO = false)
+        private JsonResult ProcessLogon(LoginAccountViewModel model, bool isSSO = false, bool isCheckMFA = false)
         {
             if (model.IsDisableLoginForm)
                 return Json(new EmptyResult());
@@ -1579,7 +1616,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
             model.Message = "Your username and password do not match our records.";
             model.IsAuthenticated = false;
 
-            AuthenticateUser(model, currentUser, false, false, isSSO);
+            var mfaSetting = AuthenticateUser(model, currentUser, false, false, isSSO, isCheckMFA);
             if (currentUser != null)
             {
                 if (currentUser.IsNetworkAdmin)
@@ -1687,6 +1724,13 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
                             userService.SaveUser(termUser);
                         }
                     }
+                }
+
+                if (mfaSetting?.IsEnableMfa == true)
+                {
+                    Session["LoginAccountViewModel"] = model.Clone();
+                    Session["MfaSetting"] = mfaSetting;
+                    model.RedirectUrl = new UrlHelper(Request.RequestContext).Action("MfaVerification", "Account");
                 }
             }
             //Init warning Message
@@ -3289,6 +3333,139 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
             }
 
             return View(linkUserSSOView, (object)token);
+        }
+
+        [HttpGet]
+        public ActionResult MfaVerification()
+        {
+            if (Session["MfaSetting"] == null || !((MfaSettingDto)Session["MfaSetting"]).IsEnableMfa)
+            {
+                if (Session["MfaSetting"] != null)
+                {
+                    var loginAccount = (LoginAccountViewModel)Session["LoginAccountViewModel"];
+                    return Redirect(loginAccount.RedirectUrl);
+                }
+                return Redirect("/");
+            }
+
+            var mfaSetting = (MfaSettingDto)Session["MfaSetting"];
+            int loginLimit = _configurationService.GetConfigurationByKeyWithDefaultValue(Constanst.LoginLimit, Constanst.LoginLimitDefault);
+            if (userService.GetUserLoginFailCount(mfaSetting.UserId) > loginLimit)
+            {
+                SessionManager.ShowCaptcha = true;
+            }
+            MfaVerificationVM mfaVerificationVM = new MfaVerificationVM
+            {
+                HasEmailAddress = mfaSetting.HasEmailAddress,
+            };
+
+            return View(mfaVerificationVM);
+        }
+
+        [HttpPost]
+        public ActionResult MfaVerification(MfaVerificationVM mfaVerificationVM)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(mfaVerificationVM.Code))
+                {
+                    return Json(new { IsSuccess = false, ErrorMessage = "Verification code is required." });
+                }
+
+                var cognitoCredentialSetting = LinkitConfigurationManager.GetLinkitSettings().CognitoCredentialSetting;
+                var mfaSetting = (MfaSettingDto)Session["MfaSetting"];
+                var loginAccount = (LoginAccountViewModel)Session["LoginAccountViewModel"];
+
+                if (SessionManager.ShowCaptcha)
+                {
+                    var recaptcharResponse = mfaVerificationVM.g_recaptcha_response;//modify g-recaptcha-response to g_recaptcha_response
+                    if (string.IsNullOrEmpty(recaptcharResponse))
+                    {
+                        return Json(new
+                        {
+                            Message = "You must satisfy the CAPTCHA verification requirements to indicate that you are an authorized user.",
+                            Type = "error",
+                            ShowCaptcha = true
+                        });
+                    }
+                    //secret that was generated in key value pair
+                    string secret = ConfigurationManager.AppSettings["RECAPTCHA_SECRETKEY"];
+                    string googleCaptchaUrl = ConfigurationManager.AppSettings["RECAPTCHA_URL"];
+                    var verifyResponse = CaptchaHelper.Verify(secret, googleCaptchaUrl, recaptcharResponse);
+                    if (!verifyResponse.Success)
+                    {
+                        return Json(new { IsSuccess = false, ErrorMessage = verifyResponse.ErrorCodes ?? new List<string> { "Can not verify captcha. Please reload page" }, Type = "error", ShowCaptcha = true });
+                    }
+                }
+
+                var isVerified = _mfaService.Verify(cognitoCredentialSetting, mfaSetting, mfaVerificationVM.Code);
+                if (isVerified == false)
+                {
+                    int loginLimit = _configurationService.GetConfigurationByKeyWithDefaultValue(Constanst.LoginLimit, Constanst.LoginLimitDefault);
+                    userService.IncreaseUserLoginFailCount(mfaSetting.UserId);
+                    if (userService.GetUserLoginFailCount(mfaSetting.UserId) > loginLimit)
+                    {
+                        //display recaptcha
+                        SessionManager.ShowCaptcha = true;
+                    }
+                    return Json(new { IsSuccess = false, SessionManager.ShowCaptcha, ErrorMessage = "Incorrect or expired verification code." });
+                }
+
+                var user = userService.GetUserById(mfaSetting.UserId);
+
+                var isFromStudentLogin = user.RoleId == (int)RoleEnum.Parent || user.RoleId == (int)RoleEnum.Student;
+                loginAccount.RoleId = user.RoleId;
+                AuthenticateUser(loginAccount, user, true, isFromStudentLogin);
+
+                userService.DeleteUserLoginFailCount(mfaSetting.UserId);
+                SessionManager.ShowCaptcha = false;
+
+                HttpContext.Session.Remove("MfaSetting");
+                HttpContext.Session.Remove("LoginAccountViewModel");
+
+                return Json(new { IsSuccess = true, SessionManager.ShowCaptcha, loginAccount.RedirectUrl });
+            }
+            catch(Exception ex)
+            {
+                PortalAuditManager.LogException(ex);
+                return Json(new { IsSuccess = false, ErrorMessage = "An error occurred, please try again later!" });
+            }
+        }
+
+        [HttpPost]
+        public ActionResult ResendMfaVerification()
+        {
+            try
+            {
+                if (Session["MfaSetting"] == null || !((MfaSettingDto)Session["MfaSetting"]).IsEnableMfa)
+                {
+                    if (Session["MfaSetting"] != null)
+                    {
+                        var loginAccount = (LoginAccountViewModel)Session["LoginAccountViewModel"];
+                        return Redirect(loginAccount.RedirectUrl);
+                    }
+                    return Redirect("/");
+                }
+
+                var mfaSetting = (MfaSettingDto)Session["MfaSetting"];
+                if (mfaSetting.CreatedDate.HasValue)
+                {
+                    if (DateTime.UtcNow - mfaSetting.CreatedDate.Value < TimeSpan.FromMinutes(1))
+                    {
+                        return Json(new { IsSuccess = false, ErrorMessage = "An OTP code was sent recently!" });
+                    }
+                }
+
+                var cognitoCredentialSetting = LinkitConfigurationManager.GetLinkitSettings().CognitoCredentialSetting;
+                _mfaService.Resend(cognitoCredentialSetting, mfaSetting);
+                Session["MfaSetting"] = mfaSetting;
+                return Json(new { IsSuccess = true, mfaSetting.MfaSession });
+            }
+            catch (Exception ex)
+            {
+                PortalAuditManager.LogException(ex);
+                return Json(new { IsSuccess = false, ErrorMessage = "An error occurred, please try again later!" });
+            }
         }
     }
 }

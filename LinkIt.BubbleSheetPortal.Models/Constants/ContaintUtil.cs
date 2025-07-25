@@ -128,7 +128,7 @@ namespace LinkIt.BubbleSheetPortal.Models
         public const string TechUserImpersonation = "IPSUSER";
         //public const string TechAPILog = "APILOG";
         public const string DataPreview = "DATAPREVIEW";
-
+        public const string DadSecuritySettings = "SECURITYSETTINGS";
         public const string ItemLibraryManagement = "ITEMLIBRARYMNG";
 
         public const string StudentProfile = "STDPRF";
@@ -143,6 +143,7 @@ namespace LinkIt.BubbleSheetPortal.Models
         public const string TestPreferenceLabelTestPossibleValue = "testpossiblevalues";
         public const string TestPreferenceLabelAdmrptg = "admrptg";
         public const string DataLockerPreferencesSetting = "DataLockerPreferences";
+        public const string SecurityPreferencesSetting = "security";
 
         public const string TestPreferenceLevelEnterprise = "enterprise";
         public const string TestPreferenceLevelDistrict = "district";

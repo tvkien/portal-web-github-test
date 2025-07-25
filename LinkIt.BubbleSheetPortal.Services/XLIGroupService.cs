@@ -126,7 +126,8 @@ namespace LinkIt.BubbleSheetPortal.Services
             ContaintUtil.DadManageLAC,
             //ContaintUtil.DadDistrictReferencedata,//Techsupport
             ContaintUtil.DataAccessManagement,
-            ContaintUtil.DadManageSharingGroups
+            ContaintUtil.DadManageSharingGroups,
+            ContaintUtil.DadSecuritySettings
         };
 
         public XLIGroupService(

@@ -155,4 +155,11 @@ namespace LinkIt.BubbleSheetPortal.Models
         FullUpdate,
         MinorUpdate
     }
+
+    public enum SecurityPreferenceLevel
+    {
+        Enterprise = 1,
+        District = 2,
+        User = 3
+    }
 }

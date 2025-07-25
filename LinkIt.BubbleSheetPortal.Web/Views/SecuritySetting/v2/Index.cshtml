@@ -1,0 +1,438 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Security Setting");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<script src="@BundleHelper.Version("~/Scripts/SecurityPreferences/v2/securityPreferences.js")" type="text/javascript"></script>
+<script src="@BundleHelper.Version("~/Scripts/DialogNewSkin/index.js")" type="text/javascript"></script>
+<link href="@BundleHelper.Version("~/Content/css/v2/dialog-custom.css")" rel="stylesheet" type="text/css" />
+
+<style>
+    #SecuritySettingForm {
+        padding: 24px !important;
+    }
+
+    #portal-v2-containter #divSettingAreas #btnSecuritySettingSubmit {
+        padding: 10px 16px;
+        margin-top: 24px;
+        margin-right: 3px;
+        background-color: var(--red);
+        color: var(--white);
+        border-color: var(--red);
+    }
+
+    .security-preference-setting {
+        background-color: var(--white);
+        /*padding: 0.5em;*/
+    }
+
+    #portal-v2-containter .security-preference-setting .header {
+        font-size: 1.375rem;
+        font-weight: 700;
+        line-height: 1.455;
+        margin-bottom: 16px;
+        color: var(--navyColor);
+    }
+
+    #portal-v2-containter .security-preference-setting .page-label {
+        font-weight: 700;
+        font-size: 2rem;
+        line-height: 1.4;
+    }
+
+    .security-preference-setting #divListLockbankdl1 .bubbleSheetSelector {
+        background-color: var(--white);
+        margin-top: 16px;
+    }
+
+    .security-preference-setting .selectStateDictrict,
+    .security-preference-setting .select-district-state {
+        background-color: var(--white);
+        max-width: 1000px
+    }
+
+    #portal-v2-containter .security-preference-setting .block-content h1,
+    #portal-v2-containter .security-preference-setting .block-content .h1 {
+        margin-bottom: 0;
+        background-color: var(--white)
+    }
+
+    #portal-v2-containter .security-preference-setting .apply_filler {
+        margin-right: auto;
+    }
+
+     #portal-v2-containter .security-preference-setting .apply_filler button {
+        background-color: var(--red);
+        color: var(--white);
+        padding: 12px 16px;
+        border-color: var(--red);
+        margin-top: 23px;
+        margin-left: 10px;
+     }   
+
+    .security-preference-setting .testPreference #datatable_wrapper {
+        margin: 0 !important;
+    }
+
+    .security-preference-setting .last-childtestPreference {
+        background-color: var(--white);
+    }
+
+    #portal-v2-containter .security-preference-setting .block-text-name {
+        width: 250px !important;
+        min-width: 250px !important;
+    }
+
+    #portal-v2-containter .security-preference-setting .last-child table tbody .checkboxCenter {
+        text-align: center !important;
+    }
+
+    @@media (min-width: 1400px) {
+      .security-preference-setting .select-district-state {
+        max-width: 1150px
+      }
+    }
+
+    #SecurityPreferenceContent .clock-all-settings {
+        display: flex;
+        justify-content: end;
+    }
+
+    #SecurityPreferenceContent .clock-all-settings > div:first-child {
+        margin-right: 50px;
+    }
+
+    .accordion-title.active .fa-chevron-down {
+        transition: .3s transform ease-in-out;
+        transform: rotate(180deg);
+    }
+
+    .accordion-title:not(.active) .fa-chevron-down:not(p) {
+        transition: .3s transform ease-in-out;
+        transform: rotate(0);
+    }
+
+</style>
+
+<article class="container_12">
+    <section class="grid_12 security-preference-setting">
+        <div class="block-border" id="SecurityPreferenceContent">
+            @using (Html.BeginForm("Index", "SecuritySetting", FormMethod.Post, new { id = "SecuritySettingForm", @class = "block-content form bubbleSheetSelector" }))
+            {
+                <label class="page-label">Security Settings</label>
+                <div class="select-district-state">
+                    <div class="d-flex flex-column">
+                        <div>
+                            <div class="header">Select Preferences</div>
+                            <label>Setting Type</label>
+                            <div class="block-text-name">
+                                <select id="selectSettingType">
+                                    @if (Model.IsPublisher)
+                                    {
+                                    <text>
+                                        <option value="1">Enterprise Settings</option>
+                                    </text>
+                                    }
+                                    <option value="2">@LabelHelper.DistrictLabel Settings</option>
+                                    <option value="3">User Settings</option>
+                                </select>
+                            </div>
+                        </div>
+                        @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                        {
+                            <div id="publisherContent" class="select-district-state mt-4">
+                                <div class="header">Select State/@LabelHelper.DistrictLabel</div>
+                                <div class="d-flex flex-row">
+                                    <div>
+                                        <div class="mb-3 block-content-dropdown-marquee">
+                                            <label>State</label>
+                                            <div class="block-text-name">
+                                                <select id="selectState"></select>
+                                                <div class="box-select">
+                                                    <span class="overlay"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="ms-3">
+                                        <div class="mb-3 block-content-dropdown-marquee">
+                                            <label>@LabelHelper.DistrictLabel</label>
+                                            <div class="block-text-name">
+                                                <select id="selectDistrict"></select>
+                                                <div class="box-select">
+                                                    <span class="overlay"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <input id="hdfDistrictId" value="@Model.CurrentDistrictId" type="hidden" />
+                        }
+                        
+                    </div>
+                    <div class="ms-3 clock-all-settings">
+                        <div><input type="checkbox" id="chkAllSettings" class="d-none" /><label for="chkAllSettings" class="d-none">Lock/Unlock All Settings</label></div>
+                        <div id="lastUpdateInfor" style="text-align: right"></div>
+                    </div>
+                    <div class="d-flex flex-column">
+                        <div id="divSettingAreas" style="width: 100%;"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    var securityPreferenceModel = null;
+    var CURRENT_USER_DISTRICT_ID = @Model.CurrentDistrictId
+    $(function () {
+
+        if ($('#selectSettingType').val() == 1) {
+            $('#publisherContent').hide();
+            LoadSettingCurrentRole();
+        }
+        @if (Model.IsPublisher)
+        {
+            <text>
+                $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                    populateStates(states);
+                });
+            </text>
+        } else {
+            if (Model.IsNetworkAdmin)
+            {
+                    <text>
+                    $.get('@Url.Action("GetStatesByDictricIds", "PopulateStateDistrict")', { dictricIds: '@Model.StrIds' }, function (states) {
+                        populateStates(states);
+                    });
+                </text>
+            } else {
+                if (Model.IsAdmin)
+                {
+                    <text>
+                        LoadSettingType(1);
+                    </text>
+                } else {
+                     <text>
+                        LoadSettingType(2);
+                    </text>
+                }
+            }
+        }
+    });
+
+    function LoadSettingType(userRole) {
+        switch (userRole) {
+            case 1:
+                {
+                    $('#selectSettingType option[value = "1"]').remove();
+                    $('#selectSettingType option[value = "2"]').attr("selected", "selected");
+                } break;
+            case 2:
+                {
+                    $('#selectSettingType option[value = "1"]').remove();
+                    $('#selectSettingType option[value = "3"]').attr("selected", "selected");
+                } break;
+            default:
+        }
+        LoadSettingCurrentRole();
+    }
+
+    function LoadSettingCurrentRole() {
+        ShowBlock($('#SecurityPreferenceContent'), "Load Setting");
+        $('#lastUpdateInfor').empty();
+        var currentSettingType = $('#selectSettingType').val();
+        var currentDistrictId = 0;
+        if ($('#selectSettingType').val() == 1) {
+            currentDistrictId = 0;
+        } else if ($('#selectDistrict').val() != null) {
+            currentDistrictId = $('#selectDistrict').val();
+        } else {
+            currentDistrictId = CURRENT_USER_DISTRICT_ID
+        }
+        $('#divSettingAreas').empty();
+        portalV2SkinRadio()
+        $('#divSettingAreas').load('@Url.Action("LoadSettings")', { levelSetting: currentSettingType, districtId: currentDistrictId}, function (response) {
+            if (!$('#divSettingAreas').html()) {
+                $('#divSettingAreas').css('min-height', '750px')
+            }
+            @if (Model.IsSchoolAdminOrTeacher)
+            {
+                if (Model.IsTeacher)
+                {
+                    <text>
+                        initLockAllSettings(false);
+                        if ($('#selectSettingType').val() != '3') {
+                            $('#btnSecuritySettingSubmit').hide();
+                            $("#divSettingAreas input:radio").attr('disabled', true);
+                            $("#divSettingAreas input:checkbox").attr('disabled', true);
+                            $('#chkAllSettings').attr('disabled', true);
+                        } else {
+                            $('#btnSecuritySettingSubmit').show();
+                        }
+                    </text>
+                }
+                else
+                {
+                     <text>
+                        initLockAllSettings();
+                        if ($('#selectSettingType').val() != '3') {
+                            $('#btnSecuritySettingSubmit').hide();
+                            $("#divSettingAreas input:radio").attr('disabled', true);
+                            $("#divSettingAreas input:checkbox").attr('disabled', true);
+                            $('#chkAllSettings').attr('disabled', true);
+                        } else {
+                            $('#btnSecuritySettingSubmit').show();
+                        }
+                    </text>
+                }
+            }
+            else
+            {
+                <text>
+                    initLockAllSettings();
+                </text>
+            }
+
+            $('#SecurityPreferenceContent').unblock();
+            portalV2SkinCheckBox()
+            portalV2SkinRadio()
+        });
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            if ('@Model.IsPublisher' === 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+                });
+            }
+            if ('@Model.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+                });
+            }
+        } else {
+
+        }
+    }
+
+    function populateStates(states) {
+        addDefaultOption($('#selectState'), "State");
+        addSelectListItems($('#selectState'), states);
+    }
+
+    $('#selectState').change(function () {
+        if ($('#selectState').length > 0) {
+            var widthSelected = $('#selectState').outerWidth();
+            $('#selectState').marquee({ widthSelected });
+        }
+        $('#selectDistrict').empty();
+        if ($('#selectState').val() != 'select') {
+            populateDistricts();
+        } else {
+            $('#divSettingAreas').empty();
+        }
+    });
+
+    $('#selectDistrict').change(function () {
+        if ($('#selectDistrict').length > 0) {
+            var widthSelected = $('#selectDistrict').outerWidth();
+            $('#selectDistrict').marquee({ widthSelected });
+        }
+        if ($('#selectDistrict').val() != 'select') {
+            LoadSettingCurrentRole();
+        } else {
+            $('#divSettingAreas').empty();
+            $('#lastUpdateInfor').empty();
+        }
+    });
+
+    $('#selectSettingType').change(function () {
+        $('#chkAllSettings').parent().children().addClass('d-none');
+        $('#selectState').val('select');
+        $('#selectDistrict').empty();
+        const isUserSettingType = +($('#selectSettingType').val() == 3)
+        if ($('#selectSettingType').val() == 1 || isUserSettingType) {
+            $('#publisherContent').hide();
+            LoadSettingCurrentRole();
+        } else {
+            $('#publisherContent').show();
+            $('#divSettingAreas').empty();
+            $('#lastUpdateInfor').empty();
+        }
+
+        if (isUserSettingType || $('#hdfDistrictId').length > 0 && $('#hdfDistrictId').val()) {
+            LoadSettingCurrentRole();
+        }
+    });
+
+    $('#divSettingAreas').on('click change', '.switch input:radio, .switch input:checkbox, .clock-settings-area input:checkbox, .lock-input input:checkbox, input:button, .group-input input:radio, .group-input input:checkbox, .datepicker', function () {
+        $("#btnSecuritySettingSubmit").attr('disabled', false);
+    });
+
+    $('#chkAllSettings').change(function () {
+        $("#btnSecuritySettingSubmit").attr('disabled', false);
+    })
+
+    $("#btnSecuritySettingSubmit").live("click", function (e) {
+        $("#btnSecuritySettingSubmit").attr('disabled', true);
+
+        ShowBlock($('#SecurityPreferenceContent'), "Save Setting");
+
+        UpdateSecurityPreferenceModel();
+
+        var currentSettingType = $('#selectSettingType').val();
+        var currentDistrictId = 0;
+        if ($('#selectSettingType').val() == 1) {
+            currentDistrictId = 0;
+        } else if ($('#selectDistrict').val() != null) {
+            currentDistrictId = $('#selectDistrict').val();
+        } else {
+            currentDistrictId = CURRENT_USER_DISTRICT_ID
+        }
+        var data = JSON.stringify({ obj: securityPreferenceModel, settingLevel: currentSettingType, districtId: currentDistrictId });
+        $.ajax({
+            url: '@Url.Action("SaveSettings")',
+            traditional: true,
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: data,
+            success: function (response) {
+                if (response.Success == true) {
+                    $('#lastUpdateInfor').empty();
+                    $('#lastUpdateInfor').append('<label>Last Update: ' + response.InforUpdated.LastUpdatedDate + '</label>');
+                }
+                $('#SecurityPreferenceContent').unblock();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+
+</script>
