@@ -1,0 +1,721 @@
+@using System.Linq
+@using System.Text
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Common.Enum
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SATReport.SATReportMasterViewModel
+
+    @{
+        //var sections = Model.SectionTagViewModels.Take(4).ToList();
+        var sections = Model.SectionTagViewModels.ToList();
+        var useBreakLine = false;
+    }
+    @for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
+    {
+        useBreakLine = false;
+        var sectionTag = sections[sectionIndex];
+        <div class="non-break-inside u-clearfix">
+            <div class="black-title">
+                @if (sectionTag.SectionName.ToLower() == "writing")
+                {
+                    <span>WRITING AND LANGUAGE</span>
+                }
+                else
+                {
+                    <span>@sectionTag.SectionName.ToUpper()</span>
+                }
+            </div>
+
+            @{
+                var charts = sectionTag.TagCategoryReportViewModels.Where(m => m.PresentationType == ACTPresentationType.CHART).ToList();
+                var tables = sectionTag.TagCategoryReportViewModels.Where(m => m.PresentationType != ACTPresentationType.CHART).ToList();
+                var color = "";
+                var isMath = false;
+
+                if (!Model.ListVirtualTestConversionName.Contains(sectionTag.SectionName))
+                {
+                    if (sectionTag.SectionName.ToLower().IndexOf("reading") > -1)
+                    {
+                        color = "#60164d";
+                    }
+                    else if (sectionTag.SectionName.ToLower().IndexOf("writing") > -1)
+                    {
+                        color = "#0d6671";
+                        useBreakLine = true;
+                    }
+                    else if (sectionTag.SectionName.ToLower().IndexOf("math") > -1)
+                    {
+                        color = "#eb6523";
+                        isMath = true;
+                        useBreakLine = true;
+                    }
+                }
+
+                var chartWidth = 36;
+                var tableWidth = 62;
+
+                if (charts.Count == 0 && tables.Count > 0)
+                {
+                    tableWidth = 100;
+                }
+            }
+
+            <div style="width:@chartWidth%;float:left;">
+                @{ 
+                    var breakLines = new List<string>
+                    {
+                        "Conventions of Usage", "Words in Context", "Heart of Algebra"
+                    };
+                }
+                @foreach (var tageCategory in charts)
+                {
+                    <div style="width:92%;border:1px solid;min-height:100px;padding:10px;margin-bottom:10px;padding-bottom:0;position:relative">
+                        <div style="position: absolute;top: -8px;z-index: 10;background: white;padding: 3px;font-weight: bold;font-size: 8pt;">@tageCategory.TagCategoryName</div>
+                        @foreach (var item in tageCategory.SingleTagReportViewModels)
+                        {
+                            if (breakLines.Contains(item.TagName) && useBreakLine == true)
+                            {
+                                <div class="break-line"></div>
+                            }
+                            <div class="section-chart"
+                                 data-item-tag="@item.TagName"
+                                 data-correct-answer="@item.CorrectAnswer"
+                                 data-incorrect-answer="@item.IncorrectAnswer"
+                                 data-blank-answer="@item.BlankAnswer"
+                                 data-percent="@item.Percent"
+                                 data-historical-average="@item.HistoricalAverage"
+                                 data-color="@color">
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div style="width:@tableWidth%;float:right">
+                @foreach (var tagCategory in tables)
+                {
+                    if (string.IsNullOrEmpty(tagCategory.TagCategoryName))
+                    {
+                        continue;
+                    }
+                    var boderHeader = "border-bottom:1px solid";
+
+                    var tableType = "TABLE_TWO";
+
+                    string[] sectionColumns = null;
+                    string[] removeTexts = { "Math (No Calculator)", "Math (Calculator)" };
+                    if (isMath)
+                    {
+                        sectionColumns = sectionTag.AnswerSectionViewModels.Select(m => m.SectionName).Distinct().ToArray();
+                    }
+
+                    <div class="u-clearfix full-width">
+                        @if (tagCategory.IsTechniqueCategory)
+                                    {
+                                    var columnSpan = sectionColumns == null ? 1 : sectionColumns.Count();
+
+                            <table class="act-table @tableType">
+                                <thead>
+                                    <tr style="@boderHeader">
+                                        <th style="text-align:left">
+                                            @tagCategory.TagCategoryName
+                                        </th>
+                                        <th style="width:60px" class="text-center">Incorrect</th>
+                                        <th style="width:36px" class="text-center">Blank</th>
+                                        <th colspan="@columnSpan" class="text-center">Incorrectly Answered</th>
+                                    </tr>
+                                    @if(isMath && sectionColumns != null)
+                                    {
+                                        var width = 100 / (3 + sectionColumns.Count()) + "%";
+                                        <tr>
+                                            <th colspan="3"></th>
+                                            @foreach (var column in sectionColumns)
+                                            {
+                                                var displayColumn = column;
+                                                foreach (var item in removeTexts)
+                                                {
+                                                    if (column.Contains(item))
+                                                    {
+                                                        displayColumn = column.Replace(item, "");
+                                                    }
+                                                }
+                                                <th>@displayColumn</th>
+                                            }
+                                        </tr>
+                                    }
+                                </thead>
+                                <tbody>
+
+                                    @{
+                                        var indexTable = 0;
+                    }
+                                    @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                    {
+                        ++indexTable;
+                        var borderNoneBottom = indexTable == tagCategory.SingleTagReportViewModels.Count() ? "border-none-bottom" : "";
+                                        <tr>
+                                            <td style="vertical-align:middle;" class="border-none-left @borderNoneBottom">
+                                                @singleTag.TagName
+                                            </td>
+                                            <td class="text-center @borderNoneBottom">
+                                                @singleTag.IncorrectAnswer
+                                            </td>
+                                            <td class="text-center @borderNoneBottom">
+                                                @singleTag.BlankAnswer
+                                            </td>
+                                        @if (isMath && sectionColumns != null)
+                    {
+                        foreach (var column in sectionColumns)
+                        {
+                                                <td class="border-none-right @borderNoneBottom">
+                                                    @string.Join(", ", singleTag.ListAnswerInTag.Where(x => x.PointsEarned != x.PointsPossible && x.WasAnswered && x.SectionName == column).Select(x => x.QuestionOrder.ToString() /* + x.CorrectAnswer + ":" + x.AnswerLetter*/))
+                                                </td>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <td class="border-none-right @borderNoneBottom">
+                                                @string.Join(", ", singleTag.ListAnswerInTag.Where(x => x.PointsEarned != x.PointsPossible && x.WasAnswered).Select(x => x.QuestionOrder.ToString() /* + x.CorrectAnswer + ":" + x.AnswerLetter*/))
+                                            </td>
+                                        }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                            }
+                            else if (Model.TagTableUseAlternativeStyle)
+                            {
+                                <table class="act-table @tableType">
+                                    <thead>
+                                        <tr style="@boderHeader">
+                                            <th style="text-align:left">
+                                                @tagCategory.TagCategoryName
+                                            </th>
+                                            <th width="36px">Total</th>
+                                            <th width="50px">Correct</th>
+                                            <th width="60px">Incorrect</th>
+                                            <th width="36px">Blank</th>
+                                            <th>Incorrectly Answered or Skipped</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{
+                                            var indexTable = 0;
+                                        }
+                                        @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                {
+                    ++indexTable;
+                    var borderNoneBottom = indexTable == tagCategory.SingleTagReportViewModels.Count() ? "border-none-bottom" : "";
+                                            <tr>
+                                                <td style="vertical-align:middle;" class="border-none-left @borderNoneBottom">
+                                                    @singleTag.TagName
+                                                </td>
+                                                <td class="text-center @borderNoneBottom">
+                                                    @singleTag.TotalAnswer
+                                                </td>
+                                                <td class="text-center @borderNoneBottom">
+                                                    @singleTag.CorrectAnswer
+                                                </td>
+                                                <td class="text-center @borderNoneBottom">
+                                                    @singleTag.IncorrectAnswer
+                                                </td>
+                                                <td class="text-center @borderNoneBottom">
+                                                    @singleTag.BlankAnswer
+                                                </td>
+                                                <td class="border-none-right @borderNoneBottom">
+                                                    @string.Join(", ", singleTag.ListAnswerInTag.Where(x => (x.PointsEarned != x.PointsPossible && x.WasAnswered) || !x.WasAnswered).Select(x => x.QuestionOrder.ToString() /* + x.CorrectAnswer + ":" + x.AnswerLetter*/))
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                if (!tagCategory.IsTechniqueCategory)
+                                {
+                                    <table class="act-table @tableType">
+                                        <thead>
+                                            <tr style="@boderHeader">
+                                                <th class="border-none-left" style="text-align:left">
+                                                    @tagCategory.TagCategoryName
+                                                </th>
+                                                <th width="36px">Total</th>
+                                                <th width="40px">Correct</th>
+                                                <th width="50px">Incorrect</th>
+                                                <th width="36px">Blank</th>
+                                                <th width="40px">Percent</th>
+                                                <th width="70px">Hist Avg %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @{
+                                                var indexTable = 0;
+                                            }
+                                            @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                {
+                    ++indexTable;
+                    var borderNoneBottom = indexTable == tagCategory.SingleTagReportViewModels.Count() ? "border-none-bottom" : "";
+
+                                                <tr>
+                                                    <td class="border-none-left @borderNoneBottom">
+                                                        @singleTag.TagName
+                                                    </td>
+                                                    <td class="text-center @borderNoneBottom">
+                                                        @singleTag.TotalAnswer
+                                                    </td>
+                                                    <td class="text-center @borderNoneBottom">
+                                                        @singleTag.CorrectAnswer
+                                                    </td>
+                                                    <td class="text-center @borderNoneBottom">
+                                                        @singleTag.IncorrectAnswer
+                                                    </td>
+                                                    <td class="text-center @borderNoneBottom">
+                                                        @singleTag.BlankAnswer
+                                                    </td>
+                                                    <td class="text-center @borderNoneBottom">
+                                                        @string.Format("{0}%", singleTag.Percent)
+                                                    </td>
+                                                    <td class="text-center border-none-right @borderNoneBottom">
+                                                        @string.Format("{0}%", singleTag.HistoricalAverage)
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                             }
+                    </div>
+                  }
+
+                @{
+                                // render passage name in writting section
+                                if (sectionTag.AnswerSectionGroupByPassageViewModels != null && sectionTag.IsDisplayPassageNumber)
+                                {
+                                    var count = 0;
+                                    foreach (var item in sectionTag.AnswerSectionGroupByPassageViewModels)
+                                    {
+                            <div class="u-clearfix">
+                                @{
+                                    if (!string.IsNullOrEmpty(item.PassageName))
+                                    {
+                                        count++;
+                                        <div class="passage-name">
+                                            <span>Passage @count</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="passage-name">
+                                            <span>&nbsp;</span>
+                                        </div>
+                                    }
+                                    var firstPassageIsExsited = true;
+                    var listSectionsID = item.AnswerSectionViewModels.Where(x => x.SectionID != Model.EssaySectionId).Select(x => x.SectionID).Distinct().ToList();
+
+                                    foreach (var sectionId in listSectionsID)
+                                    {
+                                        //render answers
+                                        const int answerColumnNumber = 15;
+                    const int textEntryColumnNumber = 10;
+                    int index = 1;
+                    var listAnswer = item.AnswerSectionViewModels.Where(x => x.SectionID == sectionId).ToList();
+                                        if (listAnswer.Any() == false)
+                                        {
+                                            continue;
+                                        }
+                                        var listMCQuestions = listAnswer.Where(x => x.QTISchemaID != 9).ToList();
+                    var listSPRQuestions = listAnswer.Where(x => x.QTISchemaID == 9).ToList();
+
+
+                                        while (listMCQuestions.Any())
+                                        {
+                                           <div class="non-break-inside u-clearfix">
+                                               @{
+                                                   if (!firstPassageIsExsited)
+                                                   {
+                                                    <div class="passage-name">
+                                                        <span>&nbsp;</span>
+                                                    </div>
+                                                   }
+
+                                                <table class='table-answer move-left'>
+                                                    <thead>
+                                                        <tr>
+                                                            <th class="text-center" style="width:40px;padding:3px;">Q#</th>
+                                                            @for (int i = 0; i < answerColumnNumber; i++)
+                                                            {
+                                                                if (i < listMCQuestions.Count)
+                                                                {
+                                                                    <th class="text-center" style="width: 19px">@string.Format("{0}", listMCQuestions[i].QuestionOrder)</th>
+                                                                }
+                                                            }
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr class="question-detail-answer">
+                                                            <td class="ans-row">Ans</td>
+                                                            @for (int i = 0; i < answerColumnNumber; i++)
+                                                            {
+                                                                if (i < listMCQuestions.Count)
+                                                                {
+                                                                    <td class="text-center gray">@Html.Raw(listMCQuestions[i].CorrectAnswer)</td>
+                                                                }
+                                                            }
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="mark-row" style="font-weight:bold">Mk</td>
+                                                            @for (int i = 0; i < answerColumnNumber; i++)
+                                                            {
+                                                                if (i < listMCQuestions.Count)
+                                                                {
+                                                                    <td class="text-center mark-row">
+                                                                        @if (listMCQuestions[i].IsCorrected)
+                    {
+                                                                            @:+
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            if (listMCQuestions[i].IsBlank)
+                                                                            {
+                                                                                @:-
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                if (listMCQuestions[i].AnswerLetter.Length > 4)
+                                                                                {
+                                                                                    <text>@listMCQuestions[i].AnswerLetter.Substring(0, 4)</text>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    @listMCQuestions[i].AnswerLetter
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    </td>
+                                                                }
+                                                            }
+
+                                                            @if (answerColumnNumber < listMCQuestions.Count)
+                                                            {
+                                                                listMCQuestions.RemoveRange(0, answerColumnNumber);
+                                                                index = answerColumnNumber + index;
+                                                            }
+                                                            else
+                                                            {
+                                                                listMCQuestions.RemoveRange(0, listMCQuestions.Count);
+                                                            }
+
+
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                   firstPassageIsExsited = false;
+                                            }
+                                           </div>
+                                        }
+
+                                        while (listSPRQuestions.Any())
+                                        {
+                                            <div class="non-break-inside u-clearfix">
+                                                <table class="table-answer full-width">
+                                                    <thead>
+                                                        <tr>
+                                                            @{
+                                                                var style = "width:" + 100 / (textEntryColumnNumber + 1) + "%;";
+                                                            }
+
+                                                            <th class="text-center" style="@style;padding:3px">Q#</th>
+                                                            @for (int i = 0; i < textEntryColumnNumber; i++)
+                                                            {
+                                                                if (i < listSPRQuestions.Count)
+                                                                {
+                                                                    <th class="text-center" style="@style;">@string.Format("{0}", listSPRQuestions[i].QuestionOrder)</th>
+                                                                }
+                                                            }
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td class="last-answer gray ans-row" style="vertical-align:middle;padding-left:3px">Ans</td>
+
+                                                            @for (int i = 0; i < textEntryColumnNumber; i++)
+                                                            {
+                                                                if (i < listSPRQuestions.Count)
+                                                                {
+                                                                    <td class="text-center gray" style=" word-break: break-all;padding:3px">@Html.Raw(listSPRQuestions[i].CorrectAnswer)</td>
+                                                                }
+                                                            }
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="last-answer" style="font-weight:bold">Mk</td>
+                                                            @for (int i = 0; i < textEntryColumnNumber; i++)
+                                                            {
+                                                                if (i < listSPRQuestions.Count)
+                                                                {
+                                                                    <td class="text-center mark-row">
+                                                                        @if (listSPRQuestions[i].IsCorrected)
+                                                                        {
+                                                                            @:+
+                                                                                    }
+                                                                        else
+                                                                        {
+                                                                            if (listSPRQuestions[i].IsBlank)
+                                                                            {
+                                                                                @:-
+                                                                                        }
+                                                                            else
+                                                                            {
+                                                                                if (listSPRQuestions[i].AnswerLetter.Length > 4)
+                                                                                {
+                                                                                    <text>@listSPRQuestions[i].AnswerLetter.Substring(0, 4)</text>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    @listSPRQuestions[i].AnswerLetter
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    </td>
+                                                                }
+                                                            }
+
+                                                            @if (textEntryColumnNumber < listSPRQuestions.Count)
+                                                            {
+                                                                listSPRQuestions.RemoveRange(0, textEntryColumnNumber);
+                                                                index = textEntryColumnNumber + index;
+                                                            }
+                                                            else
+                                                            {
+                                                                listSPRQuestions.RemoveRange(0, listSPRQuestions.Count);
+                                                            }
+
+
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                                            }
+                                                        }
+                            }
+                        </div>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            var listSectionsID = sectionTag.AnswerSectionViewModels.Where(x => x.SectionID != Model.EssaySectionId).Select(x => x.SectionID).Distinct().ToList();
+
+                                                            foreach (var sectionId in listSectionsID)
+                                                            {
+                                                                //render answers
+                                                                const int answerColumnNumber = 20;
+                                                                const int textEntryColumnNumber = 10;
+                                                                int index = 1;
+                                                                int countTable = 0;
+                                                                var listAnswer = sectionTag.AnswerSectionViewModels.Where(x => x.SectionID == sectionId).ToList();
+                                                                if (listAnswer.Any() == false)
+                                                                {
+                                                                    continue;
+                                                                }
+                                                                var listMCQuestions = listAnswer.Where(x => x.QTISchemaID != 9).ToList();
+                                                                var listSPRQuestions = listAnswer.Where(x => x.QTISchemaID == 9).ToList();
+
+
+                                                                while (listMCQuestions.Any())
+                                                                {
+                                <table class='table-answer'>
+                                    <thead>
+                                        @if (countTable == 0)
+                                        {
+                                            <tr>
+                                                <th colspan="@(answerColumnNumber + 1)">
+                                                    <p class="answer-header">
+                                                        @listAnswer[0].SectionName
+                                                    </p>
+                                                </th>
+                                            </tr>
+
+                                            countTable++;
+                                        }
+
+
+                                        <tr>
+                                            <th class="text-center" style="width:40px;padding:3px">Q#</th>
+                                            @for (int i = 0; i < answerColumnNumber; i++)
+                                            {
+                                                if (i < listMCQuestions.Count)
+                                                {
+                                                    <th class="text-center" style="width: 19px">@string.Format("{0}", listMCQuestions[i].QuestionOrder)</th>
+                                                }
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="question-detail-answer">
+                                            <td class="ans-row">Ans</td>
+                                            @for (int i = 0; i < answerColumnNumber; i++)
+                                            {
+                                                if (i < listMCQuestions.Count)
+                                                {
+                                                    <td class="text-center gray">@Html.Raw(listMCQuestions[i].CorrectAnswer)</td>
+                                                }
+                                            }
+                                        </tr>
+                                        <tr>
+                                            <td class="mark-row" style="font-weight:bold">Mk</td>
+                                            @for (int i = 0; i < answerColumnNumber; i++)
+                                            {
+                                                if (i < listMCQuestions.Count)
+                                                {
+                                                    <td class="text-center mark-row">
+                                                        @if (listMCQuestions[i].IsCorrected)
+                                                        {
+                                                            @:+
+                                                    }
+                                                        else
+                                                        {
+                                                            if (listMCQuestions[i].IsBlank)
+                                                            {
+                                                                @:-
+                                                        }
+                                                            else
+                                                            {
+                                                                if (listMCQuestions[i].AnswerLetter.Length > 4)
+                                                                {
+                                                                    <text>@listMCQuestions[i].AnswerLetter.Substring(0, 4)</text>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @listMCQuestions[i].AnswerLetter
+                                                                }
+                                                            }
+                                                        }
+                                                    </td>
+                                                }
+                                            }
+
+                                            @if (answerColumnNumber < listMCQuestions.Count)
+                                            {
+                                                listMCQuestions.RemoveRange(0, answerColumnNumber);
+                                                index = answerColumnNumber + index;
+                                            }
+                                            else
+                                            {
+                                                listMCQuestions.RemoveRange(0, listMCQuestions.Count);
+                                            }
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+            }
+
+            while (listSPRQuestions.Any())
+            {
+                <table style="margin-bottom: 0px;" class="table-answer">
+                    <thead>
+                        <tr>
+                            @{
+                                var style = "width:" + 100 / (textEntryColumnNumber + 1) + "%;";
+                            }
+
+                            <th class="text-center" style="@style;padding:3px">Q#</th>
+                            @for (int i = 0; i < textEntryColumnNumber; i++)
+                            {
+                                if (i < listSPRQuestions.Count)
+                                {
+                                    <th class="text-center" style="@style;">@string.Format("{0}", listSPRQuestions[i].QuestionOrder)</th>
+                                }
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="last-answer gray ans-row" style="vertical-align:middle;padding-left:3px">Ans</td>
+
+                            @for (int i = 0; i < textEntryColumnNumber; i++)
+                            {
+                                if (i < listSPRQuestions.Count)
+                                {
+                                    <td class="text-center gray" style=" word-break: break-all;padding:3px">@Html.Raw(listSPRQuestions[i].CorrectAnswer)</td>
+                                }
+                            }
+                        </tr>
+                        <tr>
+                            <td class="last-answer" style="font-weight:bold">Mk</td>
+                            @for (int i = 0; i < textEntryColumnNumber; i++)
+                            {
+                                if (i < listSPRQuestions.Count)
+                                {
+                                    <td class="text-center mark-row">
+                                        @if (listSPRQuestions[i].IsCorrected)
+                                        {
+                                            @:+
+                                                                    }
+                                        else
+                                        {
+                                            if (listSPRQuestions[i].IsBlank)
+                                            {
+                                                @:-
+                                                                        }
+                                            else
+                                            {
+                                                if (listSPRQuestions[i].AnswerLetter.Length > 4)
+                                                {
+                                                    <text>@listSPRQuestions[i].AnswerLetter.Substring(0, 4)</text>
+                                                }
+                                                else
+                                                {
+                                                    @listSPRQuestions[i].AnswerLetter
+                                                }
+                                            }
+                                        }
+                                    </td>
+                                }
+                            }
+
+                            @if (textEntryColumnNumber < listSPRQuestions.Count)
+                            {
+                                listSPRQuestions.RemoveRange(0, textEntryColumnNumber);
+                                index = textEntryColumnNumber + index;
+                            }
+                            else
+                            {
+                                listSPRQuestions.RemoveRange(0, listSPRQuestions.Count);
+                            }
+
+
+                        </tr>
+                    </tbody>
+                </table>
+                                        }
+                                    }
+                                }
+}
+
+
+
+            </div>
+        </div>
+    }
+
+<script>
+
+    var sectionChartElements = $(".section-chart");
+    var _actReport = new ACTReport();
+    if (sectionChartElements && sectionChartElements.length > 0) {
+        for (var i = 0; i < sectionChartElements.length; i++) {
+            var element = $(sectionChartElements[i]);
+
+            var model = {
+                itemTag: element.attr('data-item-tag'),
+                correctAnswer: element.attr('data-correct-answer'),
+                incorrectAnswer: element.attr('data-incorrect-answer'),
+                blankAnswer: element.attr('data-blank-answer'),
+                percent: element.attr('data-percent'),
+                historicalAverage: element.attr('data-historical-average'),
+                color: element.attr('data-color'),
+            }
+
+            element.html(_actReport.renderSectionChart(model));
+        }
+    }
+</script>

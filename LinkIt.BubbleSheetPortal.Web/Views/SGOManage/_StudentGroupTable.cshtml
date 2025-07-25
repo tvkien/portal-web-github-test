@@ -1,0 +1,563 @@
+@using LinkIt.BubbleSheetPortal.Common
+@using LinkIt.BubbleSheetPortal.Models
+@using LinkIt.BubbleSheetPortal.Models.SGO
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Web.ViewModels.SGO
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.EstablishStudentGroupViewModel
+@{
+    var excludedGroup = Model.ListGroupsViewModel.First(x => x.IsExcludedGroup);
+    var excludedGroupID = excludedGroup.SGOGroupID;
+}
+<input type="hidden" id="idhdftotalDataPoint" value="@Model.ListDataPoint.Count" />
+<table id="dataTableEstablishStudentGroups" class="datatable table table-sgo table-sgo-student no-margin" width="875px">
+    <thead>
+        <tr class="table-sgo-head">
+            <td class="table-sgo-fixed">
+                <label>Setup and label your groups.</label>
+                <button type="button" class="btn-sgo-small" id="idbtnSetup"> Setup</button>
+            </td>
+            <td class="table-sgo-fixed" id="idtdAssignSelectedStudents">
+                <label>Assign selected students to group.</label>
+                @if (Model.ListCustomGroups.Count > 0)
+                {
+                <div class="btn-sgo-group">
+                    @foreach (var item in Model.ListCustomGroups)
+                        {
+                        <div class="btn-sgo-item">
+                            <button onclick="AddStudentToGroup(this, '@item.SGOGroupID.ToString()')" class="btn-sgo-small btn-sgo-number" id="idGroup-@item.SGOGroupID">@item.Order</button>
+                        </div>
+                        }
+                </div>
+                }
+                <button class="btn-sgo-small" id="idbtnExclude" onclick="AddStudentToGroup(this, '@excludedGroupID.ToString()')">Exclude</button>
+            </td>
+            @foreach (var dtPoint in Model.ListDataPointInfo)
+            {
+                var selectedScoreType = dtPoint.ScoreType.ToString();
+                if (dtPoint.VirtualTestSubScoreId > 0)
+                {
+                    selectedScoreType = selectedScoreType + '_' + dtPoint.VirtualTestSubScoreId;
+                }
+
+            <td class="table-sgo-fixed">
+                @if (dtPoint.EnableDefaultCutScore)
+                    {
+                    <text>
+                        Weight:
+                    </text>
+                    <label id="idlbWeight-@dtPoint.SGODataPointID">@dtPoint.Weight.ToString("0") (@dtPoint.WeightPercent.ToString("0.00")%)</label>
+                    <text>
+                        Cut Score:
+                    </text>
+                    <label id="idlbCutScore-@dtPoint.SGODataPointID">
+                        @if (dtPoint.IsCustomCutScore)
+                            {
+                            <text>
+                                Custom
+                            </text>
+                            }
+                            else
+                            {
+                            <text>
+                                Default
+                            </text>
+                            }
+                    </label>
+                    <div>
+                        <div class="btn-sgo-item">
+                            <button class="btn-sgo-small" id="idbtChangeCutScore-@dtPoint.SGODataPointID" type="button" onclick="ChangeCutScore(this, @dtPoint.SGODataPointID );">Change Cut Score</button>
+                        </div>
+                    </div>
+                        if (dtPoint.Type == (int)SGODataPointTypeEnum.PreAssessmentHistorical || dtPoint.Type == (int)SGODataPointTypeEnum.PreAssessmentCustom)
+                        {
+                    <div class="btn-sgo-item">
+                        <select id="selectScoreType" name="selectScoreType" dpid="@dtPoint.SGODataPointID.ToString()" class="sgo-select-score">                           
+                            @foreach (ListItemStr scoreType in dtPoint.ScoreTypesList)
+                            {
+                                bool isSelected = selectedScoreType == scoreType.Id;
+                                if (isSelected)
+                                {
+                                    <option value='@scoreType.Id' selected>@scoreType.Name</option>
+                                }
+                                else
+                                {
+                                    <option value='@scoreType.Id'>@scoreType.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                        }
+                    }
+                    else if (dtPoint.Type == (int)SGODataPointTypeEnum.PreAssessmentCustom)
+                    {
+                    @*//PreAssessmentCustom no need show weight*@
+                    <div class="btn-sgo-item btn-sgo-item-bottom">
+                        <select id="selectScoreType" name="selectScoreType" dpid="@dtPoint.SGODataPointID.ToString()" class="sgo-select-score">
+                            @foreach (ListItemStr scoreType in dtPoint.ScoreTypesList)
+                                {
+                                    bool isSelected = selectedScoreType == scoreType.Id;
+                                    if (isSelected)
+                                    {
+                                <option value='@scoreType.Id' selected>@scoreType.Name</option>
+                                    }
+                                    else
+                                    {
+                                <option value='@scoreType.Id'>@scoreType.Name</option>
+                                    }
+                                }
+                        </select>
+                    </div>
+                    }
+            </td>
+            }
+        </tr>
+        @if (Model.ListDataPointInfo.Count > 0)
+        {
+        <tr class="table-sgo-head">
+            <td></td>
+            <td></td>
+            <td colspan="@Model.ListDataPointInfo.Count">
+                @{
+                    //var disabled = 
+                }
+                @if (Model.ListDataPointInfo.Count == 1)
+                {
+                    <div class="btn-sgo-item">
+                        <button class="btn-sgo-small" id="idbtChangeWeights" type="button" onclick="ChangeWeights(this, @Model.SGOID);">Change Weights</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center">
+                        <div class="btn-sgo-item">
+                            <button class="btn-sgo-small" id="idbtChangeWeights" type="button" onclick="ChangeWeights(this, @Model.SGOID);">Change Weights</button>
+                        </div>
+                    </div>
+                }
+            </td>
+        </tr>
+        }
+        <tr>
+            <th scope="col">
+                Preparedness Group
+            </th>
+            <th scope="col">
+                <input id="idChkStudent" type="checkbox" onchange="CheckAllStudents();" />
+                <label for="idChkStudent"> Students </label>
+            </th>
+            @foreach (var dtPoint in Model.ListDataPointInfo)
+            {
+            <th scope="col" class="with-tip" title="@dtPoint.Tooltip">
+                <label>@dtPoint.Name </label>
+            </th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @for (int i = 0; i < Model.ListStudentInGroup.Keys.Count; i++)
+        {
+            var group = Model.ListStudentInGroup.Keys.ElementAt(i);
+            string groupStyle = "";
+            if (group.Order == Constanst.ExcludedGroupOrder)
+            {
+                groupStyle = "opacity:0.6";
+            }
+            bool isExcluded = group.Order == Constanst.ExcludedGroupOrder;
+            bool isTobeplaced = group.Order == Constanst.ToBePlacedGroupOrder;
+            var groupVm = Model.ListGroupsViewModel.First(x => x.SGOGroupID == group.SGOGroupID);
+            var listStudents = new List<SGOStudent>();
+            if (Model.ListStudentInGroup.TryGetValue(group, out listStudents))
+            {
+                if (listStudents.Any())
+                {
+                    var orderStudents = (from id in listStudents
+                                         join student in Model.ListStudents 
+                                         on id.StudentID equals student.Id
+                                         select new { id, student })
+                                         .OrderBy(x => x.student.Name)
+                                         .Select(o => o.id).ToArray();
+
+                    foreach (var student in orderStudents)
+                    {
+                        if (isTobeplaced)
+                        {
+                            <text>
+                                <tr style="@groupStyle" name="trTobeplaced">
+                            </text>
+                        }
+                        else
+                        {
+                            <text>
+                            <tr style="@groupStyle">
+                            </text>
+                        }
+                        <td style="background-color: @groupVm.Color.ToString()">
+                            <span name="groupname" class="PreparednessGroupNameClass">
+                                @string.Format("{0} - {1}", group.Order, group.Name)
+                            </span>
+                        </td>
+                        <td>
+                            <input type="checkbox"
+                                   id="@student.StudentID"
+                                   value="@student.StudentID"
+                                   name="studentGroup"
+                                   studentid="@student.StudentID"
+                                   groupid="@group.SGOGroupID"
+                                   oldgroupid="@group.SGOGroupID"
+                                   studenttype="@student.Type.GetValueOrDefault()"
+                                   onclick="checkstudenttype();" />
+                            <label for="@student.StudentID">@Model.ListStudents.First(x => x.Id == student.StudentID).Name</label>
+                        </td>
+                        foreach (var item in Model.ListDataPoint)
+                            {
+                                var scoreInDataPoint = new List<SGOStudentScoreInDataPointViewModel>();
+                                if (Model.ListStudentScoreInDataPoint.TryGetValue(item.SGODataPointID, out scoreInDataPoint))
+                                {
+                                    var studentScore = scoreInDataPoint.FirstOrDefault(x => x.StudentID == student.StudentID);
+                                    if (studentScore != null && !studentScore.IsCustomLabelValue)
+                                    {
+                                        if (!string.IsNullOrEmpty(studentScore.Color))
+                                        {
+                                        <td style="background-color: @studentScore.Color">
+                                            <label style="color: black;font-weight: normal;" name="lblScore" dpid="@item.SGODataPointID.ToString()" studentid="@student.StudentID.ToString()">
+                                                @string.Format("{0:0.##}", studentScore.Score)
+                                                @if (item.Type == (int)SGODataPointTypeEnum.PreAssessment)
+                                                {
+                                                    <text>(@string.Format("{0:0}%", Math.Round(studentScore.ScorePercent, 0)))</text>
+                                                }
+                                            </label>
+                                        </td>
+                                    }
+                                    else
+                                    {
+                                        <td>
+                                            <label style="color: black; font-weight: normal;" name="lblScore" dpid="@item.SGODataPointID.ToString()" studentid="@student.StudentID.ToString()">
+                                                @string.Format("{0:0.##}", studentScore.Score)
+                                            </label>
+                                        </td>
+                                    }
+                                }
+                                else
+                                {
+                                    if (studentScore != null && item.Type == (int)SGODataPointTypeEnum.PreAssessmentCustom)
+                                    {
+                                        if (!string.IsNullOrEmpty(studentScore.Color))
+                                        {
+                                        <td style="background-color: @studentScore.Color">
+                                            <label style="color: black;font-weight: normal;" name="lblScore" dpid="@item.SGODataPointID.ToString()" studentid="@student.StudentID.ToString()">@studentScore.ScoreText</label>
+                                        </td>
+                                        }
+                                        else
+                                        {
+                                        <td>
+                                            <label style="color: black;font-weight: normal;" name="lblScore" dpid="@item.SGODataPointID.ToString()" studentid="@student.StudentID.ToString()">@studentScore.ScoreText</label>
+                                        </td>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <td>
+                                            <label style="color: black;font-weight: normal;" name="lblScore" dpid="@item.SGODataPointID.ToString()" studentid="@student.StudentID.ToString()">N/A</label>
+                                        </td>
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                <td>
+                                    <label style="color: black;font-weight: normal;" name="lblScore" dpid="@item.SGODataPointID.ToString()"></label>
+                                </td>
+                            }
+
+                        }
+                           @Html.Raw("</tr>")
+                    }
+                }
+                else
+                {
+        <tr groupid="@group.SGOGroupID" name="emptyRow" style="@groupStyle">
+            <td style="background-color: @groupVm.Color.ToString()">
+                <span name="groupname" class="PreparednessGroupNameClass">
+                    @string.Format("{0} - {1}", group.Order, group.Name)
+                </span>
+            </td>
+            <td>
+                <label>No student</label>
+            </td>
+            @foreach (var item in Model.ListDataPoint)
+                        {
+                        <td>
+                            &nbsp;
+                        </td>
+                        }
+        </tr>
+                }
+            }
+        @*add blank row between groups*@
+        <tr groupid="@group.SGOGroupID"
+            name="blankRow" groupname="@string.Format("{0} - {1}", group.Order, group.Name)"
+            colorcode="@groupVm.Color.ToString()"
+            style="@groupStyle"
+            isexcluded="@isExcluded.ToString()">
+            <td class="table-sgo-fixed">&nbsp;</td>
+            <td class="table-sgo-fixed">&nbsp;</td>
+            @foreach (var item in Model.ListDataPoint)
+                {
+                <td class="table-sgo-fixed">&nbsp;</td>
+                }
+        </tr>
+        }
+    </tbody>
+</table>
+<input type="hidden" id="idhdfAllowSetGroup" value="0" />
+<input type="hidden" id="idhdfAllowSetGroup" value="0"/>
+<script>
+    $(function () {
+        $('#idhdfExistCustomAssessment').val('@Model.ExistCustomDataPoint');
+        $('.with-tip').tip();
+        //-----------------
+        InitWith();
+        //-----------------
+        if ('@Model.ListCustomGroups.Count' <= 1) {
+            $('#idAutoGroup').disableBt();
+        } else {
+            $('#idAutoGroup').enableBt();
+        }
+        if ('@Model.ListCustomGroups.Count' == 0) {
+            $('#idbtnContinue').disableBt();
+        } else {
+            $('#idbtnContinue').enableBt();
+        }
+        $('#idbtnSetup').click(function () {
+            $('#idbtnSetup').disableBt();
+            var url = '@Url.Action("LoadCreateGroup", "SGOManage")?sgoId=' + $('#idhfSGOID').val();
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function (html) {
+                    //Prevent user fast click.
+                    $('#idbtnSetup').enableBt();
+
+                    $("#generateContent").append('<div id="PopupSGOCreateGroup" class="dialog"></div>');
+                    $("#PopupSGOCreateGroup").append(html);
+                    $('#PopupSGOCreateGroup').dialog({
+                        title: "",
+                        open: function () {
+                            $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                            //Create overlay for popup
+                            $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        },
+                        beforeclose: function () {
+                            //TODO if you want do anything after close popup.
+                            return true;
+                        },
+                        close: function () {
+                            $('#PopupSGOCreateGroup').remove();
+                            $("body .my-overlay").remove();
+                        },
+                        modal: false,
+                        width: 425,
+                        resizable: false
+                    });
+                });
+
+            $(".close").unbind("click");
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+        });
+
+        $('select[name=selectScoreType]').change(function () {
+            ChangeScoreType(this);
+        });
+    });
+
+    function ChangeScoreType(e) {
+        var self = $(e);
+        var dpId = self.attr('dpId');
+        var subScoreId = 0;
+        var scoreType = self.val();
+        var scoreTypeArr = scoreType.split('_');
+        if (scoreTypeArr.length > 1) {
+            scoreType = scoreTypeArr[0];
+            subScoreId = scoreTypeArr[1];
+        }
+       
+        ReloadDataPointScoreColor(dpId, scoreType, subScoreId);
+    }
+
+    function ReloadDataPointScoreColor(dpId, scoreType, subScoreId) {
+        ShowBlock($('#generateContent'), 'Loading');         
+        var url = '@Url.Action("GetScoreForHistoricalTest", "SGOManage")?dataPointId=' + dpId + '&scoreType=' + scoreType;
+        if (subScoreId > 0) {
+            url += '&virtualTestCustomSubScoreId=' + subScoreId;
+        }
+
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (response) {
+                //console.log(response.data);
+                $.each(response.data, function (index, value) {
+                    var studentId = value.StudentID;
+                    var score = value.Score == "-1" ? "N/A" : value.Score;
+                    if (response.DataPointType == 2) {
+                        if (score != "N/A") {
+                            var percent = value.Score * 100 / value.TotalScore;
+                            score = score + ' (' + Math.round(percent) + '%)';
+                        }
+                    } else if (response.DataPointType === 6) //PreAssessmentCustom
+                    {
+                        if (value.Score < 0 || value.IsCustomLabelValue) {
+                            score = EscapeHtml(value.ScoreText);
+                        }
+                    }
+                    $('label[name=lblScore][dpid=' + dpId + '][studentid=' + studentId + ']').html(score);
+                    if (value.Color == null) {
+                        $('label[name=lblScore][dpid=' + dpId + '][studentid=' + studentId + ']').parent().css('background-color', '');
+                    } else {
+                        $('label[name=lblScore][dpid=' + dpId + '][studentid=' + studentId + ']').parent().css('background-color', value.Color);
+                    }
+                });
+                $('#generateContent').unblock();
+            });
+    }
+
+    function AddStudentToGroup(item, targetGroupId) {
+        var self = $(item);
+
+        $('input[name=studentGroup]:checked').each(function () {
+            var currentCheckBox = $(this);
+
+            //clone current row to new row
+            var currentTR = currentCheckBox.closest('tr');
+            var clone = currentTR.clone();
+            $(clone).removeAttr('name');
+
+            //get target group name
+            var targetGroupName = $('tr[groupid=' + targetGroupId + '][name=blankRow]').attr('groupname');
+            var colorcode = $('tr[groupid=' + targetGroupId + '][name=blankRow]').attr('colorcode');
+            var isTargetExcluded = $('tr[groupid=' + targetGroupId + '][name=blankRow]').attr('isexcluded');
+
+            //set target group name to cloned item
+            $(clone).find('span').each(function () {
+                if ($(this).attr('name') == 'groupname') {
+                    $(this).html(targetGroupName);
+                }
+            });
+
+            //change groupid attribute in cloned item
+            $(clone).find('input').each(function () {
+                if ($(this).attr('name') == 'studentGroup') {
+                    $(this).attr('groupid', targetGroupId);
+                    $(this).prop('checked', false);
+                }
+            });
+
+            $(clone).find('td:first-child').each(function () {
+                $(this).css('background', colorcode);
+            });
+
+            if (isTargetExcluded == "True") {
+                $(clone).css("opacity", "0.6");
+            } else {
+                $(clone).css("opacity", "1");
+            }
+
+            //remove selected rows
+            currentTR.remove();
+
+            //insert cloned row to selected group
+            $('tr[groupid=' + targetGroupId + '][name=blankRow]').before(clone);
+
+            //remove empty row if any
+            $('tr[groupid=' + targetGroupId + '][name=emptyRow]').remove();
+        });
+
+        //check if there is any group has no student and doesn't have the emptyRow
+        $('tr[name=blankRow]').each(function () {
+            var groupid = $(this).attr('groupid');
+            var groupname = $(this).attr('groupname');
+            var colorCode = $(this).attr('colorCode');
+            var studentCount = $('input[name=studentGroup][groupid=' + groupid + ']').length;
+            if (studentCount == 0 && $('tr[name=emptyRow][groupid=' + groupid + ']').length == 0) {
+                var countDataPoint = $('#idhdftotalDataPoint').val();
+
+                var emptyrow = '<tr groupid="' + groupid + '" name="emptyRow">' +
+                    '<td style="background-color: ' + colorCode + '"><span name="groupname">' + groupname + '</span></td>' +
+                    '<td><label>No student</label></td>';
+                for (var i = 0; i < countDataPoint; i++) {
+                    emptyrow += '<td>&nbsp;</td>';
+                }
+                emptyrow += '</tr>';
+
+                $(this).before(emptyrow);
+
+            }
+        });
+    }
+
+    function InitWith() {
+        var vTotaldatapoint = parseInt($('#idhdftotalDataPoint').val(), 10);
+        var numOfCount = 2;
+
+        var wDynamic = 875 / (numOfCount + vTotaldatapoint);
+
+        wDynamic -= 10;
+
+        $('.table-sgo-fixed').css('width', wDynamic + 'px');
+
+        //Decode html GroupName
+        $('#dataTableEstablishStudentGroups tbody tr td span[class=PreparednessGroupNameClass]').each(function () {
+            var self = $(this);
+            var v = htmlDecode(self.html());
+            self.html(v);
+        });
+
+    }
+
+    function checkstudenttype() {
+        //TODO: Check Status;
+        //console.log('permissionAccess: ' + $('#idhfESGPermission').val());
+        if ($('#idhfESGPermission').val() === '4') //MinorUpdate
+        {
+            var canMove = 1;
+            var counter = 0;
+            $('input[name=studentGroup]:checked').each(function () {
+                counter = counter + 1;
+                var currentCheckBox = $(this);
+                //console.log(currentCheckBox.attr('studentType'));
+                if (currentCheckBox.attr('studentType') !== '1')
+                    canMove = 0;
+                if (currentCheckBox.attr('studentType') === '1') {
+                    $('#idhdfAllowSetGroup').val('1');
+                }
+            });
+            if (counter === 0) {
+                canMove = 0;
+            }
+            showlistgroup(canMove);
+        }
+    }
+
+    function showlistgroup(canMove) {
+        //console.log('canMove: ' + canMove);
+        if (canMove === 1) {
+            $('button[id^="idGroup-"]').each(function () {
+                var btGroup = $(this);
+                //btGroup.prop("disabled", false);
+                btGroup.removeAttr("disabled");
+            });
+        } else {
+            $('button[id^="idGroup-"]').each(function () {
+                var btGroup = $(this);
+                //btGroup.prop("disabled", true);
+                btGroup.attr('disabled', 'disabled');
+            });
+        }
+    }
+</script>

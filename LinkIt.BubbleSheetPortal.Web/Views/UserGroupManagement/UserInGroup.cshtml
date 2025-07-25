@@ -1,0 +1,276 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.UserGroup.ManageUserGroupViewModel
+
+@{
+    ViewBag.Title = "Add User Groups";
+}
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCustomBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCKEditorUtilsBundle()
+<style>
+    .ui-widget-content {
+        background: transparent;
+        border: none;
+    }
+
+        .ui-widget-content .ui-dialog-titlebar-close {
+            right: 5px;
+            top: 5px;
+            z-index: 10;
+        }
+
+    #divManageUserGroups .add-user-group {
+        cursor: pointer;
+    }
+
+    .add-user-group-column-fix{
+        max-width: 110px;
+        overflow-wrap:break-word;
+    }
+</style>
+<link href="/Content/css/dialog.css" rel="stylesheet" type="text/css">
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="divManageUserGroups">
+            <div class="block-content form">
+                <h1>
+                    Group: <span>@Model.Name</span>
+                    <a href="javascript:void(0)" class="js-change-inactive-users" id="showActiveUsersBtn">
+                        Show Inactive Users: <span>Off</span>
+                    </a>
+
+                    <a id="addUserGroupPopupBtn" href="javascript:void(0)" style="margin-left: 215px;">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        ADD USER TO GROUP
+                    </a>
+                </h1>
+
+                <div class="clearfix u-m-t-35">
+                    <div class="no-margin last-child">
+                        <table id="manageUserGroupTable" class="datatable table no-margin" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width: 5%"></th>
+                                    <th scope="col" style="width: 13%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Last Name
+                                    </th>
+                                    <th scope="col" style="width: 14%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        First Name
+                                    </th>
+                                    <th scope="col" style="width: 12%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Username
+                                    </th>
+
+                                    <th scope="col" style="width: 13%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Role
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Schools
+                                    </th>
+                                    <th scope="col" style="width: 13%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Group
+                                    </th>
+                                    <th scope="col" style="width: 10%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Status
+                                    </th>
+                                </tr>
+                            </thead>
+
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="margin-top: -28px;">
+                    <button id="btnBack">Back</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    var showInactive = false;
+
+    $(document).ready(function () {
+        setTimeout(function () {
+            $(".dataadmin").trigger("click");
+            $('#manageUserGroupsTab').addClass('current');
+        }, 100);
+
+        loadUserGroupsToTable();
+
+        $('#btnBack').click(function () {
+            var url = '@Url.Action("ManageUserGroups", "Admin")';
+            window.location.href = url;
+        });
+
+        $('#btnCloseClasses').on('click', function () {
+            $('.ui-widget-overlay').remove();
+            $('#assignAvailableClasses').remove();
+        });
+
+        $('.js-change-inactive-users').on('click', function (ev) {
+            var dataTable = $('#manageUserGroupTable').dataTable();
+            ev.preventDefault();
+            var $self = $(this);
+
+            if ($self.hasClass('show-inactive')) {
+                showInactive = false;
+                $self.removeClass('show-inactive');
+                $self.find('span').html('Off');
+                dataTable.fnDraw();
+            } else {
+                showInactive = true;
+                $self.addClass('show-inactive');
+                $self.find('span').html('On');
+                dataTable.fnDraw();
+            }
+        });
+
+        $('#addUserGroupPopupBtn').on('click', function () {
+            var worker = $('<div"></div>');
+            var url = '@Url.Action("GetAvailebleUsersToAddGroupView", "Admin")';
+            url = url + "?groupID=" + @Model.XLIGroupID;
+
+            worker
+                .addClass("dialog custom-dialog")
+                .attr("id", "assignAvailableClasses")
+                .appendTo("body")
+                .load(url, function () {
+                    worker.dialog({
+                        title: $(this).attr("Available Users"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                            $('#manageUserGroupTable').dataTable().fnDraw();
+
+                        },
+                        modal: false,
+                        width: 1200,
+                        resizable: false
+                    });
+                });
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; position: fixed; z-index: 1001;"></div>');
+        });
+
+
+        $('.removeGroup').live('click', function () {
+            var dataTable = $('#manageUserGroupTable').dataTable();
+            var userId = $(this).attr('UserID');
+            var groupId = @Model.XLIGroupID;
+            var username = $(this).attr('UserName');
+
+            var message = 'Are you sure you want to remove this user ' + username + ' from this group?';
+
+            CustomConfirm({
+                message: message,
+                textCenter: true,
+                yes: function () {
+                    ShowBlock($('#manageUserGroupTable'), "Deleting");
+                    $.post('@Url.Action("RemoveUserFromGroup","Admin")', { userID: userId, groupID: groupId }, function (result) {
+                        $('#manageUserGroupTable').unblock();
+
+                        if (result) {
+                            customAlertMessage({ message: 'This user has been removed from the group.' });
+                            dataTable.fnDraw(false);
+                        }
+                        else {
+                            CustomAlert('This user has not been removed from the group.');
+                        }
+
+                    });
+                },
+                no: function () {
+
+                },
+                yesMessage: "OK",
+                noMessage: "Cancel",
+                noWidth: 77
+            });
+        });
+
+    });
+
+
+    function loadUserGroupsToTable() {
+        var options = {
+            bServerSide: true,
+            sServerMethod: "POST",
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetGroupUsers", "Admin")',
+            fnServerParams: function (aoData) {
+
+                var isShowInactive = $('#showActiveUsersBtn').hasClass('show-inactive');
+
+                aoData.push(
+                    { name: "DistrictID", value: @Model.DistrictID },
+                    { name: "IsShowInactiveUser", value: isShowInactive },
+                    { name: "XLIGroupID", value: @Model.XLIGroupID }
+                );
+            },
+
+            iDisplayLength: 10,
+            aoColumns: [
+                { mData: 'UserId', sName: 'UserId', bSearchable: false, bSortable: false },
+                { mData: 'LastName', sName: 'LastName', bSearchable: true, bSortable: true, sClass: 'add-user-group-column-fix' },
+                { mData: 'FirstName', sName: 'FirstName', bSearchable: true, bSortable: true, sClass: 'add-user-group-column-fix' },
+                { mData: 'UserName', sName: 'UserName', bSearchable: true, bSortable: true },
+                { mData: 'RoleName', sName: 'RoleName', bSearchable: true, bSortable: true },
+                { mData: 'SchoolList', sName: 'SchoolList', bSearchable: true, bSortable: false },
+                { mData: 'GroupName', sName: 'GroupName', bSearchable: true, bSortable: false },
+                { mData: 'UserStatusId', sName: 'UserStatusId', bSearchable: false, bSortable: true },
+            ],
+            aaSorting: [[1, "asc"]],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#manageUserGroupTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#manageUserGroupTable').unblock();
+            },
+            fnRowCallback: function (nRow, aData) {
+                if (aData['UserStatusId'] == '1')
+                    $('td:eq(7)', nRow).html('Active');
+                else
+                    $('td:eq(7)', nRow).html('Inactive');
+
+                var removeIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+                var removeStr = '<a href="javascript:void(0)" title="Remove" class="with-tip actionIcon removeGroup" UserName="' + aData["UserName"] + '" UserID="' + aData["UserId"] + '"><img src="' + removeIcon + '" width="16" height="16"></a>';
+                $('td:eq(0)', nRow).html(removeStr);
+
+                $('.home').removeClass('current');
+            }
+        };
+
+        $('#manageUserGroupTable').data('options', options);
+    }
+</script>

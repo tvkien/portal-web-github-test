@@ -1,0 +1,486 @@
+
+<fieldset>
+    <legend>Select Filter</legend>
+    <div class="columns">
+        <div class="colx2-left">
+            @if ((ViewBag.IsPublisher != null && ViewBag.IsPublisher) || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+            {
+                <div class="mb-3">
+                    <label>State</label>
+                    <select id="selectStateTest" class="full-width"></select>
+                </div>
+            }
+            <div class="mb-3">
+                <label>From Date</label>
+                <input type="text" id="selectFromDateTest" style="width: 235px" />
+            </div>
+             <div class="mb-3">
+                <label>@LabelHelper.TestGrade</label>
+                <select id="selectGradeTest" class="full-width"></select>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Bank</label>
+                 <div class="block-text-name">
+                    <select id="selectBankTest" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="colx2-right">
+            @if ((ViewBag.IsPublisher != null && ViewBag.IsPublisher) || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+            {
+                <div class="mb-3 block-content-dropdown-marquee">
+                    <label>@LabelHelper.DistrictLabel</label>
+
+                    <div class="block-text-name">
+                        <select id="selectDistrictTest" class="full-width"></select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+            <div class="mb-3">
+                <label>To Date</label>
+                <input type="text" id="selectToDateTest" style="width: 235px" />
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>@LabelHelper.Subject</label>
+
+                <div class="block-text-name">
+                    <select id="selectSubjectTest" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Test</label>
+                <div class="block-text-name">
+                    <select id="selectTestTest" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="clear"></div>
+        <div class="mb-3" style="width: 685px;">
+            <label>Selected Test</label>
+            <ul id="selectedTestListExtracTest" class="tagit ui-widget ui-widget-content ui-corner-all"></ul>
+        </div>
+        <input id="divDistrictID" type="hidden" value="@ViewBag.DistrictID" />
+    </div>
+</fieldset>
+<fieldset>
+    <legend>Select Template</legend>
+    <div class="tabs-content" style="margin-bottom: 10px;">
+        <div class="columns" id="ExportTemplate">
+            <ul id="exportsTest" class="generate-student-list generate-student-list-custom testTemplate student-col">
+            </ul>
+        </div>
+        <div class="clear"></div>
+    </div>
+</fieldset>
+<button id="filterSheetsTest" class="float-right" type="button" disabled="disabled">Apply Filters</button>
+<button id="clearFilterTest" class="float-right grey" type="button" style="margin-right: 2px;">Clear Filter</button>
+<script type="text/javascript">
+    //var districtId = 0;
+    var selectedTagsDict = {};
+    var orgDtStart;
+    var orgDtEnd;
+    $(function () {
+        ShowBlock($('#divExtractTestArea'), 'Loading');
+        LoadListExtractTest();
+        $('#selectBankTest').marquee();
+        $('#selectDistrictTest').marquee();
+        $('#selectSubjectTest').marquee();
+        $('#selectTestTest').marquee();
+
+        $("#selectedTestListExtracTest").tagit({
+            beforeTagAdded: function (event, ui) {
+                var tagId = $('#selectTestTest').val();
+                if (tagId != undefined) {
+                    selectedTagsDict[$('#selectTestTest option:selected').text()] = tagId; //remember Id of selected tag
+                }
+            },
+            beforeTagRemoved: function (event, ui) {
+                //clear the selected tag out of memory
+                delete selectedTagsDict[ui.tagLabel];
+                populateTests();
+            }
+        });
+
+        $('#selectedTestListExtracTest').find('.ui-autocomplete-input').attr('readonly', true); // Disallow to type into selected test tagit
+        $('#selectedTestListExtracTest').find('.tagit-dropdown').hide();
+
+        selectTemplatesTest();
+
+        var dtEnd = new Date();
+        var dtStart = new Date();
+        dtStart.setFullYear(dtStart.getFullYear() - 1);
+        orgDtStart = dtStart;
+        orgDtEnd = dtEnd;
+
+        displayDateWithFormatDatePicker('selectFromDateTest', dtStart);
+        displayDateWithFormatDatePicker('selectToDateTest', dtEnd);
+
+        InitData();
+        $('#selectStateTest').change(function () {
+            $('#selectDistrictTest').empty();
+            $('#selectGradeTest').empty();
+            $('#selectSubjectTest').empty();
+            $('#selectBankTest').empty();
+            $('#selectTestTest').empty();
+            $("#selectedTestListExtracTest").tagit("removeAll");
+            selectedTagsDict = {};
+            ClearTemplateTest();
+            if ($('#selectStateTest').val() != 'select') {
+                populateDistricts();
+            }
+            $('#filterSheetsTest').disableBt();
+        });
+
+        $('#filterSheetsTest').click(function () {
+            $('#btnSubmitSelectTest').attr('disabled', 'disabled');
+            $('#chkAllTest').removeAttr('checked');
+            $('#filterSheetsTest').attr('disabled', 'disabled');
+            $('#hdfTrackTestIdSelected').val('');
+            $('#hdfAllTestIds').val('');
+            SetupFilters();
+        });
+
+        $('#clearFilterTest').click(function () {
+            $('#btnSubmitSelectTest').attr('disabled', 'disabled');
+            $('#chkAllTest').removeAttr('checked');
+            $('input[type=text]').each(function (index) {
+                $(this).val('');
+            });
+            $('#selectGradeTest').empty();
+            $('#selectSubjectTest').empty();
+            $('#selectBankTest').empty();
+            $('#selectTestTest').empty();
+            $("#selectedTestListExtracTest").tagit("removeAll");
+            selectedTagsDict = {};
+            SetupFilters();
+        });
+    });
+
+    function SetupFilters() {
+        ShowBlock($('#divExtractTestArea'), 'Loading');
+        var dataTable = $('#dataTableTest').dataTable();
+        var settings = dataTable.fnSettings();
+        fnResetAllFilters(settings);
+        dataTable.fnFilter('');
+        dataTable.fnDraw();
+    }
+
+    function InitTestIds() {
+        var subject = $('#selectSubjectTest').val() == null ? '' : $('#selectSubjectTest').val();
+        var dataTable = $('#dataTableTest').dataTable();
+        var settings = dataTable.fnSettings();
+        var columnSearchs = settings.aoColumns
+            .filter(function (column) { return column.bSearchable == true })
+            .map(function (column, index) { return index + 1 }).join(',');
+        var searchBox = $('#dataTableTest_filter input').val()
+        $.get('@Url.Action("GetListTestIds", "TestExtract")',
+            {
+                districtID: GetDistrictID(),
+                StrStartDate: $('#selectFromDateTest').val(),
+                StrEndDate: $('#selectToDateTest').val(),
+                BankdId: $('#selectBankTest').val(),
+                ListTestIDs: BuildListTestSelected(),
+                GradeId: $('#selectGradeTest').val(),
+                SubjectName: subject,
+                columnSearchs,
+                searchBox,
+            }, function (response) {
+                if (response.success == true) {
+                    $('#hdfAllTestIds').val(response.data);
+                } else {
+                    $('#hdfAllTestIds').val('');
+                }
+            });
+    }
+
+    function InitData() {
+        @if (@ViewBag.IsPublisher == true)
+        {
+            <text>
+                $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                    AddSelectListItems($('#selectStateTest'), states, 'Select State');
+                });
+            </text>
+        }
+        else if (@ViewBag.IsNetworkAdmin == true)
+        {
+            <text>
+                $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                    addDefaultOption($('#selectStateTest'), "State");
+                    addSelectListItems($('#selectStateTest'), states);
+                    $('#selectStateTest').val(@ViewBag.StateId);
+                    $('#selectStateTest').trigger('change');
+                });
+            </text>
+        }
+        else
+        {
+            <text>
+                populateGrades();
+            </text>
+        }
+    }
+
+    function populateDistricts() {
+        $('#selectDistrictTest').empty();
+        var stateValue = $('#selectStateTest').val();
+        if (stateValue != 'select') {
+            if ('@ViewBag.IsNetworkAdmin' == 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                    addDefaultOption($('#selectDistrictTest'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrictTest'), districts);
+                });
+            } else {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    AddSelectListItems($('#selectDistrictTest'), districts, 'Select @LabelHelper.DistrictLabel');
+                });
+            }
+        }
+    }
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+    }
+
+    $('INPUT[name="chkTemplate"][type=checkbox]').live("click", function (e) {
+        setDisabledButtonsTest();
+    });
+
+    function selectTemplatesTest() {
+        //TODO: Reset All UnSelect
+        $('.student-col').children().css('background-color', "#e0e0e0");
+
+        $.get('@Url.Action("GetTestTemplate", "TestExtract")', { districtId: GetDistrictID() }, function (listTemplateIDs) {
+            if (listTemplateIDs.length == 0) {
+                return;
+            } else {
+                addListSelectTemplatesTest($('#exportsTest'), listTemplateIDs);
+            }
+        });
+    }
+
+    function addListSelectTemplatesTest(el, listTemplate) {
+        var $el = $(el);
+        var listTemplateHtml = [];
+
+        for (var i = 0, len = listTemplate.length; i < len; i++) {
+            var value = listTemplate[i];
+            listTemplateHtml.push('<li id="template' + value.Id + '" templateid="' + value.Id + '" class="student-item testTemplateItem" isselected="yes" style="background-color:#82CAFA"><a href="javascript:void(0)">' + value.Name + '</a></li>');
+        }
+
+        $el.html(listTemplateHtml.join(''));
+    }
+
+    $('#selectDistrictTest').change(function () {
+        $('#selectGradeTest').empty();
+        $('#selectSubjectTest').empty();
+        $('#selectBankTest').empty();
+        $('#selectTestTest').empty();
+        $('.tagit-choice').hide();
+        selectedTagsDict = {};
+        ClearTemplateTest();
+        var vDistrictId = GetDistrictID();
+        if (vDistrictId > 0) {
+            populateGrades();
+            selectTemplatesTest(); //TODO: Select default template
+        }
+        $('#filterSheetsTest').enableBt();
+    });
+
+    $('#selectGradeTest').change(function () {
+        $('#selectSubjectTest').empty();
+        $('#selectBankTest').empty();
+        $('#selectTestTest').empty();
+
+        if ($('#selectGradeTest').val() > 0) {
+            populateSubjects();
+        }
+    });
+
+    $('#selectSubjectTest').change(function () {
+        $('#selectBankTest').empty();
+        $('#selectTestTest').empty();
+
+        if ($('#selectSubjectTest').val() != '-1') {
+            populateBanks();
+        }
+    });
+
+    $('#selectBankTest').change(function () {
+        $('#selectTestTest').empty();
+
+        if ($('#selectBankTest').val() > 0) {
+            populateTests();
+        }
+    });
+
+    $('#selectTestTest').change(function () {
+        var testId = $('#selectTestTest').val();
+        if ($('#selectTestTest').val() > 0) {
+            $("#selectedTestListExtracTest").tagit("createTag", $('#selectTestTest option:selected').text());
+            $('#selectTestTest option:selected').remove();
+        }
+    });
+
+    function populateGrades() {
+        $('#selectGradeTest').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDateTest').val();
+        var endDateValue = $('#selectToDateTest').val();
+        if (districtValue > 0) {
+            $.get('@Url.Action("GetGradeHaveTest", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue
+                }, function (grades) {
+                    AddSelectListItems($('#selectGradeTest'), grades, 'Select @LabelHelper.TestGrades');
+                });
+        }
+        $('#filterSheetsTest').enableBt();
+    }
+
+    function populateSubjects() {
+        $('#selectSubjectTest').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDateTest').val();
+        var endDateValue = $('#selectToDateTest').val();
+        var gradeValue = $('#selectGradeTest').val();
+        if (gradeValue != '-1') {
+            $.get('@Url.Action("GetSubjectHaveTest", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    GradeId: gradeValue
+                }, function (subjects) {
+                    AddSelectListItems($('#selectSubjectTest'), subjects, 'Select @LabelHelper.Subjects');
+                });
+        }
+    }
+
+    function populateBanks() {
+        $('#selectBankTest').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDateTest').val();
+        var endDateValue = $('#selectToDateTest').val();
+        var subjectValue = $('#selectSubjectTest').val();
+        if (subjectValue != '-1') {
+            $.get('@Url.Action("GetBankHaveTest", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    SubjectName: subjectValue,
+                    GradeId: $('#selectGradeTest').val()
+                }, function (banks) {
+                    AddSelectListItems($('#selectBankTest'), banks, 'Select banks');
+                });
+        }
+    }
+    function populateTests() {
+        $('#selectTestTest').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDateTest').val();
+        var endDateValue = $('#selectToDateTest').val();
+        var bankValue = $('#selectBankTest').val();
+        if (bankValue > 0) {
+            $.get('@Url.Action("GetVirtualTests", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    BankdId: bankValue
+                }, function (tests) {
+                    // Remove selected tests out of return list
+                    for (var i = tests.length - 1; i >= 0; i--) {
+                        if (selectedTagsDict[tests[i].Name] != undefined) {
+                            tests.splice(i, 1);
+                        }
+                    }
+                    AddSelectListItems($('#selectTestTest'), tests, 'Select tests');
+                });
+        }
+    }
+
+    function BuildListTestSelected() {
+        var x = '';
+        for (var key in selectedTagsDict) {
+            x += selectedTagsDict[key] + ';';
+        }
+
+        if (x.length > 0)
+            return x.substring(0, x.length - 1);
+        return '';
+
+    }
+
+    $("#selectFromDateTest").change(function () {
+        DoWhenChangeDateTest();
+    });
+
+    $("#selectToDateTest").change(function () {
+        DoWhenChangeDateTest();
+    });
+
+    function DoWhenChangeDateTest() {
+        var fromDate = $('#selectFromDateTest').datepicker("getDate");
+        var toDate = $('#selectToDateTest').datepicker("getDate");
+
+        var totalDate = days_between(fromDate, toDate);
+        if (totalDate > 366) {
+            alert("Time frame cannot exceed one year.");
+            var resetToDate = new Date(fromDate).addYears(1);
+            displayDateWithFormatDatePicker('selectToDateTest', resetToDate);
+            orgDtEnd = resetToDate;
+            return;
+        }
+
+        if (new Date(fromDate) > new Date(toDate)) {
+            alert("To Date should be later than From Date.");
+            displayDateWithFormatDatePicker('selectFromDateTest', orgDtStart);
+            displayDateWithFormatDatePicker('selectToDateTest', orgDtEnd);
+            return;
+        }
+
+        orgDtStart = fromDate;
+        orgDtEnd = toDate;
+    }
+
+    function GetDistrictID() {
+        if ($('#selectDistrictTest').length) {
+            return $('#selectDistrictTest').val();
+        }
+        return $('#divDistrictID').val();
+    }
+
+     function ClearTemplateTest() {
+         $('#exportsTest').html('');
+     }
+
+     function CheckSelectTemplatesTest() {
+         var templatesSelected = [];
+         $(".testTemplateItem[isSelected=yes]").each(function () {
+             templatesSelected.push($(this).attr('templateid'));
+         });
+         return templatesSelected.length > 0;
+     }
+</script>

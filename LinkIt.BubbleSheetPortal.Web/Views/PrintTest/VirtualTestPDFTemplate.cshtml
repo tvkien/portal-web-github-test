@@ -1,0 +1,375 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Web.WebForm
+@using System.Configuration
+@model LinkIt.BubbleSheetPortal.Web.Print.VirtualTestPrintingModel
+@{
+    Layout = null;
+    var url = ConfigurationManager.AppSettings["LinkItUrl"];
+    var portalUrl = (url.Contains("devblock.net") ? "http://demo." : "http://portal.") + url;
+    var portalImgPrint = portalUrl + "/Content/themes/Print/Images/";
+    var portalFontPrint = portalUrl + "/Content/themes/Print/";
+    var maxWidth = Model.ColumnCount == "1" ? 620 : 280;
+}
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Images Test</title>
+    <style type="text/css">
+        @foreach (var css in Model.Css)
+        {
+            @Html.Raw(css)
+        }
+    </style>
+    <style>
+        @@font-face {
+            font-family: "dejavu_sansbook";
+            src: url("@(portalFontPrint)dejavusans/dejavusans-webfont.eot");
+            src: url("@(portalFontPrint)dejavusans/dejavusans-webfont.eot?#iefix") format("embedded-opentype"),
+                url("@(portalFontPrint)dejavusans/dejavusans-webfont.woff") format("woff"),
+                url("@(portalFontPrint)dejavusans/dejavusans-webfont.ttf") format("truetype"),
+                url("@(portalFontPrint)dejavusans/dejavusans-webfont.svg#dejavu_sansbook") format("svg");
+            font-weight: normal;
+            font-style: normal;
+        }
+        @@font-face {
+			font-family: "dejavu_sansbook";
+			src: prince-lookup("dejavu_sansbook")
+		}
+		@@font-face {
+			font-family: serif;
+			src: prince-lookup("dejavu_sansbook")
+		}
+		@@font-face {
+			font-family: 'Arial Unicode MS';
+			src: url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.eot');
+			src: url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.eot?#iefix') format('embedded-opentype'),
+				url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.woff2') format('woff2'),
+				url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.woff') format('woff'),
+				url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.eot') format('truetype');
+			font-weight: normal;
+			font-style: normal;
+			font-display: swap;
+		}
+
+        @@page {
+            size: US-Letter;
+            margin: .8in .8in .8in .8in;
+
+            @@top-left {
+                content: string(className);
+            }
+
+            @@top-right {
+                content: string(teacherName);
+            }
+
+            @if (Model.UserDistrictId == Util.CHYTEN_DistrictID)
+            {
+                <text>
+                    @@bottom-left {
+                        content: "Chyten Test - " string(testTitle);
+                    }
+                </text>
+            }
+
+            else
+            {
+                <text>
+                    @@bottom-left {
+                        content: "LinkIt Test - " string(testTitle);
+                    }
+                </text>
+            }
+        }
+
+        @@page test-info {
+            @Html.Raw(Model.IncludePageNumbers == "1" && Model.StartCountingOnCover == "1" ? "@bottom-right {content: \"Page \" counter(page)  \" of \" counter(pages);font-style: italic;}" : "")
+        }
+
+        @@page test-section {
+            @Html.Raw(Model.IncludePageNumbers == "1" ? "@bottom-right {content: \"Page \" counter(page)  \" of \" counter(pages);font-style: italic;}" : "")
+        }
+
+        .questions {
+            columns: @Model.ColumnCount;
+            -webkit-columns: @Model.ColumnCount;
+        }
+
+        .testSections {
+            @Html.Raw(Model.StartCountingOnCover == "0" ? "counter-reset: page 1 pages 1;" : "")
+        }
+
+        .sectionData {
+            @Html.Raw(Model.ShowSectionHeadings == "0" ? "display: none;" : "")
+        }
+
+        .passage {
+            background: @Html.Raw(Model.DrawReferenceBackground == "1" ? "#eee;" : "")
+        }
+
+        .assessmentItem {
+            width: @Html.Raw(Model.ColumnCount == "1" ? "620px;" : "300px;");
+            border: @Html.Raw(Model.ShowQuestionBorders == "1" ? "#000 solid 1px;" : "");
+        }
+
+        .assessmentItem:before {
+            content: "@Html.Raw(Model.QuestionPrefix) " attr('questionnumber') ". ";
+        }
+
+        .assessmentItem.assessmentItemQuestionNaming:before {
+            content: "@Html.Raw(Model.QuestionPrefix) " attr('questionnumber');
+        }
+
+        .writeOnLine {
+            @Html.Raw(Model.ExtendedTextAreaShowLines == "1" ? "border-bottom: #888 thin solid;" : "")
+        }
+
+        .simpleChoice::before {
+            content: counter(answer, @Html.Raw(Model.AnswerLabelFormat == "LA" ? "upper-latin" : "decimal")) ".";
+            word-break: keep-all;
+        }
+
+        .inlineChoice::before {
+            content: counter(answer, @Html.Raw(Model.AnswerLabelFormat == "LA" ? "upper-latin" : "decimal")) ".";
+        }
+
+        .hotspot-checkbox {
+            background: url(@(portalImgPrint)icon-table-checkbox.png) no-repeat;
+        }
+
+        .hotspot-circle {
+            background: url(@(portalImgPrint)icon-table-circle.png) no-repeat;
+        }
+    </style>
+</head>
+<body>
+    @{
+        var sections = Model.Sections.OrderBy(o => o.SectionOrder).ToList();
+        var isCustomItemName = Model.IsCustomItemNaming;
+        var questionsAdded = false;
+        var questionNumber = 0;
+        var questionLabel = 0;
+        var questionGroupId = 0;
+        var questionAlphabet = new string[103] 
+        {
+            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q",
+            "r", "s", "t", "v", "w", "x", "y", "z", "aa", "ab", "ac", "ad", "ae", "af", "ag", "ah",
+            "ai", "aj", "ak", "al", "am", "an", "ao", "ap", "aq", "ar", "as", "at", "au", "av", "aw",
+            "ax", "ay", "az", "ba", "bb", "bc", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bk", "bl",
+            "bm", "bn", "bo", "bp", "bq", "br", "bs", "bt", "bu", "bv", "bw", "bx", "by", "bz", "ca",
+            "cb", "cc", "cd", "ce", "cf", "cg", "ch", "ci", "cj", "ck", "cl", "cm", "cn", "co", "cp",
+            "cq", "cr", "cs", "ct", "cu", "cv", "cw", "cx", "cy", "cz"
+        };
+        var isNumberQuestions = Model.IsNumberQuestions;
+    }
+    @if (sections.Count > 0)
+    {
+        <div id="testContainer" class="test">
+            @if (Model.IncludeCoverPage == "1")
+            {
+                <div class="testInfo">
+                    <div class="testTitle">@Model.TestTitle</div>
+                    <div id="teacherName">@Model.TeacherName</div>
+                    <div id="className">@Model.ClassName</div>
+                    @if (!string.IsNullOrWhiteSpace(Model.TestInstruction))
+                    {
+                        <h3>Instructions:</h3>
+                        <div class="testInstructions">@Html.Raw(Model.TestInstruction)</div>
+                    }
+                </div>
+            }
+
+            <div class="testSections" maxWidth="@maxWidth">
+                @foreach (var section in sections)
+                {
+                    @Html.Raw("<div class=\"section\">")
+                    if (!string.IsNullOrWhiteSpace(section.SectionTitle) || !string.IsNullOrWhiteSpace(section.SectionInstruction))
+                    {
+                        @Html.Raw("<div class=\"sectionData\">")
+                        <div class="sectionTitle">@Html.Raw(section.SectionTitle)</div>
+                        <h3>Instructions:</h3>
+                        <div class="sectionInstruction">@Html.Raw(section.SectionInstruction)</div>
+                        @Html.Raw("</div>")
+                    }
+
+                    @Html.Raw("<div class=\"questions\">")
+
+                    var questionGroupTitle = "";
+                    var questionGroupCommon = "";
+
+                    if (isNumberQuestions == true)
+                    {
+                        questionNumber = 0;
+                    }
+                    foreach (var question in section.Items)
+                    {
+                        var questionNaming = question.QuestionLabel != null ? '"' + question.QuestionLabel + '"' : null;
+                        var hasPassage = question.PassageTexts != null && question.PassageTexts.Count > 0;
+                        if (hasPassage)
+                        {
+                            @Html.Raw("</div>")
+                            @Html.Raw(questionsAdded ? "" : "<div class=\"questionsNotYetAdded\">")
+                            foreach (var passageText in question.PassageTexts)
+                            {
+                                @Html.Raw(passageText)
+                            }
+                            @Html.Raw(questionsAdded ? "" : "</div>")
+                            @Html.Raw("<div class=\"questions\">")
+                        }
+
+                        questionsAdded = true;
+
+                        if (question.QuestionGroupId != null && question.QuestionGroupId != 0)
+                        {
+                            if (question.QuestionGroupId == questionGroupId)
+                            {
+                                questionLabel += 1;
+                                questionGroupTitle = "";                                
+                                questionGroupCommon = "";
+                            }
+                            else
+                            {
+                                questionNumber += 1;
+                                questionLabel = 0;
+
+                                if (question.GroupQuestionTitle != "" && question.GroupQuestionTitle != null) {
+                                    questionGroupTitle = "<div class=\"question-group-title\">" + question.GroupQuestionTitle + "</div>";
+                                }
+
+                                if (question.GroupQuestionCommon != "" && question.GroupQuestionCommon != null) {
+                                    questionGroupCommon = "<div class=\"question-group-common\">" + question.GroupQuestionCommon + "</div>";
+                                }
+                            }
+                            
+                            questionGroupId = question.QuestionGroupId ?? 0;
+                            if (isCustomItemName && questionNaming != null) {
+                                @Html.Raw("<div class=\"question question-naming\" questionnumber=" + questionNaming + ">");
+                            } else { 
+                                @Html.Raw("<div class=\"question\" questionnumber=" + questionNumber + questionAlphabet[questionLabel] + ">");
+                            }
+                        }
+                        else
+                        {
+                            questionNumber += 1;
+                            questionLabel = 0;
+                            questionGroupTitle = "";
+                            questionGroupCommon = "";
+                            
+                            if (isCustomItemName && questionNaming != null) {
+                                @Html.Raw("<div class=\"question question-naming\" questionnumber=" + questionNaming + ">");
+                            } else { 
+                                @Html.Raw("<div class=\"question\" questionnumber=" + questionNumber + ">");
+                            }
+                        }
+
+                        @Html.Raw(questionGroupTitle)
+                        @Html.Raw(questionGroupCommon)
+                        @Html.Raw(question.XmlContent)
+                        @Html.Raw("</div>")
+                    }
+
+                    @Html.Raw("</div>")
+                    @Html.Raw("</div>")
+                }
+            </div>
+
+            <div id="glossaryContainer"></div>
+        </div>
+
+        <script type="text/javascript">
+
+        @foreach (var javaScript in Model.JS)
+        {
+            @Html.Raw(javaScript)
+        }
+
+        </script>
+        <script>
+        var imgServiceUrl = '@portalUrl' + '/Asset/GetViewReferenceImg?imgPath=';
+        jQuery.fn.outerHTML = function (s) {
+            return (s)
+                ? this.before(s).remove()
+                : jQuery("<p>").append(this.eq(0).clone()).html();
+        };
+
+        $(document).ready(function () {
+            var $printVirtualTest = $('#testContainer');
+            var groupList = [];
+
+            $('.questionsNotYetAdded .passage').first().css('page-break-before','auto');
+            $('div[xmlns]').removeAttr('xmlns');
+
+            $('.assessmentItem').each(function () {
+                var $assessmentItem = $(this);
+                var $assessmentParent = $assessmentItem.parents('.question');
+                var assessmentItemNumber = $assessmentParent.attr('questionnumber');
+                $assessmentItem.attr({ 'questionnumber': assessmentItemNumber });
+
+                if ($assessmentParent.hasClass('question-naming')) {
+                    $assessmentItem.addClass('assessmentItemQuestionNaming');
+                }
+            });
+
+            @if (Model.ExtendedTextAreaAnswerOnSeparateSheet == "1")
+            {
+                @Html.Raw("$('.extendedTextInteraction').html('<div class=\"message\">Answer on a separate sheet.</div>');")
+            }
+            else if (Model.ExtendedTextAreaNumberOfLines.HasValue && Model.ExtendedTextAreaNumberOfLines.Value > 0)
+            {
+                <text>
+                    var $extendedTextInteraction = $('.extendedTextInteraction').not('[drawable="true"]');
+
+                    $extendedTextInteraction.html('');
+
+                    for(var i = 1; i < @Model.ExtendedTextAreaNumberOfLines; i++) {
+                        $extendedTextInteraction.append($('<div class="writeOnLine">&nbsp;</div>'));
+                    }
+
+                    $extendedTextInteraction.append($('<div class="writeOnLineLast">&nbsp;</div>'));
+                    $extendedTextInteraction.addClass('is-numberofline');
+
+                    if (@Model.ExtendedTextAreaShowLines == '1') {
+                        $extendedTextInteraction.addClass('is-showline');
+                    }
+                </text>
+            }
+
+            $('.extendedTextInteraction').each(function(ind, extendedtext) {
+                var $extendedtext = $(extendedtext);
+                var extendedtextDrawable = $extendedtext.attr('drawable');
+
+                if (extendedtextDrawable === 'true') {
+                    $extendedtext.find('.writeOnLine').css('border-bottom', 'none');
+                }
+            });
+
+            // Scripts\PrintTest\PrintTest.js
+            $('.textEntryInteraction').html('<span>__________</span>');
+            $('math').removeAttr('mode');
+            DisplayImageHotspot('.testSections',  imgServiceUrl + '/');
+            DisplayGlossary($printVirtualTest);
+            DisplayDragAndDrop(@maxWidth);
+            DisplayNumberlineHotspot(@maxWidth);
+            CorrectImages($printVirtualTest, '@portalUrl', @maxWidth);
+            $('.tableitem').removeClass('selected');
+            ImageItemType();
+
+            // Replace br with line break with u-pre class
+            $printVirtualTest.find('br[style]').remove();
+            $printVirtualTest.find('br').replaceWith(function() {
+                return $('<span class="u-linebreak"/>');
+            });
+
+            // Fix Background Of Prince Below Version 9.0
+            $('.hotspot-checkbox')
+                .css('background', 'url(@(portalImgPrint)icon-table-checkbox.png) no-repeat');
+            $('.hotspot-circle')
+                .css('background', 'url(@(portalImgPrint)icon-table-circle.png) no-repeat');
+        });
+
+        </script>
+    }
+</body>
+</html>

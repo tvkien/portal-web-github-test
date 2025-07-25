@@ -1,0 +1,148 @@
+@using LinkIt.BubbleSheetPortal.Models;
+@using System.Collections.Generic;
+    <article class="container_12 container_12RF">
+        <section class="grid_9 grid_9RF m-0" >
+            <div class="block-border block-borderRF" >
+                <div class="block-content form block-contentRF" >
+                    <div>
+                        <div class="title-heading-manage-access-popup mb-4">
+                            <p class="title-large mb-0">
+                                Virtual Test Bank Access Restriction
+                            </p>
+                            <a id="closeBtn" href="#closeBtn" class="ui-dialog-titlebar-close ui-corner-all" role="button"><span class="ui-icon ui-icon-closethick">close</span></a>
+                        </div>
+                        <p style="font-size: 14px; margin-bottom: 7px">Published Districts</p>
+                        <div class="col-6">
+                            <select id="selectdistrictpublish">
+                                @foreach (var itemdistrict in ViewBag.datadistrictpublish)
+                                {
+                                    if (itemdistrict.DistrictId == 0)
+                                    {
+
+                                        <option selected value="@itemdistrict.DistrictId">@itemdistrict.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@itemdistrict.DistrictId">@itemdistrict.Name</option>
+
+                                    }
+                                }
+                            </select>
+                        </div>                   
+                    </div>
+                    <div class="mt-4" id="virtualtestBankdistrictform">
+                       
+                    </div>
+                   
+                </div>
+            </div>
+            <div class="btn-wrapper">
+                <button id="btnfrcancel" class="btn-cancel">Cancel</button>
+                <button id="btnfrsave" class="btn-red">Save</button>
+            </div>
+        </section>
+    </article>
+<style>
+    .btn-cancel {
+        display: flex;
+        align-items: center;
+        padding: 11px 32px;
+        font-weight: 900;
+        cursor: pointer;
+        width: fit-content;
+        height: 48px;
+        box-sizing: border-box;
+        border: 0;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        text-decoration: none;
+        color: var(--white) !important;
+    }
+
+    .title-heading-manage-access-popup {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+    }
+
+    #closeBtn {
+        top: 0 !important;
+        right: 0 !important;
+    }
+
+    #closeBtn::after {
+        right: 0 !important;
+    }
+
+    .btn-wrapper {
+        background: var(--navyColor);
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+    }
+</style>
+
+<script type="text/javascript">
+    $('#closeBtn').live('click', function () {
+        $('.my-overlay').remove();
+        $(".dialog").dialog("close");
+    });
+
+     $("#btnfrcancel").click(function () {
+            $(".dialog").dialog("close");
+        });
+        $("#btnfrsave").click(function () {
+           if (issaving)
+               return;
+           issaving = true;
+           var listmoduleroles = [];
+           $(".ckrolemodule").each(function (index, object) {
+               var roleid = $(this).attr("roleid");
+               var moduleid = $(this).attr("moduleid");
+               if ($(this).is(':checked') && roleid != "0" && moduleid != "0") {
+                   listmoduleroles.push({
+                       ModuleId: parseInt(moduleid),
+                       RoleId: parseInt(roleid)
+                   });
+               }
+           });
+
+           $.ajax({
+               type: "POST",
+               url: '@Url.Action("SaveVirtualTestRestrictionForm", "ManageTest")',
+               data: JSON.stringify({ testId: frtestid, districtId: frdistrictid, listmoduleroles: listmoduleroles }),
+               contentType: "application/json; charset=utf-8",
+               dataType: "json",
+               success: function (arg) { //call successfull
+                   issaving = false;
+                   $(".dialog").dialog("close");
+               },
+               error: function (xhr) {
+                   //error occurred
+               }
+           });
+
+       });
+
+    $("#selectdistrictpublish").change(function () {
+        $("#statusmessage").hide();
+        $("#virtualtestBankdistrictform").html("");
+        var url = '@Url.Action("LoadVirtualTestRestrictionDataHTML", "ManageTest" )'
+            + '?layoutV2=true&districtId=' + $("#selectdistrictpublish").val() + "&bankId=" + '@ViewBag.bankId' + '&testId=' +'@ViewBag.testId';
+        //alert(url);
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#virtualtestBankdistrictform").html(html);
+            });
+    })
+
+
+
+</script>

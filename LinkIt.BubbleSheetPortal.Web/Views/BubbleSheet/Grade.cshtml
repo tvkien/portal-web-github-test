@@ -1,0 +1,254 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.GradeTestsViewModel
+@{
+    ViewBag.Title = "Submit Bubble Sheets";
+}
+<script type="text/javascript">
+    var myInterval = new Array();
+    var counter = 0;
+    $(function () {
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+        if (window.FormData !== undefined) {
+            $('#file_upload').uploadifive({             
+                'uploadScript': '@Url.Action("UploadBubbleSheets")',
+                'fileType': ["application/pdf", "image/png", "image/jpg", "image/jpeg", "image/gif", "image/tiff"],//*.pdf; *.png; *.jpg; *.jpeg; *.gif; *.tiff
+                'overrideEvents': ['onDialogClose'],
+                'formData': { AUTHID: auth },
+                'buttonText': 'Select Files',
+                'fileObjName': 'FileData',
+                'multi': true,
+                'removeCompleted': true,
+                'width': 100,
+                'auto': true,
+                'successTimeout': 600,
+                'onUploadComplete': function (file, data) {
+                    var responseData = jQuery.parseJSON(data);
+                    if (responseData.IsSuccess == true) {
+                        var d = new Date();
+                        var randomId = d.getTime();
+                        var row = $('<tr id="' + randomId + '"><td><ul class="keywords"><li class="blue-keyword">Submitting</li></ul></td><td style="word-break: break-all;">' + file.name + '</td><td class="totalCount">0</td><td class="gradedCount">0</td><td class="errorCount">0</td></tr>');
+                        $("#dataTable tbody").append(row);
+                        $(".dataTables_empty").parent().remove();
+
+                        var date = new Date().toUTCString();
+                        var gmtDate = date.replace('UTC', 'GMT');
+                        counter += 1;
+                        myInterval[randomId] = setInterval(function () {
+                            //getGradedAndErrorCount(randomId, file.name, gmtDate);
+                            getGradedAndErrorCount(randomId, responseData.FileName, gmtDate);
+                        }, 60000);
+                    } else {
+                        alert(responseData.ErrorMessage);
+                    }
+                },
+                'onError': function (errorType, file) {
+                    if (errorType == "FORBIDDEN_FILE_TYPE") {
+                        var arr = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.tiff'];
+                        if ($.inArray(file.type, arr) == -1) {
+                            ShowPopUpError();
+                            $('.ui-icon-closethick').hide();
+                        }
+                    }
+                }
+            });
+        }
+
+        function getGradedAndErrorCount(id, fileName, date) {
+            $.get('@Url.Action("GetGradedStatus")', { fileName: fileName, uploadedTime: date }, function (response) {
+                if (response.TotalPage == 0) {
+                    $('#' + id).children(".totalCount").html('N/A');
+                }
+                else if (response.TotalPage > 0) {
+                    $('#' + id).children(".totalCount").html(response.TotalPageText);
+                }
+                if (response.FileCount != '') {
+                    $('#' + id).children(".gradedCount").html(response.FileCount);
+                }
+                if (response.ErrorCount != '') {
+                    $('#' + id).children(".errorCount").html(response.ErrorCount);
+                }
+                if (response.Finish == 1) {
+                    //alert("Grade finished: " + id);
+                    $('#' + id).find(".blue-keyword").html('PROCESSED');
+                    clearInterval(myInterval[id]); // stop the interval
+                }
+            });
+        }
+    });
+</script>
+<article class="container_12">
+    <div class="colx2-left">
+        <section id="grid_4" class="lastVisibleSection">
+            <div class="block-border">
+                <div class="block-content">
+                    <h1>Upload Bubble Sheet</h1>
+                    <ul class="message no-margin">
+                        <li><strong>Scanning & Grading Best Practices</strong></li>
+                        <div class="infoList">
+                            <li>We recommend that you scan your sheets to pdf format for best results.</li>
+                            <li>Either grayscale or black and white scans are preferable, with recommended resolution set between 150 and 300 dpi.</li>
+                            <li>PDFs should not be larger than 70 MB.</li>
+                            <li>After sheets have been uploaded for grading, we recommend that you wait several minutes for sheets to process and click "Review Bubble Sheets" to verify that all marks have been properly read before proceeding to the Reporting Module.</li>
+                            <li>Note* If you need to upload jpg or png image scans, do not upload more than 40 files at a time.</li>
+                            <li><a target="_new" href="https://linkit.atlassian.net/wiki/display/LPUG02/Grading+-+Bubble+Sheet+Best+Practices">Click here to view Bubble Sheet Best Practices</a></li>
+                            <li>
+                            NOTE** THE COLUMNS "TOTAL, GRADED, ERRORS" IN THE GRADING STATUS BOX REPRESENT THE STATUS OF TESTS (AND PAGES) SCANNED AND LOADED, GRADED, AND CONTAINING ERRORS. THE FIRST NUMBER REPRESENTS THE NUMBER OF TESTS; THE NUMBER IN PARENTHESIS REPRESENTS THE NUMBER OF PAGES.
+                        </li>
+                        </div>
+                    </ul>
+                    <ul class="message warning no-margin">
+                        <li>CLICK THE BUTTON BELOW TO SELECT FILES FOR UPLOAD. FILES WILL START TO UPLOAD AS SOON AS THEY ARE SELECTED. Please note that SUPPORTED file formats are limited to PDF, PNG, JPG, JPEG, GIF and TIFF.
+                        </li>
+                    </ul>
+                    <input id="file_upload" name="file_upload" type="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.tiff" />
+                </div>
+            </div>
+        </section>
+    </div>
+    <div class="colx2-right">
+        <section id="grid_6">
+            <div class="block-border">
+                <div class="block-content form">
+                    <h1>Grading Status</h1>
+                    <p style="height: 5px"></p>
+                    <table id="dataTable" width="100%" cellspacing="0" class="datatable table no-margin">
+                        <thead>
+                            <tr>
+                                <th class="black-cell sorting_disabled" style="width: 55px" scope="col">
+                                    <span class="loading"></span>
+                                </th>
+                                <th scope="col">
+                                    @*<span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>*@
+                                    File Name
+                                </th>
+                                <th scope="col">
+                                    @* <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>*@
+                                    Total
+                                </th>
+                                <th scope="col">
+                                    @*<span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>*@
+                                    Graded
+                                </th>
+                                <th scope="col">
+                                    @*<span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>*@
+                                    Errors
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+    <div class="clear"></div>
+</article>
+<script type="text/javascript">
+    $(function () {
+        var options = {
+            bServerSide: false,
+            bInfo: false,
+            bAutoWidth: true,
+            aaSorting: [[0, "desc"]],
+            iDisplayLength: 10,
+            oLanguage: { "sZeroRecords": "No results meet your search criteria. Try changing your date range or other filters and search again." },
+           aoColumns: [
+                { sType: 'string', sName: 'Id', bSearchable: false, bSortable: false, sWidth: '40px' },
+                { sType: 'string', sName: 'FileName', bSearchable: true, bSortable: false, sWidth: '300px' },
+                { sType: 'string', sName: 'Total', bSearchable: true, bSortable: false, sWidth: '50px', sClass: 'columnRight' },
+                { sType: 'string', sName: 'Graded', bSearchable: true, bSortable: false, sWidth: '55px', sClass: 'columnRight' },
+                { sType: 'string', sName: 'Errors', bSearchable: true, bSortable: false, sWidth: '50px', sClass: 'columnRight' }
+            ]
+        };
+
+        $("#dataTable").data("options", options);
+    });
+
+    function ShowPopUpError() {
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section class="grid_5" style="height:180px;">' +
+                       '<div class="block-border" style="width: 300px;">' +
+                       '<div class="block-content form" style="padding-top: 20px;">' +
+                       '<p class="styleMessage" style="margin-bottom:0px;text-align: center;"> Invalid file type</p>' +
+                       '<p style="text-align: center;  padding-top: 20px;"><button id="btnCancel" onclick="ClosePopup();" type="button" name="cancel">Close</button></p>' +
+                        '</div></div></section>';
+        $("<div></div>")
+                    .html(strHtml)
+                    .addClass("dialog")
+                    .attr("id", "messageDialog")
+                    .appendTo("body")
+                    .dialog({
+                        close: function () { $(this).remove(); },
+                        modal: true,
+                        width: 500,
+                        maxheight: 400,
+                        resizable: false
+                    });
+        //$(".ui-dialog").css("height", hbody);
+    }
+
+    function ClosePopup() {
+        $(".dialog").dialog("close");
+    }
+</script>
+
+<style type="text/css">
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        /*top: 100px !important;*/
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close span {
+        display: block;
+        left: -360px;
+        margin: 1px;
+        position: absolute;
+    }
+</style>

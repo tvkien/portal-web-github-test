@@ -1,0 +1,953 @@
+@using System.Configuration
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.TestdesignAssessmentItemHTML, "Edit Item Set",true);
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@*@MvcHtmlString.Create(
+        Bundle.Css()
+            .Add(@Url.Content("~/Content/themes/TestMaker/ckeditor_mk.css"))
+            .Add(@Url.Content("~/Content/themes/TestMaker/contents.css"))
+            .Add(@Url.Content("~/Content/themes/base/jquery.ui.autocomplete.css"))
+            .Add(@Url.Content("~/Scripts/Texttospeech/texttospeech.css"))
+            .Render("/Content/themes/Constellation/css/test_maker_#.css")
+    )*@
+@BundleHelper.StyleQTIItemTestMakerBundle()
+<link href="@BundleHelper.Version("~/Content/themes/AssessmentItem/css/popup-v2.css")" rel="stylesheet" />
+<link href="@BundleHelper.Version("~/Content/css/v2/ItemSet-v2.css")" rel="stylesheet" />
+<link href="@BundleHelper.Version("~/Content/css/v2/QTIItem-v2.css")" rel="stylesheet" />
+<script type="text/ecmascript">
+    if ($.browser.msie  && parseInt($.browser.version, 10) == 9) {
+        $("body").addClass("ie9");
+    }
+</script>
+
+
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor_utils.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor_mkV2.js")"></script>
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script type="text/javascript" src="@Url.Content("~/Scripts/qtiItemLoadMedia.js")"></script>
+
+@*@MvcHtmlString.Create(
+        Bundle.JavaScript()
+        .Add("/Scripts/knockout-3.0.0.js")
+        .Add("/Content/themes/TestMaker/mediaelement-and-player.min.js")
+        .Add("~/Scripts/Texttospeech/responsivevoice.js")
+        .Add("~/Scripts/Texttospeech/text-to-speech-plugins.js")
+        .Render("/Content/themes/Constellation/js/test_maker_combined_#.js")
+    )*@
+
+@BundleHelper.ScriptQTIItemBundle()
+
+@*@MvcHtmlString.Create(
+    Bundle.Css()
+        .Add(@Url.Content("~/Content/themes/AssessmentItem/css/popup.css"))
+            .Add(@Url.Content("~/Content/themes/LinkitStyleSheet.css"))
+            .Render("/Content/themes/Constellation/css/assessment_item_index_combined_#.css")
+     )*@
+
+@*@BundleHelper.StyleQTIItemAssessmentBundle()*@
+
+@*@MvcHtmlString.Create(
+    Bundle.JavaScript()
+                .Add("/Scripts/imagesloaded.pkgd.js")
+                .Add("/Scripts/PrintTest/PrintTest.js")
+            .Render("/Content/themes/Constellation/js/qtiitem_combined_#.js")
+    )*@
+@BundleHelper.ScriptQTIItemBundle2()
+
+@Html.Partial("~/Views/Passage/_KeepingDistrict.cshtml", (int)ViewBag.DistrictId)
+<script type='text/javascript' src='@Url.Content("~/Scripts/jquery.dataTables.rowReorderingV2.js")'></script>
+@*<script type='text/javascript' src='@Url.Content("~/Scripts/qtiItemLoadMedia.js")'></script>*@
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<article class="container_12 QTIItem-v2">
+    <div class="block-border form" id="divQtiItemList">
+        <div class="block-section-custom mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <h3 class="h3 mb-0">@ViewBag.QtiGroupName</h3>
+                <a id="btnCancelQtiItem" href="javascript:void(0)" class="btn btn-link pe-0 btnCancelQtiItem"><i class="fa-solid fa-arrow-left me-2"></i>Back to Item Banks</a>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <div class="form-check form-check-inline mb-0 form-check-none-bg">
+                        <input class="form-check-input" type="radio" name="radioItemGroup" id="radioItemGroup1" checked onclick="loadItemListNormalView()">
+                        <label class="form-check-label text-bold" for="radioItemGroup1">
+                            View Items
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline mb-0 form-check-none-bg">
+                        <input class="form-check-input" type="radio" name="radioItemGroup" id="radioItemGroup2" onclick="loadItemListAnswerKeyView()">
+                        <label class="form-check-label text-bold" for="radioItemGroup2">
+                            View Answer Key
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <a id="imgCreateTest" onclick="PopupVirtualTestForm()" title="Save as Test" href="javascript:void(0)" class="btn-text-secondary pd-btn-link">
+                        Save as Test
+                    </a>
+                    <a id="imgCreateTestGrey" style="display: none" href="javascript:void(0)" class="btn-text-secondary pd-btn-link disabled" title="Save as Test">
+                        Save as Test
+                    </a>
+                    <a onclick="PrintQTIItemGroup()" title="Create PDF" href="javascript:void(0)" class="btn-text-secondary pd-btn-link">
+                        Create PDF
+                    </a>
+                    <input id="file_upload_datafile" name="file_upload_datafile" type="file" style="display: none" title="QTI" />
+                    <input id="file_upload_blackboard" name="file_upload" type="file" style="display: none" title="Upload Blackboard 6 Files" />
+                    <a id="imgUploadBlackboard" href="javascript:void(0)" style="display:none" class="btn btn-secondary-link" title="Upload Blackboard 6 Files">
+                        Exam View
+                    </a>
+                    <a onclick="showAddNewItemFromLibraryPopup()" href="javascript:void(0)" class="btn-text-secondary btn-plus-icon pd-btn-plus-icon" title="Add Items From Library">
+                        Add Items from Library
+                    </a>
+                    <a id="imgCreateNewItem" href="javascript:void(0)" class="btn-text btn-plus-icon pd-btn-plus-icon" title="Create New Item">
+                        Create New Item
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="block-section-custom">
+            <div class="text-end" id="divActionButton">
+                <button id="btnDuplicateQtiItem" type="button" class="btn-blue">Copy/Move Item</button>
+                <button id="btnDuplicateQtiItemNew" type="button" class="btn-blue">Duplicate Item</button>
+                <button id="btnDeleteQtiItem" type="button" class="btn-blue">Delete Item</button>
+                <button id="btnAddPassage" type="button" class="btn-blue"> Add Passage</button>
+                <button id="btnAssignStandard" type="button" class="btn-blue">Assign Standard</button>
+                <button id="btnAssignTag" type="button" class="btn-blue"> Assign Tag</button>
+            </div>
+            <div id="divUploadAnswerKey" style="display:none">
+                <div id="file_upload_div" style="text-align: left;margin-top: -20px; margin-bottom: 30px;">
+                    <div style="display: inline-block; padding-left: 0px;vertical-align: top">
+                        <span>Upload csv file: </span>
+                        <a title="Download Sample csv file" target="_blank" href="../../Notification/DownloadAnswerKeySampleFile/?filePath=AnswerKeyView-Upload File Example.csv" style="display: block; line-height: 20px;">Download Sample csv file</a>
+                    </div>
+                    <div style="display: inline-block;padding-right: 10px">
+                        <input id="file_upload" name="file_upload" type="file" />
+                    </div>
+                </div>
+            </div>
+            <div id="divQtiiTemListView" class="no-margin last-child" style="padding-top: 10px;">
+            </div>
+        </div>
+        <div class="block-section-custom pt-0" id="divQuickCreate" style="display: none">
+            <div>
+                <div class="d-flex align-items-center justify-content-between px-3 py-2" style="background-color: var(--blue1)">
+                    <label class="m-0">
+                        Default number of choices on new items:
+                        <select style="width: 64px; margin-left: 8px;" id="selectDefaultNumberOfChoices">
+                            <option value="1">1</option>
+                        </select>
+                    </label>
+                    <label class="m-0">
+                        Quick Create:
+                        <input type="text" id="txtQuickCreateCorrectAnswer" style="width: 64px; margin-left: 8px;" />
+                    </label>
+                </div>
+            </div>
+            <hr class="my-4" />
+            <div style="text-align:right;">
+                <button id="btnCancelQtiItem" type="button" class="btn-secondary-link btnCancelQtiItem" tabindex="18">Cancel</button>
+                <button class="btn-red" type="button" id="btnSaveAnswerKey" onclick="saveAnswerKey()" style="display:none;">Save</button>
+
+            </div>
+        </div>
+    </div>
+    <input type="hidden" id="hidTestItemMediaPath" value="@ViewBag.TestItemMediaPath" />
+    <input type="hidden" id="hdGroupName" value="@ViewBag.QtiGroupName" />
+    <input type="hidden" id="hdQTIItemGroupID" value="@ViewBag.QTIItemGroupID" />
+
+</article>
+<div id="divCreateVirtualTest"></div>
+<div id="divOnTop"></div>
+<script type="text/javascript">
+    //Remember selected on StateStandard Popup
+    var selectStateId = 0; //used in _ListMasterStandard,_ListMasterStandardMany, _ItemListAnswerKeyView, _ItemListNormalView
+    var selectSubjectId = '';
+    var selectGradeId = '';
+    var parentId = 0;
+    var childId = 0;
+    //Remember selected on DistrictTag Popup
+    var selectStateId_dt = 0;
+    var selectDistrictId_dt = 0;
+    var selectCategoryId_dt = 0;
+    var textToSearch_dt = '';
+
+    $(function() {
+        breadcrumbDetailPage('.write', '#assesmenItemRewrite');
+
+        //Default load Normal view for Item list
+        loadItemListNormalView();
+        disableActionButton(true);
+        var isOpenCreateNewItem = false;
+
+        $('#imgCreateNewItem').die('click');
+
+
+        $('#imgCreateNewItem').live("click", function (e) {
+
+            if (isOpenCreateNewItem == true) {
+                return;
+            }
+            isOpenCreateNewItem = true;
+            $.ajax(
+                {
+                    url: '@Url.Action("SelectQuestionType", "TestMaker")?qtiItemGroupId=@ViewBag.QtiItemGroupID',
+                    cache: false
+                })
+                .done(function (html) {
+
+                    $("#divOnTop").append('<div id="PopupChooseQuestionType" style="display: none;" class="dialog"></div>');
+                    $("#PopupChooseQuestionType").append(html);
+
+                    //go to Multiple Choice
+                    $('#sChoice').trigger('click');
+                });
+        });
+
+    });
+
+
+
+
+
+    function loadItemListNormalView() {
+        $("#imgAnswerKeyView").show();
+        $('#btnSaveAnswerKey').hide();
+        $('#divQuickCreate').hide();
+        $("#imgNormalView").hide();
+        disableActionButton(true);
+        $("#divUploadAnswerKey").hide();
+
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '@Url.Action("LoadItemListNormalView")',
+            data: { qtiItemGroupID: '@ViewBag.QTIItemGroupID' },
+            success: function (data) {
+                try {
+                    $('#divQtiiTemListView').html(data);
+                    loadContentNumberLineHotspot('#qtiItemDataTable');
+                } catch (e) {
+                    CustomAlertV2("There was an error happen so that Item List can not be seen right now.",true);
+                }
+
+            }
+        });
+    }
+
+    function loadItemListAnswerKeyView() {
+        $("#imgAnswerKeyView").hide();
+        $('#btnSaveAnswerKey').show();
+        $('#divQuickCreate').show();
+        $('#btnSaveAnswerKey').attr('disabled', 'disabled');
+        $("#imgNormalView").show();
+        disableActionButton(true);
+        //$("#divUploadAnswerKey").show(); Temporary hide this function according to Linkit's request
+
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '@Url.Action("LoadItemListAnswerKeyView")',
+            data: { qtiItemGroupID: '@ViewBag.QTIItemGroupID' },
+            success: function (data) {
+                try {
+                    $('#divQtiiTemListView').html(data);
+                    loadContentImageHotSpot('#qtiItemDataTable');
+                } catch(e) {
+                    CustomAlertV2("There was an error happen so that AnswerKey View can not be seen right now.",true);
+                }
+
+            }
+        });
+    }
+
+    function disableActionButton(yn, answerKeyYN) {
+        if (yn == true) {
+            $('#btnDuplicateQtiItem').attr('disabled', 'disabled');
+            $('#btnDuplicateQtiItemNew').attr('disabled', 'disabled');
+            $('#btnDeleteQtiItem').attr('disabled', 'disabled');
+            $('#btnAddPassage').attr('disabled', 'disabled');
+            $('#btnAssignStandard').attr('disabled', 'disabled');
+            $('#btnAssignTag').attr('disabled', 'disabled');
+        }
+        else {
+            $('#btnDuplicateQtiItem').removeAttr('disabled');
+            $('#btnDuplicateQtiItemNew').removeAttr('disabled');
+            $('#btnDeleteQtiItem').removeAttr('disabled');
+            $('#btnAddPassage').removeAttr('disabled');
+            $('#btnAssignStandard').removeAttr('disabled');
+            $('#btnAssignTag').removeAttr('disabled');
+        }
+    }
+</script>
+
+<script>
+    var popupVirtualTestSelector = "#PopupCreateVirtualTest";
+    var isOpenSaveAsTest = false;
+    function PopupVirtualTestForm() {
+        if (isOpenSaveAsTest == true) {
+            return;
+        }
+        isOpenSaveAsTest = true;
+        ShowBlock($('#qtiItemDataTable'), 'Loading');
+        var url = '@Url.Action("CreateVirtualTestIndex", "QTIItem")';
+
+        $.ajax({
+            url: url,
+            type: 'post',
+            cache: false,
+            data: { qtiItemGroupID: '@ViewBag.QTIItemGroupID' }
+        }).done(function (html) {
+            isOpenSaveAsTest = false;
+            $("#divCreateVirtualTest").append('<div id="PopupCreateVirtualTest" class="dialog"></div>');
+            $(popupVirtualTestSelector).append(html);
+            $('#qtiItemDataTable').unblock();
+            $(popupVirtualTestSelector).dialog({
+                title: "",
+                open: function () {
+
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+
+                    //Create overlay for popup
+                    $("body").append('<div id="CreateVirtualTestOverlay" class="my-overlay" style="z-index: ' + ($('.ui-dialog:last').css("z-index") - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $(this).remove();
+                    $("#CreateVirtualTestOverlay").remove();
+                    var dataTable = $('#qtiItemDataTable').dataTable();
+                    ShowBlock($('#qtiItemDataTable'), 'Loading');
+                    dataTable.fnDraw();
+                },
+                modal: false,
+                width: 990,
+                resizable: false,
+                dialogClass: 'dialog-create-test'
+            });
+
+        });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    var isOpenCreatePDF = false;
+    function PrintQTIItemGroup() {
+        if (isOpenCreatePDF == true) {
+            return;
+        }
+        isOpenCreatePDF = true;
+
+        ShowBlock($('#qtiItemDataTable'), 'Loading');
+        var url = '@Url.Action("PrintQTIItemGroup", "QTIItem")';
+
+        $.ajax({
+            url: url,
+            type: 'post',
+            cache: false,
+            data: { qtiItemGroupID: '@ViewBag.QTIItemGroupID' }
+        }).done(function (data) {
+            $('#qtiItemDataTable').unblock();
+            isOpenCreatePDF = false;
+
+            var pdfUrl = data;
+
+            if (pdfUrl != undefined && $.trim(pdfUrl) != '') {
+                DownLoadAlert('Successfully created PDF', pdfUrl);
+            } else {
+                DownLoadAlert('Created PDF failed');
+            }
+        }).fail(function () {
+            $('#qtiItemDataTable').unblock();
+            isOpenCreatePDF = false;
+        });
+    }
+
+    function DownLoadAlert(message, url) {
+        var yesButton = '<button onclick="YesClickDownloadPDF(this);" urlDownloadPDF="' + url + '">OK</button>';
+
+        var strHtml = '<div>' +
+            '<div class="block-border">' +
+            '<div class="block-content form p-4" style="padding-bottom: 1em;text-align:center;"><div class="text-bold">' + message +
+            '</div></div>' +
+            `<div class="modal-component-footer">
+                <div slot="footer">
+                    ${yesButton}
+                </div>
+             </div></div ></div> `;
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "DownLoadAlertDialog")
+            .appendTo("body")
+
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 300,
+                maxheight: 400,
+                resizable: false,
+                open: function () { $(".ui-dialog-titlebar-close").hide(); }
+            });
+    }
+
+    function YesClickDownloadPDF(item) {
+        $("#DownLoadAlertDialog").dialog("close");
+        var url = $(item).attr('urlDownloadPDF');
+        if (url != undefined && $.trim(url) != '') window.open(url);
+    }
+    $('#btnDuplicateQtiItem').die('click');
+    $('#btnDuplicateQtiItem').live("click", function (e) {
+        if ($('#qtiItemDataTable').length > 0) {
+            //DuplicateQTIItems(); //In _ItemListNormalView
+            showCopyMoveItemPopup(); //In _ItemListNormalView
+        }
+        if ($('#qtiItemDataTableAnswer').length > 0) {
+            DuplicateQTIItems_AnswerKeyView(); //In _ItemListAnswerKeyView.cshtml
+        }
+    });
+
+    $('#btnDuplicateQtiItemNew').die('click');
+    $('#btnDuplicateQtiItemNew').live("click", function (e) {
+        if ($('#qtiItemDataTable').length > 0) {
+            DuplicateQTIItems(); //In _ItemListNormalView
+        }
+        if ($('#qtiItemDataTableAnswer').length > 0) {
+            DuplicateQTIItems_AnswerKeyView(); //In _ItemListAnswerKeyView.cshtml
+        }
+    });
+
+    $('#btnDeleteQtiItem').die('click');
+    $('#btnDeleteQtiItem').live("click", function (e) {
+        if ($('#qtiItemDataTableAnswer').length == 0) {
+            //Normal view
+            DeleteQTIItems(); //In _ItemListNormalView
+        } else {
+            DeleteQTIItemsAnswerKey();// In _ItemListAnswerKeyView
+        }
+
+    });
+
+    $('#btnAddPassage').die('click');
+    $('#btnAddPassage').live("click", function (e) {
+        if ($('#qtiItemDataTable').length > 0) {
+            showPassagePopup();//In _ItemListNormalView
+        }
+        if ($('#qtiItemDataTableAnswer').length > 0) {
+            showPassagePopup_AnswerKeyView(); //In _ItemListAnswerKeyView.cshtml
+        }
+    });
+
+    $('#btnAssignStandard').die('click');
+    $('#btnAssignStandard').live("click", function (e) {
+        if ($('#qtiItemDataTable').length > 0) {
+            showStandardPopup();//In _ItemListNormalView
+        }
+        if ($('#qtiItemDataTableAnswer').length > 0) {
+            showStandardPopup_AnswerKeyView(); //In _ItemListAnswerKeyView.cshtml
+        }
+    });
+
+    $('#btnAssignTag').die('click');
+    $('#btnAssignTag').live("click", function (e) {
+        if ($('#qtiItemDataTable').length > 0) {
+            showTagPopup();//In _ItemListNormalView
+        }
+        if ($('#qtiItemDataTableAnswer').length > 0) {
+            showTagPopup_AnswerKeyView(); //In _ItemListAnswerKeyView.cshtml
+        }
+    });
+    function showAddNewItemFromLibraryPopup() {
+        location.href = '@Url.Action("ShowAddItemsFromLibrary","ItemBank")?\qTIItemGroupID=@ViewBag.QTIItemGroupID';
+        return;
+        var worker = $('<div />');
+        worker
+            .addClass("dialog ddNewItemFromLibraryPopupCSS")
+            .attr("id", "addNewItemFromLibraryPopup")
+            .appendTo("body")
+            .load('@Url.Action("ShowAddItemsFromLibrary","ItemBank")?\qTIItemGroupID=@ViewBag.QTIItemGroupID', function () {
+                worker.dialog({
+                    open: function () {
+                        $('#tips').html('');
+                    },
+                    title: $(this).attr("Add New Item From Library"),
+                    close: function () {
+                        //refresh qtitem
+                        $('#tips').html('');
+                        ui.qtiItemDataTable.fnDraw();
+                        $(this).remove();
+                        $('#chkAllQtiItem').removeAttr('checked');
+                        disableActionButton(true);
+                    },
+                    modal: false,
+                    width: 980,
+                    resizable: false
+                });
+            });
+
+        showModalDialogBG();
+    }
+    $('.btnCancelQtiItem').on('click', function () {
+        var link = '@Url.Action("Index","ItemBank")';
+        link = encodeURI(link);
+        window.location.href = link;
+    });
+
+    var isShowQtiItemPopup = false;
+
+    function showEditQtiItemPopupIndex(qtiItemId, showPassage) {
+        //Check if this item is existing or not
+        $.ajax({
+            url: '@Url.Action("CheckQtiItemExists", "ItemBank")',
+            data: { qtiItemId: qtiItemId },
+            type: 'get',
+            cache: false
+        }).done(function(response) {
+            if (response.Exists == 'False') {
+                alert(response.errorMessage);
+                return;
+            } else {
+                //Existing
+                //Show popup
+                if (isShowQtiItemPopup == true) return;
+                isShowQtiItemPopup = true;
+                var worker = $('<div />');
+                worker
+                    .addClass("dialog EditQtiItemPopUpDialogCSS")
+                    .attr("id", "editQtiItemDialog")
+                    .appendTo("body")
+                    .load('@Url.Action("ShowEditQtiItemItem", "ItemBank")\?qtiItemId=' + qtiItemId + '&showPassage=' + showPassage, function () {
+                        worker.dialog({
+                            title: $(this).attr("Standard"),
+                            open: function () {
+                                //a new overlay will be generated when opening an dialog
+                                //set zindex of new overlay to make it cover Filter Item From Library Popup
+                                AdjustQtiItemDetail();//declared in _QtiItemDetail.cshtml
+
+                                var qtiItemHTML = $('#divQtiItemDetail').html();
+                                qtiItemHTML = qtiItemHTML.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+                                $('#divQtiItemDetail').html(qtiItemHTML);
+                                $('#divQtiItemDetail').find('video').trigger('play');
+                                // Load content in file qtiItemLoadMedia.js
+                                loadContentImageHotSpot('#divQtiItemDetail');
+                                loadContentDragAndDrop('#divQtiItemDetail');
+                                loadContentNumberLineHotspot('#divQtiItemDetail');
+                                loadContentGlossary('#divQtiItemDetail', '#glossaryMessage');
+                            },
+                            close: function () {
+                                $('.ui-widget-overlay:last').remove();
+                                $(this).remove();
+                                $('#tips').html('');
+                                isShowQtiItemPopup = false;
+
+                                // Stop text to speech
+                                if (!!responsiveVoice) {
+                                    responsiveVoice.cancel();
+                                }
+                            },
+                            modal: false,
+                            width: 640,
+                            resizable: false
+                        });
+                    });
+                showModalDialogBG();
+            }
+        }).error(function (request) {
+        });
+
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+    function LoadImages(containerSelector) {
+        $(containerSelector).find("img").each(function () {
+            var image = $(this);
+            var imageUrl = image.attr("src");
+            if (IsNullOrEmpty(imageUrl)) {
+                imageUrl = image.attr("source");
+            }
+
+            if (IsNullOrEmpty(imageUrl)) imageUrl = '@Url.Content("~/Content/images/emptybg.png")';
+
+            if (imageUrl.charAt(0) == '/') imageUrl = imageUrl.substring(1);
+
+            image.attr("source", '');
+            image.attr("src", imageUrl);
+            if (imageUrl.toLowerCase().indexOf("http") == 0) return;
+        });
+
+        ResizeImagesBaseOnPercent('#qtiItemDataTable');
+    }
+
+    function IsNullOrEmpty(value) {
+        return typeof(value) === "undefined" || value == null || $.trim(value) == '';
+    }
+</script>
+<script type="text/javascript">
+    var validFile = true;
+    $(function () {
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+        if (window.FormData !== undefined) {
+            $('#file_upload').uploadifive({
+                'uploadScript': '@Url.Action("UploadAnswerKey")',
+                'overrideEvents': ['onDialogClose'],
+                'buttonText': 'Select File',
+                'fileObjName': 'postedFile',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 100,
+                'auto': true,
+                'fileSizeLimit': '71680KB',
+                'fileType' : 'application/vnd.ms-excel',
+                'onUpload': function (file) {
+                    $('#file_upload').data('uploadifive').settings.formData = getFormDataAnswerKeyUpload(auth);
+                    $('#btnSaveAnswerKey').attr('disabled', 'disabled');
+
+                    ShowBlock($('#divQtiItemList'), 'Processing');
+                },
+                'onUploadComplete': function (file, data) {
+                    var result = $.parseJSON(data);
+                    if (result == undefined) {
+                        CustomAlertV2('An error has occured.  Please try again');
+                    }
+                    if (result.success == true) {
+                        CustomAlertV2('Upload processing successfully.');
+                    }
+                    else {
+                        CustomAlertV2(result.errorMessage, true);
+                        $('#file_upload').uploadifive('cancel', $('.uploadifive-queue-item').first().data('file'));
+                    }
+
+                    $('#btnSaveAnswerKey').removeAttr('disabled');
+                    $('#divQtiItemList').unblock();
+                    //Reload
+                    //ui.qtiItemDataTableAnswer.fnReloadAjax(); //fnReloadAjax will send ajax two times
+                    ui.qtiItemDataTableAnswer.fnDraw();//fnDraw send only one time
+                },
+                'onError': function (errorType, file) {
+                    $('#btnSaveAnswerKey').removeAttr('disabled');
+                    $('#divQtiItemList').unblock();
+                    validFile = false;
+                    if (errorType == 'FORBIDDEN_FILE_TYPE') {
+                        CustomAlertV2(errorMsg + '  Please select a csv (.csv) file.');
+                    } else {
+                        CustomAlertV2('The file ' + file.name + ' returned an error and was not added to the queue.');
+                    }
+                },
+                'onCancel': function (file) {
+                    $('#btnSaveAnswerKey').removeAttr('disabled');
+                    $('#divQtiItemList').unblock();
+                    CustomAlertV2('The file ' + file.name + ' could not be uploaded: Cancelled');
+                }
+            });
+        }
+
+        function getFormDataAnswerKeyUpload(auth) {
+            var qtiItemGroupId = $('#hdQTIItemGroupID').val();
+            return {'AUTHID': auth, 'qtiItemGroupId': qtiItemGroupId };
+        }
+
+
+    });
+
+</script>
+<!-- Custom alert message box -->
+<script type="text/javascript">
+    function CustomAlertV2(message, isLongMessage) {
+        var yesButton = '<button onclick="YesClick(this);">OK</button>';
+        var messageTextAlign = 'center';
+        var messageBoxWidth = 240;
+        var diaglogWidth = 360;
+
+        if (typeof isLongMessage != "undefined" && isLongMessage == true) {
+            messageTextAlign = 'left';
+            messageBoxWidth = 540;
+            diaglogWidth = 550;
+        }
+        var strHtml = '<div>' +
+            '<div class="block-border">' +
+            '<div class="block-content form p-4" style="padding-bottom: 1em;text-align:center;"><div class="text-bold" style="text-align:' + messageTextAlign + ';line-height: 18px;">' + message +
+            '</div></div>' +
+            `<div class="modal-component-footer">
+                <div slot="footer">
+                    ${yesButton}
+                </div>
+             </div></div></div >`;
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "CustomAlertDialog")
+            .appendTo("body")
+
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: diaglogWidth,
+                maxheight: 400,
+                resizable: false,
+                open: function () { $(".ui-dialog-titlebar-close").hide(); }
+            });
+    }
+
+    function YesClick(item) {
+        $("#CustomAlertDialog").dialog("close");
+        var url = $(item).attr('url');
+        if (url != undefined && $.trim(url) != '') window.open(url);
+    }
+</script>
+<script type="text/javascript">
+
+    $(document).ready(function () {
+
+    });
+</script>
+<script>
+    $(function () {
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+        var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+
+        function getFormData(auth) {
+            return { 'AUTHID': auth, 'qtiItemGroupID': @ViewBag.QTIItemGroupID};
+        }
+
+        if (window.FormData !== undefined) {
+            $('#file_upload_blackboard').uploadifive({
+                'uploadScript': '@Url.Action("UploadExamview")',
+                'overrideEvents': ['onDialogClose'],
+                'formData': { AUTHID: auth },
+                'buttonText': ' ',
+                'fileObjName': 'postedFile',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 32,
+                'height': 32,
+                'auto': true,
+                'fileSizeLimit': '71680KB',
+                'fileType' : ['application/x-zip-compressed','application/zip'],
+                'buttonClass': 'file_upload_blackboard btn-text-secondary pd-btn-link',
+                'onInit': function(){
+                    $("#uploadifive-file_upload_blackboard-queue").hide();
+                    $('#uploadifive-file_upload_blackboard').click(function() {
+                        //alert( "on click to select file." );
+                        validFile = true;
+                    });
+                },
+                'onUpload': function (file) {
+                    $("#uploadifive-file_upload_blackboard-queue").hide();
+                    $('#file_upload_blackboard').data('uploadifive').settings.formData = getFormData(auth);
+                    $('#error-messages').hide();
+                    $('#error-messages').empty();
+                    if (validFile == true) {
+                        ShowBlock($('#divQtiItemList'), 'Uploading');
+                    }
+
+                },
+                'onUploadComplete': function (file, data) {
+                    $("#uploadifive-file_upload_blackboard-queue").hide();
+                    $('#divQtiItemList').unblock();
+                    var result = $.parseJSON(data);
+                    if (result == undefined) {
+                        CustomAlertV2('An error has occured.  Please try again');
+                    }
+                    if (result.success == true) {
+                        $('#error-messages').hide();
+                        $('#upload-block').html('');
+                        if ($('#qtiItemDataTableAnswer').length > 0) {
+                            ui.qtiItemDataTableAnswer.fnReloadAjax();
+                        }
+                        if ($('#qtiItemDataTable').length > 0) {
+                            ui.qtiItemDataTable.fnReloadAjax();
+                        }
+                        CustomAlertV2(result.message);
+                    }
+                    else {
+                        //addErrorMessages(result);
+                        $('#error-messages').show();
+                        $('#error-messages').html('<li>' + result.message + '</li>');
+                        CustomAlertV2(result.message);
+                        if ($('#qtiItemDataTableAnswer').length > 0) {
+                            ui.qtiItemDataTableAnswer.fnReloadAjax();
+                        }
+                        if ($('#qtiItemDataTable').length > 0) {
+                            ui.qtiItemDataTable.fnReloadAjax();
+                        }
+                        $('#file_upload_blackboard').uploadifive('cancel', $('.uploadifive-queue-item').first().data('file'));
+                    }
+                },
+                'onError': function (errorType, file) {
+                    $("#uploadifive-file_upload_blackboard-queue").hide();
+                    $('#divQtiItemList').unblock();
+                    validFile = false;
+                    if (errorType == 'FORBIDDEN_FILE_TYPE') {
+                        //CustomAlertV2(errorMsg + '  Please select a zip (.zip) file.');
+                        CustomAlertV2('The file you are trying to upload is not a .zip file. Please try again',true);
+                    } else {
+                        CustomAlertV2('The file ' + file.name + ' returned an error and was not added to the queue.',true);
+                    }
+                },
+                'onCancel': function (file) {
+                    $('#divQtiItemList').unblock();
+                    $("#uploadifive-file_upload_blackboard-queue").hide();
+                }
+            });
+        }
+
+        $('#file_upload_blackboard').parent().attr('title','Exam View');
+        if (isFirefox) {
+            $('#file_upload_blackboard').next().attr('title','Exam View');
+        }
+
+        if (window.FormData !== undefined) {
+            $('#file_upload_datafile').uploadifive({
+                'uploadScript': '@Url.Action("UploadDataFile")',
+                'overrideEvents': ['onDialogClose'],
+                'formData': { AUTHID: auth },
+                'buttonText': ' ',
+                'fileObjName': 'postedFile',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 32,
+                'height': 32,
+                'auto': true,
+                'fileSizeLimit': '0',
+                'fileType' : ['application/x-zip-compressed','application/zip'],
+                'buttonClass': 'file_upload_datafile btn-text-secondary pd-btn-link',
+                'onInit': function(){
+                    $("#uploadifive-file_upload_datafile-queue").hide();
+                    $('#uploadifive-file_upload_datafile').click(function() {
+                        validFile = true;
+                    });
+                },
+                'onSelect' : function(file) {
+                },
+                'onUploadFile' : function(file) {
+                },
+                'onUpload': function (file) {
+                    $("#uploadifive-file_upload_datafile-queue").hide();
+                    $('#file_upload_datafile').data('uploadifive').settings.formData = getFormData(auth);
+                    $('#error-messages').hide();
+                    $('#error-messages').empty();
+                    if (validFile==true) {
+                        ShowBlock($('#divQtiItemList'), 'Uploading');
+                    }
+
+                },
+                'onUploadComplete': function (file, data) {
+                    ShowBlock($('#divQtiItemList'), 'Uploading');
+                    $("#uploadifive-file_upload_datafile-queue").hide();
+                    var result = $.parseJSON(data);
+                    if (result == undefined) {
+                        CustomAlertV2('An error has occured.  Please try again');
+                    }
+                    if (result.success == true) {
+                        $('#error-messages').hide();
+                        $('#upload-block').html('');
+                        var logId = result.dataFileUploadLogId;
+                        SetIntervalCheckStatus(logId);
+                    }
+                    else {
+                        $('#divQtiItemList').unblock();
+                        $('#error-messages').show();
+                        $('#error-messages').html('<li>' + result.message + '</li>');
+                        CustomAlertV2(result.message,true);
+                        if ($('#qtiItemDataTableAnswer').length > 0) {
+                            ui.qtiItemDataTableAnswer.fnReloadAjax();
+                        }
+                        if ($('#qtiItemDataTable').length > 0) {
+                            ui.qtiItemDataTable.fnReloadAjax();
+                        }
+                        $('#file_upload_datafile').uploadifive('cancel', $('.uploadifive-queue-item').first().data('file'));
+                    }
+                },
+                'onError': function (errorType, file) {
+                    $("#uploadifive-file_upload_datafile-queue").hide();
+                    $('#divQtiItemList').unblock();
+                    validFile = false;
+                    if (errorType == 'FORBIDDEN_FILE_TYPE') {
+                        CustomAlertV2('The file you are trying to upload is not a .zip file. Please try again',true);
+                    } else {
+                        CustomAlertV2('The file ' + file.name + ' returned an error and was not added to the queue.',true);
+                    }
+                },
+                'onCancel': function (file) {
+                    $("#uploadifive-file_upload_datafile-queue").hide();
+                }
+            });
+        }
+
+        $('#file_upload_datafile').parent().attr('title', 'QTI');
+        if (isFirefox) {
+            $('#file_upload_datafile').next().attr('title','QTI');
+        }
+
+        function checkUploadProcessingStatus(id) {
+            var response_data;
+            $.ajax({
+                url: '@Url.Action("CheckStatusUploadDataFile")',
+                type: 'GET',
+                data: { dataFileUploadLogId: id },
+                async: false,
+                success: function (response) {
+                    response_data = response;
+                }
+            });
+            return response_data;
+        }
+
+        function SetIntervalCheckStatus(logId)
+        {
+        var interval = setInterval(function () {
+            var resultStatus = checkUploadProcessingStatus(logId);
+
+            if (resultStatus.success == false) {
+                clearInterval(interval);
+                //CustomAlertV2('An error has occured.  Please try again');
+                $('#divQtiItemList').unblock();
+                CustomAlertV2(resultStatus.message);
+                return;
+            }
+            else {
+                if (resultStatus.processingStatus != undefined) {
+                    clearInterval(interval);
+                    $('#divQtiItemList').unblock();
+                    if ($('#qtiItemDataTableAnswer').length > 0) {
+                        ui.qtiItemDataTableAnswer.fnReloadAjax();
+                    }
+                    if ($('#qtiItemDataTable').length > 0) {
+                        ui.qtiItemDataTable.fnReloadAjax();
+                    }
+                    CustomAlertV2(resultStatus.message);
+                }
+            }
+        }, 5000);
+        }
+    });
+
+</script>

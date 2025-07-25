@@ -1,0 +1,160 @@
+@using System.Configuration
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.StudentLoginViewModel
+
+@{
+    Layout = "~/Views/Shared/_LogOnPartial_v2.cshtml";
+}
+<style>
+    .setup-account-student-item {
+        margin-bottom: 1.5rem
+    }
+
+        .setup-account-student-item div {
+            position: relative
+        }
+
+    .info-icon {
+        position: absolute;
+        top: 25%;
+        right: -1.5rem;
+    }
+
+    #tips div {
+        width: 300px !important;
+        text-align:left
+    }
+
+    div[data-lastpass-icon-root] {
+        display: none;
+    }
+</style>
+
+<section id="login-block" class="box-shadow">
+    <div class="block-border">
+        <div class="@("block-header " + (Model.IsStudentLogin ? "bg-student-login" : "bg-parent-login"))">Set Up Your Account</div>
+        <div class="block-content">
+            <form style="padding:0" class="form form-first-registration" id="r-code-rcode" method="post" action="@Url.Action("RegistrationCodeStep2", "Student")">
+                <div class="setup-account-student-item">
+                    <label for="r-username"><span class="big">Username</span></label>
+                    @if (Model.IsStudentLogin && Model.NoAccount)
+                    {
+                        <div>
+                            @Html.TextBoxFor(m => m.UserName, new { @class = "full-width first-focus", @id = "r-userName", autocomplete = "one-time-code" })
+                            <a href="javascript:void(0)" title="Create a username that you can easily remember" class="with-tip center-tip info-icon">
+                                <img src='@Url.Content("~/Content/images/icons/icon-info.svg")' width="16" height="16">
+                            </a>
+                        </div>
+
+                    }
+                    else
+                    {
+                        @Html.TextBoxFor(m => m.UserName, new { @class = "full-width first-focus", @id = "r-userName", @readonly = "readonly", disabled = "disabled", autocomplete = "one-time-code" })
+                    }
+
+                </div>
+                <div class="setup-account-student-item">
+                    <label for="r-password"><span class="big">Password</span></label>
+                    <div>
+                        @Html.PasswordFor(m => m.Password, new { @class = "full-width", maxlength = "50", @id = "r-password", autocomplete = "one-time-code" })
+                        <a href="javascript:void(0)" title="Create a password. @ConfigurationManager.AppSettings["PasswordRequirements"]" class="with-tip info-icon">
+                            <img src='@Url.Content("~/Content/images/icons/icon-info.svg")' width="16" height="16">
+                        </a>
+                    </div>
+
+                </div>
+                <div class="setup-account-student-item">
+                    <label for="r-cpassword"><span class="big">Confirm Password</span></label>
+                    @Html.PasswordFor(m => m.CPassword, new { @class = "full-width", maxlength = "50", @id = "r-cpassword", autocomplete = "one-time-code" })
+                </div>
+                <button id="btnRegistrationCodeStep2" type="submit" class="float-right btn-accept">Finish</button>
+            </form>
+        </div>
+    </div>
+</section>
+
+<script>
+    $(function () {
+        $(".center-tip").tip({ content: '<p class="text-center mb-0" style="font-size:12px">Create a username that you can easily remember</p>'})
+
+        setTimeout(() => {
+            var input = document.getElementById('r-userName');
+            if (input) {
+              input.value = '@Model.UserName';
+            }
+            var pass = document.getElementById('r-password');
+            if (pass) {
+                pass.value = '';
+            }
+        }, 10);
+    });
+    $('#r-code-rcode').submit(function (event) {
+        event.preventDefault();
+        $('#login-block').removeBlockMessages({ animate: false });
+
+        $('#r-userName').removeClass('error');
+        $('#r-password').removeClass('error');
+        $('#r-cpassword').removeClass('error');
+
+        if ($("#r-userName").val() == '') {
+            $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Username is required.', { type: 'error', animate: false });
+            $('#r-userName').addClass('error');
+            return;
+        }
+        if ($("#r-password").val() == ''){
+            $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Password is required.', { type: 'error', animate: false });
+            $('#r-password').addClass('error');
+            return;
+        }
+        if ($("#r-cpassword").val() != $("#r-password").val()){
+            $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Password does not match.', { type: 'error', animate: false });
+            $('#r-password').addClass('error');
+            $('#r-cpassword').addClass('error');
+            return;
+        }
+
+        $('#btnRegistrationCodeStep2').prop('disabled', true);
+        var data = {
+            rcode: '@Model.RCode',
+            isStudentLogin: '@Model.IsStudentLogin',
+            userName: $("#r-userName").val(),
+            password: $("#r-password").val(),
+            cPassword: $("#r-cpassword").val(),
+            userId: @Model.StudentId,
+            districtId : @Model.DistrictId
+        };
+
+        $.ajax({
+            url: '@Url.Action("RegistrationCodeStep3", "Student")',
+            type: 'POST',
+            data: data,
+            success: function (result) {
+                if (result.type == 'error') {
+                    $('#login-block').removeBlockMessages({ animate: false }).blockMessage(result.message, { type: 'error',animate:false });
+                    $('#r-userName').addClass('error');
+                }
+                else {
+                    if (result.HasTemporaryPassword) {
+                        location.href = "/Account/SetAccountInformation/?id=" + result.UserID + "&pw=" + result.HasTemporaryPassword;
+                    } else {
+                        location.href = result.RedirectUrl;
+                    }
+                }
+
+                $('#btnRegistrationCodeStep2').prop('disabled', false);
+            }
+        });
+    });
+
+    $('#r-password').blur(function () {
+        var regex = new RegExp('@ConfigurationManager.AppSettings["PasswordRegex"]');
+        var errorMessage = '@ConfigurationManager.AppSettings["PasswordRequirements"]';
+        if (regex.test($(this).val())) {
+            $('#login-block').removeBlockMessages({ animate: false });
+            $('#r-password').removeClass('error');
+        }
+        else {
+            $('#login-block').removeBlockMessages({ animate: false }).blockMessage(errorMessage, { type: 'error', animate: false });
+            $('#r-password').addClass('error');
+        }
+    });
+</script>

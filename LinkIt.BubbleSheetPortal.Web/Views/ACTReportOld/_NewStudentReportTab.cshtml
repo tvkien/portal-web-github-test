@@ -1,0 +1,1008 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.ACTReport.ACTReportViewModel
+<script src="@Url.Content("~/Scripts/TagIt/js/tag-it.js")" type="text/javascript"></script>
+<link  href="@Url.Content("~/Scripts/TagIt/css/jquery.tagit.css")" rel="stylesheet" type="text/css"/>
+<link  href="@Url.Content("~/Scripts/TagIt/css/tagit.ui-zendesk.css")" rel="stylesheet" type="text/css"/>
+@*<link href="@Url.Content("~/Content/css/sgohome.css")" rel="stylesheet" type="text/css" />*@
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleSGOHomeBundle()
+
+<fieldset id="dateRangeContent" class="grey-bg coolfieldset">
+    <input type="hidden" id="enableDateRange" value="false"/>
+    <input type="hidden" id="VirtualTestIdsForAllTest" value="false"/>
+    <legend id="dateRangeContentLegend">Select Test Date Range</legend>
+    <div class="columns">
+        <div class="colx2-left">
+            <p>
+                <label>From Date</label>
+                <span class="sgo-datetime" style="display: inline-block">
+                    <input name="resultDateFrom" style="font-size: 1.083em; padding: 0.385em; width: 235px;" readonly="readonly" id="resultDateFrom"/>
+                    <span class="icon-sgo-calendar"></span>
+                </span>
+            </p>
+        </div>
+        <div class="colx2-right">
+            <p>
+                <label>To Date</label>
+                <span class="sgo-datetime" style="display: inline-block">
+                    <input name="resultDateTo" style="font-size: 1.083em; padding: 0.385em; width: 235px;" readonly="readonly" id="resultDateTo"/>
+                    <span class="icon-sgo-calendar"></span>
+                </span>
+            </p>
+        </div>
+    </div>
+</fieldset>
+<p>
+    <input type="checkbox" id="chkLimitTestTakingClass" />
+    <label for="chkLimitTestTakingClass">Limit to test-taking classes</label>
+</p>
+@if (Model.IsPublisher || Model.IsNetworkAdmin)
+{
+    <fieldset id="publisherContent" class="grey-bg">
+        <legend>Select State/@LabelHelper.DistrictLabel</legend>
+        <div class="columns">
+            <div class="colx2-left">
+                <p>
+                    <label>State</label>
+                    <select id="selectState"></select>
+                </p>
+            </div>
+            <div class="colx2-right">
+                <p>
+                    <label>@LabelHelper.DistrictLabel</label>
+                    <select id="selectDistrict"></select>
+                </p>
+            </div>
+        </div>
+    </fieldset>
+}
+<fieldset class="grey-bg">
+    <legend>Select Test</legend>
+    <div class="columns">
+        <div class="wraptag" style="max-width: 686px; padding-bottom: 15px;">
+            <ul id="selectedTestList" class="tagit ui-widget ui-widget-content ui-corner-all" style="display: none;"></ul>
+        </div>
+        <div class="colx2-left">            
+            <p>
+                <label>@LabelHelper.GradeLabel</label>
+                <select id="selectGrade"></select>
+            </p>
+            <p>
+                <label>@LabelHelper.Subject</label>
+                <select id="selectSubject"></select>
+            </p>
+        </div>
+        <div class="colx2-right">            
+            <p>
+                <label>Bank</label>
+                <select id="selectBank"></select>
+            </p>
+            <p>
+                <label>Test</label>
+                <select id="selectTest"></select>
+            </p>
+            <p>
+                <button class="float-left" id="btnPublishTest" type="button" style="margin-left: 0px;display:none" disabled="disabled">Publish students</button>
+            </p>
+        </div>
+    </div>
+</fieldset>
+<div class="clear"></div>
+<fieldset class="grey-bg">
+    <legend>Select Students</legend>
+
+    <div id="divSingleClass" class="columns">
+        <div class="colx2-left">            
+            <p>
+                <label>School</label>
+                <select id="selectSchool"></select>
+            </p>
+            <p>
+                <label>Teacher</label>
+                <select id="selectTeacher"></select>
+            </p>
+        </div>
+        <div class="colx2-right">            
+            <p>
+                <label>
+                    @LabelHelper.Term
+                </label>
+                <select id="selectTerm"></select>
+            </p>
+            <p>
+                <label>Class</label>
+                <select id="selectClass"></select>
+            </p>
+        </div>
+    </div>
+    <div id="studentContent" style="display: none">
+        <div class="tabs-content" style="margin-bottom: 10px;">
+            <div class="columns" id="studentsList">
+                <ul id="students" class="generate-student-list generate-student-list-custom with-icon icon-user student-col"></ul>
+            </div>
+            <div class="clear"></div>
+        </div>
+        <div>
+            <button type="button" name="select-all" onclick="selectAllStudents()">Select All</button>
+            <button type="button" name="select-none" onclick="selectNoStudents()">Select None</button>
+            <button type="button" name="invert-select" onclick="invertSelectedStudents()">Invert Selection</button>
+        </div>
+    </div>
+    <div id="divMultiClass" style="display: none;">
+    </div>
+</fieldset>
+<div class="clear"></div>
+
+<fieldset class="grey-bg" id="fsReportContentOption">
+    <legend>Report Content Options</legend>
+    <div class="columns">
+        <div class="colx2-left">
+            <p>
+                <label>Options</label>
+                <select id="selectReportContentOption">
+                    <option value="1">Include scores only</option>
+                    <option value="2">Include scores and essays</option>
+                    <option value="3">Include essays only</option>
+                </select>
+            </p>
+        </div>
+        <div class="colx2-right">
+        </div>
+    </div>
+</fieldset>
+
+
+<button class="float-right" id="btnSubmit" type="button">Generate</button>
+<div class="clear"></div>
+
+<script type="text/javascript">
+    var selectedTagsDict = {};
+    $.ajaxSetup({ cache: false });
+    function beforeTagItAdded() {
+        var tagId = $('#selectTest').val();
+        if (tagId != undefined && tagId != 'select') {
+
+            // Clear "All tests" tag when adding 1st item
+            if (countSelectedTags() == 0) {
+                $('#selectedTestList .tagit-choice').hide();
+            }
+
+            selectedTagsDict[$('#selectTest option:selected').text()] = tagId; //remember Id of selected tag
+        }
+    }
+    $(function () {
+
+        $('#dateRangeContent').coolfieldset({ collapsed: true });
+
+        $('#dateRangeContentLegend').toggle(
+            function() { showdateRangeContent(); },
+            function () { hidedateRangeContent(); }
+        );
+
+        function showdateRangeContent() {
+            $('#enableDateRange').val('true');
+            $('#selectedTestList').show();
+
+            clearSelectTestTab();
+            clearSelectStudentTab();
+            populateGradesByDistrict();
+        }
+
+        function hidedateRangeContent() {
+            $('#enableDateRange').val('false');
+            $('#selectedTestList').hide();
+
+            clearSelectTestTab();
+            clearSelectStudentTab();
+            populateGradesByDistrict();
+        }
+
+        $("#selectedTestList").tagit({
+            beforeTagAdded: function (event, ui) {
+
+            },
+            beforeTagRemoved: function (event, ui) {
+                //clear the selected tag out of memory
+                delete selectedTagsDict[ui.tagLabel];
+
+                updateSelectedTests();
+                clearSelectStudentTab();
+                populateTests();
+            }
+        });
+        $('#selectedTestList').find('.ui-autocomplete-input').attr('readonly', true); // Disallow to type into selected test tagit
+
+        $('input[name="resultDateFrom"]').datepicker({
+            dateFormat: jqueryDatePickerFormat(),
+            beforeShow: function (input, inst) {
+                $('#ui-datepicker-div').addClass('datepicker-sgo');
+            }
+        }).datepicker('setDate', '@Model.ResultDateFrom');
+
+        $('input[name="resultDateTo"]').datepicker({
+            dateFormat: jqueryDatePickerFormat(),
+            beforeShow: function (input, inst) {
+                $('#ui-datepicker-div').addClass('datepicker-sgo');
+            }
+        }).datepicker('setDate', '@Model.ResultDateTo');
+
+        $(document).ready(function () {
+            $(".openDialog").live("click", function (e) {
+                e.preventDefault();
+                $("<div></div>")
+                    .addClass("dialog")
+                    .attr("id", $(this)
+                        .attr("data-dialog-id"))
+                    .appendTo("body")
+                    .dialog({
+                        title: $(this).attr("data-dialog-title"),
+                        close: function () { $(this).remove(); },
+                        modal: true,
+                        width: 1000,
+                        resizable: false
+                    })
+                    .load(this.href, function () { });
+            });
+
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+
+            $("#btnCancel").live("click", function (e) {
+                e.preventDefault();
+                $(".dialog").dialog("close");
+            });
+
+        });
+
+        @if (Model.IsPublisher)
+        {
+            <text>
+                $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                    populateStates(states);
+                });
+            </text>
+        }else if (Model.IsNetworkAdmin)
+        {
+            <text>
+                $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                    populateStates(states);
+                });
+            </text>
+        }
+        else
+        {
+            <text>
+        $.get('@Url.Action("GetGrades", "PopulateReporting")', { districtId: '-1', virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: getResultDateFrom(), resultDateTo: getResultDateTo(), isGetAllClass: getIsGetAllClass() }, function (grades) {
+                    populateGrades(grades);
+                });
+            </text>
+        }
+
+        $('#resultDateFrom').change(function() {
+            reloadContentWhenChangingResultDate();
+        });
+
+        $('#resultDateTo').change(function() {
+            reloadContentWhenChangingResultDate();
+        });
+
+        function reloadContentWhenChangingResultDate() {
+            clearSelectTestTab();
+            clearSelectStudentTab();
+
+            if ('@Model.IsPublisher' == 'True') {
+                populateGradesByDistrict();
+            } else {
+                $.get('@Url.Action("GetGrades", "PopulateReporting")', { districtId: '-1', virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: getResultDateFrom(), resultDateTo: getResultDateTo(), isGetAllClass: getIsGetAllClass() }, function (grades) {
+                    populateGrades(grades);
+                });
+            }
+        }
+
+        $('#selectState').change(function () {
+            $('#selectDistrict').empty();
+
+            clearSelectTestTab();
+            clearSelectStudentTab();
+
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+        });
+
+        $('#selectDistrict').change(function () {
+            clearSelectTestTab();
+            clearSelectStudentTab();
+
+            populateGradesByDistrict();
+        });
+
+        $('#selectGrade').change(function () {
+            $('#selectSubject').empty();
+            $('#selectBank').empty();
+            $('#selectTest').empty();
+
+            updateSelectedTests();
+            clearSelectStudentTab();
+            populateSubjects();
+        });
+
+        $('#selectSubject').change(function () {
+            $('#selectBank').empty();
+            $('#selectTest').empty();
+
+            updateSelectedTests();
+            clearSelectStudentTab();
+            populateBanks();
+        });
+
+        $('#selectBank').change(function () {
+            $('#selectTest').empty();
+
+            updateSelectedTests();
+            clearSelectStudentTab();
+            populateTests();
+        });
+
+        $('#selectTest').change(function() {
+            clearSelectStudentTab();
+
+            if ($('#enableDateRange').val() == 'true') {
+                var testId = $('#selectTest').val();
+
+                if (testId != 'select' && testId != '') {
+                    beforeTagItAdded();
+                    $("#selectedTestList").tagit("createTag", $('#selectTest option:selected').text());
+                    $('#selectTest option:selected').remove();
+                }
+            }
+
+            if (getSelectedTags() != '') {
+                var virtualTestIdString = getSelectedTags();
+                var vSelectDistrict = $('#selectDistrict').val();
+                var resultDateFrom = getResultDateFrom();
+                var resultDateTo = getResultDateTo();
+                var isGetAllClass = getIsGetAllClass();
+
+                $.get('@Url.Action("MultipleTestGetSchools", "PopulateReporting")', { virtualTestIdString: virtualTestIdString, districtId: vSelectDistrict, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: isGetAllClass }, function (schools) {
+                    if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+                        populateSchools(schools);
+                    }
+                });
+            }
+        });
+
+        
+
+        $('#btnPublishTest').click(function () {
+            if (getSelectedTags() == '') {
+                //CustomAlert('No test is selected.');
+                return;
+            }
+
+            clearSelectStudentTab();
+
+            var virtualTestIdString = getSelectedTags();
+            var vSelectDistrict = $('#selectDistrict').val();
+            var resultDateFrom = getResultDateFrom();
+            var resultDateTo = getResultDateTo();
+
+            $.get('@Url.Action("MultipleTestGetSchools", "PopulateReporting")', { virtualTestIdString: virtualTestIdString, districtId: vSelectDistrict, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo }, function (schools) {
+                populateSchools(schools);
+            });
+        });
+
+
+        $('#selectSchool').change(function () {
+            $('#selectTeacher').empty();
+            $('#selectTerm').empty();
+            $('#selectClass').empty();
+            $('#studentContent').hide();
+            $('#students').html('');
+            if ($('#selectSchool').val() != 'select') {
+                populateTeachers();
+            }
+        });
+
+        $('#selectTeacher').change(function () {
+            $('#selectClass').empty();
+            $('#selectTerm').empty();
+            $('#studentContent').hide();
+            $('#students').html('');
+
+            if ($('#selectTeacher').val() != 'select') {
+                populateTerms();
+            }
+        });
+
+        $('#selectTerm').change(function () {
+            populateClasses();
+        });
+
+        $('#selectClass').change(function () {
+            populateStudents();
+        });
+
+        $('#btnSubmit').click(function (e) {
+
+            if (getSelectedTags() == '0') {
+                CustomAlert('No test is selected.');
+                return;
+            }
+
+            if (getIsGetAllClass()) {
+                var classValue = $('#selectClass').val();
+                var isClassSelected = classValue != 'select' && classValue != '' && classValue != null;
+
+                if (!isClassSelected) {
+                    CustomAlert('Please select a class to generate report.');
+                    return;
+                }
+            }
+
+            //clear error message
+            $("#error-messages").html('');
+            $("#error-messages").hide();
+            //ShowBlock($('#ACTPageContent'), "Generating reports");
+
+            $('#btnSubmit').disableBt();
+            ShowBlock($('#dataTable'), 'Generating reports');
+
+
+            var studentsIdSelected = [];
+
+            $(".student-item[isSelected=yes]").each(function () {
+                studentsIdSelected.push($(this).attr('studentId'));
+            });
+
+            var timezoneOffset = new Date().getTimezoneOffset();
+            var actReportFileName = "ACT_" + (new Date()).toString("MM-dd-HH-mm") + "_" + getRandomString();
+            var reportingUrl = '@Url.Action("CheckGenerateNewACTRequest", "ACTReport")';
+            var isGetAllClass = getIsGetAllClass();
+
+            var data = {
+                StrTestIdList: getSelectedTags,
+                DistrictId: $('#selectDistrict').val(),
+                SchoolId: $('#selectSchool').val(),
+                TeacherId: $('#selectTeacher').val(),
+                DistrictTermId: $('#selectTerm').val(),
+                ClassId: $('#selectClass').val(),
+                ResultDateFrom: getResultDateFrom(),
+                ResultDateTo: getResultDateTo(),
+                StudentIdList: studentsIdSelected,
+                TimezoneOffset: timezoneOffset,
+                ActReportFileName: actReportFileName,
+                ReportContentOption: $('#selectReportContentOption').val(),
+                isGetAllClass: isGetAllClass
+            };
+
+            $.ajax({
+                url: reportingUrl,
+                traditional: true,
+                type: 'POST',
+                data: data,
+                success: function(response) {
+                    if (response.Result == true) {
+                        $('#error-messages').hide();
+
+                        $.ajax({
+                            url: '@Url.Action("StoreSpecializedReportJobSession","AccessSession")/?specializedReportJobId=' + response.SpecializedReportJobId,
+                            traditional: true,
+                            type: 'POST',
+                            data: data,
+                            success: function (response) {
+                                startLoadingSpecializedReportJob(); // PopulateReporting/_SpecializedReportDownload.cshtml
+                            }
+                        });
+
+                        reportingUrl = '@Url.Action("GenerateNewACT", "ACTReport")';
+                        var isGetAllClass = getIsGetAllClass();
+
+                        data = {
+                            StrTestIdList: getSelectedTags,
+                            DistrictId: $('#selectDistrict').val(),
+                            SchoolId: $('#selectSchool').val(),
+                            TeacherId: $('#selectTeacher').val(),
+                            DistrictTermId: $('#selectTerm').val(),
+                            ClassId: $('#selectClass').val(),
+                            ResultDateFrom: getResultDateFrom(),
+                            ResultDateTo: getResultDateTo(),
+                            StudentIdList: studentsIdSelected,
+                            TimezoneOffset: timezoneOffset,
+                            ActReportFileName: actReportFileName,
+                            ReportContentOption: $('#selectReportContentOption').val(),
+                            SpecializedReportJobId: response.SpecializedReportJobId,
+                            isGetAllClass: isGetAllClass
+                        };
+
+                        $.ajax({
+                            url: reportingUrl,
+                            traditional: true,
+                            type: 'POST',
+                            data: data,
+                            success: function() {
+                            }
+                        });
+                    } else {
+                        CustomAlert('Your submitted test result of ' + response.SubmittedTestResult + ' is greater than maximum allowed of ' + response.MaxTestResult + '. Please update your filter and submit again.', true);
+                        //addErrorMessages(response);
+                        $('#ACTPageContent').unblock();
+                        $('#btnSubmit').enableBt();
+                    }
+                },
+                failure: function(response) {
+                    $('#ACTPageContent').unblock();
+                    $('#btnSubmit').enableBt();
+                },
+                timeout: 300000
+            });
+
+        });
+    });
+
+    function clearSelectStudentTab() {
+        $("#selectSchool").find('option').removeAttr("selected");
+        $('#selectSchool').empty();
+
+        $("#selectTeacher").find('option').removeAttr("selected");
+        $('#selectTeacher').empty();
+
+        $("#selectTerm").find('option').removeAttr("selected");
+        $('#selectTerm').empty();
+
+        $("#selectClass").find('option').removeAttr("selected");
+        $('#selectClass').empty();
+
+        $('#studentContent').hide();
+        $('#students').html('');
+    }
+
+    function clearSelectTestTab() {
+        $("#selectGrade").find('option').removeAttr("selected");
+        $('#selectGrade').empty();
+
+        $("#selectSubject").find('option').removeAttr("selected");
+        $('#selectSubject').empty();
+
+        $("#selectBank").find('option').removeAttr("selected");
+        $('#selectBank').empty();
+
+        $("#selectTest").find('option').removeAttr("selected");
+        $('#selectTest').empty();
+        resetSelectedTests();
+    }
+
+    function getRandomString() {
+        return Math.random().toString(36).substring(2, 14);
+    }
+
+    function populateGradesByDistrict() {
+        $('#selectGrade').empty();
+        $('#selectSubject').empty();
+
+        var districtValue = "-1";
+        if ($('#selectDistrict').length > 0) {
+            districtValue = $('#selectDistrict').val();
+        }
+
+        var resultDateFrom = getResultDateFrom();
+        var resultDateTo = getResultDateTo();
+
+        if (districtValue != null && districtValue != 'select') {
+            $.get('@Url.Action("GetGrades", "PopulateReporting")', { districtId: districtValue, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: getIsGetAllClass() }, function (grades) {
+                if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+                    populateGrades(grades);
+                }
+            });
+        }
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                addSelectListItems($('#selectDistrict'), districts);
+            });
+        }
+    }
+
+    function populateSchoolsByDistrict() {
+        $('#selectSchool').empty();
+        var districtValue = $('#selectDistrict').val();
+        var resultDateFrom = getResultDateFrom();
+        var resultDateTo = getResultDateTo();
+
+        if (districtValue != 'select') {
+            $.get('@Url.Action("MultipleTestGetSchools", "PopulateReporting")', { districtId: districtValue, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo }, function (schools) {
+                populateSchools(schools);
+            });
+        }
+    }
+
+    function populateTeachers() {
+        $('#selectTeacher').empty();
+        var districtValue = $('#selectDistrict').val();
+        var schoolValue = $('#selectSchool').val();
+        var virtualTestIdString = getSelectedTags();
+        var resultDateFrom = getResultDateFrom();
+        var resultDateTo = getResultDateTo();
+        var isGetAllClass = getIsGetAllClass();
+
+        if (schoolValue != 'select') {
+            $.get('@Url.Action("MultipleTestGetTeachers", "PopulateReporting")', { districtId: districtValue, schoolId: schoolValue, virtualTestIdString: virtualTestIdString, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: isGetAllClass }, function (teachers) {
+                if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+                    addDefaultOption($('#selectTeacher'), "Teacher");
+                    addSelectListWithDefaultValue($('#selectTeacher'), teachers, 'select', function (item) {
+                        return (item.FirstName) ? item.LastName + ", " + item.FirstName + " (" + item.Name + ")" : item.LastName + " (" + item.Name + ")";
+                    });
+                }
+            });
+        }
+    }
+
+    //if check this checkbox, get all classes, fill to class dropdown, and empty other dropdowns
+    $("#chkLimitTestTakingClass").change(function () {
+            clearSelectTestTab();
+            clearSelectStudentTab();
+
+            if ('@Model.IsPublisher' == 'True') {
+                populateGradesByDistrict();
+            } else {
+                $.get('@Url.Action("GetGrades", "PopulateReporting")', { districtId: '-1', virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: getResultDateFrom(), resultDateTo: getResultDateTo(), isGetAllClass: getIsGetAllClass() }, function (grades) {
+                    populateGrades(grades);
+                });
+            }
+        });
+
+    function populateStates(states) {
+        addDefaultOption($('#selectState'), "State");
+        addSelectListItems($('#selectState'), states);
+    }
+
+    function populateSchools(schools) {
+        addDefaultOption($('#selectSchool'), "School");
+        addSelectListItems($('#selectSchool'), schools);
+    }
+
+    function populateGrades(grades) {
+        $('#selectGrade').empty();
+        addDefaultOption($('#selectGrade'), "@LabelHelper.TestGrade");
+        addSelectListItems($('#selectGrade'), grades);
+
+        getAndAssignAllTestList();
+    }
+
+    function populateSubjects() {
+        resetSubjects();
+        var gradeValue = $('#selectGrade').val();
+        var districtValue = 0;
+        if ($('#selectDistrict').length && $('#selectDistrict').val() != null && $('#selectDistrict').val() != 'select') {
+            districtValue = $('#selectDistrict').val();
+        }
+        var resultDateFrom = getResultDateFrom();
+        var resultDateTo = getResultDateTo();
+
+        if (gradeValue != 'select') {
+            $.get('@Url.Action("GetSubjects", "PopulateReporting")', { gradeId: gradeValue, districtId: districtValue, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: getIsGetAllClass() }, function (subjects) {
+                if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+                    addDefaultOption($('#selectSubject'), "@LabelHelper.Subject");
+                    addSelectListItems($('#selectSubject'), subjects);
+
+                    getAndAssignAllTestList();
+                }
+            });
+        }
+    }
+
+    function populateBanks() {
+        resetBanks();
+        var subjectValue = $('#selectSubject').val();
+        var districtValue = 0;
+        if ($('#selectDistrict').length && $('#selectDistrict').val() != null && $('#selectDistrict').val() != 'select') {
+            districtValue = $('#selectDistrict').val();
+        }
+        var resultDateFrom = getResultDateFrom();
+        var resultDateTo = getResultDateTo();
+
+        if (subjectValue != 'select') {
+            $.get('@Url.Action("GetBanks", "PopulateReporting")', { subjectIds: subjectValue, districtId: districtValue, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: getIsGetAllClass() }, function (banks) {
+                if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+                    addDefaultOption($('#selectBank'), "Bank");
+                    addSelectListItems($('#selectBank'), banks);
+
+                    getAndAssignAllTestList();
+                }
+            });
+        }
+    }
+
+    // Load and assign all test list to use when query school, teacher, term, class and submit test all All test is selected
+    function getAndAssignAllTestList() {
+        if ($('#enableDateRange').val() == 'true') {
+            var districtValue = 0;
+            if ($('#selectDistrict').length && $('#selectDistrict').val() != null && $('#selectDistrict').val() != 'select') {
+                districtValue = $('#selectDistrict').val();
+            }
+
+            var gradeValue = $('#selectGrade').val();
+            var subjectValue = $('#selectSubject').val();
+            var bankValue = $('#selectBank').val();
+            var resultDateFrom = getResultDateFrom();
+            var resultDateTo = getResultDateTo();
+
+            $.get('@Url.Action("MultipleTestGetTests", "PopulateReporting")', { gradeId: gradeValue, subjectId: subjectValue, bankId: bankValue, districtId: districtValue, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: getIsGetAllClass() }, function (tests) {
+                if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+                    var values = [];
+
+                    for (var i = 0; i < tests.length; i++) {
+                        values.push(tests[i].Id);
+                    }
+
+                    $('#VirtualTestIdsForAllTest').val(values.join(','));
+                    $('#selectTest').trigger('change'); // call to reload school
+                }
+            });
+        }
+    }
+
+    function populateTests() {
+        $('#selectTest').empty();
+        var bankValue = $('#selectBank').val();
+        if (bankValue != null && bankValue != 'select') {
+            var districtValue = 0;
+            if ($('#selectDistrict').length && $('#selectDistrict').val() != null && $('#selectDistrict').val() != 'select') {
+                districtValue = $('#selectDistrict').val();
+            }
+            var resultDateFrom = getResultDateFrom();
+            var resultDateTo = getResultDateTo();
+
+            $.get('@Url.Action("MultipleTestGetTests", "PopulateReporting")', { bankId: bankValue, districtId: districtValue, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: getIsGetAllClass() }, function (tests) {
+                if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+                    // Remove selected tests out of return list
+                    for (var i = tests.length - 1; i >= 0; i--) {
+                        if (selectedTagsDict[tests[i].Name] != undefined) {
+                            tests.splice(i, 1);
+                        }
+                    }
+
+                    addDefaultOption($('#selectTest'), "Test");
+                    addSelectListWithDefaultValue($('#selectTest'), tests);
+
+                    if (countSelectedTags() == 0) {
+                        beforeTagItAdded();
+                        $('#selectedTestList').tagit('createTag', 'All tests');}
+                    enableDisablePublishStudentButton();
+
+                    $('#selectTest').trigger('change');
+                }
+            });
+        }
+    }
+
+
+    function resetSelectedTests() {
+        selectedTagsDict = {};
+        $('#selectedTestList .tagit-choice').hide();
+        $('#btnPublishTest').attr('disabled', 'disabled');
+    }
+
+    // Clear or Add "All tests" tag based on selected tests data. is called inside "Select Test" box
+    function updateSelectedTests() {
+        if ($('#enableDateRange').val() == 'true') {
+            // Add "All tests" tag when tag list is empty
+            if (countSelectedTags() == 0) {
+                //if ($('#selectBank').val() != null && $('#selectBank').val() != 'select') {
+                //    beforeTagItAdded();
+                //    $('#selectedTestList').tagit('createTag', 'All tests');
+                //} else {
+                //    selectedTagsDict = {};
+                //    $('#selectedTestList .tagit-choice').hide();
+                //}
+
+                beforeTagItAdded();
+                $('#selectedTestList').tagit('createTag', 'All tests');
+            }
+
+            enableDisablePublishStudentButton();
+        }
+    }
+
+    function enableDisablePublishStudentButton() {
+        if (getSelectedTags() == '') {
+            $('#btnPublishTest').attr('disabled', 'disabled');
+        } else {
+            $('#btnPublishTest').enableBt();
+        }
+    }
+
+    function populateClasses() {
+        $('#selectClass').empty();
+        $('#students').html('');
+        var districtValue = $('#selectDistrict').val();
+        var schoolValue = $('#selectSchool').val();
+        var termValue = $('#selectTerm').val();
+        var teacherValue = $('#selectTeacher').val();
+        var virtualTestIdString = getSelectedTags();
+        var resultDateFrom = getResultDateFrom();
+        var resultDateTo = getResultDateTo();
+        var isGetAllClass = getIsGetAllClass();
+
+        if (termValue != 'select') {
+            $.get('@Url.Action("MultipleTestGetClasses", "PopulateReporting")', { districtId: districtValue, schoolId: schoolValue, termId: termValue, userId: teacherValue, virtualTestIdString: virtualTestIdString, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: isGetAllClass }, function (classes) {
+                if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+                    addDefaultOption($('#selectClass'), "Class");
+                    addSelectListItems($('#selectClass'), classes);
+                }
+            });
+        }
+    }
+
+    function populateAllClasses() {
+        $('#selectClass').empty();
+        $('#students').html('');
+        var districtValue = $('#selectDistrict').val();
+        var virtualTestIdString = getSelectedTags();
+        var resultDateFrom = getResultDateFrom();
+        var resultDateTo = getResultDateTo();
+        var isGetAllClass = getIsGetAllClass();
+
+        $.get('@Url.Action("MultipleTestGetAllClasses", "PopulateReporting")', { districtId: districtValue, virtualTestIdString: virtualTestIdString, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: isGetAllClass }, function (classes) {
+            if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+                addDefaultOption($('#selectClass'), "Class");
+                addSelectListItems($('#selectClass'), classes);
+            }
+        });
+    }
+
+    function populateStudents() {
+        var classValue = $('#selectClass').val();
+        var virtualTestIdString = getSelectedTags();
+        var resultDateFrom = getResultDateFrom();
+        var resultDateTo = getResultDateTo();
+        var isGetAllClass = getIsGetAllClass();
+
+        if (classValue != 'select') {
+            $('#studentContent').show();
+            $.get('@Url.Action("MultipleTestACTGetStudents", "ACTReport")', { classId: classValue, virtualTestIdString: virtualTestIdString, resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: isGetAllClass }, function (students) {
+                $('#students').html('');
+                addStudentsToList($('#students'), students);
+                selectAllStudents();
+            });
+        } else {
+            $('#studentContent').hide();
+        }
+    }
+
+    function addStudentsToList(el, students) {
+        var $el = $(el);
+        var studentHtml = [];
+
+        for (var i = 0, len = students.length; i < len; i++) {
+            var student = students[i];
+            studentHtml.push('<li studentId="' + student.StudentId + '" class="student-item"><a href="javascript:void(0)">' + student.FullName + '</a></li>');
+        }
+
+        $el.html(studentHtml.join(''));
+    }
+
+    function resetSubjects() {
+        $('#selectSubject').empty();
+        resetBanks();
+    }
+
+    function resetBanks() {
+        $('#selectBank').empty();
+        $('#selectTest').empty();
+    }
+
+    function selectAllStudents() {
+        $('.student-col').children().attr('isselected', "yes");
+        $('.student-col').children().css('background-color', "#82CAFA");
+    }
+
+    function selectNoStudents() {
+        $('.student-col').children().attr('isselected', "no");
+        $('.student-col').children().css('background-color', "#f2f2f2");
+    }
+
+    function invertSelectedStudents() {
+        $('.generate-student-list li').each(function() {
+            if ($(this).attr('isselected') == "yes") {
+                $(this).attr('isselected', "no");
+                $(this).css('background-color', "#f2f2f2");
+            } else {
+                $(this).attr('isselected', "yes");
+                $(this).css('background-color', "#82CAFA");
+            }
+        });
+    }
+
+    function populateTerms() {
+        $('#selectTerm').empty();
+
+        var districtValue = $('#selectDistrict').val();
+        var schoolValue = $('#selectSchool').val();
+        var teacherValue = $('#selectTeacher').val();
+        var virtualTestIdString = getSelectedTags();
+        var resultDateFrom = getResultDateFrom();
+        var resultDateTo = getResultDateTo();
+        var isGetAllClass = getIsGetAllClass();
+
+        $.get('@Url.Action("MultipleTestGetTerms", "PopulateReporting")', { districtId: districtValue, virtualTestIdString: virtualTestIdString, userId: teacherValue, schoolId: schoolValue, virtualTestSubTypeId: getVirtualTestSubTypeId(), resultDateFrom: resultDateFrom, resultDateTo: resultDateTo, isGetAllClass: isGetAllClass }, function (terms) {
+            if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+                addDefaultOption($('#selectTerm'), "@LabelHelper.Term");
+                addSelectListItems($('#selectTerm'), terms);
+            }
+        });
+    }
+
+    function getSelectedTags() {
+        var virtualTestIds = '0';
+
+        if ($('#selectDistrict').val() != 'select') { // Check incase ajax returns after user unselect district dropdown
+            if ($('#enableDateRange').val() == 'true') {
+                var x = '';
+                for (var key in selectedTagsDict) {
+                    x += selectedTagsDict[key] + ',';
+                }
+
+                if (x.length > 0)
+                    virtualTestIds = x.substring(0, x.length - 1); // return list of selected tests
+                else {
+                    var values = [];
+                    $('#selectTest  option').each(function() {
+                        if ($(this).attr('value') != 'select')
+                            values.push($(this).attr('value'));
+                    });
+
+                    if (values.length > 0) {
+                        virtualTestIds = values.join(','); // return list of virtual test in test dropdown when bank is selected
+                    } else {
+                        virtualTestIds = $('#VirtualTestIdsForAllTest').val(); // return list of virtual test when all test is selected
+                    }
+                }
+            } else {
+                virtualTestIds = $('#selectTest').val();
+            }
+
+            if (virtualTestIds == 'select' || virtualTestIds == '' || virtualTestIds == null || virtualTestIds == 'null')
+                return '0';
+        }
+
+        return virtualTestIds;
+    }
+
+    function getResultDateFrom() {
+        if ($('#enableDateRange').val() == 'true') {
+            return $('#resultDateFrom').val();
+        }
+        return '';
+    }
+
+    function getResultDateTo() {
+        if ($('#enableDateRange').val() == 'true') {
+            return $('#resultDateTo').val();
+        }
+        return '';
+    }
+
+    function getIsGetAllClass() {
+        var isGetAllClass = !$("#chkLimitTestTakingClass").is(':checked');
+        return isGetAllClass;
+    }
+
+    function countSelectedTags() {
+        try {
+            var count = 0;
+            for (var key in selectedTagsDict) {
+                count++;
+            }
+
+            return count;
+        }
+        catch (err) {
+            return 0;
+        }
+    }
+</script>

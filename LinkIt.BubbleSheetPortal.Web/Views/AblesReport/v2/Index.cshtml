@@ -1,0 +1,871 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.ABLESReport.ABLESReportViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Reporting, "ABLES Report");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+<link rel="stylesheet" href="/Content/themes/AnswerViewer/css/components/modal.css" type="text/css" />
+<style>
+    #portal-v2-containter .modal-component-container {
+        padding: 0 !important;
+    }
+
+    .ables-report {
+        border: 2px solid var(--borderColor);
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .ables-report-item {
+        border-left: 2px solid var(--borderColor);
+    }
+
+    .ables-report:before {
+        display: none;
+    }
+</style>
+
+<article class="container_12">
+    <section class="grid_12">
+        <div id="pageContent" class="block-border">
+
+            @using (Html.BeginForm("Generate", "AblesReport", FormMethod.Post, new { id = "ablesReportForm", @class = "bubbleSheetSelector" }))
+            {
+                <div class="block-content form">
+                    <h1>
+                        ABLES Report
+                    </h1>
+
+                    <ul style="display: none" id="error-messages" class="message error"></ul>
+
+                    <div>
+                        <p class="title-large">Select Report</p>
+                        <div class="ables-report">
+                            @foreach (var report in Model.ReportTypes)
+                            {
+                                <div class="ables-report-item">
+                                    <figure>
+                                        @if (report.Value == "1")
+                                        {
+                                            <text><img src="/Content/images/ables-report/readiness-report.png" /></text>
+                                        }
+                                        else if (report.Value == "2")
+                                        {
+                                            <text><img src="/Content/images/ables-report/class-report.png" /></text>
+                                        }
+                                        else if (report.Value == "3")
+                                        {
+                                            <text><img src="/Content/images/ables-report/profile-report.png" /></text>
+                                        }
+                                        else if (report.Value == "4")
+                                        {
+                                            <text><img src="/Content/images/ables-report/school-report.png" /></text>
+                                        }
+                                    </figure>
+                                    <label for="@report.Value">
+                                        <b class="me-1">@report.Text</b>
+                                        <input type="radio" id="@report.Value" value="@report.Value" name="ables-report-type" v-model="reportTypeSelected">
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <fieldset id="publisherContent" class="block-content form mt-4" v-if="(isPublisher == 'True' || isNetWorkAdmin == 'True') && reportTypeSelected != '-1'">
+                    <p class="title-large">Select State/@LabelHelper.DistrictLabel</p>
+                    <div class="row g-3">
+                        <div class="col-3">
+                            <label>State</label>
+                            <div class="block-text-name w-100">
+                                <select id="selectState" class="w-100" v-model="stateSelected">
+                                    <option v-for="state in states" v-bind:value="state.Id" v-text="state.Name"></option>
+                                </select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <label>@LabelHelper.DistrictLabel</label>
+                            <div class="block-text-name w-100">
+                                <select id="selectDistrict" class="w-100" v-model="districtSelected">
+                                    <option v-for="district in districts" v-bind:value="district.Id" v-text="district.Name"></option>
+                                </select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="block-content form mt-4 fieldset-ables-report" v-show="reportTypeSelected != '-1'">
+                    <p class="title-large" v-text="fieldText"></p>
+                    <div class="row g-3 columns-ables-report">
+                        <div class="col-3" v-if="isShowSchool">
+                            <label>School</label>
+                            <div class="block-text-name w-100">
+                                <select id="selectSchool" class="w-100" v-model="schoolSelected">
+                                    <option v-for="school in schools" v-bind:value="school.Id" v-text="school.Name"></option>
+                                </select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3" v-if="isShowTerm">
+                            <label>
+                                Assessment Round
+                            </label>
+                            <div class="block-text-name w-100">
+                                <select id="selectTerm" class="w-100" v-model="termSelected">
+                                    <option v-for="term in terms" v-bind:value="term.Id" v-text="term.Name"></option>
+                                </select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3" v-if="isShowYear">
+                            <label>Year</label>
+                            <div class="block-text-name w-100">
+                                <select id="selectYear" class="w-100" v-model="year">
+                                    <option v-for="year in years" v-bind:value="year" v-text="year"></option>
+                                </select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3" v-if="isShowTest">
+                            <label>Learning area</label>
+                            <div class="block-text-name w-100">
+                                <select id="selectTest" class="w-100" v-model="testSelected">
+                                    <option v-for="test in tests" v-bind:value="test.Id" v-text="test.Name"></option>
+                                </select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3" v-if="isShowTeacher">
+                            <label>Teacher</label>
+                            <div class="block-text-name w-100">
+                                <select id="selectTeacher" class="w-100" v-model="teacherSelected">
+                                    <option v-for="teacher in teachers" v-bind:value="teacher.Id" v-text="teacher.Name"></option>
+                                </select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3" v-if="isShowClass">
+                            <label>Class</label>
+                            <div class="block-text-name w-100">
+                                <select id="selectClass" class="w-100" v-model="classesSelected">
+                                    <option v-for="class in classes" v-bind:value="class.Id" v-text="class.Name"></option>
+                                </select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                @Html.Partial("v2/_StudentFilter")
+                <div class="block-content form mt-4 text-end">
+                    <button class="btn-red" v-on:click="submitGenerateReport()" type="button" v-bind:disabled="isEnableGenerateButton">Generate Report</button>
+                </div>
+            }
+        </div>
+        <modal-component v-bind:show.sync="isShowModal" v-bind:width="450">
+            <div slot="header"></div>
+            <div slot="body" class="mb-4">
+                <b v-text="msg"></b>
+            </div>
+            <div slot="footer">
+                <div v-if="!isSuccess">
+                    <div v-if="!isWarning"><button id="btnOK" v-on:click="closePopup()">OK</button></div>
+                    <div v-if="isWarning">
+                        <button id="btnOK" v-on:click="closePopup()">Stop</button>
+                        <button id="btnYes" v-on:click="continueGenerateReport()">Continue</button>
+                    </div>
+                </div>
+                <div v-if="isSuccess">
+                    <a id="btndownloadfile" target="_blank" v-bind:href="downloadfileUrl" v-on:click="closePopup()" class="big-button">OK</a>
+                </div>
+            </div>
+        </modal-component>
+    </section>
+</article>
+
+@section scripts {
+    <script src="/Scripts/Lib/vue-modal.js"></script>
+    <script>
+        var AblesReportCtrl = {
+            getStates: function(isNetWorkAdmin) {
+                if (isNetWorkAdmin == 'True') {
+                    return $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")');
+                }
+                return $.get('@Url.Action("GetStates", "PopulateStateDistrict")');
+            },
+            getDistricts: function (params, isNetWorkAdmin) {
+                if (isNetWorkAdmin == 'True') {
+                    return $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', params);
+                }
+                return $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', params);
+            },
+            getTests: function(params) {
+                return $.get('@Url.Action("GetTests")', params);
+            },
+            getSchools: function(params) {
+                return $.get('@Url.Action("GetSchools")', params);
+            },
+            getTerms: function(params) {
+                return $.get('@Url.Action("GetAssRounds")', params);
+            },
+            getClasses: function(params) {
+                return $.get('@Url.Action("GetClasses")', params);
+            },
+            getTeachers: function(params) {
+                return $.get('@Url.Action("GetTeachers", "PopulateSchoolTeacher")', params);
+            },
+            submitGenerateReport: function(params) {
+                ShowBlock($('#ablesReportForm'), "Generating");
+                return $.post('@Url.Action("Generate")', params);
+            },
+            continueGenerateReport: function(params) {
+                ShowBlock($('#ablesReportForm'), "Generating");
+                return $.post('@Url.Action("ContinueGenerate")', params);
+            }
+        };
+
+        var AblesReportUtils = {
+            getSelectDefault: function(state, text) {
+                var list = [];
+
+                if (!state.length) {
+                    text = 'No Results Found';
+                }
+
+                list.push({
+                    Id: -1,
+                    Name: text
+                });
+
+                if (state.length) {
+                    for (var i = 0, len = state.length; i < len; i++) {
+                        list.push(state[i]);
+                    }
+                }
+
+                return list;
+            }
+        };
+        window.Vue = Vue;
+        var AblesReportViewModel = new Vue({
+            el: 'body',
+            data: {
+                reportTypeSelected: '-1',
+                isPublisher: '@Model.IsPublisher',
+                isNetWorkAdmin: '@Model.IsNetworkAdmin',
+                canSelectTeachers: '@Model.CanSelectTeachers',
+                states: [],
+                stateSelected: '-1',
+                districts: [],
+                districtSelected: '-1',
+                tests: [],
+                testSelected: '-1',
+                schools: [],
+                schoolSelected: '-1',
+                terms: [],
+                termSelected: '-1',
+                classes: [],
+                classesSelected: '-1',
+                teachers: [],
+                teacherSelected: '-1',
+                year: '',
+                years: [],
+                isShowModal: false,
+                msg: '',
+                isSuccess: false,
+                downloadfileUrl: '',
+                isWarning: false,
+                reportJobId: 0,
+                fileName: '',
+                students: [],
+                selectedStudent: [],
+                isEnableGenerateButton: true
+            },
+            computed: {
+                isShowTest: function() {
+                    return this.reportTypeSelected == '1' ||
+                        this.reportTypeSelected == '2' ||
+                        this.reportTypeSelected == '4';
+                },
+                isShowSchool: function() {
+                    return this.reportTypeSelected == '1' ||
+                        this.reportTypeSelected == '2' ||
+                        this.reportTypeSelected == '3' ||
+                        this.reportTypeSelected == '4';
+                },
+                isShowTeacher: function() {
+                    return (this.reportTypeSelected == '2' ||
+                        this.reportTypeSelected == '3') && this.canSelectTeachers == 'True';
+                },
+                isShowTerm: function() {
+                    return this.reportTypeSelected == '1' ||
+                        this.reportTypeSelected == '4';
+                },
+                isShowClass: function() {
+                    return this.reportTypeSelected == '1' ||
+                        this.reportTypeSelected == '2' ||
+                        this.reportTypeSelected == '3';
+                },
+                isShowStudent: function() {
+                    return (this.reportTypeSelected == '1' ||
+                            this.reportTypeSelected == '2' ||
+                            this.reportTypeSelected == '3') &&
+                        this.classesSelected != '-1';
+                },
+                isShowYear: function() {
+                    return this.reportTypeSelected == '2' ||
+                        this.reportTypeSelected == '3';
+                },
+                fieldText: function() {
+                    if (this.reportTypeSelected != '-1') {
+                        return $('#reportType option:selected').text() + " Reports";
+                    }
+                    return "";
+                }
+            },
+            watch: {
+                reportTypeSelected: function(val) {
+                    this.schools = [];
+                    this.classes = [];
+                    this.tests = [];
+                    this.terms = [];
+                    this.teachers = [];
+                    this.students = [];
+                    this.classesSelected = '-1';
+                    this.isEnableGenerateButton = true;
+                    this.year = '';
+
+                    if (this.isPublisher === 'True' || this.isNetWorkAdmin === 'True') {
+                        this.populateStates(val);
+                    } else {
+                        var params = {
+                            districtId: 0
+                        };
+                        this.populateSchools(val, params);
+                        if (this.reportTypeSelected == 1 || this.reportTypeSelected == 4) {
+                            this.populateTerms(val, params);
+                            this.populateTests(val, params);
+                        } else if (this.reportTypeSelected == 2) {
+                            this.populateTests(val, params);
+                        }
+                    }
+                },
+                stateSelected: function(val) {
+                    var params = { stateId: val };
+
+                    this.populateDistricts(val, params);
+                },
+                districtSelected: function(val) {
+                    this.classes = [];
+                    var params = {
+                        districtId: val
+                    };
+                    this.populateSchools(val, params);
+                    if (this.reportTypeSelected == 1 || this.reportTypeSelected == 4) {
+                        this.populateTerms(val, params);
+                        this.populateTests(val, params);
+                    } else if (this.reportTypeSelected == 2) {
+                        this.populateTests(val, params);
+                    }
+                },
+                testSelected: function(val) {
+                    this.enableGenerateButtonSchoolReport();
+                    var params = {
+                        districtId: this.districtSelected,
+                        schoolId: this.schoolSelected,
+                        ablesTestName: this.testSelected,
+                        termId: this.termSelected,
+                        reportType: this.reportTypeSelected,
+                        teacherId: (this.reportTypeSelected == 2 || this.reportTypeSelected == 3) ? this.teacherSelected : '-1',
+                        year: this.year
+                    };
+                    if ((this.reportTypeSelected == 1 && this.schoolSelected != '-1' && this.termSelected != '-1')
+                        || (this.reportTypeSelected == 2 && this.schoolSelected != '-1' && (this.teacherSelected != '-1' || !this.isShowTeacher))) {
+                        this.populateClasses(val, params);
+                    }
+                },
+                schoolSelected: function(val) {
+                    this.enableGenerateButtonSchoolReport();
+                    if (this.isShowTeacher) {
+                        var paramTeacher = {
+                            schoolId: this.schoolSelected,
+                            sortedByLastNameFirstName: true
+                        };
+                        this.populateTeachers(val, paramTeacher);
+                    } else {
+                        if ((this.reportTypeSelected == 1 && this.testSelected != '-1' && this.termSelected != '-1')
+                            || (this.reportTypeSelected == 2 && this.testSelected != '-1' && (this.teacherSelected != '-1' || !this.isShowTeacher))
+                            || (this.reportTypeSelected == 3 && this.schoolSelected != '-1' && (this.teacherSelected != '-1' || !this.isShowTeacher))) {
+
+                            var params = {
+                                districtId: this.districtSelected,
+                                schoolId: this.schoolSelected,
+                                ablesTestName: this.testSelected,
+                                termId: this.termSelected,
+                                reportType: this.reportTypeSelected,
+                                teacherId: (this.reportTypeSelected == 2 || this.reportTypeSelected == 3) ? this.teacherSelected : '-1',
+                                year: this.year
+                            };
+                            this.populateClasses(val, params);
+                        }
+                    }
+                    if (this.reportTypeSelected == 2 || this.reportTypeSelected == 3) {
+                        this.populateYears();
+                    }
+                },
+                termSelected: function(val) {
+                    if (this.reportTypeSelected == 1 && this.testSelected != '-1' && this.schoolSelected != '-1') {
+                        var params = {
+                            districtId: this.districtSelected,
+                            schoolId: this.schoolSelected,
+                            ablesTestName: this.testSelected,
+                            termId: this.termSelected,
+                            reportType: this.reportTypeSelected,
+                            teacherId: (this.reportTypeSelected == 2 || this.reportTypeSelected == 3) ? this.teacherSelected : '-1'
+                        };
+                        this.populateClasses(val, params);
+                    }
+                },
+                classesSelected: function() {
+                    if ((this.reportTypeSelected == 1 || this.reportTypeSelected == 3 || this.reportTypeSelected == 2) && this.classesSelected != '-1') {
+                        this.populateStudents(this.classesSelected);
+                    }
+                },
+                teacherSelected: function(val) {
+                    if (this.reportTypeSelected == 2 || this.reportTypeSelected == 3) {
+                        var params = {
+                            districtId: this.districtSelected,
+                            schoolId: this.schoolSelected,
+                            ablesTestName: this.testSelected,
+                            termId: this.termSelected,
+                            reportType: this.reportTypeSelected,
+                            teacherId: this.teacherSelected,
+                            year: this.year
+                        };
+                        this.populateClasses(val, params);
+                    }
+                },
+                year: function(val) {
+                    if ((this.reportTypeSelected == 3 || (this.reportTypeSelected == 2 && this.testSelected != '-1')) &&
+                        this.schoolSelected != '-1' && (this.teacherSelected != '-1' || !this.isShowTeacher)) {
+                        var params = {
+                            districtId: this.districtSelected,
+                            schoolId: this.schoolSelected,
+                            ablesTestName: this.testSelected,
+                            termId: this.termSelected,
+                            reportType: this.reportTypeSelected,
+                            teacherId: this.teacherSelected,
+                            year: this.year
+                        }
+                        this.populateClasses(val, params);
+                    }
+                }
+            },
+            methods: {
+                populateStates: function(val) {
+                    var self = this;
+
+                    // Load states
+                    self.stateSelected = '-1';
+
+                    if (val == '-1') {
+                        self.states = [];
+                    } else {
+                        self.states = [];
+                        AblesReportCtrl.getStates(self.isNetWorkAdmin)
+                            .done(function(states) {
+                                self.states = AblesReportUtils.getSelectDefault(states, 'Select State');
+                                $('#selectState').marquee();
+                            });
+                    }
+                },
+                populateDistricts: function(val, params) {
+                    var self = this;
+
+                    // Load districts
+                    self.districtSelected = '-1';
+
+                    if (val == '-1') {
+                        self.districts = [];
+                    } else {
+                        self.districts = [];
+                        AblesReportCtrl.getDistricts(params, self.isNetWorkAdmin)
+                            .done(function(districts) {
+                                self.districts = AblesReportUtils.getSelectDefault(districts, 'Select District');
+                                if (districts.length == 1) {
+                                    self.districtSelected = self.districts[1].Id;
+                                }
+                                $('#selectDistrict').marquee();
+                            });
+                    }
+                },
+                populateTests: function(val, params) {
+                    var self = this;
+
+                    // Load tests
+                    self.testSelected = '-1';
+
+                    if (val == '-1') {
+                        self.tests = [];
+                    } else {
+                        self.tests = [];
+                        AblesReportCtrl.getTests(params)
+                            .done(function(tests) {
+                                self.tests = AblesReportUtils.getSelectDefault(tests, 'Select Test');
+                                if (tests.length == 1) {
+                                    self.testSelected = self.tests[1].Id;
+                                }
+                                $('#selectTest').marquee();
+                            });
+                    }
+                },
+                populateSchools: function(val, params) {
+                    var self = this;
+
+                    // Load schools
+                    self.schoolSelected = '-1';
+
+                    if (val == '-1') {
+                        self.schools = [];
+                    } else {
+                        self.schools = [];
+                        AblesReportCtrl.getSchools(params)
+                            .done(function(schools) {
+                                self.schools = AblesReportUtils.getSelectDefault(schools, 'Select School');
+                                if (schools.length == 1) {
+                                    self.schoolSelected = self.schools[1].Id;
+                                }
+                                $('#selectSchool').marquee();
+                            });
+                    }
+                },
+                populateTeachers: function(val, params) {
+                    var self = this;
+
+                    // Load teachers
+                    self.teacherSelected = '-1';
+
+                    if (val == '-1') {
+                        self.teachers = [];
+                    } else {
+                        self.teachers = [];
+                        AblesReportCtrl.getTeachers(params)
+                            .done(function(teachers) {
+                                self.teachers = AblesReportUtils.getSelectDefault(teachers, 'Select Teacher');
+                                if (teachers.length == 1) {
+                                    self.teacherSelected = self.teachers[1].Id;
+                                }
+                                $('#selectTeacher').marquee();
+                            });
+                    }
+                },
+                populateTerms: function(val, params) {
+                    var self = this;
+
+                    // Load terms
+                    self.termSelected = '-1';
+
+                    if (val == '-1') {
+                        self.terms = [];
+                    } else {
+                        self.terms = [];
+                        AblesReportCtrl.getTerms(params)
+                            .done(function(terms) {
+                                self.terms = AblesReportUtils.getSelectDefault(terms, 'Select @LabelHelper.Term');
+                                if (terms.length == 1) {
+                                    self.termSelected = self.terms[1].Id;
+                                }
+                                $('#selectTerm').marquee();
+                            });
+                    }
+                },
+                populateClasses: function(val, params) {
+                    var self = this;
+
+                    // Load classes
+                    self.classesSelected = '-1';
+
+                    if (val == '-1') {
+                        self.classes = [];
+                    } else {
+                        self.classes = [];
+                        AblesReportCtrl.getClasses(params)
+                            .done(function(classes) {
+                                self.classes = AblesReportUtils.getSelectDefault(classes, 'Select Class');
+                                if (classes.length == 1) {
+                                    self.classesSelected = self.classes[1].Id;
+                                }
+                                $('#selectClass').marquee();
+                            });
+                    }
+                },
+                populateStudents: function() {
+                    var self = this;
+                    self.students = [];
+                    var params = {
+                        districtId: this.districtSelected,
+                        ablesTestName: this.testSelected,
+                        termId: this.termSelected,
+                        reportType: this.reportTypeSelected,
+                        classId: this.classesSelected
+                    };
+                    $.ajax({
+                        method: 'GET',
+                        url: '@Url.Action("GetStudents")',
+                        data: params,
+                        beforeSend: function() {
+                            ShowBlock($('#pageContent'), 'Loading student');
+                        },
+                        success: function(students) {
+                            self.students = students;
+                            self.isEnableGenerateButton = false;
+                            $('#pageContent').unblock();
+                        },
+                        error: function() {
+                            $('#pageContent').unblock();
+                        }
+                    });
+                },
+                populateYears: function() {
+                    var self = this;
+                    self.years = [];
+                    $.ajax({
+                        method: 'GET',
+                        url: '@Url.Action("GetYearBySchool")',
+                        data: { schoolId: self.schoolSelected },
+                        success: function(years) {
+                            self.years = years;
+                            self.year = years[0];
+                            $('#selectYear').marquee();
+                        }
+                    });
+                },
+                addStudentsToList: function(el, students) {
+                    var $el = $(el);
+                    var studentHtml = [];
+
+                    for (var i = 0, len = students.length; i < len; i++) {
+                        var student = students[i];
+                        studentHtml.push('<li studentId="' + student.StudentId + '" class="student-item"><a href="javascript:void(0)">' + student.FullName + '</a></li>');
+                    }
+
+                    $el.html(studentHtml.join(''));
+                },
+                submitGenerateReport: function() {
+                    var self = this;
+
+                    var preFixFileName = '';
+                    if (self.reportTypeSelected == '1')
+                        preFixFileName = "ReadinessReport_";
+                    if (self.reportTypeSelected == '2')
+                        preFixFileName = "ClassReport_";
+                    if (self.reportTypeSelected == '3')
+                        preFixFileName = "ProfileReport_";
+                    if (self.reportTypeSelected == '4')
+                        preFixFileName = "SchoolReport_";
+
+                    var fileName = preFixFileName + (new Date()).toString("yyMMddHHmmss") + "_" + this.getRandomString() + ".pdf";
+                    self.fileName = fileName;
+
+                    var params = {};
+                    var className = '';
+                    if (self.classes.length > 0) {
+                        $.each(self.classes, function(id, item) {
+                            if (item.Id == self.classesSelected) {
+                                className = item.Name;
+                                return false;
+                            }
+                        });
+                    }
+                    if (self.reportTypeSelected == '1') {
+                        params = {
+                            DistrictId: self.districtSelected,
+                            ReportType: self.reportTypeSelected,
+                            AblesTestName: self.testSelected,
+                            ClassId: self.classesSelected,
+                            SelectedStudent: self.getSelectedStudent().toString(),
+                            ClassName: className,
+                            SchoolId: self.schoolSelected,
+                            TermId: self.termSelected,
+                            FileName: fileName
+                        };
+                    }
+                    if (self.reportTypeSelected == '2') {
+                        params = {
+                            DistrictId: self.districtSelected,
+                            ReportType: self.reportTypeSelected,
+                            AblesTestName: self.testSelected,
+                            ClassId: self.classesSelected,
+                            SelectedStudent: self.getSelectedStudent().toString(),
+                            ClassName: className,
+                            SchoolId: self.schoolSelected,
+                            FileName: fileName
+                        };
+                    }
+                    if (self.reportTypeSelected == '3') {
+                        params = {
+                            DistrictId: self.districtSelected,
+                            ReportType: self.reportTypeSelected,
+                            ClassId: self.classesSelected,
+                            SelectedStudent: self.getSelectedStudent().toString(),
+                            ClassName: className,
+                            SchoolId: self.schoolSelected,
+                            FileName: fileName
+                        };
+                    }
+                    if (self.reportTypeSelected == '4') {
+                        params = {
+                            DistrictId: self.districtSelected,
+                            ReportType: self.reportTypeSelected,
+                            AblesTestName: self.testSelected,
+                            SchoolId: self.schoolSelected,
+                            TermId: self.termSelected,
+                            FileName: fileName
+                        };
+                    }
+
+                    AblesReportCtrl.submitGenerateReport(params).done(function(response) {
+                        if (response.success != undefined && response.success == false) {
+                            self.isSuccess = false;
+                            if (response.warning != undefined && response.warning == true) {
+                                self.msg = response.messageError;
+                                self.msg += "Do you want to stop generating report or continue with the rest of results?";
+                                self.reportJobId = response.reportJobId;
+                                self.isWarning = true;
+                            } else {
+                                self.isWarning = false;
+                                self.msg = response.messageError;
+                            }
+                        } else {
+                            self.isSuccess = true;
+                            self.isWarning = false;
+                            self.msg = 'Report successfully generated. Click OK to download.';
+                            var url = '@Url.Action("DownloadFile")?filename=' + response.filename;
+                            self.downloadfileUrl = url;
+                        }
+                        self.isShowModal = true;
+                        $('#ablesReportForm').unblock();
+                    });
+                },
+                getRandomString: function() {
+                    var d = new Date().getTime();
+                    var uuid = 'xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                        var r = (d + Math.random() * 16) % 16 | 0;
+                        d = Math.floor(d / 16);
+                        return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+                    });
+                    return uuid;
+                },
+                closePopup: function() {
+                    this.isShowModal = false;
+                },
+                continueGenerateReport: function() {
+                    var self = this;
+
+                    var params = {
+                        reportJobId: self.reportJobId,
+                        fileName: self.fileName
+                    };
+
+                    self.isShowModal = false;
+                    AblesReportCtrl.continueGenerateReport(params).done(function(response) {
+                        self.isWarning = false;
+                        if (response.success != undefined && response.success == false) {
+                            self.isSuccess = false;
+                            self.msg = response.messageError;
+                        } else {
+                            self.isSuccess = true;
+                            self.msg = 'Report successfully generated. Click OK to download.';
+                            var url = '@Url.Action("DownloadFile")?filename=' + self.fileName;
+                            self.downloadfileUrl = url;
+                        }
+                        self.isShowModal = true;
+                        $('#ablesReportForm').unblock();
+                    });
+                },
+                selectAllStudents: function() {
+                    $('.student-col').children().attr('isselected', "yes");
+                    $('.student-col').children().css('background-color', "#82CAFA");
+                    this.enableGenerateButton();
+                },
+                selectNoStudents: function() {
+                    $('.student-col').children().attr('isselected', "no");
+                    $('.student-col').children().css('background-color', "#f2f2f2");
+                    this.enableGenerateButton();
+                },
+                invertSelectedStudents: function() {
+                    $('.generate-student-list li').each(function() {
+                        if ($(this).attr('isselected') == "yes") {
+                            $(this).attr('isselected', "no");
+                            $(this).css('background-color', "#f2f2f2");
+                        } else {
+                            $(this).attr('isselected', "yes");
+                            $(this).css('background-color', "#82CAFA");
+                        }
+                    });
+                    this.enableGenerateButton();
+                },
+                selectStudent: function(studentId) {
+                    var $li = $('.generate-student-list li[studentId=' + studentId + ']');
+                    if ($li.attr('isselected') == "yes") {
+                        $li.attr('isSelected', "no");
+                        $li.css('background-color', "#f2f2f2");
+                    } else {
+                        $li.attr('isSelected', "yes");
+                        $li.css('background-color', "#82CAFA");
+                    }
+                    this.enableGenerateButton();
+                },
+                enableGenerateButton: function() {
+                    this.isEnableGenerateButton = this.getSelectedStudent().length === 0;
+                },
+                enableGenerateButtonSchoolReport: function() {
+                    if (this.reportTypeSelected == 4) {
+                        if (this.schoolSelected != '-1' && this.testSelected != '-1') {
+                            this.isEnableGenerateButton = false;
+                        } else {
+                            this.isEnableGenerateButton = true;
+                        }
+                    }
+                },
+                getSelectedStudent: function() {
+                    var studentsIdSelected = [];
+                    $(".student-item[isSelected=yes]").each(function() {
+                        studentsIdSelected.push($(this).attr('studentId'));
+                    });
+
+                    return studentsIdSelected;
+                }
+            }
+        });
+    </script>
+}

@@ -1,0 +1,162 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testmanagement, "Test Result Export");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleCustomBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptTestResultsExportBundle()
+
+<article class="container_12">
+    <section class="grid_12 m-0">
+        <div class="block-border" id="stDistrict">
+            <div class="block-content form">
+                <p class="title-large">Filter Tests</p>
+                <ul style="display: none; margin-bottom: 10px;" id="error-messages" class="message error">
+                    <li></li>
+                </ul>
+                <ul style="display: none; margin-bottom: 10px;" id="success-message" class="message success">
+                    <li></li>
+                </ul>
+                <div id="divContentFilterForm" class="columns"></div>
+                <div class="btn-wrapper">
+                    <button id="clearFilter" onclick="ClearAll()" class="grey btn-blue me-3" type="button">Clear Filter</button>
+                    <button id="filterSheets" onclick="LoadTestReTagToView()" class="btn-red" type="button" disabled>Apply Filters</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<div id="divTestResultDisplay">
+</div>
+
+<style>
+    .btn-wrapper {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    a.PopupHelp {
+        background: url(../../Content/themes/Constellation/images/icons/help-icon_1.png) no-repeat top left;
+        display: block;
+        width: 25px;
+        height: 25px;
+        text-indent: -99999px; /* hides the link text */
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        top: 100px !important;
+    }
+</style>
+<script type="text/javascript">
+    $(function () {
+        $.ajax({
+            url: '/TestResultsExport/LoadTestFilter',
+            cache: false
+        }).done(function (html) {
+            $("#divContentFilterForm").html(html);
+            });
+            $('#divTestResultDisplay').load('@Url.Action("LoadTestResultByFilter")',
+            {
+                districtId: 0, virtualTestId: 0, classId: 0,
+                studentName: ""  , schoolId: 0, teacherName: "" ,termId: 0, timePeriod: 0
+            }, function (response) {
+            $('#adminContent').unblock();
+            if (typeof (showFooter) === 'function') showFooter();
+        });
+        //LoadPopuConfirm();
+        $('#divShowHideButton').hide();
+    });
+
+
+    $('#btnClearAll').click(function () {
+        ClearAll();
+    });
+
+
+    function ProcessTestResult(data) {
+        var testresultIds = data.testResultIDs;
+        var total = testresultIds.toString().split(',');
+        var dataTable = $("#dataTable");
+
+         $.ajax({
+            type: 'POST',
+            url: '/TestResultsExport/RetagTestResultsSelected',
+             data: { lstTestResultIds: testresultIds, districtId: GetDistrictId(), isGradebook: data.isGradebook, isStudentRecord: data.isStudentRecord, isCleverApi: data.isCleverApi, isExportRawScore: data.isExportRawScore },
+
+            success: function (data) {
+            $('#success-message').html('<li style="text-transform:none;font-size:100%"> ' + total.length + ' test result(s) have been marked for export and they will be included in the next regularly scheduled data export which usually runs every weeknight. </li>');
+            $('#success-message').show();
+           },
+            error: function (err) {
+                 console.log(response.Message);
+                $('#error-messages').html('<li style="text-transform:none;font-size:100%"> Have some error, Please try again. </li>');
+                $('#error-messages').show();
+             },
+            complete: function () {
+
+            LoadTestReTagToView();
+            $('#stDistrict').unblock();
+             $(".dialog").dialog("close");
+            }
+            });
+    }
+
+
+    function LoadTestReTagToView() {
+        $('#detailDiv').empty();
+        var districtId = GetDistrictId();
+        var schoolId = $("#ftSchoolSelect").val() || 0;
+        var virtualTestId = $('#ftTestSelect').val() || 0;
+        var classId = $("#ftClassSelect").val() || 0;
+        var  termId = $("#ftTermSelect").val() || 0;
+        var teacherName = $("#txtTeacher").val();
+        var studentName = $("#txtStudent").val();
+        var timePeriod = $('#dateTime').val();
+        $('#btnSubmitSelected').attr("disabled", "disabled");
+
+        $('#divTestResultDisplay').load('@Url.Action("LoadTestResultByFilter")',
+            {
+                districtId: districtId, virtualTestId: virtualTestId, classId: classId,
+                studentName: studentName  , schoolId: schoolId, teacherName: teacherName ,termId: termId, timePeriod: timePeriod
+            }, function (response) {
+            $('#adminContent').unblock();
+            $("html, body").animate({ scrollTop: 0 }, 200);
+            if (typeof (showFooter) === 'function') showFooter();
+        });
+    }
+
+    function CurrentPageShowHideReviewButton(flag) {
+        if (flag > 0) {
+            $('#divShowHideButton').show();
+        } else {
+            $('#divShowHideButton').hide();
+            $("#divTestResultDisplay").html('');
+        }
+    }
+
+    function HideResultContent() {
+        $("#divTestResultDisplay").html('');
+        $('#btnSubmitSelected').attr("disabled", "disabled");
+    }
+
+    function confirmRetagTestResult(data) {
+        ProcessTestResult(data);
+    }
+</script>

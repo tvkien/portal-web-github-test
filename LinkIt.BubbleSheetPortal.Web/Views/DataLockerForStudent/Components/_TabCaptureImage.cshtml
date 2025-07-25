@@ -1,0 +1,93 @@
+<template id="tab-capture-image-template">
+    <div class="capture-image-container">
+        <div class="image-capture">
+            <video ref="video" autoplay="" muted="" playsinline="">
+            </video>
+            <div class="image-capture__actions">
+                <button class="btn-action btn-action--camera" @@click="handleCaptureClick"></button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+    var tabCaptureImage = {
+        template: document.getElementById('tab-capture-image-template').innerHTML,
+        mixins: [attachmentsMixin],
+        data: function () {
+            return {
+                recorderInstance: new RecordVideo({ audio: false }),
+                mediaStream: null,
+            }
+        },
+        methods: {
+            handleCaptureClick: function () {
+                var self = this;
+                var fileName = 'Student Image.jpg';
+                self.recorderInstance.captureImage(self.$refs.video, function (blob) {
+                    var file = new File([blob], fileName);
+                    self.$emit('onAddItems', [{ file: file, isCapture: true }]);
+                });
+            },
+            startCamera: function () {
+                var self = this;
+                if (!this.recorderInstance) {
+                    this.recorderInstance = new RecordVideo();
+                }
+                this.recorderInstance.startCamera(function (stream) {
+                    self.mediaStream = stream;
+                    self.$nextTick(function () {
+                        self.$refs.video.srcObject = null;
+                        self.$refs.video.srcObject = stream;
+                        self.$refs.video.play();
+                    });
+                });
+            }
+        },
+        deactivated: function () {
+            this.recorderInstance.stopBothVideoAndAudio(this.mediaStream);
+            this.mediaStream = null;
+        },
+        activated: function () {
+            if (!this.mediaStream) {
+                this.startCamera();
+            }
+        },
+        beforeDestroy: function () {
+            this.recorderInstance.stopBothVideoAndAudio(this.mediaStream);
+            this.mediaStream = null;
+        }
+    };
+</script>
+
+<style>
+    .capture-image-container {
+        position: relative;
+    }
+
+        .capture-image-container video {
+            background-color: #000;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+
+        .capture-image-container .image-capture__actions {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .capture-image-container .btn-action.btn-action--camera {
+            height: 30px;
+            width: 30px;
+            border-radius: 15px;
+            background-image: linear-gradient(#ffffff 0%, #b9b9b9 100%);
+            border: 2px solid #000000;
+            outline: 2px solid #ffffff;
+        }
+</style>

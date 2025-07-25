@@ -1,0 +1,109 @@
+﻿<div class="no-margin last-child" >
+    <table id="dataTableAssignedGradeList" class="datatable table no-margin" width="100%" >
+        <thead>
+            <tr>
+                <th scope="col" style="width: 15px"></th>
+                <th scope="col" style="width: 15px; display: none"></th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    @LabelHelper.TestGrade
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+<script type="text/javascript">
+    $(function () {
+        var optionsAssignedGrades = {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetAssignedGrades")?gradeIdString=' + '@ViewBag.GradeIdString' ,
+            fnServerParams: function (aoData) {
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        //when passing parameter to searchbox then click on allpy filter, tabase does not recognize parameter, need to assign parameter to searchbox manually
+                        if (item.value.length == 0 && $("input[aria-controls|='dataTableAssignedGradeList']").val().length > 0) {
+                            item.value = $("input[aria-controls|='dataTableAssignedGradeList']").val();
+                        }
+                        
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        }while(item.value.indexOf('""')>=0)
+
+                        if(item.value=='"') {
+                            item.value = item.value.replace('"', "''");
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;//only process searchbox
+                    }
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'Id', bSearchable: false, bSortable: false },
+                { sType: 'integer', sName: 'Order', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityNotMatch(aData[0]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableAssignedGradeList'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableAssignedGradeList').unblock();
+                $('.with-tip').tip();
+                $('#dataTableAssignedGradeList_wrapper .block - controls').css('marginTop', '100px');
+
+            }
+        };
+
+        $("#dataTableAssignedGradeList").data("options", optionsAssignedGrades);
+        initializeDataTable($("#dataTableAssignedGradeList"));
+
+        $('.control-next').css('margin-right', '0px');
+
+        
+        function setIconVisibilityNotMatch(id) {
+            var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+            var deleteString = '<a href="javascript:void(0)" title="Remove" operation="1" gradeId="' + id + '" class="with-tip actionIcon removeAssignedGrade"><img src="' + deleteIcon + '" width="16" height="16"></a>';
+            return deleteString;
+        }
+
+        $(".removeAssignedGrade").die("click");
+        $('.removeAssignedGrade').live('click', function () {
+            if (confirm("Are you sure you want to remove this grade from this lesson?")) {
+                var gradeId = $(this).attr('gradeId');
+                var lessonId = @ViewBag.LessonId;
+                $(this).hide();
+                //just remove from script
+                var gradeIdList = $("#AssignedGradeIdString").val();
+                if(gradeIdList==null) {
+                    gradeIdList = '';
+                }
+                gradeIdList = gradeIdList.replace(',-' + gradeId+'-','');
+                $("#AssignedGradeIdString").val(gradeIdList);
+                PopulateAssignedGrades(gradeIdList);
+                
+               @* $.post('@Url.Action("RemoveGradeFromLesson")', { lessonId: lessonId, gradeId: gradeId}, function (response) {
+                    if (response.Success == 'success') {
+                        ui.dataTableAssignedGradeList.fnDraw();
+                    } else {
+                        alert(response.errorMessage);
+                }
+            });*@
+        }
+    });
+    });
+</script>

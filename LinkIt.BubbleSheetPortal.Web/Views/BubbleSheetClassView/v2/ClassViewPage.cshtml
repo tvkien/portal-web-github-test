@@ -1,0 +1,249 @@
+@model LinkIt.BubbleSheetPortal.Web.Helpers.BBSClassViewSplitModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Managebubblesheets, "Bubble Sheet Class View");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleDataLockerTemplateBundle()
+<link href="@BundleHelper.Version("~/Content/css/v2/review-bubble-sheet.css")" rel="stylesheet" type="text/css" />
+@section stylesheet {
+    <link rel="stylesheet" href="/Scripts/Lib/handsontable/pro/handsontable.full.min.css">
+    <link rel="stylesheet" href="/Scripts/Qtip/jquery.qtip.css">
+    <link rel="stylesheet" href="/Content/css/vue-components/vue-modal.css">
+    @*<link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/BubbleSheetClassReview.css">*@
+    <link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/Common.css">
+}
+
+<article vue="bubbleSheetClassReview" class="container_12 custom-resize-img">
+    <div class="bubbleSheetClassReviewWrapper">
+        <div class="bubbleSheetClassReviewContainer block-content mb-4 group-header">
+            <div class="d-flex justify-content-between align-items-center mb-5">
+                <ul class="nav-custom">
+                    <li class="nav-item">
+                        <a href="#" class="bubbleSheetClassReviewPage is-first" data-url="Index">
+                            <span>Student Review</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="bubbleSheetClassReviewPage is-second" data-url="ClassViewPage">
+                            <span>Class Review</span>
+                        </a>
+                    </li>
+                </ul>
+                <div>
+                    <a href="/BubbleSheetReview" class="btn-reviewbbs-class btn btn-link d-block p-0 position-static">
+                        <i class="fa-solid fa-arrow-left me-2"></i>
+                        Back to Review Bubble Sheets
+                    </a>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <b class="text-dark-blue">Test Name: <span class="fw-normal">@Model.TestName</span></b>
+                <div class="d-flex">
+                    <a href="#" v-on:click.prevent="refreshedStudentDetails" class="btn btn-link d-block p-0">
+                        Refresh
+                        <i class="fa-solid fa-arrow-rotate-right ms-1"></i>
+                    </a>
+                    <span>
+                        <span class="mx-3" style="height: 32px; width: 0.64px; background: #F0F0F0; transform: translateY(-25%);"></span>
+                        Last update:
+                        <span v-text="refreshedAt"></span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bubbleSheetClassReviewContainer">
+            <div class="block-border bubbleSheetClassReviewBorder" id="BubbleSheetClassReviewBorder">
+                <div class="block-content">
+                    <div class="group-sub-header mb-3">
+                        <div class="d-flex justify-content-between">
+                            <h1>Class</h1>
+
+                            <div class="">
+                                <button class="btn-blue" v-on:click="toggleFullScreen">
+                                    <span class="" v-html="fullscreenStatus.icon"></span>
+                                    <span v-text="fullscreenStatus.text"></span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="student-status">
+                                <label v-for="st in studentStatus" class="bubbleSheetClassReviewStatus d-inline-flex align-items-center me-4 u-cursor-pointer">
+                                    <input type="checkbox"
+                                           v-bind:value="st.value"
+                                           v-model="filterStudentSelected"
+                                           class="m-0">
+                                    <span class="bubbleSheetClassStudentStatusColor icon-status"
+                                          v-bind:style="{ borderTopColor: st.background, borderRightColor: st.background }">
+                                    </span>
+                                    <span class="fw-bold" v-text="st.text"></span>
+                                </label>
+                            </div>
+
+                            <div class="d-flex align-items-center">
+                                <label class="bubbleSheetClassReviewCheckbox d-flex align-items-center me-3 u-cursor-pointer">
+                                    <input type="checkbox"
+                                           class="me-2"
+                                           v-model="isAutoClassView">
+                                    <span>Auto open BBS images</span>
+                                </label>
+                                <label class="bubbleSheetClassReviewCheckbox d-flex align-items-center u-cursor-pointer">
+                                    <input type="checkbox"
+                                           class="me-2"
+                                           v-model="isAutoMultiCells">
+                                    <span class="d-block">Auto input multi-cells</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        @*<label class="bubbleSheetClassReviewCheckbox u-cursor-pointer">
+                                <input type="checkbox"
+                                       class="u-v-align-middle"
+                                       v-model="isSelectedAllClassView"
+                                       v-on:click="selectedAllClassView">
+                                <span>Select All Students</span>
+                            </label>*@
+                    </div>
+
+                    <div class="bubbleSheetClassReviewTable">
+                        <div v-el:bubble-sheet-class-review id="BubbleSheetClassReview"></div>
+                    </div>
+
+                    <div class="question-status d-flex align-items-center">
+                        <div v-for="qt in questionStatus" class="bubbleSheetClassReviewStatus  d-flex align-items-center me-4">
+                            <span class="bubbleSheetClassReviewStatusColor d-block me-2"
+                                  v-bind:style="{ background: qt.background }">
+                            </span>
+                            <span class="d-block" v-text="qt.text"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 group-button">
+                        <div class="d-flex align-items-center">
+                            <button class="btn-blue me-3" v-bind:disabled="!isShowMarkAsAbsent" v-on:click="markAsAbsent">Mark as Absent</button>
+                            <button class="btn-blue me-3"
+                                    v-bind:disabled="isDisabledGradingShortcuts"
+                                    v-on:click="toggleGradingShortcutsModal">
+                                Shortcut Grading
+                            </button>
+                            <button class="btn-blue" v-on:click="undoClassView" v-bind:disabled="isDisabledUndoAndSave">Undo</button>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <button class="btn-blue me-3" v-on:click="autoSavedClassView(true)" v-bind:disabled="isDisabledUndoAndSave">Save</button>
+                            <button class="btn-red"
+                                    v-bind:disabled="isDisabledSubmit"
+                                    v-on:click="confirmSubmitClassView">
+                                Submit
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        @Html.Partial("v2/_GradingShortcuts")
+        @Html.Partial("v2/_ViewBubbleSheetImage")
+        @Html.Partial("v2/_ConfirmSubmit")
+        @Html.Partial("v2/_ConfirmWarning")
+    </div>
+</article>
+
+@section scripts {
+    <script src='@Url.Content("~/Scripts/Lib/handsontable/pro/handsontable.full.min.js")'></script>
+    <script src='@Url.Content("~/Scripts/Qtip/jquery.qtip.js")'></script>
+    <script src='@Url.Content("~/Scripts/BubbleSheetClassReview/BubbleSheetReview.js")'></script>
+    <script src='@Url.Content("~/Scripts/BubbleSheetClassReview/BubbleSheetClassReviewUtils.js")'></script>
+    <script src='@Url.Content("~/Scripts/BubbleSheetClassReview/BubbleSheetClassReviewService.js")'></script>
+    <script src='@Url.Content("~/Scripts/BubbleSheetClassReview/BubbleSheetClassReviewV2.js")'></script>
+    <script type="text/javascript">
+        $(function() {
+            // Get model data
+             // Get model data
+            @{
+                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                serializer.MaxJsonLength = Int32.MaxValue;
+                var jsonModel = serializer.Serialize(Model);
+                var actualData = serializer.Serialize(ViewBag.ActualData);
+            }
+            BubbleSheetClassReview.classView.data = mergedModel(@Html.Raw(jsonModel));
+
+            if ('@ViewBag.ActualData' != null && '@ViewBag.ActualData' != '') {
+                BubbleSheetClassReview.classView.actualData =  mergedModel(@Html.Raw(actualData));
+            } else {
+                BubbleSheetClassReview.classView.actualData =  mergedModel(@Html.Raw(jsonModel));
+            }
+
+            BubbleSheetClassReview.auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+            BubbleSheetClassReview.intervalAutoSaved = @Html.Raw(ViewBag.IntervalAutoSave);
+            BubbleSheetClassReview.setIntervalAutoSaved();
+            BubbleSheetClassReview.getClassViewData();
+            BubbleSheetReview.getBubbleReviewDetailsPage('.bubbleSheetClassReviewPage');
+            BubbleSheetReview.getBubbleReviewCurrentTab();
+
+            function mergedModel(data) {
+                var result = {
+                    Ticket: data.Ticket,
+                    ClassId: data.ClassId,
+                    TestName: data.TestName,
+                    BubbleSheetStudentDatas: []
+                };
+        
+                var bbsStudentData = [];
+                data.Students.forEach(function (item) {
+                    var student = {
+                        Name: item.Name,
+                        Status: item.Status,
+                        Graded: item.Graded,
+                        PointsEarned: item.PointsEarned,
+                        StudentId: item.StudentId,
+                        BubbleSheetId: item.BubbleSheetId,
+                        IsChanged: item.IsChanged,
+                        RosterPosition: item.RosterPosition,
+                        ArtifactFileName: item.ArtifactFileName,
+                        BubbleSheetFileViewModel: item.BubbleSheetFileViewModel,
+                        BubbleSheetAnswers: [],
+                    };
+
+                    student.BubbleSheetAnswers = mergedAnswer(data.Questions, item.AnswerDatas);
+                    bbsStudentData.push(student);
+                });
+
+                result.BubbleSheetStudentDatas = bbsStudentData;
+                return result;
+            }
+
+            function mergedAnswer(questions, answers) {
+                answers.forEach(function (item) {
+                    var question = _.find(questions, function (m) {
+                        return m.VirtualQuestionId == item.VirtualQuestionId;
+                    });
+                    $.extend(item, question);
+                });
+
+                return answers;
+            }
+        });
+    </script>
+}
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        breadcrumbDetailPage('#generateTab', '#managebubblesheetsReview');
+    })
+</script>

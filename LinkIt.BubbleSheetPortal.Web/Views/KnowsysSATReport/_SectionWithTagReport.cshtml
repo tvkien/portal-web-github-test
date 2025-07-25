@@ -1,0 +1,320 @@
+﻿@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SATReport.SATReportMasterViewModel
+<div>
+    @{
+        //var sections = Model.SectionTagViewModels.Take(5).ToList();
+        var sections = Model.SectionTagViewModels.ToList();
+    }
+    @for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
+    {
+        var sectionTag = sections[sectionIndex];
+
+        <div class="boxtitle">
+            <span>@sectionTag.SectionName</span>
+        </div>
+
+        if (Model.KNOWSYS_SATReport_ShowSectionScoreScaled)
+        {
+        <div class="section-summary">            
+                        @if (Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.Any(en => en.IsSelected)
+                                     && @Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(en => en.IsSelected).SubScores.Any(x => x.SectionName.ToLower() == sectionTag.SectionName.ToLower()))
+                        {
+                            var subScore = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(en => en.IsSelected).SubScores.FirstOrDefault(x => x.SectionName.ToLower() == sectionTag.SectionName.ToLower());
+
+                            var scoreRawText = subScore.ScoreRawText;
+
+                            if (sectionTag.SectionName.ToLower() == "writing" && Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(en => en.IsSelected).SubScores.Any(x => x.SectionName.ToLower() == "multiple-choice writing"))
+                            {
+                                scoreRawText = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(en => en.IsSelected).SubScores.FirstOrDefault(x => x.SectionName.ToLower() == "multiple-choice writing").ScoreRawText;
+                            }
+                            
+                            <span>
+                                Scale score:
+                                @subScore.ScoreText
+                                
+                                &nbsp;&nbsp;&nbsp;
+                                Raw Score:
+                                @scoreRawText
+                                
+                                &nbsp;&nbsp;&nbsp;
+                                Correct:
+                                @subScore.IsCorrectNo
+                                
+                                &nbsp;&nbsp;&nbsp;
+                                Incorrect:
+                                @subScore.IsIncorrectNo
+                                
+                                &nbsp;&nbsp;&nbsp;
+                                Blank:
+                                @subScore.IsBlankNo
+                            </span>
+                        }
+        </div>        
+        }
+
+        {
+            foreach (var tagCategory in sectionTag.TagCategoryReportViewModels)
+            {
+                if (string.IsNullOrEmpty(tagCategory.TagCategoryName))
+                {
+                    continue;
+                }
+                if (tagCategory.IsTechniqueCategory && tagCategory.IsShowTechnicalCategory)
+                {
+        <table class="datatable table utility-table">
+            <thead>
+                <tr>
+                    <th class="utility" width="254px">
+                        @tagCategory.TagCategoryName
+                    </th>
+                    <th class="utility" width="60px" style="text-align: center;">Incorrect</th>
+                    <th class="utility" width="60px" style="text-align: center;">Blank</th>
+                    <th class="utility" style="text-align: center;">Incorrectly Answered</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                {
+                    <tr>
+                        <td class="utility">
+                            @singleTag.TagName
+                        </td>
+                        <td class="utility" style="text-align: center;">
+                            @singleTag.IncorrectAnswer
+                        </td>
+                        <td class="utility" style="text-align: center;">
+                            @singleTag.BlankAnswer
+                        </td>
+                        <td class="utility">
+                            @string.Join(", ", singleTag.ListAnswerInTag.Where(x => x.PointsEarned != x.PointsPossible && x.WasAnswered).Select(x => x.QuestionOrder.ToString() /* + x.CorrectAnswer + ":" + x.AnswerLetter*/))
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+                }
+                else
+                {
+                    if (!tagCategory.IsTechniqueCategory)
+                    {
+        <table class="datatable table utility-table">
+            <thead>
+                <tr>
+                    <th class="utility">
+                        @tagCategory.TagCategoryName
+                    </th>
+                    <th class="utility" width="60px" style="text-align: center;">Total</th>
+                    <th class="utility" width="60px" style="text-align: center;">Correct</th>
+                    <th class="utility" width="60px" style="text-align: center;">Incorrect</th>
+                    <th class="utility" width="60px" style="text-align: center;">Blank</th>
+                    <th class="utility" width="60px" style="text-align: center;">Percent</th>
+                    <th class="utility" width="120px" style="text-align: center;">Historical Avg %</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                {
+                    <tr>
+                        <td class="utility">
+                            @singleTag.TagName
+                        </td>
+                        <td class="utility" style="text-align: center;">
+                            @singleTag.TotalAnswer
+                        </td>
+                        <td class="utility" style="text-align: center;">
+                            @singleTag.CorrectAnswer
+                        </td>
+                        <td class="utility" style="text-align: center;">
+                            @singleTag.IncorrectAnswer
+                        </td>
+                        <td class="utility" style="text-align: center;">
+                            @singleTag.BlankAnswer
+                        </td>
+                        <td class="utility" style="text-align: center;">
+                            @string.Format("{0}%", singleTag.Percent)
+                        </td>
+                        <td class="utility" style="text-align: center;">
+                            @string.Format("{0}%", singleTag.HistoricalAverage)
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+                    }
+                }
+            }
+
+            if (!Model.KNOWSYS_SATReport_ShowAssociatedTagName)
+            {
+                ViewBag.EssaySectionId = Model.EssaySectionId;
+        @Html.Partial("_ResponseSectionWithoutTagName", sectionTag)
+            }
+            else
+            {
+                if (sectionTag.TagCategoryReportViewModels.All(x => string.IsNullOrEmpty(x.TagCategoryName)))
+                {
+        <div class="clear-25"></div>
+                }
+
+                //render answers
+                //int answerRowNumber = 40;
+                int index = 1;
+                var listAnswerBySection = sectionTag.AnswerSectionViewModels.Where(x => x.SectionID != Model.EssaySectionId)
+                    .GroupBy(x => new { x.SectionID, x.SectionName })
+                    .Select(g => new { sectionName = g.Key.SectionName, listAnswer = g }).ToList();
+
+                var tableWidth = 0;
+                var strWidth = string.Empty;
+
+                //answerRowNumber = listAnswer.Count/2;
+
+                // Make sure that left column no must be greater than right column no
+                //if (listAnswer.Count%2 == 1)
+                //{
+                //answerRowNumber++;
+                //}
+
+                if (listAnswerBySection.Any())
+                {
+                    int sectionCounter = 0;
+                    int questionCounter = 0;
+                    //int currentSectionId = -1;
+        <div>
+            <div class="boxtitleQuestion">
+                <span>Questions</span>
+            </div>
+            <div class="clear"></div>
+            @foreach (var answerSections in listAnswerBySection)
+            {
+                sectionCounter++;
+                if (sectionCounter % 3 == 0)
+                {
+                @Html.Raw("<div style='width: 32%;float: right;'>")
+                }
+                else
+                {
+                @Html.Raw("<div style='width: 32%;float: left;margin-right: 19px;'>")
+                }
+                <div class="boxtitleSection">
+                    <span>@answerSections.sectionName</span>
+                </div>
+                <table class="datatable table tableQuestion">
+                    <thead>
+                        <tr>
+                            @*<th class="utility" style="width: 56px">Sec</th>*@
+                            <th class="utility" style="width: 17px; font-size: 10px; text-align: center">Q#</th>
+                            <th class="question-detail-answer" style="width: 42px; font-size: 10px; text-align: center">Ans</th>
+                            <th class="utility" style="width: 30px; font-size: 10px; text-align: center">Mark</th>
+                            <th class="utility" style="text-align: center">Tags</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        @{ questionCounter = 1; }
+                        @foreach (var answer in answerSections.listAnswer)
+                        {
+                            <tr>
+                                <td class="utility" style="text-align: center; font-size: 10px;">
+                                    @questionCounter
+                                </td>
+                                <td class="question-detail-answer" style="word-break: break-all; text-align: center;font-size: 10px;">@answer.CorrectAnswer</td>
+                                <td class="utility" style="text-align: center; font-size: 10px;">
+                                    @if (answer.IsCorrected)
+                                    {
+                                        @Html.Raw("&#10003;")
+                                        ;
+                                    }
+                                    else
+                                    {
+                                        if (answer.IsBlank)
+                                        {
+                                        @:-
+                                                        }
+                                        else
+                                        {
+                                        @answer.AnswerLetter
+                                        }
+                                    }
+                                </td>
+                                <td class="utility">@answer.TagNames</td>
+                            </tr>
+
+                                    questionCounter++;
+                        }
+                    </tbody>
+                </table>
+                @Html.Raw("</div>")
+                        if (sectionCounter % 3 == 0)
+                        {
+                @:<div style="clear: both;"></div>
+                            }
+            }
+        </div>                    
+                }
+            }
+        }
+
+        if (Model.KNOWSYS_SATReport_ShowEssay && sectionTag.AnswerSectionViewModels.Any(x => x.SectionID == Model.EssaySectionId))
+        {
+            var listAnswer = sectionTag.AnswerSectionViewModels.Where(x => x.SectionID == Model.EssaySectionId).ToList();
+            var index = 1;
+
+        <text><div class="page-breaker"></div></text>
+        <div class="boxtitle">
+            <span>Essay</span>
+        </div>
+        <table class="datatable table" style="width: 20%;">
+            <tbody>
+                @foreach (var answer in listAnswer)
+                {
+                    <tr class="utility">
+                        <td class="utility" style="font-weight: bold; border-bottom: 1px solid #999999 !important;">Score @index</td>
+                        <td class="utility" style="text-align: right; border-bottom: 1px solid #999999 !important;">@answer.PointsEarned</td>
+                    </tr>
+                    index++;
+                }
+                @if (listAnswer.Any())
+                {
+                    <tr class="utility">
+                        <td class="utility" style="font-weight: bold">Total</td>
+                        <td class="utility" style="text-align: right;">@listAnswer.Sum(x => x.PointsEarned)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        
+            
+                if (Model.KNOWSYS_SATReport_ShowComment && (Model.EssayComments.Any() || !string.IsNullOrEmpty(Model.DistrictReportBannerUrl)))
+                {
+                    <div class="clear-25"></div>
+                    @Html.Partial("_EssayComment", Model)    
+                }
+
+                if (!string.IsNullOrEmpty(Model.StateInformationImageUrl))
+                {
+                    <br />
+                    <img src="@Model.StateInformationImageUrl" style="max-width: 960px;"/>
+                }
+
+                //wirting
+                foreach (var essayFile in Model.BubbleSheetFileSubViewModels)
+                {
+                    if (essayFile.PageType == Util.BubbleSheetFileEssayPageType)
+                    {
+                        <img src="@essayFile.ImageUrl" width="960" />
+                    }
+                }
+        }
+
+        if (Model.KNOWSYS_SATReport_SectionPageBreak || sectionIndex == sections.Count - 1)
+        {
+        <div class="page-breaker"></div>
+        }
+        else
+        {
+        <div class="clear-25"></div>
+        }
+    }
+</div>
+
+                              

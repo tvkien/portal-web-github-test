@@ -1,0 +1,182 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.UploadFilesViewModel
+@{
+    ViewBag.Title = "Import Group";
+}
+
+<article class="container_12">
+    <section id="upload-block" class="grid_7">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>
+                    Import Groups
+                </h1>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>Import successfully</li>
+                </ul>
+                <ul style="display: none" id="error-messages" class="message error">
+                </ul>
+                <ul class="message warning no-margin">
+                    <li>Click the Select File button below to select a file for upload.
+                        Click the Upload File to upload the selected file.</li>
+                </ul>
+                @if (Model.IsPublisherUploading || Model.IsNetworkAdmin)
+                {
+                    <p id="states">
+                        <label>
+                            Select State</label>
+                        <span class="relative">
+                            @Html.DropDownListFor(x => x.StateId, Model.AvailableStates, new { id = "selectState", @class = "full-width" })
+                        </span>
+                    </p>
+                    <p id="districts">
+                        <label>
+                            Select @LabelHelper.DistrictLabel</label>
+                        <span class="relative">
+                            @Html.DropDownListFor(x => x.DistrictId, Model.AvailableDistricts, new { id = "selectDistrict", @class = "full-width" })
+                        </span>
+                    </p>
+                }
+                <input id="file_upload" name="file_upload" type="file" />
+            </div>
+        </div>
+
+        <div id="divMessageDuplicateGroupName" class="block-border" style="display: none">
+            <div class="block-content form" style="position: static">
+                <table>
+                    <tr>
+                        <td>
+                            <div id="divListGroupDuplicate" style="margin-bottom: 20px;"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div style="position: relative;text-align: center;">
+                                <button id="btnYes" type="button" value="yes">Yes</button>
+                                <button id="btnNo" type="button" value="no">No</button>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+</article>
+
+
+
+<script type="text/javascript">
+    $(function () {
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+        populateStates();
+
+        $('#selectState').change(function () {
+            if ($(this).val() != 'select') {
+                populateDistricts();
+            }
+            else {
+                $('#selectDistrict').empty();
+            }
+        });
+
+        if (window.FormData !== undefined) {
+            $('#file_upload').uploadifive({
+                'uploadScript': '@Url.Action("ImportGroup")',
+                'fileType': 'text/plain',//*.pdf; *.png; *.jpg; *.jpeg; *.gif; *.tiff
+                'overrideEvents': ['onDialogClose'],
+                'formData': { AUTHID: auth },
+                'buttonText': 'Select Files',
+                'fileObjName': 'FileData',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 100,
+                'auto': true,
+                'onUpload': function (file) {
+                    $('#file_upload').data('uploadifive').settings.formData = getFormData(auth);
+                },
+                'onUploadComplete': function (file, data) {
+                    var result = $.parseJSON(data);
+                    if (result == undefined) {
+                        CustomAlert('An error has occured.  Please try again');
+                    }
+                    if (result.success == true) {
+                        $("#success-message").show();
+                    }
+                    else {
+                        if (result.type == "warning") {
+                            $("#divListGroupDuplicate").html(result.message);
+                            ShowPopupDuplicateGroupName();
+                        } else {
+                            $("#success-message").hide();
+                            addErrorMessages(result);
+                        }
+                    }
+                }
+            });
+        }
+
+        $('#btnYes').live('click', function (e) {
+            e.preventDefault();
+            $("#divMessageDuplicateGroupName").dialog("close");
+            $.get('@Url.Action("InsertDuplicateGroup")', function(response) {
+                $("#success-message").show();
+            });
+        });
+        $('#btnNo').live('click', function(e) {
+            e.preventDefault();
+            $("#divMessageDuplicateGroupName").dialog("close");
+        });
+    });
+
+    function getFormData(auth) {
+        var districtId = $("#selectDistrict").val();
+        return { 'AUTHID': auth, 'districtId': districtId };
+    }
+
+    function populateStates() {
+        var stateSelect = $('#selectState');
+        stateSelect.empty();
+        if ('@Model.IsNetworkAdmin'=='True') {
+            $.get('@Url.Action("GetStatesByDictricIds", "PopulateStateDistrict")',{dictricIds:'@Model.StrIds'}, function (response) {
+                addDefaultOption(stateSelect, "State");
+                addSelectListItems(stateSelect, response);
+            });
+        } else {
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (response) {
+            addDefaultOption(stateSelect, "State");
+            addSelectListItems(stateSelect, response);
+            });
+        }
+    }
+
+    function populateDistricts() {
+        var districtSelect = $('#selectDistrict');
+        districtSelect.empty();
+        var stateValue = $('#selectState').val();
+        $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (response) {
+            addDefaultOption(districtSelect, "@LabelHelper.DistrictLabel");
+            addSelectListItems(districtSelect, response);
+        });
+    }
+
+    function ShowPopupDuplicateGroupName() {
+        $('#divMessageDuplicateGroupName').dialog({
+            autoOpen: true,
+            width: 400,
+            resizable: false,
+            title: '',
+            modal: true,
+            open: function (event, ui) {
+                //TODO: content html
+            }
+        });
+    }
+</script>
+
+<style type="text/css">
+    .ui-widget-header {
+        background: transparent !important;
+        border: 0 !important;
+    }
+
+</style>

@@ -1,0 +1,130 @@
+
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TemplatePublishToDistrictVM
+<article class="container_12" style="margin-top: 2px; width: 700px;">
+    <section class="grid_9 m-0">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Publish to @LabelHelper.DistrictLabels</h1>
+
+                @using (Html.BeginForm("PublishToDistrict", "DataLocker", FormMethod.Post, new { id = "publishToDistrictForm", @class = "form" }))
+                {
+                    <ul style="display: none" id="error-messages" class="message error"></ul>
+                    <ul style="display: none" id="success-message" class="message success">
+                        <li>The template has been published to the @LabelHelper.DistrictLabel.</li>
+                    </ul>
+
+                    <div class="columns">
+                        <fieldset>
+                            <legend>Choose @LabelHelper.DistrictLabel</legend>
+                            <div class="columns">
+                                <div class="colx2-left">
+                                    <p>
+                                        <label>State</label>
+                                        @Html.DropDownListFor(x => x.StateId, Model.AvailableStates, new { id = "selectStateOnPopup", @class = "full-width" })
+                                    </p>
+                                </div>
+                                <div class="colx2-right">
+                                    <p>
+                                        <label>@LabelHelper.DistrictLabel</label>
+                                        @Html.DropDownListFor(x => x.DistrictId, Model.AvailableDistricts, new { id = "selectDistrictOnPopup", @class = "full-width" })
+                                    </p>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div style="text-align: right">
+                        <button id="btnCancel" type="button" onclick="displayListDistrictView()" class="grey">Cancel</button>
+                        <button id="btnSubmit" type="submit" name="Save">Publish</button>
+                    </div>
+                    <input type="hidden" name="TemplateId" value="@Model.TemplateId" id="TemplateId" />
+                }
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        populateStatesOnPopup();
+        $('#selectStateOnPopup').change(function () {
+            if ($(this).val() != 'select') {
+                populateDistrictsOnPopup($('#selectDistrictOnPopup'));
+            }
+            else {
+                $('#selectDistrictOnPopup').empty();
+            }
+        });
+        $('#notification').html('');
+    });
+
+    function populateStatesOnPopup() {
+        var stateSelect = $('#selectStateOnPopup');
+        stateSelect.empty();
+        $.get('@Url.Action("GetStateByPublisherOrNetworkAdmin", "PopulateStateDistrict")', function (response) {
+            addDefaultOption(stateSelect, "State");
+            addSelectListItems(stateSelect, response);
+        });
+    }
+
+    function populateDistrictsOnPopup(districtSelect) {
+        districtSelect.empty();
+        var stateValue = $('#selectStateOnPopup').val();
+        $.get('@Url.Action("GetUnPublishedDistrictsByState")', { stateId: stateValue, templateId:@Model.TemplateId }, function (response) {
+            addDefaultOption(districtSelect, "@LabelHelper.DistrictLabel");
+            addSelectListItems(districtSelect, response);
+        });
+    }
+
+    $('#publishToDistrictForm').submit(function (event) {
+
+        var stateId = $('#selectStateOnPopup').val();
+        if(stateId==null || stateId=='select' || stateId <= 0) {
+            customAlertMessage({message: 'Please select state.'});
+            return false;
+        }
+        var districtId = $('#selectDistrictOnPopup').val();
+        if(districtId==null || districtId=='select' || districtId <= 0) {
+            customAlertMessage({message: 'Please select @LabelHelper.DistrictLabel.'});
+            return false;
+        }
+
+        event.preventDefault();
+        $('#btnSubmit').disableBt();
+        $('#success-message').hide();
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function (response) {
+                if (response.success != false) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                    //clearInputFields();
+                    setTimeout(function () { displayListDistrictView(); }, 2000);
+                } else {
+                    customAlert(response.error, {
+                        contentStyle: { maxWidth: 500, width: 420 },
+                        close: function () {
+                            displayListDistrictView();
+                        }
+                    })
+                    $('#error-messages').addClass('no-margin');
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+
+    function clearInputFields() {
+        $('.full-width').val('');
+    }
+
+    function displayListDistrictView() {
+        $('#shareDistrictDiv').hide();
+        $('#listDistrictDiv').show();
+        ui.dataTablePublishedDistrict.fnDraw();
+    }
+</script>

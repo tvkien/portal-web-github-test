@@ -1,0 +1,330 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.UploadRosterViewModel
+
+<section class="grid_4">
+    <div class="block-border">
+        <div class="block-content form" style="padding: 1.5rem;">
+            <h1 style="font-size: 1.375rem; padding: 0; margin-bottom: 1.5rem">
+                Upload Roster
+            </h1>
+
+            <ul class="message warning no-margin"style="margin-bottom:1.5rem">
+                <li>
+                    Click the <span class="lowercase">Select File(s)</span> button below to select a file or multiple files for upload.
+                    Validation process will begin after selection and upload.
+                </li>
+            </ul>
+            <ul style="display: none" id="error-messages" class="message error no-margin"></ul>
+            <p id="rosterTypes">
+                <label>Select Roster Type</label>
+                <span class="relative">
+                    @Html.DropDownListFor(x => x.RequestTypeId, Model.RequestTypes, new { id = "selectRequestType", @class = "full-width", @onChange = "onChangeRequestTypes()" })
+                </span>
+            </p>
+            @if (Model.IsPublisherUploading || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+            {
+                <p id="states">
+                    <label>Select State</label>
+                    <span class="relative">
+                        @Html.DropDownListFor(x => x.StateId, Model.AvailableStates, new { id = "selectState", @class = "full-width" })
+                    </span>
+                </p>
+                <p id="districts" style="margin-bottom: 1.5rem">
+                    <label>Select @LabelHelper.DistrictLabel</label>
+                    <span class="relative">
+                        @Html.DropDownListFor(x => x.DistrictId, Model.AvailableDistricts, new { id = "selectDistrict", @class = "full-width" })
+                    </span>
+                </p>
+            }
+            <input id="file_upload" name="file_upload" type="file" />
+        </div>
+    </div>
+</section>
+
+<style type="text/css">
+    .ui-state-hover{
+        border:none !important
+    }
+    .ui-dialog-titlebar-close {
+        right: 2.5rem !important;
+        top: 1.5rem !important;
+    }
+    .message {
+        font-size: var(--fontSizeLabel) !important;
+    }
+
+    .uploadifive-button {
+        background-image: unset;
+        text-shadow: none;
+        background-color: transparent;
+        color: var(--navyColor);
+        width: fit-content !important;
+        height: auto !important;
+        line-height: normal !important;
+        padding: 8px 12px;
+        border: 2px solid var(--blue3);
+        border-radius: 0;
+        cursor: pointer;
+        font-size: 1rem;
+        text-transform: inherit;
+        font-weight: 700;
+        transition: all 0.2s ease-in-out;
+        margin: auto;
+    }
+
+        .uploadifive-button:hover {
+            background: var(--blue3);
+        }
+
+    .message.warning {
+        background-color: var(--blue1) !important;
+        box-shadow: none;
+        border: 1px solid var(--blue1) !important;
+        border-radius: 0;
+        padding: 1rem;
+    }
+
+</style>
+
+<script type="text/javascript">
+    $(function() {
+        populateStates();
+
+        $('#selectState').change(function () {
+            if ($(this).val() != 'select') {
+                populateDistricts();
+            }
+            else {
+                $('#selectDistrict').empty();
+            }
+        });
+
+        if (window.FormData !== undefined) {
+            initUploadifive();
+        }
+    });
+    function getFormData() {
+            var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+            var stateId = $("#selectState").val();
+            var districtId = $("#selectDistrict").val();
+            var requestTypeId = $('#selectRequestType').val();
+            return { 'AUTHID': auth, 'stateId': stateId, 'districtId': districtId, 'requestTypeId': requestTypeId };
+        }
+
+    function populateStates() {
+            var stateSelect = $('#selectState');
+            stateSelect.empty();
+            if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                    addDefaultOption($('#selectState'), "State");
+                    addSelectListItems($('#selectState'), states);
+                    $('#selectState').val(@ViewBag.StateId);
+                    $('#selectState').trigger('change');
+                });
+            } else {
+                $.get('@Url.Action("GetStates")', function(response) {
+                    addDefaultOption(stateSelect, "State");
+                    addSelectListItems(stateSelect, response);
+                });
+            }
+        }
+
+    function populateDistricts() {
+            var districtSelect = $('#selectDistrict');
+            districtSelect.empty();
+            var stateValue = $('#selectState').val();
+            if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+                });
+            } else {
+                $.get('@Url.Action("GetDistricts")', { stateId: stateValue }, function (response) {
+                    addDefaultOption(districtSelect, "@LabelHelper.DistrictLabel");
+                    addSelectListItems(districtSelect, response);
+                });
+            }
+    }
+
+    function submitFiles(files)
+    {
+        var formData = new FormData();
+        $.each(files, function (index, file) {
+            formData.append('postedFiles', file);
+        });
+        formData.append('AUTHID', '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)');
+        formData.append('stateId', $("#selectState").val());
+        formData.append('districtId', $("#selectDistrict").val());
+        formData.append('requestTypeId', $('#selectRequestType').val());
+        var xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', function (e) {
+            if (e.lengthComputable) {
+                var progress = (e.loaded / e.total) * 100;
+                files.forEach(function (file) {
+                    var progressBar = $(".progress-bar")
+                    progressBar.css("width", progress +"%");
+                });
+            }
+        }, false);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4) {
+                if (xhr.status == 200) {
+                    var result = $.parseJSON(xhr.response);
+                    if (result == undefined) {
+                        CustomAlert('An error has occured.  Please try again');
+                    }
+                    if (result.success == true) {
+                        $('#uploadNewRosterDialog').closest(".dialog").dialog('close')
+                        ui.dataTable.fnReloadAjax();
+                    }
+                    else if (result.success == false && result.message) {
+                        CustomAlert(result.message, true);
+                    }
+                    else {
+
+                        CustomAlert('The file ' + file.name + ' could not be uploaded: Cancelled');
+                    }
+                    files.forEach((file) => {
+                        $('#file_upload').uploadifive('cancel', file);
+                    })
+                }
+                else {
+                    if (xhr.responseType == "FORBIDDEN_FILE_TYPE") {
+                        CustomAlert('File is not an allowed file type. Please select a text (.txt) or CSV(.csv) file.', true);
+                    } else {
+                        CustomAlert('The file returned an error and was not added to the queue.', true)
+                    }
+                }
+            }
+        };
+        xhr.open('POST', '@Url.Action("UploadRosterMultiple")', true);
+        xhr.send(formData);
+    }
+
+    function initUploadifive() {
+        $('#file_upload').uploadifive({
+            'uploadScript': '@Url.Action("UploadRoster")',
+            'overrideEvents': ['onDialogClose'],
+            'buttonText': 'Select File(s)',
+            'fileObjName': 'postedFile',
+            'multi': true,
+            'fileSizeLimit': '71680KB',
+            'removeCompleted': true,
+            'width': 100,
+            'auto': true,
+            'onUpload': function (file) {
+                $('#file_upload').data('uploadifive').settings.formData = getFormData();
+                $('#error-messages').hide();
+                $('#error-messages').empty();
+            },
+            onInit: function () {
+                var inputs = $("#uploadifive-file_upload input").attr("accept", "text/plain, .csv");
+            },
+            onAddQueueItem: function (file) {
+                var requestTypeId = $('#selectRequestType').val();
+                var allowExtension = ['txt', 'csv'];
+                var errorMessage = 'File ' + file.name + ' is not an allowed file type. Please select a text (.txt) or CSV(.csv) file.';
+                var fileExt = file.name.substring(file.name.lastIndexOf('.') + 1);
+                if (allowExtension.indexOf(fileExt) == -1) {
+                    CustomAlert(errorMessage, true);
+                    $('#file_upload').uploadifive('cancel', file);
+                }
+            },
+            onSelect: function (queue) {
+                var inputs = $("#uploadifive-file_upload input").attr("accept", "text/plain, .csv");
+            },
+            'onUploadComplete': function (file, data) {
+                var result = $.parseJSON(data);
+                if (result == undefined) {
+                    CustomAlert('An error has occured.  Please try again');
+                }
+                if (result.success == true) {
+                    $('#uploadNewRosterDialog').closest(".dialog").dialog('close')
+                    ui.dataTable.fnReloadAjax();
+                } else {
+                    addErrorMessages(result);
+                    $('#file_upload').uploadifive('cancel', file);
+                    CustomAlert('The file ' + file.name + ' could not be uploaded: Cancelled');
+                }
+            },
+            'onError': function (errorType, file) {
+                if (errorType == "FORBIDDEN_FILE_TYPE") {
+                    CustomAlert('File is not an allowed file type. Please select a text (.txt) or CSV(.csv) file.',true);
+                } else {
+                    CustomAlert('The file ' + file.name + ' returned an error and was not added to the queue.',true)
+                }
+            },
+            'onCancel': function (file) {
+
+            }
+        });
+    }
+
+    function initMultipleUploadifive() {
+        var files = [];
+        $('#file_upload').uploadifive({
+            'uploadScript': '@Url.Action("UploadRosterMultiple")',
+            'overrideEvents': ['onDialogClose'],
+            'buttonText': 'Select File(s)',
+            'fileObjName': 'postedFile',
+            'multi': true,
+            'fileSizeLimit': '71680KB',
+            'removeCompleted': true,
+            'width': 100,
+            'auto': false,
+            onInit: function () {
+                $("#uploadifive-file_upload input").attr("accept", "text/plain, .csv, .zip");
+            },
+            onAddQueueItem: function (file) {
+                files.push(file);
+            },
+            'onSelect': function (queue) {
+                var allowExtension = ['txt', 'csv', 'zip'];
+                var ignoreSubmit = false;
+                var zipFiles = files.filter((file) => { return file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase() === 'zip' });
+                var txtCsvFiles = files.filter((file) => { return file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase() === 'txt' || file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase() === 'csv' });
+                var fileNotAllowed = files.filter((file) => { return allowExtension.indexOf(file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase()) == -1 }).map((file) => { return file.name });
+
+                if (fileNotAllowed && fileNotAllowed.length > 0) {
+                    CustomAlert('File [' + fileNotAllowed.join(', ') + '] is not an allowed file type. Please select a text (.txt) or CSV(.csv) or ZIP(.zip) file.', true);
+                    ignoreSubmit = true;
+                }
+                else if (zipFiles && zipFiles.length > 0 && txtCsvFiles && txtCsvFiles.length > 0) {
+                    CustomAlert('Unsupported file extension. We only support file extensions of one of the two specified types (".txt", ".csv") OR ("zip"). Simultaneous support for multiple extensions is not available.', true);
+                    ignoreSubmit = true;
+                }
+                else if (zipFiles && zipFiles.length > 1) {
+                    CustomAlert('Unsupported multiple file ".zip".', true);
+                    ignoreSubmit = true;
+                }
+
+                if (ignoreSubmit) {
+                   files.forEach((file) => {
+                        $('#file_upload').uploadifive('cancel', file);
+                    })
+                }
+                else {
+                   submitFiles(files);
+                }
+
+                files = [];
+                $("#uploadifive-file_upload input").attr("accept", "text/plain, .csv, .zip");
+            },
+        });
+    }
+
+    function onChangeRequestTypes() {
+        if ($('#file_upload').data('uploadifive')) {
+            $('#file_upload').uploadifive('destroy');
+        }
+        let requestTypeId = $('#selectRequestType').val();
+        if (requestTypeId === '7' || requestTypeId === '8' || requestTypeId === '9') {
+            initMultipleUploadifive();
+        }
+        else {
+            initUploadifive();
+        }
+    }
+        //$('#uploadCancel').click(function () {
+        //    $('#upload-block').html('');
+        //});
+</script>

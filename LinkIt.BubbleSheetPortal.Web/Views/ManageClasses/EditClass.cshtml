@@ -1,0 +1,205 @@
+@using LinkIt.BubbleSheetPortal.Models
+
+@model Class
+@{
+    ViewBag.Title = "Edit Class";
+}
+<style type="text/css">
+    .not-active {
+        pointer-events: none;
+        cursor: default;
+        text-decoration: none;
+        color: black;
+    }
+</style>
+
+<article class="container_12">
+    <section class="grid_7">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Edit Class</h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>Class successfully updated.</li>
+                </ul>
+                @using (Html.BeginForm("EditClass", "ManageClasses", FormMethod.Post, new { id = "editClassForm", @class = "form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.ValidationSummary(true)
+                    <fieldset>
+                        <legend>Class Detail</legend>
+                        <div class="columns">
+                            <p>
+                                <label>Group/Course Name</label>
+                                <span class="relative">
+                                    @Html.HiddenFor(model => model.Id)
+                                    @Html.TextBoxFor(model => model.Course, new { @class = "full-width", tabindex = "1", maxlength = 49 })
+                                </span>
+                            </p>
+                            <p>
+                                <label>Section (optional)</label>
+                                <span class="relative">
+                                    @Html.TextBoxFor(model => model.Section, new { @class = "full-width", tabindex = "2", maxlength = 49 })
+                                </span>
+                            </p>
+                            <p>
+                                <label>CourseNumber (optional)</label>
+                                <span class="relative">
+                                    @Html.TextBoxFor(model => model.CourseNumber, new { @class = "full-width", tabindex = "3", maxlength = 49 })
+                                </span>
+                            </p>
+                            <p>
+                                <label>@LabelHelper.Term</label>
+                                <span class="relative">
+                                    @Html.DropDownListFor(model => model.DistrictTermId, new SelectList(ViewBag.ListDistrictTerm, "Id", "Name"), new { @class = "full-width", tabindex = "4" })
+                                    @Html.ValidationMessageFor(model => model.DistrictTermId)
+                                </span>
+                            </p>
+                            <p>
+                                <label>Class Type</label>
+                                <span class="relative">
+                                    @Html.DropDownListFor(x => x.ClassType, ViewBag.ClassTypes as IEnumerable<SelectListItem>, new { @class = "full-width", tabindex = "5" })
+                                </span>
+                            </p>
+                        </div>
+                    </fieldset>
+                    <ul class="tabs js-tabs">
+	                    <li class="current"><a href="#tab-teachers">Teachers</a></li>
+                    </ul>
+                    <div class="tabs-content">
+                        <div id="tab-teachers">
+                            <a id="btnAddExistingTeacher" href="javascript:void(0);" class="button studentOperation">
+                                <img alt="#" src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                                Assign Teacher
+                            </a>
+                            <div id="divTeacherList"></div>
+                        </div>
+                    </div>
+                    <br />
+                    <p>
+                        <button id="btnSubmit" type="submit" name="Save">Submit</button>
+                        <button id="btnCancel" type="button" class="grey">Back</button>
+                    </p>
+                }
+            </div>
+        </div>
+    </section>
+    <div id="divSideContent"></div>
+</article>
+<script type="text/javascript">
+    localStorage.setItem('loadHistory', true);
+    $(function () {
+        if('@ViewBag.FromManageSchools' === 'True') {
+            $('#dtaManageSchools').addClass('current');
+        } else {
+            $('#dtaManageClasses').addClass('current');
+        }
+
+        PopulateDataGrids();
+
+        $('#btnAddExistingTeacher').click(function () {
+            $('#divSideContent').html('');
+            $('#divSideContent').load('@Url.Action("AddTeacherToClass", new { classId = Model.Id })');
+        });
+
+        if('@ViewBag.IsRosteredClasses' === 'True') {            
+            $("input[id*='Course']").prop('disabled', true);
+            $("input[id*='Section']").prop('disabled', true);
+            $("select[id*='DistrictTermId']").prop('disabled', true);
+            $("select[id*='ClassType']").prop('disabled', true);
+        }
+    });
+
+    $('#editClassForm').submit(function (event) {
+        event.preventDefault();
+        $('#btnSubmit').disableBt();
+
+        $.ajax({
+            url: $(this).target,
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function (response) {
+                if (response.Success != false) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                }
+                else {
+                    addErrorMessages(response);
+                    $('#success-message').hide();
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+
+    $('#addTeacherToClassForm').die();
+    $('#addTeacherToClassForm').live('submit', function (event) {
+        var $this = $(this);
+        event.preventDefault();
+
+        $.ajax({
+            url: $this.attr('action'),
+            type: 'POST',
+            data: $this.serialize(),
+            success: function (response) {
+                if (response == true) {
+                    CloseSideContent();
+                    ui.dataTableClassTeacher.fnDraw();
+                }
+                else {
+                    addErrorMessagesTeachers(response);
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+
+    function PopulateDataGrids() {
+        $('#divTeacherList').load('@Url.Action("GetTeachersListView", new { classId = Model.Id })', function (response) {
+            if (response == false) {
+                alert(response);
+            }
+        });
+    }
+
+    $('#btnCancel').click(function () {
+        if ('@ViewBag.FromManageSchools' === 'True') {
+            location.href = '@Url.Action("ManageSchoolAndClass")';
+        } else {
+            location.href = '@Url.Action("ManageClass")';
+        }
+    });
+
+    function CloseSideContent() {
+        $('#divSideContent').empty();
+    }
+
+    $('#replacePrimaryTeacherForm').die();
+    $('#replacePrimaryTeacherForm').live('submit', function (event) {
+        var $this = $(this);
+        event.preventDefault();
+
+        $.ajax({
+            url: $this.attr('action'),
+            type: 'POST',
+            data: $this.serialize(),
+            success: function (response) {
+                if (response == true) {
+                    CloseSideContent();
+                    ui.dataTableClassTeacher.fnDraw();
+                }
+                else {
+                    addErrorMessagesTeachers(response);
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+</script>

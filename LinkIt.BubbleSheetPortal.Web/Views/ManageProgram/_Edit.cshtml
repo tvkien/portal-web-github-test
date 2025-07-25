@@ -1,0 +1,110 @@
+@model LinkIt.BubbleSheetPortal.Models.Program
+@{
+    var code = @Html.Raw(Model.Code);
+}
+
+<section style='z-index: 2004'>
+    <div class='block-border' style='z-index: 2004'>
+        <div id="dvEditProgram" class='block-content bubbleSheetSelector form' style='z-index: 1004'>
+            <h1>Edit Program</h1>
+            <ul style="display: none" id="error-messages-create" class="message error"></ul>
+            <ul style="display: none" id="success-message-create" class="message success">
+                <li>Program has been successfully updated.</li>
+            </ul>
+            @using (Html.BeginForm("EditProgram", "ManageProgram", FormMethod.Post, new { id = "editProgramForm", @class = "form" }))
+            {
+                @Html.AntiForgeryToken()
+                <fieldset>
+                    <div class="columns">
+                        <p>
+                            <label>Name</label>
+                            @Html.TextBoxFor(model => model.Name, new { @class = "full-width", id = "inputProgramName" })
+                        </p>
+                        <p>
+                            <label>Visible To</label>
+                            @if (ViewBag.IsPublisher)
+                            {
+                                @Html.DropDownListFor(x => x.AccessLevelID, new SelectListItem[]
+                                                                            {
+                                                                                new SelectListItem() {Text = "Select Access Level", Value = "-1"},
+                                                                                new SelectListItem() {Text = "LinkIt Only", Value = "0"},
+                                                                                new SelectListItem() {Text = "State Users", Value = "1"},
+                                                                                new SelectListItem() {Text = @LabelHelper.DistrictLabel+" Admins Only", Value = "2"},
+                                                                                new SelectListItem() {Text = @LabelHelper.DistrictLabel+" and School Admins", Value = "3"},
+                                                                                new SelectListItem() {Text = "All Users", Value = "4"}
+                                                                            })
+                            }
+                            else
+                            {
+                                if (ViewBag.IsSchoolAdmin)
+                                {
+                                    @Html.DropDownListFor(x => x.AccessLevelID, new SelectListItem[]
+                                                                               {
+                                                                                new SelectListItem() {Text = "Select Access Level", Value = "-1"},
+                                                                                new SelectListItem() {Text = @LabelHelper.DistrictLabel+" and School Admins", Value = "3"},
+                                                                                new SelectListItem() {Text = "All Users", Value = "4"}
+                                                                               })
+                                }
+                                else
+                                {
+                                    @Html.DropDownListFor(x => x.AccessLevelID, new SelectListItem[]
+                                                                               {
+                                                                                new SelectListItem() {Text = "Select Access Level", Value = "-1"},
+                                                                                new SelectListItem() {Text = @LabelHelper.DistrictLabel+" Admins Only", Value = "2"},
+                                                                                new SelectListItem() {Text = @LabelHelper.DistrictLabel+" and School Admins", Value = "3"},
+                                                                                new SelectListItem() {Text = "All Users", Value = "4"}
+                                                                               })
+                                }
+                            }
+
+                        </p>
+                        <p>
+                            <div class="tag-editor-datalocker">
+                                <label for="inputCode">Code</label>
+                                <textarea id="inputCode"></textarea>
+                            </div>
+                            @*@Html.TextBoxFor(model => model.Code, new { @class = "full-width", id = "inputCode" })*@
+                        </p>
+                        <p style="text-align: center;">
+                            <button type="submit" id="btnEditProgram">Submit</button>
+                            <button type="button" id="btnCancelEditProgram" onclick=" cancelCreateProgram()">Cancel</button>
+                        </p>
+                        <input type="hidden" id="hdDistrictId" name="DistrictID" value="@Model.DistrictID" />
+                        <input type="hidden" id="hdId" name="Id" value="@Model.Id" />
+                    </div>
+                </fieldset>
+            }
+        </div>
+    </div>
+</section>
+<script type="text/javascript">
+    $(function () {
+        $('#inputCode').tagEditor({ initialTags: '@code'.split("|"), forceLowercase: false });
+        $('#editProgramForm').submit(function (event) {
+            event.preventDefault();
+            ShowBlock($('#dvEditProgram'), "Updating Program");
+            var code = encodeURIComponent($('#inputCode').tagEditor('getTags')[0].tags.join('|'));
+            $.ajax({
+                url: '@Url.Action("EditProgram", "ManageProgram")',
+                type: 'POST',
+                data: $(this).serialize() + "&Code=" + code,
+                success: function (response) {
+                    if (response.Success == true) {
+                        $('#success-message-create').show();
+                        $('#error-messages-create').hide();
+                        setTimeout(function () {
+                            $(".dialog").dialog("close");
+                        },
+                            3000);
+                    } else {
+                        $('#error-messages-create').html('<li> ' + response.ErrorMessage + ' </li>');
+                        $('#error-messages-create').show();
+                        $('#success-message-create').hide();
+                        $('#btnEditProgram').enableBt();
+                    }
+                    $('#dvEditProgram').unblock();
+                }
+            });
+        });
+    });
+</script>

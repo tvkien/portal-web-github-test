@@ -1,0 +1,433 @@
+@*<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border">*@
+<style type="text/css">
+    #dataTable1 td {
+        font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook !important;
+        font-size: 12px;
+    }
+</style>
+<style>
+    #dataTable1 tbody tr {
+        height: 100% !important; /* Fix for IE9 */
+    }
+</style>
+<style>
+    /* No data available in table */
+    
+
+    .scrollItemDataTable1 thead,
+    .scrollItemDataTable1 tbody {
+        display: block;
+    }
+
+    .scrollItemDataTable1 tbody {
+        height: 289px;
+        overflow: auto;
+        overflow-x: hidden;
+    }
+
+    .scrollItemDataTable1 {
+        width: 416px !important;
+    }
+
+        .scrollItemDataTable1 tbody td {
+            /*word-break: break-all;*/
+            word-wrap: break-word;
+        }
+
+            .scrollItemDataTable1 tbody td:nth-of-type(1) .divContainerStyle {
+                width: 17px;
+            }
+
+            .scrollItemDataTable1 tbody td:nth-of-type(2) .divContainerStyle {
+                width: 354px;
+            }
+
+        .scrollItemDataTable1 td img {
+            padding-left: 0px;
+            padding-right: 0px;
+        }
+
+    .noscrollItemDataTable1 tbody td:nth-of-type(2) .divContainerStyle {
+        width: 398px;
+    }
+
+    .divContainerStyle p {
+        line-height: 1.57143em;
+    }
+
+    #divdataTable1 {
+        margin-top: -22px !important;
+        height: 291px !important;
+    }
+</style>
+<style type="text/css">
+    .dataTable1 .dataTables_empty {
+        height: 366px;
+        text-align: center;
+    }
+
+    .dataTable1 {
+        min-height: 100px;
+    }
+
+  
+</style>
+<div id="divListItemsFromLibrary">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h3 class="h3 mb-0">Filtered Items</h3>
+        <a id="btnAddItemsToItemSet" disabled="disabled" class="btn btn-link pe-0">Add Items to Item Set <i class="fa-solid fa-plus ms-2"></i></a>
+    </div>
+    <div>
+        <table id="dataTable1" class="datatable table no-margin dataTable1 w-100" width="100%">
+            <thead>
+                <tr>
+                    <th scope="col" class="col-action">
+                        <input type="checkbox" id="chkAllItem" />
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Content
+                    </th>
+                    <th scope="col" style="display: none"></th><!--Tooltip-->
+                    <th scope="col" style="display: none"></th><!--Tooltip-->
+                    <th scope="col" style="display: none"></th><!--Check from 3p upload-->
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+<script type="text/javascript">
+
+    $(document).ready(function () {
+
+        $("#setFilterNWEA").die("click");
+        $("#setFilterNWEA").click(function () {
+            firstLoadListItemsFromLibrary = false;
+            $('#showPassagesForFoundItem').prop('disabled', true);
+            $('#isSearched').val(true);
+            showItemFilterResult(true);//defined in ItemsFromLinrary.cshtml
+            showPassageResult(false);
+        });
+
+        
+
+    });
+    function getAjaxSource1ForEmpty() {
+        $('#chkAllItem').removeAttr('checked').removeClass('input-checked-v2');
+
+        displayNWEASearchCriteria();
+        //ShowBlock($('#dataTable1'), "Loading");
+
+        return getAjaxLoadItemFromLibraryByFilter('true');
+    }
+    function getAjaxSource1(isLoad) {
+        if (isLoad) {
+            return getAjaxLoadItemFromLibraryByFilter();//defined in ItemBank/_ImportItemFromLibraryScript.cshtml
+        }
+    }
+
+    function parseXmlContent1(xmlContent) {
+        if (xmlContent != '') {
+            var divTitle = '';
+            var title = '';
+            var span = $(xmlContent).find('itemBody span').first();
+            var b = $(xmlContent).find("itemBody span b").first();//sometime there's a <b> inside span
+            if (b.length > 0) {
+                title = b.text();//LNKT-5661
+                if (title == null) {
+                    title = '';
+                }
+                if (title.length > 50) {
+                    title = title.substring(0, 47);
+                    title += '...';
+                }
+
+                b.text(title);
+                $(span).html($(b).outerHTML());
+            } else {
+                title = span.text();//LNKT-5661
+                if (title == null) {
+                    title = '';
+                }
+                if (title.length > 50) {
+                    title = title.substring(0, 47);
+                    title += '...';
+                }
+
+                span.text(title);
+            }
+            divTitle = '<div style="max-height:60px; overflow:hidden;">' + $(span).outerHTML() + '</div>';///LNKT-5785
+            if (title == null || title.length == 0) {//un common xml construction, need to parse for special casees
+                span = $(xmlContent).find('itemBody span[class="bold class1"]').first();
+                divTitle = '<div style="height:15px; overflow:hidden;max-width:237px">' + $(span).outerHTML() + '</div>';///LNKT-5785
+            }
+            if (title == null || title.trim().length == 0) {//sometime there's no class mainbody or mainbody
+                title = $(xmlContent).find('itemBody').first().html();
+                if (title == null || title.trim().length == 0) {
+                    title = $(xmlContent).find('itembody').first().html();
+                }
+                if (title == null) {
+                    title = '';
+                }
+                title = title.replaceAll("<object", "<object style='display: none;'");
+                divTitle = '<div style="height:15px; overflow:hidden;max-width:237px">' + title + '</div>';///LNKT-5785
+            }
+            return divTitle;
+        }
+        return '';
+    }
+
+    function setIconVisibility1(qti3pItemId) {
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a href="javascript:void(0)" onclick="showEditQti3pItemPopup('+qti3pItemId + ',1)" title="Edit Item" qti3pItemId="' + qti3pItemId + '" class="with-tip EditQti3pItem"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        var addToItemSet = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle.png")';
+        var addToItemSetString = '<a href="javascript:void(0)" title="Add To Item Set" qti3pItemId="' + qti3pItemId + '" class="with-tip addToItemSet1" onclick="AddToItemSet(this);"><img src="' + addToItemSet + '" width="16" height="16"></a>';
+        return editString+ addToItemSetString;
+    }
+    function setCheckBoxItem(qtiItem3pId) {
+        var checkboxString = '<input type="checkbox" name="chkItem" value="' + qtiItem3pId + '"  />';
+
+        return checkboxString;
+    }
+    $('#btnAddItemsToItemSet').die('click');
+    $('#btnAddItemsToItemSet').live("click", function (e) {
+        var selectedItemId = getSelectedItems();
+        $('#btnAddItemsToItemSet').attr('disabled', 'disabled');
+        ShowBlock($("#dataTable1"), "Adding");
+
+        $.post('@Url.Action("AddQTI3ToItemSetMany", "ItemBank")', { qti3pItemIdString: selectedItemId, qtiGroupId: $("#hiddenQIItemGroupID").val() }, function (response) {
+            $("#dataTable1").unblock();
+            $('#btnAddItemsToItemSet').removeAttr('disabled');
+            if (response.Success == 'Success') {
+                uncheckAllSelectedqQtiItems();
+                //href.css({ 'display': 'none' });
+                if ($('#qtiItemDataTableView').length > 0) {
+                    ui.qtiItemDataTableView.fnDraw();
+                }
+
+            } else {
+                customAlert(response.message || response.errorMessage);
+            }
+        });
+
+    });
+    function AddToItemSet(control) {
+        ShowBlock($("#dataTable1"), "Adding");
+        var id = $(control).attr("qti3pItemId");
+        var href = $(control);
+        $.get('@Url.Action("AddQTI3ToItemSet","ItemBank")', { qti3pItemId: id, qtiGroupId: $("#hiddenQIItemGroupID").val() }, function (response) {
+            $("#dataTable1").unblock();
+            if (response.Success == 'Success') {
+                //href.css({ 'display': 'none' });
+                if ($('#qtiItemDataTableView').length > 0) {
+                    ui.qtiItemDataTableView.fnDraw();
+                }
+            } else {
+                alert(response.errorMessage);
+            }
+
+        });
+    }
+    function ReloadItem1ForEmpty() {
+        $("#dataTable1").dataTable().fnReloadAjax(getAjaxSource1(true));
+    }
+    function ReloadItem1(isLoad = false) {
+        $("#dataTable1").dataTable().fnReloadAjax(getAjaxSource1(isLoad));
+    }
+
+    function showEditQti3pItemPopup(qti3pItemId, showPassage) {
+        //Show popup
+        ShowBlock($('#dataTable1'), "Opening Item");
+        var worker = $('<div />');
+        worker
+            .addClass("dialog EditQti3pItemPopUpDialogCSS")
+            .attr("id", "editQti3pItemDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowEditQti3pItemItem")\?qti3pItemId=' + qti3pItemId + '&showPassage=' + showPassage, function () {
+                worker.dialog({
+                    title: $(this).attr("Standard"),
+                    open: function () {
+                        //a new overlay will be generated when opening an dialog
+                        //set zindex of new overlay to make it cover Filter Item From Library Popup
+                        var z_index = $("#addNewItemFromLibraryPopup").parent().css('z-index');
+                        $('.ui-widget-overlay:last').css('z-index', parseInt(z_index) + 1);
+                        $("#editQtiItemDialog").parent().css('z-index', parseInt(z_index) + 2);
+                        $("#editQti3pItemDialog").prev().css('top', '30px');
+                        $('.ui-widget-overlay:last').height(2000);
+                        $('#dataTable1').unblock();
+                        AdjustQti3pItemDetail();//declared in _Qti3pItemDetail.cshtml
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+                    },
+                    modal: false,
+                    width: 640,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+    function showEditQtiItemPopupUpload(qtiItemId, showPassage) {
+        //Show popup
+        ShowBlock($('#dataTableUpload'), "Opening Item");
+        var worker = $('<div />');
+        worker
+            .addClass("dialog EditQtiItemPopUpDialogCSS")
+            .attr("id", "editQtiItemDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowEditQtiItemItem","ItemBank")\?qtiItemId=0' + '&showPassage=' + showPassage + '&qti3pItemIdUploaded=' + qtiItemId, function () {
+                worker.dialog({
+                    title: $(this).attr("Standard"),
+                    open: function () {
+                        //a new overlay will be generated when opening an dialog
+                        //set zindex of new overlay to make it cover Filter Item From Library Popup
+                        var z_index = $("#addNewItemFromLibraryPopup").parent().css('z-index');
+                        $('.ui-widget-overlay:last').css('z-index', parseInt(z_index) + 1);
+                        $("#editQtiItemDialog").parent().css('z-index', parseInt(z_index) + 2);
+                        $("#editQtiItemDialog").prev().css('top', '30px');
+                        $('.ui-widget-overlay:last').height(2000);
+                        $('#dataTableUpload').unblock();
+                        AdjustQtiItemDetail();//declared in _QtiItemDetail.cshtml
+
+                        var qtiItemHTML = $('#divQtiItemDetail').html();
+                        qtiItemHTML = qtiItemHTML.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+                        $('#divQtiItemDetail').html(qtiItemHTML);
+
+                        $('#divQtiItemDetail').find('video').trigger('play');
+                        loadContentDragAndDrop('#divQtiItemDetail');
+                        loadContentNumberLineHotspot('#divQtiItemDetail');
+                        loadContentImageHotSpot('#divQtiItemDetail');
+                        //This function build for glossary to open popup
+                        $("#divQtiItemDetail span.glossary").unbind("click").on("click", function (e) {
+                            var $self = $(this);
+                            var glossary_text = $self.html();
+                            var glossary_content = $self.attr("glossary")
+                                                            .replace(/&lt;br\/&gt;/gi, "<br/>")
+                                                            .replace(/&gt;/g, ">")
+                                                            .replace(/&lt;/g, "<");
+                            $("#glossaryMessage .glossary_text").html(glossary_text);
+                            $("#glossaryMessage .glossary_define").html(glossary_content);
+                            var z_index = parseInt($self.parents(".ui-dialog").css("z-index"));
+                            var win = $(document);
+                            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: ' + (z_index + 1) + ';"></div>');
+                            $("#glossaryMessage").dialog({
+                                modal: false,
+                                width: 480,
+                                resizable: false,
+                                close: function () {
+                                    $('.ui-widget-overlay:first').remove();
+                                }
+                            });
+
+                        }).hover(function () {
+                            var $self = $(this);
+                            $self.addClass("glossary-hover");
+                        }, function () {
+                            var $self = $(this);
+                            $self.removeClass("glossary-hover");
+                        });
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+                    },
+                    modal: false,
+                    width: 480,
+                    resizable: false,
+                    position: {
+                        my: "center",
+                        at: "center",
+                        of: window
+                    }
+                });
+            });
+        showModalDialogBG();
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+
+    function displayItemTooltip(e, data, maxItemTooltipLength) {
+        if (data == null) {
+            data = '';
+        }
+        var width = '100px'; //default
+        if (maxItemTooltipLength <= 300) {
+            width = '300px';
+        }
+        else if (data.length <= 400) {
+            width = '400px';
+        }
+        else {
+            width = '500px';
+        }
+
+        $(e).attr('title', '<p style="text-align:left;width:' + width + ';white-space: normal;word-break: break-all">' + data.split('|').join('<br />') + '</p>');
+    }
+</script>
+<!-- script for checkbox all-->
+<script type="text/javascript">
+    $('#chkAllItem').die('click');
+    $('#chkAllItem').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkItem"][type=checkbox]').attr('checked', 'checked');
+            $('#btnAddItemsToItemSet').removeAttr('disabled');
+        }
+        else {
+            $('INPUT[name="chkItem"][type=checkbox]').removeAttr('checked');
+            $('#btnAddItemsToItemSet').attr('disabled', 'disabled');
+        }
+    });
+
+    $('INPUT[name="chkItem"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            $('#btnAddItemsToItemSet').removeAttr('disabled');
+            var checkboxes = $('INPUT[name="chkItem"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllItem').removeAttr('checked').removeClass('input-checked-v2');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllItem').attr('checked', 'checked');
+            }
+        }
+        else {
+            $('#chkAllItem').removeAttr('checked').removeClass('input-checked-v2');
+            var checkedboxes = $('INPUT[name="chkItem"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+            }
+            else {
+                $('#btnAddItemsToItemSet').attr('disabled', 'disabled');
+            }
+        }
+    });
+
+    function getSelectedItems() {
+        var Ids = '';
+        $('INPUT[name="chkItem"][type=checkbox]:checked').each(function (i, e) {
+            Ids += $(e).val() + ',';
+        });
+        return Ids.substr(0, Ids.length - 1);
+    }
+    function uncheckAllSelectedqQtiItems() {
+        $('INPUT[name="chkItem"][type=checkbox]').removeAttr('checked');
+        $('#btnAddItemsToItemSet').attr('disabled', 'disabled');
+    }
+</script>

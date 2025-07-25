@@ -1,0 +1,265 @@
+@using System.Activities.Statements
+@using DevExpress.Office.Utils
+@using LinkIt.BubbleSheetPortal.Common
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestBankPropertiesViewModel
+<article class="container_12" style="width: 100%">
+    <section class="grid_12" style="width: 93%">
+        <div class="block-border" style="width: 100%">
+            <div class="block-content form form-properties">
+                <h1>Survey Bank Properties</h1>
+
+                <div class="no-margin last-child">
+                    <table class="datatable table no-margin" width="100%">
+                        <tr>
+                            <td colspan="2">
+                                @Html.TextAreaFor(x => x.TestBankName, new { @class = "full-width", tabindex = 1, rows = 2 })
+                                @Html.ValidationMessageFor(x => x.TestBankName, " ")
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Created Date:
+                            </td>
+                            <td>
+                                @if (!Model.CreatedDate.Equals(DateTime.MinValue))
+                                {
+                                    <text>
+                                        @Model.CreatedDate.DisplayDateWithFormat()
+                                    </text>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Updated Date:
+                            </td>
+                            <td>
+                                @if (!Model.UpdatedDate.Equals(DateTime.MinValue))
+                                {
+                                    <text>
+                                        @Model.UpdatedDate.DisplayDateWithFormat()
+                                    </text>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Created By:
+                            </td>
+                            <td>
+                                @Model.CreatedBy
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                @LabelHelper.GradeLabel:
+                            </td>
+                            <td>
+                                @Model.GradeName
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Subject:
+                            </td>
+                            <td>
+                                @Model.SubjectName
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Published to @LabelHelper.DistrictLabel:
+                            </td>
+                            <td>
+                                <span id="spanDistrictPublished" style="width: 300px">@Model.DistrictPublished</span>
+                                @if (!Model.PublishedToDistrictDistrictAdminOnly)
+                                {
+                                    <text>
+                                        <p id="pEditDistrictShareIcon"></p>
+                                    </text>
+                                }
+                                else
+                                {
+                                    if (Model.IsDistrictAdmin || Model.IsPublisher || Model.IsNetworkAdmin)
+                                    {
+                                        <text>
+                                            <p id="pEditDistrictShareIcon"></p>
+                                        </text>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Published to Schools:
+                            </td>
+                            <td>
+                                <span id="spanSchoolPublished" style="display: inline">@Model.SchoolPublished</span>
+                                <p id="pEditSchoolShareIcon" style="display: inline"></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <div id="divSetArchived">
+                                    @if (Model.Archived)
+                                    {
+                                        <button id="btnUnArchive" type="button" style="width: 125px;" bankid="">Unarchive </button>
+                                    }
+                                    else
+                                    {
+                                        <button id="btnArchive" type="button" style="width: 125px;" bankid="">Archive </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <div>
+                                    <button id="btnSaveChange" onclick="SaveSurveyBankProperty('@Model.TestBankId');" style="width:125px; padding-left: 0px; padding-right: 0px">Save Changes</button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <div>
+                                    <button id="btnDeleteTestBank" onclick="DeleteSurveyBank('@Model.TestBankId');" style="width:125px;padding-left: 0px; padding-right: 0px;margin-top: 0px">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script>
+    $(function () {
+        $('#pEditDistrictShareIcon').html(setIconVisibilityPublishToDistrict(@Model.TestBankId));
+        $('#pEditSchoolShareIcon').html(setIconVisibilityPublishToSchool(@Model.TestBankId));
+        displayDistrictPublished();
+        displaySchoolPublished();
+    });
+
+    function setIconVisibilityPublishToDistrict(bankId) {
+        var pencilIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a style="display: inline-table; vertical-align: middle;" href="javascript:void(0)" onclick="displayPublishToDistrictForm(' + bankId + ')" title="Edit" class="with-tip"><img src="' + pencilIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        return editString;
+    }
+
+    function refreshTestBankProperties() {
+        $('#divSurveyBankProperties').load('@Url.Action("GetSurveyBankProperties", "ManageSurvey")?bankId=@Model.TestBankId', function () {
+            $('#divVirtualTestProperties').html('');
+            $('#divSurveyBankProperties').focus();
+        });
+    }
+
+    function displayPublishToDistrictForm(bankId) {
+        var worker = $('<div />');
+        worker
+            .addClass("dialog")
+            .attr("id", "AssignParentForm")
+            .appendTo("body")
+            .load('@Url.Action("LoadListOrShareDistrict", "ManageTest")/?bankId=' + bankId, function () {
+                worker.dialog({
+                    title: $(this).attr("Publish to @LabelHelper.DistrictLabel"),
+                    close: function () {
+                        $('.ui-widget-overlay').remove();
+                        $(this).remove();
+                        refreshTestBankProperties();
+                    },
+                    modal: false,
+                    width: 750,
+                    resizable: false,
+                    position: ['top', 100]
+                });
+            });
+
+        showModalDialogBG();
+    }
+
+    function displayDistrictPublished() {
+        var districtPublished = $('#spanDistrictPublished').text();
+        if (districtPublished == null) {
+            districtPublished = '';
+        }
+        if (districtPublished.length > 30) {
+            $("#spanDistrictPublished").attr('title', '<p style="text-align:left;width:300px;white-space: normal;word-break: break-all">' + districtPublished.split('|').join('<br />') + '</p>');
+            $("#spanDistrictPublished").tip();
+
+            districtPublished = districtPublished.substring(0, 27) + '...';
+            $("#spanDistrictPublished").text(districtPublished);
+        }
+    }
+
+    function setIconVisibilityPublishToSchool(bankId) {
+        var pencilIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a style="display: inline-table; vertical-align: middle;" href="javascript:void(0)" onclick="displayPublishToSchoolForm(' + bankId + ')" title="Edit" class="with-tip"><img src="' + pencilIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        return editString;
+    }
+
+    function displayPublishToSchoolForm(bankId) {
+        var worker = $('<div></div>');
+        worker
+            .addClass("dialog")
+            .attr("id", "AssignSchoolsForm")
+            .appendTo("body")
+            .load('@Url.Action("LoadListOrShareSchool", "ManageTest")/?bankId=' + bankId, function () {
+                worker.dialog({
+                    title: $(this).attr("Publish to School"),
+                    close: function () {
+                        $('.ui-widget-overlay').remove();
+                        $(this).remove();
+                        refreshTestBankProperties();
+                    },
+                    modal: false,
+                    width: 750,
+                    resizable: false,
+                    position: ['top', 100]
+                });
+            });
+        showModalDialogBG();
+    }
+
+    function displaySchoolPublished() {
+        var schoolPublished = $('#spanSchoolPublished').text();
+        if (schoolPublished == null) {
+            schoolPublished = '';
+        }
+        if (schoolPublished.length > 30) {
+            $("#spanSchoolPublished").attr('title', '<p style="text-align:left;width:300px;white-space: normal;word-break: break-all">' + schoolPublished.split('|').join('<br />') + '</p>');
+            $("#spanSchoolPublished").tip();
+            schoolPublished = schoolPublished.substring(0, 27) + '...';
+            $("#spanSchoolPublished").text(schoolPublished);
+        }
+    }
+
+    $('#btnArchive').die('click');
+    $('#btnArchive').click(function () {
+        var bankId = @Model.TestBankId;
+        UpdateBankArchived(bankId, true);
+    });
+
+    $('#btnUnArchive').die('click');
+    $('#btnUnArchive').click(function () {
+        var bankId = @Model.TestBankId;
+        UpdateBankArchived(bankId, false);
+    });
+
+    function UpdateBankArchived(bankId, archived) {
+        ShowBlock($('#divSurveyBankProperties'), 'Updating');
+        $.get('@Url.Action("UpdateBankArchive", "ManageTest")', { bankId: bankId, archived: archived }, function (response) {
+            $('#divSurveyBankProperties').unblock();
+            if (response.Success == 'Success') {
+                refreshSurveyBankList();
+                $('#divSurveyBankProperties').html('');
+
+                testBankId = 0;
+                $("#dataTableSurveyTest").dataTable().fnReloadAjax('@Url.Action("LoadSurveyTests")');
+            } else {
+                $('#divSurveyBankProperties').unblock();
+                customAlertMessage({ message: 'There was some error. Can not update archived.' });
+            }
+        });
+    }
+</script>

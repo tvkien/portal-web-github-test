@@ -1,0 +1,136 @@
+<modal-component v-bind:show.sync="isShowModalArtifactFolder"
+                 class="is-dark artifactFolderModal modalUploadFile custom-preview-form-popup"
+                 style="display: none;" id="idArtifactFolderModal">
+    <div slot="close">
+        <a href="#" class="modal-component-close" v-on:click="closeArtifactModal">Close</a>
+    </div>
+    <div slot="header">
+        <div class="block-heading">
+            <h1 v-if="artifactFolderModalVM.isMassUpload" class="title-large is-active"> Upload Artifacts</h1>
+            <h1 v-else class="block-heading-item is-active"> {{ studentName }} - {{ artifactFolderModalVM.currentScore }} - Artifacts</h1>
+        </div>
+    </div>
+    <div slot="body">
+        <div class="upload-artifact-area mb-3">
+            <label class="mb-4" for="rdUploadFile">
+                Upload File ({{artifactFolderModalVM.allowFileTypes}})
+                <span class="icon icon-info with-tip align-left d-inline-block" title="{{warningFileSize}}">
+                </span>
+            </label>
+            <div class="">
+                <input id="file_upload_artifact" name="file_upload_artifact" type="file" class="js-upload-artifact btn-choose-file">
+                <input style="display: none" id="file_folder_artifact" name="file_folder_artifact" type="file" class="js-folder-artifact" webkitdirectory mozdirectory>
+            </div>
+        </div>
+        <p class="line-break">
+            <span>Or</span>
+        </p>
+        <div class="link-artifact-input">
+            <label class="d-block mb-2 insert-link" for="rdInputLink">Insert Link</label>
+            <div class="form d-inline-block">
+                <input type="text" v-model="artifactFolderModalVM.inputLink" class="u-w-320">
+            </div>
+            <a style="cursor:pointer" class="d-inline-block align-middle" v-on:click="addLinkArtifact()">
+                <i class="fa-solid fa-plus ms-2 icon-red"></i>
+            </a>
+        </div>
+        <div class="u-clear" v-if="artifactFolderModalVM.msgError != ''">
+            <span class="u-m-t-10 u-m-l-25 u-c-light-red u-fw-700 u-inline-block" v-text="artifactFolderModalVM.msgError"></span>
+        </div>
+
+        <div class="list-artifacts mt-4">
+            <div v-if="artifactFolderModalVM.isShowPopUpModalErrorFileUploadMass" v-html="artifactFolderModalVM.objectPopUpModalErrorFileUploadMass" style="padding-left: 15px; color: var(--red); margin-bottom: 13px "></div>
+            <table id="tableArtifactFolder" style="width: 100%; table-layout: fixed" class="table no-margin">
+                <thead>
+                    <tr>
+                        <th scope="col" style="width: 10%">Actions</th>
+                        <th scope="col">Artifact name</th>
+                        <th scope="col" v-if="tagList.length > 1">Tag</th>
+                        <th scope="col" v-if="artifactFolderModalVM.isMassUpload">Student</th>
+                        <th scope="col" style="width: 20%">Uploaded Date</th>
+                    </tr>
+                </thead>
+                <tbody v-if="artifactFolderModalVM.artifacts.length > 0">
+                    <tr v-for="artifact in artifactFolderModalVM.artifacts">
+                        <td class="text-center">
+                            <a style="cursor:pointer" v-on:click="removeArtifact(artifact.Name)" title="Delete Artifact">
+                                <i class="fa-solid fa-circle-minus icon-red"></i>
+                            </a>
+                        </td>
+                        <td>
+                            <div>
+                                <a class="text-decoration-none" href="#" v-on:click="downloadFile(artifact.Url, artifact.Name, artifact.IsLink)">
+                                    <span>
+                                        <img class="icon" style="height:16px;" v-if="artifact.IsLink" src="@Url.Content("~/Content/themes/Constellation/images/icons/icon-link.svg")" />
+                                        <i v-else class="fa-regular fa-file"></i>
+                                    </span>
+                                    <span class="file-name">{{ artifact.DisplayName }}</span>
+                                </a>
+                                <a v-if="artifact.FileType !== 'document' && !artifact.IsLink" class="btn-icon btn-icon--preview" :disabled="shared.isRecording" title="Preview" href="#" v-on:click="handlePreviewItem(artifact)"></a>
+                            </div>
+                        </td>
+                        <td v-if="tagList.length > 1" class="tag">
+                            <select id="selectTag" class="w-100" v-model="artifact.TagValue">
+                                <option v-for="item in tagList" v-bind:value="item">{{ item }}</option>
+                            </select>
+                        </td>
+                        <td v-if="artifactFolderModalVM.isMassUpload">
+                            <select id={{artifact.DocumentGuid}} class="u-full-width select2-student" v-model="artifact.StudentID">
+                                <option v-for="item in artifactFolderModalVM.Students" v-bind:value="item.StudentID">
+                                    {{ item.DisplayFullName }}
+                                </option>
+                            </select>
+                        </td>
+                        <td>
+                            {{ artifact.UploadDate | formatDate }}
+                        </td>
+                    </tr>
+                </tbody>
+                <tbody v-else>
+                    <tr v-if="tagList.length > 1 && artifactFolderModalVM.isMassUpload">
+                        <td colspan="5" class="no-upload">No Artifacts uploaded.</td>
+                    </tr>
+                    <tr v-else>
+                        <td colspan="4" v-if="tagList.length > 1 || artifactFolderModalVM.isMassUpload" class="no-upload">No Artifacts uploaded.</td>
+                        <td colspan="3" v-else class="no-upload">No Artifacts uploaded.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    <div slot="footer">
+        <button v-on:click="closeArtifactModal">Cancel</button>
+        <button v-on:click="okFolderModal">Save</button>
+    </div>
+</modal-component>
+
+<script type="text/javascript">
+
+</script>
+
+<style>
+    .btn-icon {
+        display: inline-block;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 1rem;
+        float: right;
+    }
+
+        .btn-icon:disabled {
+            pointer-events: none;
+        }
+
+        .btn-icon:hover {
+            background-color: rgb(0, 0, 0, 0.2);
+        }
+
+    .btn-icon--preview {
+        background-image: url(/Content/images/icons/preview-eye.png);
+    }
+</style>

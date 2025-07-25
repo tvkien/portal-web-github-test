@@ -1,0 +1,336 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.ViewMessageViewModel
+@{
+    ViewBag.Title = "ViewMessage";
+    Layout = "~/Views/Shared/_LayoutParentConnect.cshtml";
+}
+
+<script src="@Url.Content("~/Scripts/ckeditor/ckeditor.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/ckeditor/adapters/jquery.js")" type="text/javascript"></script>
+
+@{
+    var replyToAllButtonName = Model.HasMultiRecipients ? "Reply to All" : "Reply";
+}
+
+
+<div id="heading-button-tab">
+    @if(!Model.IsViewSubThreadMessage){
+        string disabled = "";
+        if (!Model.HasUnreadMessageInThread)
+        {
+            disabled = "disabled=\"disabled\"";
+        }
+        <button id="btnMarkAllAsRead" type="button" name="Save" @disabled>Mark All as Read</button>
+    }    
+</div>
+
+<div id="messageNotification"></div>
+
+<div id="message-subject" class="message-subject">@Model.Subject</div>
+<br />
+<table style="width: 100%">
+    <tbody>
+        @foreach (var message in Model.Messages)
+        {
+            <tr>
+                <td>
+                    @if (true)
+                    {
+                        Html.RenderPartial("_MessageDetail", message);
+                        if (message != Model.Messages.Last())
+                        {
+                        <hr />
+                        }
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.IsViewSubThreadMessage)
+{
+    <hr />
+    using (Html.BeginForm("ReplyMessage", "MailBox", FormMethod.Post, new { id = "replyForm", @class = "form" }))
+    {
+    <div style="width: 99%">
+        @Html.Hidden("ReplyMessageType", "2")
+        @Html.HiddenFor(x => x.MessageId)
+        @Html.HiddenFor(x => x.SenderId)
+        @Html.HiddenFor(x => x.StudentId)
+		@if(Model.IsRepliedRequired == 1){
+			<p><i>Reply (Optional) ... </i></p>
+			@Html.TextAreaFor(x => x.Body, new { @style = "width:100%", @rows = 20 })
+		}
+        <p class="reply_ack">
+            @if (!Model.IsDisable)
+            {
+                if (Model.IsAcknowledgeRequired == 1)
+                {
+                <button id="btnAcknowledge" type="button">Acknowledge</button>
+                }
+                if(Model.IsRepliedRequired == 1)
+                {
+                    <button id="btnReply" type="button" name="Save">Reply</button>
+                }
+            }
+        </p>
+    </div>
+    }
+}
+else
+{
+    <hr />
+    using (Html.BeginForm("ReplyToAll", "MailBox", FormMethod.Post, new { id = "replyToAllForm", @class = "form" }))
+    {
+    <div style="width: 99%">
+        @Html.Hidden("ReplyMessageType", "2")
+        @Html.HiddenFor(x => x.MessageId)
+        @Html.HiddenFor(x => x.SenderId)
+        @Html.HiddenFor(x => x.StudentId)
+        <p><i>Reply (Optional) ... </i></p>
+        @Html.TextAreaFor(x => x.Body, new { @style = "width:100%", @rows = 20 })
+        <p class="reply_ack">
+            <button id="btnReplyToAll" type="button" name="Save">@replyToAllButtonName</button>
+        </p>
+    </div>
+    }
+}
+
+<script>
+    $(function () {
+        $('.parent_connect').addClass('current');
+        $('#mailBoxTab').addClass('current');
+        $('#Body').ckeditor();
+
+        if ('@Model.SendActionType' == 'MarkAllAsRead') {
+            if ('@Model.SendActionResult' == 'True')
+                LinkIt.success('#messageNotification', 'All messages are marked as read.');
+            else
+                LinkIt.error('#messageNotification', 'An error has occured. Please try again.');
+        }
+    });
+
+    $(window).load(function () {
+        if ('@Model.SendActionType' == '') {
+            $(document).scrollTop($(document).height());
+        }
+    });
+
+    $('#btnReply').click(function (event) {
+        event.preventDefault();
+        if ($('#Body').val().trim() == '') {
+            alertMessage("Please input text message.");
+        } else {
+            $("#btnReply").attr('disabled', 'disabled');
+            $('#replyForm').submit();
+        }
+    });
+
+    $('#btnReplyToAll').click(function (event) {
+        event.preventDefault();
+        if ($('#Body').val().trim() == '') {
+            alertMessage("Please input text message.");
+        } else {
+            $("#btnReplyToAll").attr('disabled', 'disabled');
+            $('#replyToAllForm').submit();
+        }
+    });
+
+    $('#btnMarkAllAsRead').click(function (event) {
+        location.href = '@Url.Action("MarkAllAsRead", "MailBox")/?messageId=@Model.MessageId';
+    });
+
+    $('#btnAcknowledge').click(function () {
+        $('#ReplyMessageType').val('3');
+
+        $("#btnAcknowledge").attr('disabled', 'disabled');
+        $('#replyForm').submit();
+    });
+
+    $(document).ready(function () {
+        window.onbeforeunload = function () {
+            if ($('#btnAcknowledge').length > 0
+                && $('#btnAcknowledge').attr('disabled') != 'disabled'
+                && $('#btnReply').attr('disabled') != 'disabled') {
+
+                return 'Please send Acknowledge to make sure that you already read this message.';
+            } else {
+                return;
+            }
+        };
+    });
+
+    function alertMessage(message) {
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $('.ui-widget-overlay').remove(); $(this).remove(); },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+
+    function closeAlert() {
+        $('#alertDialog').dialog('close');
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+</script>
+
+
+<style>
+    /* Display ckeditor content */
+    hr {
+        margin-bottom: 10px;
+    }
+
+    #btnMarkAllAsRead {
+        margin-bottom: 10px;
+    }
+
+    .reply_ack {
+        text-align: right;
+        padding-top: 10px;
+    }
+
+    /*margin-top: -30px;*/
+    .message-subject {
+        font-size: 100%;
+    }
+
+    .block-message-display-ceditor {
+        padding: 10px;
+    }
+
+        .block-message-display-ceditor strong {
+            color: #000;
+        }
+
+        .block-message-display-ceditor ol {
+            list-style: decimal;
+            padding-left: 23px;
+        }
+
+        .block-message-display-ceditor ul {
+            list-style: disc;
+            padding-left: 23px;
+        }
+
+        .block-message-display-ceditor a {
+            color: #0782c1;
+            text-decoration: underline;
+        }
+
+        .block-message-display-ceditor ol li:hover, .block-message-display-ceditor ul li:hover {
+            background: transparent !important;
+        }
+</style>
+
+<style type="text/css">
+    #backToInbox {
+        display: inline-block;
+        width: 95px;
+        height: 30px;
+        background: url("/Content/themes/Constellation/images/inbox-back-button.png") no-repeat 0 0;
+    }
+
+        #backToInbox:hover {
+            background: url("/Content/themes/Constellation/images/inbox-back-button-hover.png") no-repeat 0 0;
+        }
+
+    .ui-tabs-nav li:hover {
+        background: #029CDC !important;
+    }
+
+    .positionAdd {
+        position: relative;
+        right: -6px;
+        top: 26px;
+    }
+
+    .ui-dialog .block-content {
+        z-index: 0;
+    }
+
+    .ui-dialog .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        height: auto !important;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    #studentContent {
+        position: relative;
+    }
+
+    tr:nth-child(odd) {
+        background-color: #E6E6E6;
+    }
+
+    tr:nth-child(even) {
+        background-color: #F2F2F2;
+    }
+
+    tr:nth-child(odd) :hover {
+        background-color: #80CEEE;
+    }
+
+    tr:nth-child(even) :hover {
+        background-color: #80CEEE;
+    }
+</style>

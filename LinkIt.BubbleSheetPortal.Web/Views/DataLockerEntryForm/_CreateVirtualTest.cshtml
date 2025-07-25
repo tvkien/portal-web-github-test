@@ -1,0 +1,184 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.DataLocker.TestFormViewModel
+
+<section style='z-index: 2004; margin-bottom: 6em'>
+    <div class='block-border' style='z-index: 2004'>
+        <div id="dvCreateVirtualTest" class='block-content bubbleSheetSelector form' style='z-index: 1004'>
+            <h1>Create New Form</h1>
+            <ul style="display: none" id="error-messages" class="message error"></ul>
+            <ul style="display: none" id="success-message" class="message success">
+                <li>FORM CREATED.</li>
+            </ul>
+            <fieldset>
+                <div class="columns">
+                    @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                    {
+                        <div class="mb-3">
+                            <label>State</label>
+                            <select id="selectStateForm"></select>
+                        </div>
+                        <div class="mb-3 block-content-dropdown-marquee">
+                            <label>@LabelHelper.DistrictLabel</label>
+                            <div class="block-text-name">
+                                <select id="selectDistrictForm"></select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <div class="mb-3 block-content-dropdown-marquee">
+                        <label>Template</label>
+                        <div class="block-text-name">
+                            <select id="selectTemplate" style="width: 250px;"></select>
+                            <div class="box-select">
+                                <span class="overlay"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <p>
+                        <label> Category</label>
+                        <input id="categoryListCreateForm" type="text" placeholder="Select Category" autocomplete="off" style="width: 235px;" />
+                    </p>
+                    <p>
+                        <label>Form Name</label>
+                        <input type="text" id="inputVirtualTestName" style="width: 235px;" />
+                    </p>
+                    <p style="text-align: center;">
+                        <button type="button" id="btnCreateTestBank" onclick="createVirtualTest()">Create</button>
+                        <button type="button" id="btnCancelCreateTestBank" onclick="cancelCreateVirtualTest()">Cancel</button>
+                    </p>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+</section>
+
+<script>
+
+    $(function () {
+        $('#selectDistrictForm').marquee();
+        $('#selectTemplate').marquee();
+        $('.virtualtest-legend').on('click', function () {
+            var $virtualtestContent = $('.virtualtest-content');
+            $virtualtestContent.toggle();
+        });
+        $('#PopupCreateVirtualTest').css({ "overflow": 'hidden' });
+
+        @if (Model.IsPublisher || Model.IsNetworkAdmin)
+        {
+            <text>
+                populateSate();
+            </text>
+        }
+        else {
+            <text>
+                PopularTemplate();
+                GetDataSetCategories();
+        $('#categoryListCreateForm').parents('.comboTreeInputWrapper').css('pointer-events', 'none');
+            </text>
+        }
+    });
+
+    $('#selectStateForm').change(function () {
+        $('#selectDistrictForm').empty();
+        $('#selectTemplate').empty();
+        if ($('#selectStateForm').val() !== 'select') {
+            populateDistricts();
+        }
+    });
+
+    $('#selectDistrictForm').change(function () {
+        $('#selectTemplate').empty();
+        if ($('#selectDistrictForm').val() !== 'select') {
+            PopularTemplate();
+            GetDataSetCategories();
+        }
+    });
+
+    function populateSate() {
+        $('#selectStateForm').empty();
+        $.get('@Url.Action("GetStateByPublisherOrNetworkAdmin", "PopulateStateDistrict")', function (states) {
+            AddSelectListItems($('#selectStateForm'), states, 'Select State');
+        });
+
+    }
+
+    function populateDistricts() {
+        $('#selectDistrictForm').empty();
+        var stateValue = $('#selectStateForm').val();
+        if (stateValue !== 'select') {
+            if ('@Model.IsPublisher' === 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrictForm'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrictForm'), districts);
+                });
+            }
+            if ('@Model.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrictForm'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrictForm'), districts);
+                });
+            }
+        }
+    }
+
+    function PopularTemplate()
+    {
+       // var districtId = -1;
+        var districtId = $('#selectDistrictForm').val();
+        if (districtId == null || districtId <= 0 || districtId === 'select') {
+            districtId = -1;
+        }
+        $('#selectTemplate').empty();
+        $.get('@Url.Action("LoadTemplateCreateForm", "DataLockerEntryForm")', { districtId: districtId }, function (template) {
+            AddSelectListItems($('#selectTemplate'), template, 'Select Template');
+        });
+    }
+
+    function numberQuestionTextBox_Keydown(e) {
+        // Allow: backspace, delete, tab, escape, enter and .
+        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+            // Allow: Ctrl+A
+            (e.keyCode === 65 && e.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (e.keyCode >= 35 && e.keyCode <= 39)) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+    }
+    var comboTree1 = null;
+    var categoryElementId = '#categoryListCreateForm';
+
+    function GetDataSetCategories() {
+        $.get('@Url.Action("GetDataSetCategoriesToComboTreeByDistrictId", "CategoriesAPI")?districtid=' + $('#selectDistrictForm').val(), function (categoryList) {
+            //defaul datalocker category
+            if (!comboTree1) {
+                comboTree1 = $(categoryElementId).comboTree({
+                    source: [],
+                    isMultiple: false,
+                    cascadeSelect: true,
+                    collapse: false,
+                    selected: [24]
+                });
+
+
+
+            }
+            if (comboTree1) {
+                comboTree1.setSource(categoryList);
+                $(categoryElementId).parent().parent().css({ 'width': '250px' });
+                $(categoryElementId).css({ 'width': '250px' });
+                $(categoryElementId).change(function (e) {
+                    $(this).val(comboTree1 ? comboTree1.getSelectedNames() : '');
+                });
+            }
+            if (comboTree1 && ('@Model.AllowChangeDataSetCategory' === 'False')) {
+                $(categoryElementId).parents('.comboTreeInputWrapper').addClass('disabled');
+            }
+        });
+    }
+</script>

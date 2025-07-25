@@ -1,0 +1,107 @@
+﻿
+<section style='z-index: 2004'>
+    <div class='block-border' style='z-index: 2004'>
+        <div id="MoveCopyTestPopupConfirmId" class='block-content form' style='z-index: 1004'>
+            <ul style="display: none" id="error-messages-confirm" class="message error"></ul>
+            <ul style="display: none" id="success-message-confirm" class="message success"></ul>
+            <div class="clear"></div>
+
+            @if (!ViewBag.CreateACopy)
+            {
+                <h1>Confirm Dialog</h1>
+                <div>
+                    Are you sure you want move form [@ViewBag.VirtualTestName] to this bank?
+                </div>
+            }
+            else
+            {
+                <h1>Enter new form name</h1>
+                <div>
+                    <input type="text" id="txtVirtualTestName" style="width: 400px" maxlength="150" />
+                </div>
+            }
+            <div class="clear"></div>
+            <p style='text-align: center; margin-top: 10px'>
+                @if (!ViewBag.CreateACopy)
+                {
+                    <button type="button" id="btnMoveVirtualTest" onclick="moveVirtualTest()">Move</button>
+                }
+                else
+                {
+                    <button type="button" id="btnCopyVirtualTest" onclick="copyVirtualTest()">Copy</button>
+                }
+                <button type="button" id="btnMoveCopyCancel" onclick="cancelMoveCopy()">Cancel</button>
+            </p>
+        </div>
+
+    </div>
+</section>
+
+<script type="text/javascript">
+
+    $(function () {
+        if ('@ViewBag.CreateACopy'.toLowerCase() == 'true') {
+            $('#txtVirtualTestName').val(htmlDecode('@ViewBag.VirtualTestName') + '_Clone');
+        }
+    });
+
+    function copyVirtualTest() {
+        var vVirtualTestId = '@ViewBag.VirtualTestId';
+        var vbankId = '@ViewBag.ToBankId';
+        var newVirtualTestName = $('#txtVirtualTestName').val();
+        ShowBlock($('#MoveCopyTestPopupConfirmId'), "Copying");
+        $.ajax({
+            url: '@Url.Action("CopyVirtualTest", "DataLockerEntryForm")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ virtualTestId: vVirtualTestId, newBankId: vbankId, testName: newVirtualTestName }),
+            success: function (response) {
+                if (response.Success == 'Success') {
+                    $('#success-message-confirm').html('<li>Form Successfully Copied.</li>');
+                    $('#success-message-confirm').show();
+                    //close dialog
+                    setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                } else {
+                    $('#divMoveVirtualTest > #error-messages').show();
+                    $("#divMoveVirtualTest > #error-messages").html('<li>' + response.Error + '</li>');
+                    $('#divPopupMoveVirtualTestConfirmDialog').remove();
+                    $('#divMoveVirtualTestID').unblock();
+                    $('.opacityPopup').css('display', 'none');
+                }
+                $('#MoveCopyTestPopupConfirmId').unblock();
+            }
+        });
+    }
+
+    function moveVirtualTest() {
+        var virtualTestId = '@ViewBag.VirtualTestId';
+        var bankId = '@ViewBag.ToBankId';
+
+        $.ajax({
+            url: '@Url.Action("MoveVirtualTest", "DataLockerEntryForm")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ virtualTestId: virtualTestId, newBankId: bankId}),
+            success: function (response) {
+                if (response.Success === 'Success')
+                {
+                    $('#success-message-confirm').html('<li>Form Successfully Moved.</li>');
+                    $('#success-message-confirm').show();
+                    //close dialog
+                    setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                } else {
+                    $('#divMoveVirtualTest > #error-messages').show();
+                    $("#divMoveVirtualTest > #error-messages").html('<li>' + response.Error + '</li>');
+                    $('#divPopupMoveVirtualTestConfirmDialog').remove();
+                    $('#divMoveVirtualTestID').unblock();
+                    $('.opacityPopup').css('display', 'none');
+                }
+            }
+        });
+    }
+
+    function cancelMoveCopy() {
+        $("#divPopupMoveVirtualTestConfirmDialog").dialog("close");
+        $('#dataTableTestBankTop').unblock();
+    }
+</script>

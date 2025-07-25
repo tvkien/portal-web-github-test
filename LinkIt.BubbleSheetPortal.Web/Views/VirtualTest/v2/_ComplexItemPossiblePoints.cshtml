@@ -1,0 +1,285 @@
+@using LinkIt.BubbleSheetPortal.Models.TestMaker
+@model int 
+<style>
+    #divComplexAnswerScore .block-controls {
+        display: none;
+    }
+    #divComplexAnswerScore .block-footer{
+        display: none;
+    }
+    #dataTableComplexVirtualQuestionAnswerScores_info {
+        display: none;
+    }
+    #divComplexAnswerScore {
+        border-width: 1px;
+        margin-top: 25px;
+        margin-left: 15px;
+    }
+    .PointsTextBox {
+        width: 30px;
+    }
+    #dataTableComplexVirtualQuestionAnswerScores th {
+        color: var(--dark);
+    }
+    #dataTableComplexVirtualQuestionAnswerScores tbody tr td {
+        vertical-align: middle;
+    }
+
+    .table-answer-score {
+        border: 1px solid var(--grey7) !important;
+        width: 100%;
+        margin: 0;
+        margin-bottom: 0;
+    }
+</style>
+<div style="display:none;">VirtualTest\_ComplexItemPossiblePoints.cshtml</div>
+<table id="dataTableComplexVirtualQuestionAnswerScores" class="datatable table table-answer-score">
+    <thead>
+        <tr>
+            <th scope="col">
+                Response Item
+            </th>
+            <th scope="col">
+                Correct Answer
+            </th>
+            
+            <th scope="col" class="original-score">
+                Original Score
+            </th>
+            
+            <th scope="col" class="test-score">
+                Test Score
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+<script type="text/javascript">
+    $(function () {
+        //LoadComplexVirtualQuestionAnswerScoresTable();
+        LoadResponseDeclarations();
+    });
+
+
+    function LoadResponseDeclarations() {
+        $('#dataTableComplexVirtualQuestionAnswerScores tbody').html('');
+        $.ajax({
+            type: 'POST',
+            url: '@Url.Action("LoadResponseDeclarations", "VirtualTest")',
+            data: { virtualQuestionId: '@Model' },
+            success: function (data) {
+                var index = 0;
+				$('#dataTableComplexVirtualQuestionAnswerScores tbody').html('');
+                $('#divQtiItemDetailVirtualTest').find('[responseidentifier]').each(function () {
+                    index++;
+                    var responseIdentifier = $(this).attr('responseidentifier');
+                    var responeData = null;
+                    $.each(data, function(index, item) {
+                        if (item.ResponseIdentifier == responseIdentifier) {
+                            responeData = item;
+                            return false;
+                        }
+
+                        return true;
+                    });
+                    
+                    var xml = "<div>" + responeData.CorrectAnswer + "</div>";
+                    var xmlDoc = $.parseXML(xml)
+
+                    var greaterThanOrEqual = '&#8805;';
+                    var lessThanOrEqual = '&#8804;';
+                    var correctAnswerText = '';
+                    var startValue = '';
+                    var endValue = '';
+                    var startExclusivity = '';
+                    var endExclusivity = '';
+                    var identifier = $(this).attr('identifier');
+                    $(xmlDoc).find('rangeValue').each(function () {
+                        if ($(this).find("name").text() === 'start') {
+                            startExclusivity = $(this).find("exclusivity").text();
+                            startValue = $(this).find("value").text();
+                        } else if ($(this).find("name").text() === 'end') {
+                            endExclusivity = $(this).find("exclusivity").text();
+                            endValue = $(this).find("value").text();
+                        }
+                    });
+                    if (startValue != '') {
+                        correctAnswerText = startOperator + ' ' + startValue;
+                        if (endValue != '') {
+                            correctAnswerText = correctAnswerText + ' and ' + endOperator + ' ' + endValue;
+                        }
+                    } else {
+                        if (endValue != '') correctAnswerText = correctAnswerText + ' ' + endOperator + ' ' + endValue;
+                    }
+
+                    var startOperator = startExclusivity == '1' ? '>' : greaterThanOrEqual;
+                    var endOperator = endExclusivity == '1' ? '<' : lessThanOrEqual;
+
+                    if (startValue != '') {
+                        correctAnswerText = startOperator + ' ' + startValue;
+                        if (endValue != '') {
+                            correctAnswerText = correctAnswerText + ' and ' + endOperator + ' ' + endValue;
+                        }
+                    } else {
+                        if (endValue != '') correctAnswerText = correctAnswerText + ' ' + endOperator + ' ' + endValue;
+                    }
+
+
+                    if (responeData != null) {
+                        var qtiItemScore = responeData.QtiItemScore;
+                        var scoringMethod = $('#scoringMethodComplexItem').text();
+                        if(scoringMethod == "Multi-part All or Nothing")
+                        {
+                            qtiItemScore = "";
+                            $('.original-score').hide();
+                            $('.test-score').hide();
+                        }
+                        var input = addPointsTextBox(responeData.ResponseIdentifier, qtiItemScore, responeData.QTISchemaID, responeData.ResponseProcessingTypeId);
+
+                        var tbody = '';
+
+                        tbody += '<tr>';
+                        tbody += '<td>Answer ' + index + '</td>';
+                        tbody += '<td>' + correctAnswerText + '</td>';
+                        if(scoringMethod != "Multi-part All or Nothing")    
+                        {
+                            tbody += '<td>' + qtiItemScore + '</td>';
+                            tbody += '<td>' + input + '</td>';
+                        }
+                        tbody += '</tr>';
+
+                        $('#dataTableComplexVirtualQuestionAnswerScores tbody').append(tbody);
+                    }
+                });
+
+
+                $('.with-tip').tip();
+                pointsTextBox_Change();
+
+                $('#divRight').focus();
+                $('#divRight').unblock();
+                $('#divMain').unblock();
+            },
+            error: function () {
+
+            }
+        });
+    }
+
+    function LoadComplexVirtualQuestionAnswerScoresTable() {
+        var count = 1;
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetComplexVirtualQuestionAnswerScoresTable")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "virtualQuestionId", value: '@Model' }
+                );
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'iDisplayLength') {
+                        item.value = 10000;
+                    }
+                }
+            },
+            bStateSave: false,
+            bPaginate: false,
+            bFilter: false,
+            bAutoWidth: false,
+            iDisplayLength: 1000,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'string', sName: 'ResponseIdentifier', bSearchable: false, bSortable: false, sWidth: '30px' },
+                { sType: 'string', sName: 'CorrectAnswer', bSearchable: false, bSortable: false, sWidth: '28px' },
+                { sType: 'string', sName: 'QtiItemScore', bSearchable: true, bSortable: true, sWidth: '86px' },
+                { sType: 'int', sName: 'TestScore', bSearchable: true, bSortable: true, sWidth: '120px' },
+                { sType: 'int', sName: 'QTISchemaID', bSearchable: false, bSortable: false, bVisible: false, sWidth: '0px' }
+
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html('Answer ' + count);
+                $('td:eq(3)', nRow).html(addPointsTextBox(aData[0], aData[3], aData[4]));
+                count = parseInt(count) + 1;
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('.with-tip').tip();
+                pointsTextBox_Change();
+            }
+        };
+
+        $("#dataTableComplexVirtualQuestionAnswerScores").data("options", options);
+        initializeDataTable($("#dataTableComplexVirtualQuestionAnswerScores"));
+    }
+    function addPointsTextBox(responseIdentifier, points, QTISchemaID, responseProcessingTypeId) {
+
+        //Hide points textbox if scoring method is Multi-part All or Nothing
+        var scoringMethod = $('#scoringMethodComplexItem').text();
+        if(scoringMethod == "Multi-part All or Nothing")
+        {
+            return '<div></div>';
+        }
+
+
+        var result = '';
+        result = '<div>' +
+            '<input type="text" id="' + responseIdentifier + '-' + QTISchemaID + '" style="min-width: 100%; text-align: center" value="' + points + '" responseProcessingTypeId="' + responseProcessingTypeId + '" onkeydown="pointsTextBox_Keydown(event)"  onchange="pointsTextBox_Change()" class="PointsTextBox ';
+        if ((QTISchemaID == '@((int)QTISchemaEnum.TextEntry)' || QTISchemaID == '@((int)QTISchemaEnum.ExtendedText)') && responseProcessingTypeId == '3')
+            result += 'disableInput" disabled = "true"';
+        else {
+            result += '"';
+        }
+        result += '/></div>';
+        return result;
+    }
+    function pointsTextBox_Keydown(e) {
+        
+        // Allow: backspace, delete, tab, escape, enter
+        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110]) !== -1 || //not allow .
+            // Allow: Ctrl+A
+            (e.keyCode == 65 && e.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (e.keyCode >= 35 && e.keyCode <= 39)) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+    }
+    function pointsTextBox_Change() {
+        var total = 0;
+        $('#divComplexAnswerScore').find('.PointsTextBox').each(function (idx, val) {
+            var point = $(val).val();
+            total += parseInt(point);
+        });
+        $('#spanPossiblePoints').text(total);
+    }
+
+    function exportComplexItemPossiblePointXml() {
+        var xml = '<PossiblePoints xmlns="http://www.imsglobal.org/xsd/imsqti_v2p0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">';
+
+        $('#dataTableComplexVirtualQuestionAnswerScores .PointsTextBox').each(function (idx, txt) {
+            var id = $(txt).attr('id'); //responseIdentifier-qtischemaId
+            var responseIdentifier = id.split("-")[0];
+            var qtischemaId = id.split("-")[1];
+            var responseProcessingTypeId = $(txt).attr('responseProcessingTypeId');
+            xml += '<PossiblePoint ResponseIdentifier="' + responseIdentifier + '" QtiSchemaId="' + qtischemaId + '"';
+
+            var score = $(txt).val();
+            xml += ' Score="' + score + '"';
+
+            xml += ' ResponseProcessingTypeId="' + responseProcessingTypeId + '"';
+            xml += '/>';
+        });
+        xml += '</PossiblePoints>';
+        return xml;
+    }
+</script>

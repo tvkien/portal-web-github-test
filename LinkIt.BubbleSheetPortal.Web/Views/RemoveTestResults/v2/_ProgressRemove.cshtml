@@ -1,0 +1,268 @@
+<section>
+    <div class="block-content form p-4">
+        <ul style="display: none" id="success-message-popup" class="message success"></ul>
+        <ul style="display: none" id="error-messages-popup" class="message error"></ul>
+        <label id="warning-header" class="label-lg">Do not close this window until all test results have been deleted.</label>
+        <div class="mb-4">
+            <label id="popup-header" class="label-lg"></label>
+            <div id="progress-bar-section">
+                <div id="dvProgress"></div>
+            </div>
+        </div>
+
+        <div class="modal-component-footer mx-n4 px-4">
+            <div slot="footer">
+                <button id="btnClosePopup" type="button" class="btn-red" style="display:none" onclick="CloseProgressRemovePopup()">Close</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    #portal-v2-containter .ui-dialog .ui-dialog-titlebar {
+        padding: 0;
+        border: 0px solid #aaa !important;
+        height: 0;
+    }
+
+    #portal-v2-containter .modal-component-footer.mx-n4 {
+        margin: 0 -24px -72px -24px;
+    }
+
+</style>
+
+<script>
+
+    var batchConfig = @ViewBag.BatchConfig;
+    var numberBatch = 0;
+    var totalRecords = 0;
+    var testResultIds = $('#inputTestResultIds').val();
+    var lstTestResultIDs = [];
+
+    var progressLabel = $(".progress-label");
+    var progressBarEl = $("#dvProgress");
+
+    if (testResultIds === '' || testResultIds === 'undefined') {
+        $('#removeAllFlag').val(true);
+        $('#filterSheets').trigger('click');
+    }
+    else {
+        lstTestResultIDs = testResultIds.toString().split(',');
+        totalRecords = lstTestResultIDs.length;
+        numberBatch = Math.ceil(totalRecords / batchConfig);
+
+        ProcessRemoveSelectedAsync(numberBatch, totalRecords).then(function (result) {
+            SetProgressBarAfterRemove(result);
+        });
+    }
+
+    async function ProcessRemoveSelectedAsync(numberBatch, totalRecords) {
+
+        var totalDeleted = 0;
+
+        $("#popup-header").text('0 / ' + NumberWithCommas(totalRecords) + ' test results have been deleted.');
+
+        progressBarEl.progressbar({
+            value: 0,
+            change: function () {
+            },
+            complete: function () {
+            }
+        });
+
+        var progressBarValue = progressBarEl.find(".ui-progressbar-value");
+        progressBarValue.append('<div class="ui-progressbar-overlay"></div>');
+
+        var percentBatch = 100 / numberBatch;
+
+        var isDeletedSuccess = true;
+
+        for (let i = 1; i <= numberBatch; i++) {
+            var strIds = [];
+            if (i == numberBatch) {
+                var strIds = lstTestResultIDs.length == 1 ? lstTestResultIDs.join('') : lstTestResultIDs.join(',');
+                isDeletedSuccess = await RemoveTestResult(strIds);
+            }
+            else {
+                var strIds = lstTestResultIDs.splice(0, batchConfig).join(',');
+                isDeletedSuccess = await RemoveTestResult(strIds);
+            }
+            if (!isDeletedSuccess) {
+                return false;
+            }
+            totalDeleted += batchConfig;
+            if (totalDeleted > totalRecords) {
+                totalDeleted = totalRecords;
+            }
+            $("#popup-header").text(NumberWithCommas(totalDeleted) + ' / ' + NumberWithCommas(totalRecords) + ' test results have been deleted.');
+            var val = progressBarEl.progressbar("value");
+            progressBarEl.progressbar("value", val + percentBatch);
+        }
+        return true;
+    }
+
+    function RemoveTestResult(testresultIds) {
+        return new Promise(function (resolve, reject) {
+            $.post('@Url.Action("DeleteTestResultAndSubItemsV2", "RemoveTestResults")', { testresultIds: testresultIds }, function (response) {
+                if (response.Success == true) {
+                    resolve(true);
+                }
+                resolve(false);
+            }).fail(function (response) {
+                resolve(false);
+            })
+        })
+    }
+
+    async function ProcessRemoveAllAsync(filters) {
+        var totalDeleted = 0;
+        var data = await GetTestResultsToRemoveAll(filters);
+        totalRecords = data.iTotalRecords;
+
+        var testResultIds = data.aaData.map(function (item) {
+            return item[0];
+        });
+        var strIds = testResultIds.join(',');
+
+        numberBatch = Math.ceil(totalRecords / batchConfig);
+
+        $("#popup-header").text('0 / ' + NumberWithCommas(totalRecords) + ' test results have been deleted.');
+
+        progressBarEl.progressbar({
+            value: 0,
+            change: function () {
+            },
+            complete: function () {
+            }
+        });
+
+        var progressBarValue = progressBarEl.find(".ui-progressbar-value");
+        progressBarValue.append('<div class="ui-progressbar-overlay"></div>');
+
+        var percentBatch = 100 / numberBatch;
+
+        var isDeletedSuccess = true;
+
+        for (let i = 1; i <= numberBatch; i++) {
+            if (i == 1) {
+                isDeletedSuccess = await RemoveTestResult(strIds);
+            }
+            else {
+                data = await GetTestResultsToRemoveAll(filters);
+
+                if (data.aaData == null || data.aaData == undefined) {
+                    return false;
+                }
+
+                testResultIds = data.aaData.map(function (item) {
+                    return item[0];
+                });
+
+                strIds = testResultIds.join(',');
+
+                isDeletedSuccess = await RemoveTestResult(strIds);
+            }
+            if (!isDeletedSuccess) {
+                return false;
+            }
+            totalDeleted += testResultIds.length;
+            $("#popup-header").text(NumberWithCommas(totalDeleted) + ' / ' + NumberWithCommas(totalRecords) + ' test results have been deleted.');
+            var val = progressBarEl.progressbar("value");
+            progressBarEl.progressbar("value", val + percentBatch);
+        }
+        return true;
+    }
+
+    function LoadFilterRemoveTestResultV2(districtId, schoolIds, categoryIds, gradeIds, subjectNames, termId, classId, teacherName, studentName,
+        fromResultDate, toResultDate, fromCreatedDate, toCreatedDate, fromUpdatedDate, toUpdatedDate, virtualTestName) {
+        var filters = {
+            districtId: districtId,
+            schoolIds: schoolIds,
+            categoryIds: categoryIds,
+            gradeIds: gradeIds,
+            subjectNames: subjectNames,
+            classId: classId,
+            termId: termId,
+            teacherName: teacherName,
+            studentName: studentName,
+            fromResultDate: fromResultDate,
+            toResultDate: toResultDate,
+            fromCreatedDate: fromCreatedDate,
+            toCreatedDate: toCreatedDate,
+            fromUpdatedDate: fromUpdatedDate,
+            toUpdatedDate: toUpdatedDate,
+            virtualTestName: virtualTestName,
+            iDisplayStart: 0,
+            iDisplayLength: batchConfig,
+            iColumns: 7,
+            sColumns: 'ID,TestNameCustom,StudentCustom,ResultDate,CategoryName,GradeName,SubjectName',
+            iSortCol_0: 1,
+            sSortDir_0: 'asc',
+            iSortingCols: 1,
+            sSearch: $('#dataTable_filter input').val()
+        };
+        ProcessRemoveAllAsync(filters).then(function (result) {
+            SetProgressBarAfterRemove(result);
+        });
+        $('#removeAllFlag').val(false);
+    }
+
+    function SetProgressBarAfterRemove(result) {
+        $("#warning-header").hide();
+        var progressbarValue = progressBarEl.find(".ui-progressbar-value");
+        progressbarValue.find(".ui-progressbar-overlay").remove();
+        if (result) {
+            $('#success-message-popup').html('<li style="text-transform:none;font-size:100%"> Test Results Removed: ' + NumberWithCommas(totalRecords) + ' </li>');
+            $('#success-message-popup').show();
+            progressbarValue.attr('style', 'background: #BADBB4 !important');
+        }
+        else {
+            $('#error-messages-popup').html('<li style="text-transform:none;font-size:100%"><p>Test results have NOT been removed. Please email <a href="mailto:technology@linkit.com">technology@linkit.com</a> for assistance.</p></li>');
+            $('#error-messages-popup').show();
+            progressbarValue.attr('style', 'background: #E73A46 !important');
+        }
+        $('#btnClosePopup').show();
+        $("#idPopupProgressRemove").dialog('widget')
+            .css({ position: 'fixed' })
+            .position({ my: 'center', at: 'center', of: window });
+    }
+
+    function GetTestResultsToRemoveAll(filters) {
+        return new Promise(function (resolve, reject) {
+            $.get('@Url.Action("GetTestResultToViewV2", "RemoveTestResults")', {
+                districtId: filters.districtId,
+                schoolIds: filters.schoolIds,
+                categoryIds: filters.categoryIds,
+                gradeIds: filters.gradeIds,
+                subjectNames: filters.subjectNames,
+                classId: filters.classId,
+                termId: filters.termId,
+                teacherName: filters.teacherName,
+                studentName: filters.studentName,
+                fromResultDate: filters.fromResultDate,
+                toResultDate: filters.toResultDate,
+                fromCreatedDate: filters.fromCreatedDate,
+                toCreatedDate: filters.toCreatedDate,
+                fromUpdatedDate: filters.fromUpdatedDate,
+                toUpdatedDate: filters.toUpdatedDate,
+                virtualTestName: filters.virtualTestName,
+                iDisplayStart: 0,
+                iDisplayLength: batchConfig,
+                iColumns: 7,
+                sColumns: 'ID,TestNameCustom,StudentCustom,ResultDate,CategoryName,GradeName,SubjectName',
+                iSortCol_0: 1,
+                sSortDir_0: 'asc',
+                iSortingCols: 1,
+                hasStudentGeneralSearch: $('#swtShowByTestResults').is(':checked'),
+                sSearch: filters.sSearch
+            }, function (results) {
+                resolve(results);
+            });
+        })
+    }
+
+    function NumberWithCommas(x) {
+        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+</script>

@@ -1,0 +1,92 @@
+<template id="preview-item-dialog-template">
+    <modal-component :show.sync="showDialog" :width="600">
+        <template slot="header">
+            <h3>Preview: {{ fileName }}</h3>
+        </template>
+        <template slot="body">
+            <img v-if="fileType === 'image'" :src="url" style="max-width: 100%" />
+            <audio v-if="fileType === 'audio'" style="width: 100%" controls autoplay>
+                <source :src="url" :type="mimeType || 'audio/wav'"/>
+            </audio>
+            <video v-if="fileType === 'video'" style="width: 100%" controls autoplay>
+                <source :src="url" :type="mimeType || 'video/webm'" />
+            </video>
+        </template>
+        <template slot="footer">
+            <div class="actions">
+                <div class="flex-grow-1"></div>
+                <button class="grey" @@click="showDialog = false">Close</button>
+            </div>
+        </template>
+    </modal-component>
+</template>
+<script>
+    var previewItemDialog = {
+        template: document.getElementById('preview-item-dialog-template').innerHTML,
+        props: {
+            show: {
+                type: Boolean,
+                default: false
+            },
+            item: {
+                type: Object,
+                default: () => ({})
+            }
+        },
+        computed: {
+            showDialog: {
+                get: function () {
+                    return this.show;
+                },
+                set: function (val) {
+                    this.$emit('update:show', val);
+                }
+            },
+            fileName: function () {
+                return this.item ? this.item.Name : ''
+            },
+        },
+        data: function () {
+            return {
+                url: null,
+                fileType: null,
+                mimeType: null
+            }
+        },
+        watch: {
+            showDialog: function (val) {
+                if (val && this.item) {
+                    this.url = this.item.File ? URL.createObjectURL(this.item.File) : this.item.StreamUrl;
+                    var ext = this.getExtention();
+                    if (prevewExtsSuport.image.indexOf(ext) > -1) {
+                        this.fileType = 'image';
+                    }
+                    if (prevewExtsSuport.audio.indexOf(ext) > -1) {
+                        this.fileType = 'audio';
+                        this.mimeType = 'audio/' + ext;
+                    }
+                    if (prevewExtsSuport.video.indexOf(ext) > -1) {
+                        this.fileType = 'video';
+                        this.mimeType = 'video/' + ext;
+                    }
+                } else {
+                    this.url = null;
+                    this.fileType = null;
+                }
+            }
+        },
+        methods: {
+            getExtention: function () {
+                if (!this.item || !this.item.Name) return '';
+
+                var strSplit = this.item.Name.split('.');
+                if (strSplit.length == 1) return '';
+
+                return strSplit.pop().toLowerCase();
+            }
+        }
+    };
+</script>
+
+<style>
+</style>

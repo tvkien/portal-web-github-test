@@ -1,0 +1,502 @@
+<style>
+    .block-content h1 > a[disabled] {
+        pointer-events: none;
+        color: #bfbfbf;
+        border-color: #e9f2f6 #c4c3c3 #a2a2a2 #e3e2e2;
+        background: #c8c8c8 url(../images/old-browsers-bg/button-element-disabled-bg.png) repeat-x top;
+        background: -moz-linear-gradient( top, #f0f2f2, #c8c8c8 );
+        background: -webkit-gradient( linear, left top, left bottom, from(#f0f2f2), to(#c8c8c8) );
+        -moz-text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.75);
+        -webkit-text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.75);
+        text-shadow: 1px 1px 0 rgb(255 255 255 / 75%);
+        -moz-box-shadow: none;
+        -webkit-box-shadow: none;
+        box-shadow: none;
+        cursor: auto;
+    }
+    #assignResultDataTable td {
+        word-break: break-word;
+    }
+</style>
+<div class="block-border" id="divSurveyResult">
+    <div class="block-content form">
+        <h1>
+            Survey Assignments
+            <div class="clearfix"></div>
+            <a href="javascript:void(0)" id="btnActiveSurveyResult" style="margin-left: 7px; margin-top: 1px;" class="off">
+                Show Deactivated:
+                <span id="spanClassActive">Off</span>
+            </a>
+            <a href="javascript:void(0)"
+               id="btnExportCSV"
+               disabled
+               style="margin-left: 199px; margin-top: 1px;">
+                Export
+            </a>
+            <a href="javascript:void(0)"
+               id="btnSurveyResultDistribute"
+               disabled
+               style="margin-left: 276px; margin-top: 1px; display: none;">
+                Distribute
+            </a>
+        </h1>
+        <p style="height: 11px"></p>
+        <div class="no-margin last-child">
+            <table id="assignResultDataTable" class="datatable table table-assignment no-margin" width="100%">
+                <thead>
+                    <tr>
+                        <th scope="col" style="width: 13px; text-align: center;">
+                            <input type="checkbox" id="chkAllTest" />
+                        </th>
+                        <th scope="col" class="black-cell"><span class="loading"></span></th>
+                        <th scope="col" style="text-align: center; min-width: 60px;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Assignment Date
+                        </th>
+                        <th scope="col" style="text-align: center; min-width: 60px;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Respondent
+                        </th>
+                        <th scope="col" style="text-align: center; min-width: 60px;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Email
+                        </th>
+                        <th scope="col" style="text-align: center; min-width: 60px;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Response Date
+                        </th>
+                        <th scope="col" style="text-align: center; min-width: 60px;">
+                            Link
+                        </th>
+                        <th scope="col" style="display: none"></th>
+                        <th scope="col" style="display: none"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="height: 60px;"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+    function displayDateWithFormat(tickDateTime, displayHour) {
+        if (tickDateTime == undefined || tickDateTime == null || tickDateTime == "") {
+            return '';//default US
+        }
+
+        var defaultDateFormat = readCookie('DefaultDateFormat');
+        var defaultTimeFormat = readCookie('DefaultTimeFormat');
+
+        if (defaultDateFormat == null || defaultDateFormat == undefined) {
+            defaultDateFormat = 'MM/dd/yyyy';//default value if defaultDateFormat is not provided
+        }
+        if (defaultTimeFormat == null || defaultTimeFormat == undefined) {
+            defaultTimeFormat = 'h:mm tt';//default value if defaultTimeFormat is not provided
+        }
+
+        if (displayHour != undefined && displayHour) {
+            defaultDateFormat = defaultDateFormat + ' ' + defaultTimeFormat;
+        }
+        var date = eval(tickDateTime.replace(/\/Date\((\d+)\)\//gi, "new Date($1)"));
+        return date.toString(defaultDateFormat);
+    }
+    var assignResultDT = (function () {
+        var currentFilterParams = {};
+        var $assignResultDT = $('#assignResultDataTable');
+        var selectedRows = [];
+        function LoadSurveyAssignmentToTable() {
+            var options = {
+                bServerSide: true,
+                bDestroy: true,
+                sAjaxSource: '@Url.Action("GetSurveyAssignmentsResult", "AssignSurvey")',
+                oLanguage: { "sZeroRecords": "No results meet your search criteria." },
+                fnServerParams: function (aoData) {
+                    getFilterParrams();
+                    var currentParams = currentFilterParams;
+                    aoData.push(
+                        { name: "ShowInActive", value: (currentParams && currentParams.showInActive) ? currentParams.showInActive : false },
+                        { name: "DistrictId", value: currentParams && currentParams.districtId ? currentParams.districtId : -1 },
+                        { name: "Code", value: currentParams && currentParams.code ? currentParams.code : '' },
+                        { name: "DistrictTermId", value: currentParams && currentParams.districtTermId ? currentParams.districtTermId : -1 },
+                        { name: "SurveyId", value: currentParams && currentParams.surveyId ? currentParams.surveyId : -1 },
+                        { name: "BankId", value: currentParams && currentParams.bankId ? currentParams.bankId : -1 },
+                        { name: "type", value: currentParams && currentParams.type ? currentParams.type : -1 }
+                    );
+                },
+                iDisplayLength: 10,
+                aoColumns: [
+                    { sType: 'integer', sName: 'Id', bSearchable: false, bSortable: false },
+                    { sType: 'integer', sName: 'Status', bSearchable: false, bSortable: false },
+                    { sType: 'string', sName: 'AssignmentDate', bSearchable: true, bSortable: true },
+                    { sType: 'sUrlAuthorizationModulering', sName: 'Respondent', bSearchable: true, bSortable: true },
+                    { sType: 'string', sName: 'Email', bSearchable: true, bSortable: true },
+                    { sType: 'string', sName: 'ResponseDate', bSearchable: false, bSortable: true },
+                    { sType: 'string', sName: 'ShortLink', bSearchable: false, bSortable: false },
+                    { sType: 'string', sName: 'Code', bSearchable: false, bSortable: false, bVisible: false },
+                    { sType: 'integer', sName: 'StudentId', bSearchable: false, bSortable: false, bVisible: false },
+                ],
+                aaSorting: [[2, "desc"]],
+                bStateSave: false,
+                oSearch: {
+                    sSearch: $("#assignResultDataTable_filter input").val()
+                },
+                fnRowCallback: function (nRow, aData) {
+                    $('td:eq(0)', nRow).html(setIconCheckbox(aData[0], aData[1]));
+                    $('td:eq(1)', nRow).html(setIconVisibility(aData[0], aData[1]));
+                    $('td:eq(2)', nRow).html(displayDateWithFormat(aData[2]));
+                    $('td:eq(5)', nRow).html(displayDateWithFormat(aData[5]));
+                    $('td:eq(6)', nRow).html(setShortLinkHtml(aData[6]));
+                    return nRow;
+                },
+                fnPreDrawCallback: function () {
+                    ShowBlock($('#assignResultDataTable'), 'Loading');
+                    $('#filterSheets').attr("disabled", "disabled");
+                    $('.with-tip').tip();
+                    return true;
+                },
+                fnDrawCallback: function () {
+                    $('#assignResultDataTable').unblock();
+                    var isAllSelected = true;
+                    $assignResultDT.find("input.item-checkbox").each(function (index, elem) {
+                        if (!$(elem).is(':checked')) {
+                            isAllSelected = false;
+                        }
+                    });
+
+                    $assignResultDT.find('#chkAllTest').prop("checked", isAllSelected);
+                    return true;
+                },
+                fnInitComplete: function () {
+                }
+            };
+
+            $("#assignResultDataTable").data("options", options);
+        }
+        function setIconVisibility(qtiTestClassAssignmentID, status) {
+            if (status == 1) {
+                var deactivateIcon = '<span class="icon icon-review-deactivate"></span>';
+                return '<a href="javascript:void(0)" title="Deactivate" operation="1" qtiTestClassAssignmentID="' + qtiTestClassAssignmentID + '" class="with-tip jsChangeStatus btn-review-assignment">' + deactivateIcon + '</a>';
+            } else {
+                var activateIcon = '<span class="icon icon-review-action"></span>';
+                return '<a href="javascript:void(0)" title="Activate" operation="0" qtiTestClassAssignmentID="' + qtiTestClassAssignmentID + '" class="with-tip jsChangeStatus btn-review-assignment">' + activateIcon + '</a>';
+            }
+        }
+
+        function setIconCheckbox(qtiTestClassAssignmentID, status) {
+            var mapIds = _.map(selectedRows, function(item) {
+                return item.id
+            })
+            var isChecked = mapIds.indexOf(qtiTestClassAssignmentID) != -1;
+            var html = '<input type="checkbox" ' + (isChecked ? 'checked':'') + ' data-qtitestclassassignmentid="' + qtiTestClassAssignmentID + '" data-status="' + status + '"  class="item-checkbox" onchange="assignResultDT.itemCheckboxOnchange(this,' + qtiTestClassAssignmentID + ',' + status + ')" /> ';
+
+            return html;
+        }
+
+        function setShortLinkHtml(shortLink) {
+            var html = '<a href="' + shortLink + '" target="_blank">' + shortLink + '</a>';
+
+            return html;
+        }
+
+        function getFilterParrams() {
+            var districtId = $('#hdfDistrictId').val();
+            if (districtId == null) {
+                districtId = $('#selectDistrict').val();
+            }
+            var data = {
+                showInActive: $('#btnActiveSurveyResult').hasClass('on'),
+                districtId: districtId,
+                bankId: $('#selectBank').val(),
+                surveyId: $('#selectSurvey').val(),
+                districtTermId: $('#selectDistrictTerm').val(),
+                type: $('input[name=assignmentType]:checked').val()
+            };
+            currentFilterParams = $.extend({}, currentFilterParams, data);
+            return currentFilterParams;
+        }
+
+        function itemCheckboxOnchange(t, qtiTestClassAssignmentID) {
+            var isAllSelected = true;
+            var id = qtiTestClassAssignmentID;
+            var mapIds = _.map(selectedRows, function(item) {
+                return item.id;
+            })
+            if (mapIds.indexOf(id) == -1) {
+                var $input = $(t);
+                var status = $input.data('status');
+                var email = $input.parents('tr').children().eq(4).text();
+                var surveyLink = $input.parents('tr').children().eq(6).text();
+                var assignmentDate = $input.parents('tr').children().eq(2).text();
+                var respondent = $input.parents('tr').children().eq(3).text();
+                var responseDate = $input.parents('tr').children().eq(5).text();
+                selectedRows.push({
+                    id: id,
+                    email: email,
+                    status: status,
+                    surveyLink: surveyLink,
+                    assignmentDate: assignmentDate,
+                    respondent: respondent,
+                    responseDate: responseDate
+                });
+            } else {
+                selectedRows = _.filter(selectedRows, function (item) { return item.id != qtiTestClassAssignmentID });
+            }
+            $assignResultDT.find("input.item-checkbox").each(function (index, elem) {
+                if (!$(elem).is(':checked')) {
+                    isAllSelected = false;
+                }
+            });
+
+            $assignResultDT.find('#chkAllTest').prop("checked", isAllSelected);
+            handleCheckboxChange();
+        };
+
+        function handleCheckboxChange() {
+            if ($assignResultDT.find('input.item-checkbox:checked').length > 0) {
+                $('#btnSurveyResultDistribute').enableBt();
+                $('#btnExportCSV').enableBt();
+            } else {
+                $('#btnSurveyResultDistribute').disableBt();
+                $('#btnExportCSV').disableBt();
+            }
+        }
+
+        function reload() {
+            selectedRows = [];
+            var type = $('input[name=assignmentType]:checked').val();
+            if (type == ASSIGNMENT_TYPE.PrivateAnonymous || type == ASSIGNMENT_TYPE.PrivateIndividualized) {
+                $assignResultDT.dataTable().fnSetColumnVis(6, false, false)
+            } else {
+                $assignResultDT.dataTable().fnSetColumnVis(6, true, false)
+            }
+            $assignResultDT.dataTable().fnReloadAjax();
+        }
+
+        function init() {
+            $('#btnActiveSurveyResult').click(function () {
+                var $btn = $(this);
+                if ($btn.hasClass('off')) {
+                    $btn.removeClass('off');
+                    $btn.addClass('on');
+                    $btn.find('#spanClassActive').text('On')
+                } else {
+                    $btn.removeClass('on');
+                    $btn.addClass('off');
+                    $btn.find('#spanClassActive').text('Off')
+                }
+                $('#assignResultDataTable').dataTable().fnReloadAjax();
+            });
+
+            $assignResultDT.on("click", ".jsChangeStatus", function () {
+                var $btn = $(this);
+                var operation = $btn.attr("operation");
+                var qtiTestClassAssignmentID = $btn.attr("qtiTestClassAssignmentID");
+                var districtId = $('#hdfDistrictId').val();
+                if (districtId == null) {
+                    districtId = $('#selectDistrict').val();
+                }
+                var data = {
+                    districtId: districtId,
+                    surveyId: $('#selectSurvey').val(),
+                    districtTermId: $('#selectDistrictTerm').val(),
+                    surveyAssignmentType: $('input[name=assignmentType]:checked').val(),
+                    assignmentId: qtiTestClassAssignmentID,
+                    status: operation == '0' ? 1 : 0
+                };
+                ShowBlock($('#assignResultDataTable'), operation == '1' ? 'Deactivating' : 'Activating');
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("ChangeStatus", "AssignSurvey")',
+                    data: data,
+                    success: function (response) {
+                        if (response.Success) {
+                            $('#assignResultDataTable').dataTable().fnReloadAjax();
+                        } else if (response.Message) {
+                            CustomAlert(response.Message);
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        CustomAlert(errorThrown);
+                    },
+                    complete: function () {
+                        $('#assignResultDataTable').unblock();
+                    }
+                })
+            });
+
+            $assignResultDT.find('#chkAllTest').click(function () {
+                var checked = $(this).is(':checked');
+                var rows = [];
+                var ids = [];
+                $assignResultDT.find("input.item-checkbox").each(function (index, elem) {
+                    var $input = $(elem);
+                    $input.prop("checked", checked);
+                    var id = $input.data('qtitestclassassignmentid');
+                    var status = $input.data('status');
+                    var email = $input.parents('tr').children().eq(4).text();
+                    var surveyLink = $input.parents('tr').children().eq(6).text();
+                    var assignmentDate = $input.parents('tr').children().eq(2).text();
+                    var respondent = $input.parents('tr').children().eq(3).text();
+                    var responseDate = $input.parents('tr').children().eq(5).text();
+                    rows.push({
+                        id: id,
+                        email: email,
+                        status: status,
+                        surveyLink: surveyLink,
+                        assignmentDate: assignmentDate,
+                        respondent: respondent,
+                        responseDate: responseDate
+                    });
+                    ids.push(id)
+                });
+                if (checked) {
+                    selectedRows = selectedRows.concat(rows);
+                } else {
+                    selectedRows = _.filter(selectedRows, function (item) { return ids.indexOf(item.id) == -1 });
+                }
+                selectedRows = _.filter(selectedRows, function(item) {
+                    return _.filter(selectedRows, function(row) {
+                        return item.id == row.id;
+                    }).length === 1;
+                });
+                handleCheckboxChange();
+            });
+
+            $('#btnSurveyResultDistribute').click(function () {
+                var distributeInformations = [];
+                var rows = _.filter(selectedRows, function(item) {
+                    return item.status == '1' && item.email
+                })
+                distributeInformations = _.map(rows, function(item) {
+                    return {
+                        Email: item.email,
+                        SurveyLink: item.surveyLink,
+                        QTITestClassAssignmentId: item.id
+                    }
+                })
+                if (distributeInformations.length) {
+                    var districtId = $('#hdfDistrictId').val();
+                    if (districtId == null) {
+                        districtId = $('#selectDistrict').val();
+                    }
+                    var surveyName = $('#selectSurvey option:selected').text();
+                    var surveyId = $('#selectSurvey').val();
+                    var type = $('input[name=assignmentType]:checked').val();
+                    $.ajax({
+                        type: 'POST',
+                        contentType: 'application/json; charset=utf-8',
+                        url: '@Url.Action("Distribute", "AssignSurvey")',
+                        data: JSON.stringify({
+                            DistrictId: districtId,
+                            SurveyName: surveyName,
+                            SurveyId: surveyId,
+                            DistributeInformations: distributeInformations,
+                            SurveyAssignmentType: type
+                        }),
+                        success: function (response) {
+                            CustomAlert('Successfully Distributed '+ distributeInformations.length +' Emails');
+                            $('#CustomAlertDialog').parents('.ui-draggable').css('width', 370);
+                            $('#CustomAlertDialog').find('.block-border').css('width', 300)
+                        },
+                        error: function (XMLHttpRequest, textStatus, errorThrown) {
+                            CustomAlert(errorThrown);
+                        },
+                        complete: function () {
+                        }
+                    })
+                }
+            });
+            $('#btnExportCSV').click(function () {
+                var type = $('input[name=assignmentType]:checked').val();
+                var isHideLink = ASSIGNMENT_TYPE.PrivateAnonymous || type == ASSIGNMENT_TYPE.PrivateIndividualized;
+                var csvContent = '';
+                var header = [];
+                if (isHideLink) {
+                    header = ['Active Status', 'Assignment Date', 'Respondent', 'Email', 'Response Date'];
+                } else {
+                    header = ['Link', 'Active Status', 'Assignment Date', 'Respondent', 'Email', 'Response Date'];
+                }
+                var data = [header];
+                _.forEach(selectedRows, function (item) {
+                    var row = [];
+                    if (isHideLink) {
+                        row = [
+                            (item.status == 1 ? 'Active' : 'Inactive'),
+                            convertString(item.assignmentDate),
+                            convertString(item.respondent),
+                            convertString(item.email),
+                            convertString(item.responseDate)
+                        ];
+                    } else {
+                        row = [
+                            convertString(item.surveyLink),
+                            (item.status == 1 ? 'Active' : 'Inactive'),
+                            convertString(item.assignmentDate),
+                            convertString(item.respondent),
+                            convertString(item.email),
+                            convertString(item.responseDate)
+                        ]
+                    }
+                    data.push(row);
+                });
+                data.forEach(function (infoArray, index) {
+                    dataString = infoArray.join(',');
+                    csvContent += index < data.length ? dataString + '\n' : dataString;
+                });
+                exportCSV(csvContent, 'AssignmentResult.csv', 'text/csv;encoding:utf-8');
+            })
+        }
+
+        function exportCSV(content, fileName, mimeType) {
+            var a = document.createElement('a');
+            mimeType = mimeType || 'application/octet-stream';
+            if (navigator.msSaveBlob) { // IE10
+                navigator.msSaveBlob(new Blob([content], {
+                    type: mimeType
+                }), fileName);
+            } else if (URL && 'download' in a) { //html5 A[download]
+                a.href = URL.createObjectURL(new Blob([content], {
+                    type: mimeType
+                }));
+                a.setAttribute('download', fileName);
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                location.href = 'data:application/octet-stream,' + encodeURIComponent(content); // only this mime type is supported
+            }
+        }
+        function convertString(str) {
+            if (typeof str == 'undefined') {
+                return "\"\""
+            }
+            return "\"" + str + "\"";
+        }
+        return {
+            init,
+            LoadSurveyAssignmentToTable,
+            getFilterParrams,
+            reload,
+            itemCheckboxOnchange
+        }
+    })();
+    $(function () {
+        assignResultDT.init();
+        assignResultDT.LoadSurveyAssignmentToTable();
+    });
+</script>

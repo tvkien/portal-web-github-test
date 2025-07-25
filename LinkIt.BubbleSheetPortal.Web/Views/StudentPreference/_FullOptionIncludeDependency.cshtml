@@ -1,0 +1,210 @@
+@using LinkIt.BubbleSheetPortal.Models.StudentPreferenceDTOs;
+@using LinkIt.BubbleSheetPortal.Web;
+@using LinkIt.BubbleSheetPortal.Models.Constants;
+
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.StudentPreference.StudentPreferenceTableViewModel
+@{
+    var _levelNames = Model.StudentPreferenceMatrix.GroupBy(x => x.LevelName);
+    var levelName = "";
+    var lockedClass = "";
+    var isMissing = "";
+    var isNotShow = "";
+}
+<style>
+
+    .table-header-rotated {
+        border-collapse: collapse;
+        margin-top: 100px;
+        margin-right: 100px;
+    }
+
+        .table-header-rotated td {
+            width: 30px;
+        }
+
+    .no-csstransforms .table-header-rotated th {
+        padding: 5px 10px;
+    }
+
+    .table-header-rotated td {
+        text-align: center;
+        padding: 10px 5px;
+        border: 1px solid #ccc;
+    }
+
+    .table-header-rotated th.rotate {
+        height: 78px;
+        white-space: nowrap;
+    }
+
+        .table-header-rotated th.rotate > div {
+            -webkit-transform: translate(27px, 46px) rotate(315deg);
+            transform: translate(27px, 46px) rotate(315deg);
+            width: 30px;
+        }
+
+            .table-header-rotated th.rotate > div > p {
+                border-bottom: 1px solid #ccc;
+                padding: 5px 10px;
+                font-weight: 400;
+                width: 140px;
+                text-align: left;
+            }
+
+    .table-header-rotated th.row-header {
+        padding: 0 10px;
+        text-align: right;
+        font-weight: normal;
+    }
+
+    .option.checked, .option.non-checked, .option.conflict, .conflict .option {
+        width: 10px;
+        height: 10px;
+        border-radius: 100%;
+        overflow-y: hidden;
+        box-shadow: 0 1px 1px rgba(0,0,0,.15);
+        display: inline-block;
+    }
+
+    .option.not-show {
+        width: 10px;
+        height: 10px;
+        border-radius: 100%;
+        overflow-y: hidden;
+        display: inline-block;
+        background-image: linear-gradient(#ffffff 0%,#ffffff 0%);
+    }
+
+    .option.checked {
+        background-image: linear-gradient(#baf1ca 0%,#43cc6c 100%);
+    }
+
+    .conflict .option {
+        background-image: linear-gradient(#ffcc66 0%,#ff9900 100%);
+    }
+
+    .locked .option.checked {
+        background-image: linear-gradient(#519064 0%,#0f8432 100%);
+    }
+
+    .locked .option.non-checked {
+        background-image: linear-gradient(#f95d5d 0%,#f30303 100%);
+    }
+
+    .missing .option {
+        background-image: linear-gradient(#f9f9f9 0%,#a0a0a0 100%);
+    }
+
+    .option {
+        background-image: linear-gradient(#fbacac 0%,#fb7676 100%);
+    }
+
+    .general-options {
+        background-color: white;
+    }
+
+    .supplementary {
+        background-color: antiquewhite;
+    }
+
+    .test-review {
+        background-color: white;
+    }
+
+    .answer-option {
+        background-color: darkseagreen;
+    }
+
+    .tags {
+        background-color: #bdaefb;
+    }
+
+    .time-spent {
+        background-color: antiquewhite;
+    }
+
+    .averages, .question-content {
+        background-color: lightskyblue;
+    }
+
+    .header {
+        min-width: 756px;
+        height: 45px;
+        width: 39%;
+        position: fixed;
+        background: white;
+        z-index: 666;
+    }
+
+    .percentile {
+        background: #EDB55E;
+    }
+</style>
+
+<article>
+    <section class="matrix-box">
+        <table class="table-header-rotated">
+            <thead>
+            <th></th>
+            @foreach (var name in _levelNames)
+            {
+                if (@name.Key == "Current Options in Effect")
+                {
+                    <th class="rotate"><div><p style="font-weight: inherit;">@name.Key</p></div></th>
+                }
+                else
+                {
+                    if (name.Key.Contains("{district}"))
+                    {
+                        levelName = name.Key.Replace("{district}", LocalizeHelper.LocalizedWithoutComment(LocalizeResourceKeys.DISTRICT_LABEL).ToString());
+                        <th class="rotate"><div><p>@levelName</p></div></th>
+                    }
+                    else
+                    {
+                        <th class="rotate"><div><p>@name.Key</p></div></th>
+                    }
+                }
+            }
+            </thead>
+            <tbody>
+
+                @foreach (var studentOption in Model.StudentPreferenceMatrix.GroupBy(x => new { x.DisplayName, x.ClassStyle }))
+                {
+                    <tr>
+                        <th class="row-header @studentOption.Key.ClassStyle">@studentOption.Key.DisplayName</th>
+                        @foreach (var level in _levelNames)
+                        {
+                            if (Model.StudentPreferenceMatrix.FirstOrDefault(x => x.LevelName == level.Key) != null)
+                            {
+                                var optionValue = studentOption.FirstOrDefault(x => x.LevelName == level.Key);
+                                if (optionValue != null)
+                                {
+                                    lockedClass = optionValue.Locked ? "locked" : "";
+                                    isMissing = optionValue.IsMissing ? "missing" : "";
+                                    if (optionValue.IsConflict)
+                                    {
+                                        <td class="conflict"><span class="option"></span></td>
+                                    }
+                                    else
+                                    {
+                                        if (optionValue.Value)
+                                        {
+                                            isNotShow = optionValue.IsNotShow ? "not-show" : "checked";
+                                            <td class="@lockedClass @isMissing"><span class="@isNotShow option"></span></td>
+                                        }
+                                        else
+                                        {
+                                            isNotShow = optionValue.IsNotShow ? "not-show" : "non-checked";
+                                            <td class="@lockedClass @isMissing"><span class="@isNotShow option"></span></td>
+                                        }
+                                    }
+
+                                }
+                            }
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+</article>

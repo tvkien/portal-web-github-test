@@ -1,0 +1,198 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Parent Management");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleCustomBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCKEditorUtilsBundle()
+<link rel="stylesheet" href="/Scripts/Qtip/jquery.qtip.css">
+<script src="@Url.Content("~/Scripts/tipped/tipped.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Qtip/jquery.qtip.js")"></script>
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/vue-components/vue-modal.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/vue-components/vue-component-manage-class.css")" rel="stylesheet" type="text/css" />
+
+<style type="text/css">
+    .plButton {
+        text-align: center;
+        position: relative;
+        top: 47px;
+    }
+
+    #btnOk {
+        width: 79px;
+        margin-right: 10px;
+    }
+
+    .tipSchoolNameDetail:hover {
+        color: dodgerblue;
+        font-weight: bold;
+    }
+
+    #manage-parent-commands a.disabled,
+    #manage-parent-commands a.disabled:hover,
+    #manage-parent-commands a.disabled:focus {
+        color: white;
+        text-shadow: rgba(0, 0, 0, 0.6) 0 1px 2px;
+        box-shadow: rgba(0, 0, 0, 0.2) 0 1px 4px;
+        border-color: rgb(161, 167, 174) rgb(144, 148, 152) rgb(107, 112, 118);
+        background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(white), color-stop(0.05, rgb(197, 203, 206)), to(rgb(159, 167, 176)));
+        cursor: default;
+        pointer-events: none;
+    }
+</style>
+
+<script type="text/javascript">
+    var currentFilterParams = undefined;
+    var showInactiveParent = false;
+    _historyData = {};
+    _CURRENT_PAGE_NAME = "ManageParent";
+    var isFirstLoad = false;
+
+    function storageSession() {
+        var selectRace = $("#selectRace").val() !== 'select' ? $("#selectRace").val() : '';
+        var data = {
+            rootPage: "ManageParent",
+            subPages: ["AddParent", "EditParent"],
+            payload: getFilterDatas()
+        };
+
+        sessionStorage.KEEP_SESSION = JSON.stringify(data);
+    }
+    function getFilterDatas() {
+        var _gradeId = $("#selectGrade").val();
+        var _schoolId = $("#selectAdminSchool").val();
+        return {
+            stateID: $("#selectState").val(),
+            districtID: $("#selectDistrict").val(),
+            parentName: $("#selectParentName").val(),
+            studentName: $("#selectStudentName").val(),
+            gradeID: _gradeId && _gradeId != 'select' ? _gradeId : '',
+            schoolID: _schoolId && _schoolId != 'select' ? _schoolId : '',
+            showInactiveParent: _historyData && _historyData.showInactiveParent ? _historyData.showInactiveParent : showInactiveParent,
+            searchText: $("#dataTable_filter input").val(),
+            pageSize: $('#divParent #dataTable_length select').find(":selected").val(),
+            loginTimeFrame: $("#selectLoginTimeframe").val(),
+            hasRegistrationCode: $("#selectHasRegistrationCode").val(),
+        }
+    }
+    $(function () {
+        ClearSessionsManageSchool();
+        if (performance.navigation.type === 1) {
+            sessionStorage.removeItem("KEEP_SESSION");
+        }
+
+        loadHistoryData();
+        $('#filterSheets').click(function () {
+            storageSession();
+            loadHistoryData(true);
+            isFirstLoad = true;
+            setupFilters();
+        });
+
+        $('#clearFilter').click(function () {
+            $("#selectState").val(-1);
+            $('#selectDistrict').empty();
+            if ($("#selectState").length ==1) {
+                $('#selectState').trigger("change");
+            }
+
+            if ('@ViewBag.IsPubliser' == 'True' || '@ViewBag.IsNetworkAdmin' == 'True') {
+                $('#selectAdminSchool').empty();
+                $('#selectGrade').empty();
+                $("#filterSheets").disableBt();
+            } else {
+                $('#selectAdminSchool').val(-1);
+                $('#selectGrade').val(-1);
+            }
+            $(".filter-input-text").val("");
+
+            $("#selectLoginTimeframe").val(-1);
++           $("#selectHasRegistrationCode").val("")
+            sessionStorage.KEEP_SESSION = null;
+            ResetSessionStorage();
+        });
+
+
+        function setupFilters() {
+            currentFilterParams = getFilterDatas();
+            var dataTable = $('#dataTable').dataTable();
+            dataTable.fnDraw();
+        }
+
+
+        function loadHistoryData(isFilterBtn) {
+            if (sessionStorage.KEEP_SESSION) {
+                var data = JSON.parse(sessionStorage.KEEP_SESSION);
+                if (data && data.rootPage === _CURRENT_PAGE_NAME) {
+                    isFirstLoad = true;
+                    if (data.payload) {
+                        _historyData = data.payload;
+
+                        if (_historyData.showInactive === true && !isFilterBtn) {
+                            $('#btnShowInactiveParent').click();
+                            $("#showInactiveParentText").html("On");
+                        }
+                        else if (!isFilterBtn) {
+                            $("#showInactiveParentText").html("Off");
+                        }
+                        $("#dataTable_filter input").val(_historyData.searchText);
+                        $("#selectStudentName").val(_historyData.studentName);
+                        $("#selectParentName").val(_historyData.parentName);
+                        $("#selectGender").val(_historyData.selectGender);
+                        $("#selectLoginTimeframe").val(_historyData.loginTimeFrame);
+                        $("#selectHasRegistrationCode").val(_historyData.hasRegistrationCode);
+                    }
+                }
+            }
+        }
+
+        function ResetSessionStorage() {
+            if (_historyData) {
+                _historyData.stateID = 0;
+                _historyData.districtID = 0;
+                _historyData.schoolID = 0;
+            }
+        }
+    });
+
+</script>
+
+<article class="container_12" id="manage-parent">
+    <section class="grid_12">
+        <div class="block-border mb-4" id="selectFilters">
+            <div id="divFilterParents" class="block-content form bubbleSheetSelector">
+                <h1>Filter Parents</h1>
+                <ul style="display: none" id="error-messages" class="message error no-margin" v-show="errorMessageList && errorMessageList.length >0">
+                    <li v-for="error in errorMessageList">{{error}}</li>
+                </ul>
+                <ul style="display: none" id="success-message" class="message success" v-show="successMessageList && successMessageList.length >0">
+                    <li v-for="successMess in successMessageList">{{successMess}}</li>
+                </ul>
+                @Html.Partial("v2/_FilterParents")
+                <div class="d-flex flex-row justify-content-end mt-4">
+                    <button id="clearFilter" class="btn-blue" type="button" style="margin-right: 1.25em">Clear Filter</button>
+                    <button id="filterSheets" class="btn-red" type="button" disabled="disabled">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+        @Html.Partial("v2/_ListParent")
+    </section>
+</article>
+<script src="/Scripts/ManageParent/ManageParentV2.js"></script>

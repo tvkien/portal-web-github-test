@@ -1,0 +1,479 @@
+﻿@{
+    ViewBag.Title = "Manage Program";
+}
+<script src="@Url.Content("~/Scripts/TagIt/js/tag-it.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Lib/jquery.caret.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Lib/jquery.tag-editor.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Scripts/TagIt/css/jquery.tagit.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Scripts/TagIt/css/tagit.ui-zendesk.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/DataLocker/jquery.tag-editor.css")" rel="stylesheet" type="text/css" />
+<style type="text/css" > 
+    .ui-widget-header {
+        background: none repeat scroll 0 0 transparent !important;
+        border: 0 solid #aaa !important;
+        position: relative;
+        top: 27px;
+    }
+
+    .ui-dialog {
+        background: none repeat scroll 0 0 transparent;
+        border: 0 none;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        height: 40px;
+        width: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        background: none repeat scroll 0 0 transparent !important;
+        border: 0 none;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        height: 42px;
+        width: 30px;
+    }
+</style>
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form" id="divOnTop">
+                <h1>
+                    Programs
+                    <a href="javascript:void(0);" class="createNewProgram">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Add New Program
+                    </a>
+                </h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>Program successfully deleted.</li>
+                </ul>
+                @if (ViewBag.IsPublisher)
+                {
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <label>State</label>
+                                <select id="selectState" class="full-width"></select>
+                            </p>
+
+                        </div>
+                        <div class="colx2-right">
+                            <p>
+                                <label>@LabelHelper.DistrictLabel</label>
+                                <select id="selectDistrict" class="full-width"></select>
+                            </p>
+
+                        </div>
+                    </div>
+                }
+                <div class="clear-25"></div>
+                    <div class=" no-margin last-child">
+                        <table id="programListDataTable" class="datatable table no-margin" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="black-cell"><span class="loading"></span></th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Name
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Visible To
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Code
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Number of Students
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<div id="dialogStudentProgram"></div>
+
+<script type="text/javascript">
+    var isOpeningLoadEditProgramDialog = false;
+
+    $(function () {
+        @if (@ViewBag.IsPublisher == true)
+        {
+            <text>
+        $('.createNewProgram').disableBt();
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            addDefaultOption($('#selectState'), "State");
+            addSelectListItems($('#selectState'), states);
+        });
+
+        </text>
+        }
+
+        $('#selectState').change(function () {
+            $('#selectDistrict').empty();
+            $('#success-message').hide();
+            $('#error-messages').hide();
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+        });
+
+        $('#selectDistrict').change(function () {
+            if ($('#selectDistrict').val() != '-1' && $('#selectDistrict').val() != null) {
+                $('#success-message').hide();
+                $('#error-messages').hide();
+                $("#programListDataTable").dataTable().fnReloadAjax(getAjaxSource());
+            }
+        });
+
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            sAjaxSource: getAjaxSource(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'ProgramId', bSearchable: false, bSortable: false, sWidth: "70px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: "245px" },
+                { sType: 'string', sName: 'AccessLevelId', bSearchable: true, bSortable: true, sWidth: "165px" },
+                { sType: 'integer', sName: 'Code', bSearchable: true, bSortable: true, sWidth: "165px" },
+                { sType: 'string', sName: 'StudentNumber', bSearchable: true, bSortable: true, sWidth: "280px" }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+                if (aData[2] == 4) {
+                    $('td:eq(2)', nRow).html('All Users');
+                }
+                if (aData[2] == 3) {
+                    $('td:eq(2)', nRow).html('@LabelHelper.DistrictLabel and School Admins');
+                }
+                if (aData[2] == 2) {
+                    $('td:eq(2)', nRow).html('@LabelHelper.DistrictLabel Admins Only');
+                }
+                if (aData[2] == 1) {
+                    $('td:eq(2)', nRow).html('State Users');
+                }
+                if (aData[2] == 0) {
+                    $('td:eq(2)', nRow).html('LinkIt Only');
+                }
+                $('td:eq(1)', nRow).html($('<div/>').text(aData[1]).html());//encode html
+                $('td:eq(3)', nRow).html($('<div/>').text(aData[3]).html());//encode html
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#programListDataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#programListDataTable').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        $("#programListDataTable").data("options", options);
+        $('#programListDataTable').dataTable();
+       
+    });
+
+    $('.deleteProgram').live('click', function () {
+        var programId = $(this).attr('programId');
+
+        CustomConfirm({
+            message: 'Are you sure you want to DELETE this program?',
+            yes: function () {
+                ShowBlock($('#programListDataTable'), 'Deleting');
+                $.get('@Url.Action("DeleteProgram")', { programId: programId }, function (response) {
+                    if (response == true) {
+                        $('#success-message').html('<li>Program Successfully Deleted</li>');
+                        $('#success-message').show();
+                        setTimeout(function () {
+                            $('#success-message').hide();
+                        }, 5000);
+
+                        $('#success-message-create').show();
+                        $('#error-messages-create').hide();
+                        $('#programListDataTable').dataTable().fnDraw(false);
+                    } else {
+                        $('#error-messages').html('<li style="text-transform:none;font-size:100%"> Program has NOT been deleted. Please email <a href="mailto:technology@linkit.com">technology@linkit.com</a> for assistance. </li>');
+                        $('#error-messages').show();
+                        setTimeout(function () {
+                            $('#error-messages').hide();
+                            },5000);
+                    }
+                });
+            },
+            no: function () {
+            },
+            open: function () {
+            },
+            close: function () {
+            },
+
+        });
+
+    });
+
+    $('.editProgram').live('click', function () {
+        if (isOpeningLoadEditProgramDialog) {
+            return;
+        }
+        isOpeningLoadEditProgramDialog = true;
+        var programId = $(this).attr('programId');
+        var url = '@Url.Action("LoadEditProgram")?programId=' + programId;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="popupEditProgram" class="dialog"></div>');
+                $("#popupEditProgram").append(html);
+                $('#popupEditProgram').dialog({
+                    title: "",
+                    open: function () {
+                        isOpeningLoadEditProgramDialog = false;
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#programListDataTable').dataTable().fnDraw(false);
+                        $('#popupEditProgram').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+
+    });
+
+    var isOpeningLoadCreateProgramDialog = false;
+    $('.createNewProgram').live('click', function () {
+        var districtId = $('#selectDistrict').val();
+        if ('@ViewBag.IsPublisher' == 'True' && (districtId == null || districtId == 'select')) {
+            CustomAlert('Please select @LabelHelper.DistrictLabel first.');
+            return;
+        }
+        if (isOpeningLoadCreateProgramDialog) {
+            return;
+        }
+        isOpeningLoadCreateProgramDialog = true;
+        var url = '@Url.Action("LoadCreateProgram")?districtId=' + districtId;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+
+                $("#divOnTop").append('<div id="popupCreateProgram" class="dialog"></div>');
+                $("#popupCreateProgram").append(html);
+                $('#popupCreateProgram').dialog({
+                    title: "",
+                    open: function () {
+                        isOpeningLoadCreateProgramDialog = false;
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#programListDataTable').dataTable().fnDraw(false);
+                        $('#popupCreateProgram').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    });
+
+
+    function populateDistricts() {
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                addSelectListItems($('#selectDistrict'), districts);
+            });
+        }
+    }
+    function getAjaxSource() {
+        var districtId = $('#selectDistrict').val();
+        if (districtId == null || districtId == 'select')
+            districtId = 0;
+        return '@Url.Action("LoadPrograms")?districtId=' + districtId;
+    }
+    function setIconVisibility(programId) {
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a href="javascript:void(0)" title="Edit Program" programId="' + programId + '" class="with-tip editProgram"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var deleteIconString = '<a href="javascript:void(0)" title="Delete Program" programId="' + programId + '" class="with-tip deleteProgram"><img src="' + deleteIcon + '" width="16" height="16" style="margin-right: 0px"></a>';
+
+        var viewStudentIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/user-yellow.png")';
+        var viewStudentIconString = '<a href="javascript:void(0)" title="View associated students" programId="' + programId + '" class="with-tip viewStudent" onclick="viewStudent(' + programId + ')" ><img src="' + viewStudentIcon + '" width="16" height="16" style="margin-left: 4px"></a>';
+
+        return editString + deleteIconString + viewStudentIconString;
+    }
+
+    function cancelCreateProgram() {
+        $(".dialog").dialog("close");
+    }
+
+    function createProgram() {
+        ShowBlock($('#dvCreateProgram'), "Creating Program");
+        var districtId = $('#hdDistrictId').val();
+        var name = $('#inputProgramName').val();
+        var accessLevel = $('#selectAccessLevelId').val();
+        var code = $('#inputCode').tagEditor('getTags')[0].tags.join('|');
+
+        $.post('@Url.Action("CreateProgram")', { districtId: districtId, name: encodeURIComponent(name), accessLevelId: accessLevel, code:encodeURIComponent( code) }, function (response) {
+            if (response.Success == true) {
+                $('#success-message').html('<li>Program Successfully Created</li>');
+                $('#success-message').show();
+                $('#error-messages-create').hide();
+                $('#success-message-create').show();
+                $('#error-messages').hide();
+                setTimeout(function () {
+                    $(".dialog").dialog("close");
+                    },
+                    3000);
+                setTimeout(function () {
+                    $('#success-message').hide();
+                },
+                   5000);
+            } else {
+                $('#error-messages').html('<li> ' + response.ErrorMessage + ' </li>');
+                $('#error-messages-create').html('<li> ' + response.ErrorMessage + ' </li>');
+                $('#error-messages').show();
+                setTimeout(function () {
+                    $('#error-messages').hide();
+                },
+                  5000);
+                $('#success-message').hide();
+                $('#error-messages-create').show();
+                $('#success-message-create').hide();
+            }
+            $('#dvCreateProgram').unblock();
+        });
+    }
+
+    function viewStudent(programId) {
+        var url = '@Url.Action("StudentProgram","ManageProgram")?programId=' + programId;
+        var popupID = "dlStudentProgram" + programId;
+
+        $.ajax(
+        {
+            url: url,
+            cache: false
+        })
+        .done(function (html) {
+            $("#dialogStudentProgram").append('<div id="' + popupID + '" class="dialog"></div>');
+            $("#" + popupID).append(html);
+            
+            $('#' + popupID).dialog({
+                title: "",
+                open: function () {
+                    $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').parent().css("top", "65px");
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $('#programListDataTable').dataTable().fnDraw();
+                    $("#" + popupID).remove();
+                    $("body .my-overlay").remove();
+                    isOpenAssignStudentDialog = false;
+                },
+                modal: false,
+                width: 800,
+                resizable: false
+            });
+            LoadStudentProgram();
+        });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+</script>

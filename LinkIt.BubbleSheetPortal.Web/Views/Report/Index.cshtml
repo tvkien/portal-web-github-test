@@ -1,0 +1,129 @@
+﻿@{
+    ViewBag.Title = "Manage Reports";
+}
+
+<article class="container_12">
+    <section class="grid_8">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>
+                    Reports
+                    <a id="openActionsBlock" href="javascript:void(0)">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Add New Report
+                    </a>
+                </h1>
+                <p style="height: 5px"></p>
+                <table id="dataTable" width="100%" cellspacing="0" class="datatable table no-margin">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="table-actions sorting_disabled">Actions</th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up"class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>Name
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up"class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>Date Created 
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    <section id="actions-block" class="grid_4" style="display: none">
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        var options = {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetReports")',
+            bAutoWidth: true,
+            iDisplayLength: 10,
+            aaSorting: [[2, "desc"]],
+            aoColumns: [
+                { sType: 'numeric', sName: 'Id', bSearchable: false, bSortable: false, sWidth: '60px' },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'DateCreated', bSearchable: true, bSortable: true, sWidth: '130px' },
+                { sType: 'string', sName: 'URL', bVisible: false, bSearchable: false, bSortable: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(addActionIcons(aData[0], aData[3]));
+                //$('td:eq(2)', nRow).html(Date.getByTicks(aData[2]));
+                $('td:eq(2)', nRow).html(displayDateWithFormat(aData[2],true));
+                return nRow;
+            }
+        };
+
+        $("#dataTable").data("options", options);
+    });
+
+    function addActionIcons(reportId, url) {
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a href="javascript:void(0)" title="Edit" reportId="' + reportId + '" class="with-tip editReport"><img src="' + editIcon + '" width="16" height="16"></a>';
+
+        var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var deleteString = '<a href="javascript:void(0)" title="Delete" reportId="' + reportId + '" class="with-tip deleteReport reportIcon"><img src="' + deleteIcon + '" width="16" height="16"></a>';
+
+        var viewReportIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/document-text.png")';
+        var viewReportString = '<a href="' + url + '" target="_new" title="Run Report" class="with-tip reportIcon"><img src="' + viewReportIcon + '" width="16" height="16"></a>';
+
+        return editString + deleteString + viewReportString;
+    }
+
+    $('.editReport').live('click', function (e) {
+        e.preventDefault();
+        var reportId = $(this).attr('reportId');
+        $.get('@Url.Action("EditReport")', { reportId: reportId }, function (response) {
+            $('#actions-block').html(response);
+            $('#actions-block').show();
+        });
+    });
+
+    $('.deleteReport').live('click', function () {
+        if (confirm('Are you sure you want to DELETE this report?')) {
+            var reportId = $(this).attr('reportId');
+            $.post('@Url.Action("DeleteReport")', { reportId: reportId }, function (response) {
+                if (response.success == true) {
+                    ui.dataTable.fnDraw();
+                    removeTips();
+                }
+            });
+        }
+    });
+    
+    $('#addReportForm, #editReportForm').live('submit', function (e) {
+        var $this = $(this);
+        e.preventDefault();
+        $.post($this.attr('action'), $this.serialize(), function(response) {
+            if(response.success == true) {
+                $('#actions-block').hide();
+                ui.dataTable.fnDraw();
+                removeTips();
+            } else {
+                addErrorMessages(response);
+            }
+        });
+    });
+
+    $('#openActionsBlock').click(function () {
+        $.get('@Url.Action("AddNewReport")', function (response) {
+            $('#actions-block').html(response);
+            FirstFocus();
+        });
+        $('#actions-block').show();
+    });
+
+    $('#actionsCancel').live('click', function () {
+        $('#actions-block').hide();
+    });
+</script>

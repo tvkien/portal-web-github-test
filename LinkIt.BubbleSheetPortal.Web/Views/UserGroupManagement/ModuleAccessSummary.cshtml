@@ -1,0 +1,350 @@
+@model LinkIt.BubbleSheetPortal.Web.Models.UserGroup.ModuleAccessSumaryViewModel
+@{
+    ViewBag.Title = "Module Access Summary View";
+}
+
+<link rel="stylesheet" href="/Scripts/Qtip/jquery.qtip.css">
+<script src="@Url.Content("~/Scripts/tipped/tipped.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Qtip/jquery.qtip.js")"></script>
+
+<style>
+    .ui-widget-content {
+        background: transparent;
+        border: none;
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+</style>
+<link href="/Content/css/dialog.css" rel="stylesheet" type="text/css">
+<article class="container_12">
+    <section class="grid_12" style="margin-bottom:0">
+        <div id="selectFilters">
+            <div class="block-border" id="selectFilters">
+                <div class="block-content form">
+                    <h1>Filter Modules</h1>
+                    <fieldset>
+                        <div class="columns">
+                            <div class="colx2-left">
+                                <div class="mb-3">
+                                    <label>Navigation Area</label>
+                                    <select id="ddlNavigationArea" class="full-width" style="width: 300px"></select>
+                                </div>
+                            </div>
+                            <div class="colx2-right">
+                                <div class="mb-3">
+                                    <label>Module</label>
+                                    <select id="ddlModule" class="full-width" style="width: 300px"></select>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="u-text-right">
+                        <button id="btnFilter" class="u-m-l-10" type="button">Apply Filters</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="manageUserGroups">
+            <div class="block-content form">
+
+                <div class="clearfix u-m-t-35">
+                    <h1>Module Access Summary</h1>
+                    <div class="no-margin last-child">
+                        <table id="tblModuleAccessSummary" class="datatable table no-margin datatable-module-access" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width: 13%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Module
+                                    </th>
+
+                                    <th scope="col" style="width: 13%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Area
+                                    </th>
+
+                                    <th scope="col" style="width: 13%">
+                                        District Access
+                                    </th>
+
+                                    <th scope="col" style="width: 13%">
+                                        School Access
+                                    </th>
+
+                                    <th scope="col" style="width: 24%">
+                                        User Group with Access
+                                    </th>
+
+                                    <th scope="col" style="width: 24%">
+                                        User Group without Access
+                                    </th>
+                                </tr>
+                            </thead>
+
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div style="margin-top: -28px;">
+                    <button id="btnBack">Back</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    var areaID = -1;
+    var moduleID = -1;
+
+    $(document).ready(function () {
+        setTimeout(function () {
+            $(".dataadmin").trigger("click");
+            $('#manageUserGroupsTab').addClass('current');
+        }, 100);
+
+        bindDataToModudelAccessSummaryTable();
+        populateNavigateAreas();
+
+        $('#btnBack').click(function () {
+            var url = '@Url.Action("ManageUserGroups", "Admin")';
+            window.location.href = url;
+        });
+
+        $('#ddlNavigationArea').change(function () {
+            areaID = $(this).val();
+            if (areaID > 0) {
+                populateModule(areaID);
+            }
+            else {
+                $('#ddlModule').empty();
+            }
+        });
+
+        $('#btnFilter').click(function () {
+            areaID = $('#ddlNavigationArea').val();
+            moduleID = $('#ddlModule').val();
+            $('#tblModuleAccessSummary').dataTable().fnDraw();
+        });
+
+        $('.viewSchoolAccess').live('click', function () {
+            var xliModuleId = $(this).attr('XLIModuleId');
+
+            var worker = $('<div"></div>');
+            var url = '@Url.Action("ViewSchoolAccess", "UserGroupManagement")?xliModuleId=' + xliModuleId + "&districtId=" + @Model.DistrictID ;
+            worker
+                .addClass("dialog custom-dialog")
+                .attr("id", "viewSchoolAccessID")
+                .appendTo("body")
+                .load(url, function () {
+                    worker.dialog({
+                        title: $(this).attr("School Access"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                        },
+                        modal: false,
+                        width: 720,
+                        resizable: false
+                    });
+                });
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+        });
+
+    })
+
+    function bindDataToModudelAccessSummaryTable() {
+        var options = {
+            bServerSide: true,
+            sServerMethod: "GET",
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetModuleAccessSummaryData", "UserGroupManagement")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "DistrictID", value: @Model.DistrictID },
+                    { name: "XLIAreaID", value: areaID },
+                    { name: "XLIModuleID", value: moduleID },
+                );
+            },
+            iDisplayLength: 10,
+            aoColumns: [
+                { mData: 'ModuleName', sName: 'Module', bSearchable: true, bSortable: true },
+                { mData: 'AreaName', sName: 'Area', bSearchable: true, bSortable: true },
+                { mData: 'DistrictAccess', sName: 'District Access', bSearchable: false, bSortable: false },
+                { mData: 'SchoolAccess', sName: 'School Access', bSearchable: false, bSortable: false },
+                { mData: 'UserGroupWithAccess', sName: 'User Group with Access', bSearchable: false, bSortable: false },
+                { mData: 'UserGroupWithoutAccess', sName: 'User Group without Access', bSearchable: false, bSortable: false },
+            ],
+            aaSorting: [[1, "asc"]],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#tblModuleAccessSummary'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#tblModuleAccessSummary').unblock();
+                getUserQtip('.js-tooltip-students');
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(3)', nRow).html(setSchoolAccessLink(aData));
+                if (aData["UserGroupWithAccess"] !== 'None') {
+                    $('td:eq(4)', nRow).html(displayUserGroupWithAccess(aData));
+                }
+
+                if (aData["UserGroupWithoutAccess"] !== 'None') {
+                    $('td:eq(5)', nRow).html(displayUserGroupWithoutAccess(aData));
+                }
+            }
+        };
+
+        $('#tblModuleAccessSummary').data('options', options);
+    }
+
+
+    function populateNavigateAreas() {
+        $('#ddlNavigationArea').empty();
+        var areaValue = $('#ddlNavigationArea').val();
+        if (areaValue != 'select') {
+            $.get('@Url.Action("GetAreasByUser", "UserGroupManagement")?districtId=' + @Model.DistrictID, {}, function (areas) {
+                addSelectListItemsWithDefaultValue($('#ddlNavigationArea'), areas, 'Select Area');
+                $('#ddlNavigationArea').trigger('change');
+            });
+        }
+    }
+
+    function populateModule(areaId) {
+        $('#ddlModule').empty();
+        $.get('@Url.Action("GetModulesByArea", "UserGroupManagement")', { areaId: areaId }, function (modules) {
+            addSelectListItemsWithDefaultValue($('#ddlModule'), modules, 'Select Module');
+        });
+    }
+
+    function setSchoolAccessLink(aData) {
+        if (aData["SchoolAccess"] !== 'None') {
+            return '<a href="javascript:void(0)" class="viewSchoolAccess" XLIModuleId="' + aData["ModuleID"] + '" DistrictID="' + @Model.DistrictID + '">View School Access</a>';
+        }
+    }
+
+    function displayUserGroupWithoutAccess(data) {
+        var areaID = data["AreaID"];
+        var moduleID = data["ModuleID"];
+        var userGroups = data["UserGroupWithoutAccess"];
+
+        var xmlUserGroups = $(userGroups);
+        xmlUserGroups.find('UserGroup').each(function () {
+            var userGroup = $(this);
+            var groupId = userGroup.find('GroupID').text();
+            var groupName = userGroup.find('GroupName').text();
+            userGroup.attr('data-groupName', groupName);
+            userGroup.html(`<div><a href="#" onclick="gotoAccessModule(${groupId}, ${areaID}, ${moduleID})">${groupName}</a></div>`);
+        });
+
+        return xmlUserGroups;
+    }
+
+    function displayUserGroupWithAccess(data) {
+        var areaID = data["AreaID"];
+        var moduleID = data["ModuleID"];
+        var userGroups = data["UserGroupWithAccess"];
+
+        var xmlUserGroups = $(userGroups);
+        xmlUserGroups.find('UserGroup').each(function () {
+            var userGroup = $(this);
+            var groupId = userGroup.find('GroupID').text();
+            var groupName = userGroup.find('GroupName').text();
+            var userNames = userGroup.find('UserName').text();
+            userGroup.attr('data-groupName', groupName);
+            userGroup.attr('data-userNames', userNames);
+
+            var userElement = '';
+            var userTitle = getUsersTitleWithIcon(userNames);
+            if (userNames != null)
+                userElement = '<span class="js-tooltip-students" title="' + userTitle + '"><span class="icon icon-24 icon-students"></span></span>';
+
+            userGroup.html(`<div><a href="#" onclick="gotoAccessModule(${groupId}, ${areaID}, ${moduleID})">${groupName}</a>${userElement}</div>`);
+        });
+
+        return xmlUserGroups;
+    }
+
+    function gotoAccessModule(groupID, areaID, moduleID) {
+        localStorage.setItem("AccessModuleFilter", JSON.stringify({ areaID, moduleID }));
+
+        var url = `@Url.Action("GetModuleAccessView", "UserGroupManagement")?xliGroupId=${groupID}&districtId=${@Model.DistrictID}`;
+        window.location.href = url;
+    }
+
+    function getUsersTitleWithIcon(userNames) {
+        var usersTitle = '';
+        if (userNames == null || userNames.length == 0)
+            return usersTitle;
+
+        var userList = userNames.split(',');
+
+        userList = userList.filter(function (userName) {
+            return userName.trim() !== '';
+        }).sort(function (a, b) {
+            a = a.toLowerCase().trim();
+            b = b.toLowerCase().trim();
+
+            if (a < b) {
+                return -1;
+            }
+
+            if (a > b) {
+                return 1;
+            }
+
+            return 0;
+        }).map(function (userName) {
+            return userName + '<br/>';
+        });
+
+        usersTitle = userList.join('');
+
+        return usersTitle;
+    }
+
+    function getUserQtip(el) {
+        var $el = $(el);
+        $el.qtip({
+            content: {
+                text: function (event, api) {
+                    var title = $(this).attr('title');
+
+                    if (typeof title !== 'undefined' && title !== '') {
+                        return title
+                    }
+                }
+            },
+            hide: {
+                fixed: true,
+                delay: 300
+            },
+            style: {
+                classes: 'qtip-students qtip-bootstrap qtip-shadow'
+            },
+            position: {
+                at: 'center right',
+                my: 'left center',
+                viewport: $('#divClassTestAssignments'),
+                adjust: {
+                    method: 'none shift'
+                }
+            }
+        });
+    }
+</script>

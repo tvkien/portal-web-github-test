@@ -1,0 +1,130 @@
+@model LinkIt.BubbleSheetPortal.Web.Models.BubbleSheetAssignSameTestParam
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Managebubblesheets, "Student");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<style>
+    .block-content .no-margin {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .block-footer {
+        display: none;
+    }
+
+    .block-content .no-margin:last-child {
+        margin-bottom: 0 !important;
+    }
+</style>
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form">
+                <div class="no-margin last-child">
+                    <table id="dataTable" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Assignment Date
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Student name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Result Date
+                                </th>
+                                <th scope="col">
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<script src="@Url.Content("~/Scripts/custom.js")" type="text/javascript"></script>
+<script type="text/javascript">
+    var oTable;
+
+    $(function () {
+        $('#generateTab').addClass('current');
+
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSource(),
+            oSearch: {
+                sSearch: $("#dataTable_filter input").val()
+            },
+            fnServerParams: function (aoData) {
+                aoData.push({ name: "IsGenericBubbleSheet", value: "@Model.IsGenericBubbleSheet" },
+                            { name: "StudentIdList", value: "@String.Join(",", Model.StudentIdList)" },
+                            { name: "ClassId", value: "@Model.ClassId" },
+                            { name: "TestId", value: "@Model.TestId" },
+                            { name: "GroupId", value: "@Model.GroupId" },
+                            { name: "IsGroupPrinting", "value": "@Model.IsGroupPrinting" });
+            },
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aaSorting: [[0, 'desc']],
+            aoColumns: [
+                { sType: 'string', sName: 'AssignmentDate', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'FullName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'ResultDate', bSearchable: true, bSortable: true },
+                { sType: 'integer', sName: 'StudentId', bVisible: false },
+            ],
+            fnRowCallback: function (nRow, aData) {
+                var assignmentDateStr = displayDateWithFormatJsonDate(aData[0], true);
+                var resultDateStr = displayDateWithFormatJsonDate(aData[2], true);
+                $('td:eq(0)', nRow).html(assignmentDateStr);
+                $('td:eq(2)', nRow).html(resultDateStr);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+            }
+        };
+
+        $("#dataTable").data("options", options);
+
+        function getAjaxSource() {
+            return '@Url.Action("GetStudentAssignSameTestGroupPrinting")';
+        }
+    });
+</script>

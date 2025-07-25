@@ -1,0 +1,87 @@
+﻿@{
+    ViewBag.Title = "Correct Corrupt File Error";
+}
+
+<script type="text/javascript">
+    $(function () {
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+        if (window.FormData !== undefined) {
+            $('#file_upload').uploadifive({
+                'uploadScript': '@Url.Action("SubmitNewSheetForError")',
+                'overrideEvents': ['onDialogClose'],
+                'buttonText': 'Select File',
+                'fileObjName': 'postedFile',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 100,
+                'auto': true,
+                'onUpload': function (file) {
+                    $('#file_upload').data('uploadifive').settings.formData = getFormData(auth);
+                },
+                'onUploadComplete': function (file, data) {
+                    var result = $.parseJSON(data);
+                    if (result) {
+                        location.href = '@Url.Action("ProcessErrors")';
+                    }
+                }
+            });
+        }
+    });
+
+    function getFormData(auth) {
+        var bubbleSheetErrorId = '@Model.BubbleSheetErrorId';
+        return { 'AUTHID': auth, 'bubbleSheetErrorId': bubbleSheetErrorId };
+    }
+</script>
+
+<article class="container_12">
+    <section class="grid_8">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Corrupt File Error</h1>
+                <ul class="message no-margin warning">
+                    <li>When submitting a bubble sheet, the file was categorized as a corrupt file.</li>
+                </ul>
+                <fieldset>
+                    <legend>Step 1</legend>
+                    <ul class="message no-margin">
+                        <li>Download the file that caused the error to verify that it is corrupt by right-clicking and selecting the "Save Link As..." option.</li>
+                    </ul>
+                    <a href="@Model.RelatedImage" target="_new"><img src="@Url.Content("~/Content/images/downloadimage.png")" width="128px" height="170px"/></a>
+                </fieldset>
+                <fieldset>
+                    <legend>Setp 2</legend>
+                    <ul class="message no-margin">
+                        <li>The only solution to a corrupt file error is to upload a new, non-corrupt bubble sheet file for grading.</li>
+                    </ul>
+                    <input id="file_upload" type="button"/>
+                </fieldset>
+                <button id="btnDelete" type="button" class="red">Delete</button>
+                <button id="btnCancel" type="button" class="grey">Cancel</button>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function() {
+        $('#generateTab').addClass('current');
+
+        $('#btnDelete').click(function () {
+            if (confirm("Are you sure you want to delete this error?")) {
+                $.post('@Url.Action("RemoveBubbleSheetError")', { bubbleSheetErrorId: '@Model.BubbleSheetErrorId' }, function (response) {
+                    if (response == true) {
+                        location.href = '@Url.Action("ProcessErrors")';
+                    } else {
+                        alert('Error does not exist, please try again.');
+                    }
+                });
+            }
+        });
+
+        $('#btnCancel').click(function () {
+            location.href = '@Url.Action("ProcessErrors")';
+        });
+    });
+</script>

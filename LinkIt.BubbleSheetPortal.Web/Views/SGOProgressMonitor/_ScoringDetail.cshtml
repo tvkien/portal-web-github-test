@@ -1,0 +1,158 @@
+@using LinkIt.BubbleSheetPortal.Models.SGO
+@using LinkIt.BubbleSheetPortal.Web.Helpers.SGO
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGO.ScoringDetailModel
+<section style='z-index: 2004'>
+    <div class='block-border' style='z-index: 2004' id="divScoringDetail">
+        <div class='block-content' style='z-index: 1004;'>
+            <h1>Scoring Details</h1>
+            <div class="form bubbleSheetSelector" name="dataPoint">
+                <div>
+                    <ul style="display: none" name="insert-success-message" class="message success">
+                        <li>Save data successfully.</li>
+                    </ul>
+                    <fieldset class="grey-bg qtiItemSelector" style="padding-top: 0;">
+                        <div class="columns">
+                            <table id="dataTableScoringDetail" class="datatable table table-sgo table-sgo-student table-sgo-student-modified no-margin" style="width: 861px;">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Preparedness Group
+                                        </th>
+                                        <th scope="col">Student
+                                        </th>
+                                        @if (!string.IsNullOrEmpty(Model.PreAssessmentTestName))
+                                        {
+                                            <th scope="col">Pre-Assessment - @Model.PreAssessmentTestName
+                                            </th>    
+                                        }
+
+                                        <th scope="col">
+                                            @if (Model.IsTemporaryScoring)
+                                            {
+                                                <text>
+                                                    Progress Monitoring - @Model.PostAssessmentTestName
+                                                </text>
+                                            }
+                                            else {
+                                                <text>
+                                                    Post-Assessment - @Model.PostAssessmentTestName
+                                                </text>
+                                            }
+                                        </th>
+                                        <th scope="col">Achieved Target?
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @{
+                                    var groupCount = Model.GroupCount;
+                                        var colorList = ColorHelper.GetColorHexList(groupCount, true);
+                                    }
+                                    @foreach (var sgoScoringDetail in Model.SgoScoringDetails)
+                                    {
+                                    <tr>
+                                        <td style="background-color: @colorList[sgoScoringDetail.GroupOrder.GetValueOrDefault(1) - 1]">
+                                            @sgoScoringDetail.GroupOrder - @sgoScoringDetail.GroupName
+                                        </td>
+                                        @if (sgoScoringDetail.PostScore == null ||(sgoScoringDetail.BasedScore == null && !string.IsNullOrEmpty(Model.PreAssessmentTestName)))
+                                        {
+                                            <td style="background-color:#F25F5F">
+                                                @sgoScoringDetail.LastName, @sgoScoringDetail.FirstName
+                                            </td>
+                                        }
+                                        else
+                                        {
+                                            <td>
+                                                @sgoScoringDetail.LastName, @sgoScoringDetail.FirstName
+                                            </td>
+                                        }
+
+                                        @if (!string.IsNullOrEmpty(Model.PreAssessmentTestName))
+                                        {
+                                            if (sgoScoringDetail.BasedScore == null)
+                                            {
+                                                <td style="background-color:#F25F5F">
+                                                    @sgoScoringDetail.BasedScore
+                                                </td>
+                                            }
+                                            else
+                                            {
+                                                <td>
+                                                    @sgoScoringDetail.BasedScore
+                                                </td>
+                                            }
+
+                                        }
+                                        @if (sgoScoringDetail.PostScore == null)
+                                        {
+                                            <td style="background-color:#F25F5F">
+                                                @sgoScoringDetail.PostScore
+                                            </td>
+                                        }
+                                        else
+                                        {
+                                            <td>
+                                                @sgoScoringDetail.PostScore
+                                            </td>
+                                        }
+
+                                        <td>
+                                            <input type="checkbox" name="AchievedTarget" value="@sgoScoringDetail.SgoStudentId"
+                                                   @if (sgoScoringDetail.AchievedTarget == 1) { <text> checked</text>}
+                                                   @if (Model.TargetScoreType != (int)SGOTargetScoreTypeEnum.ManualScoring) { <text> disabled="disabled" </text> } />
+                                        </td>
+                                    </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </fieldset>
+                </div>
+                <div style="margin-top: 20px; text-align: right;">
+                    @if (Model.TargetScoreType == (int)SGOTargetScoreTypeEnum.ManualScoring && !Model.IsTemporaryScoring)
+                    {
+                        <button id="btnSaveScore" type="button">Save</button>
+                    }
+                    <button type="button" onclick="closePopup('popupScoringDetail')" class="grey">Close</button>    
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<script>
+    $('#btnSaveScore').click(function () {
+        
+        var sgoScoringDetails = [];
+        $.each($('input[name="AchievedTarget"]'), function (i, item) {
+            sgoScoringDetails.push({
+                SgoStudentId: $(item).attr('value'),
+                AchievedTarget: $(item).is(":checked") ? 1 : 0
+            });
+        });
+
+        var data = JSON.stringify({
+            sgoId: $('#sgoId').val(),
+            sgoScoringDetails: sgoScoringDetails
+        });
+
+        var url = '@Url.Action("UpdateStudentAchievedTarget")';
+
+        $('#btnSaveScore').attr('disabled', 'disabled');
+
+        $.ajax({
+            type: "POST",
+            contentType: 'application/json',
+                url: url,
+                data: data
+            })
+            .done(function(response) {
+                $('#btnSaveScore').enable();
+
+                $('ul[name="insert-success-message"]').show();
+                setTimeout(function() {
+                    $('ul[name="insert-success-message"]').hide();
+                }, 3000);
+            });
+    });
+</script>

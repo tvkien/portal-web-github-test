@@ -1,0 +1,116 @@
+@using System.Configuration
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.StudentLoginViewModel
+
+@{
+    Layout = "~/Views/Shared/_LogOnPartial.cshtml";
+}
+
+<section id="login-block" class="box-shadow">
+    <div class="block-border">
+        <div class="block-content">            
+            <div class="@("block-header " + (Model.IsStudentLogin ? "bg-student-login" : "bg-parent-login"))">Set Up Your Account</div>
+            <form class="form form-first-registration" id="r-code-rcode" method="post" action="@Url.Action("RegistrationCodeStep2", "Student")">
+                <p class="inline-small-label">
+                    <label for="r-username"><span class="big">Username</span></label>
+                    @if (Model.IsStudentLogin)
+                    {
+                        @Html.TextBoxFor(m => m.UserName, new { @class = "full-width first-focus", @id = "r-userName" })
+                        <span class="tooltip tooltip-top" data-tipsy="Create a username that you can easily remember">
+                            <span class="icon icon-info-core"></span>
+                        </span>
+                    }
+                    else
+                    {
+                        @Html.TextBoxFor(m => m.UserName, new { @class = "full-width first-focus", @id = "r-userName", @readonly = "readonly", disabled = "disabled" })
+                    }
+
+                </p>
+                <p class="inline-small-label">
+                    <label for="r-password"><span class="big">Password</span></label>
+                    @Html.PasswordFor(m => m.Password, new { @class = "full-width", maxlength = "50", @id = "r-password" })
+                    <span class="tooltip tooltip-top" data-tipsy="Create a password. @ConfigurationManager.AppSettings["PasswordRequirements"]">
+                        <span class="icon icon-info-core"></span>
+                    </span>
+                </p>
+                <p class="inline-small-label last">
+                    <label for="r-cpassword"><span class="big">Confirm Password</span></label>
+                    @Html.PasswordFor(m => m.CPassword, new { @class = "full-width", maxlength = "50", @id = "r-cpassword" })
+                </p>
+                <button id="btnRegistrationCodeStep2" type="submit" class="float-right">Finish</button>
+            </form>
+        </div>
+    </div>
+</section>
+
+<script>
+    $('#r-code-rcode').submit(function (event) {
+        event.preventDefault();
+        $('#login-block').removeBlockMessages();
+
+        $('#r-userName').removeClass('error');
+        $('#r-password').removeClass('error');
+        $('#r-cpassword').removeClass('error');
+
+        if ($("#r-userName").val() == '') {
+            $('#login-block').removeBlockMessages().blockMessage('Username is required.', { type: 'error' });
+            $('#r-userName').addClass('error');
+            return;
+        }
+        if ($("#r-password").val() == ''){
+            $('#login-block').removeBlockMessages().blockMessage('Password is required.', { type: 'error' });
+            $('#r-password').addClass('error');
+            return;
+        }
+        if ($("#r-cpassword").val() != $("#r-password").val()){
+            $('#login-block').removeBlockMessages().blockMessage('Password does not match.', { type: 'error' });
+            $('#r-password').addClass('error');
+            $('#r-cpassword').addClass('error');
+            return;
+        }
+
+        $('#btnRegistrationCodeStep2').prop('disabled', true);
+        var data = {
+            rcode: '@Model.RCode',
+            isStudentLogin: '@Model.IsStudentLogin',
+            userName: $("#r-userName").val(),
+            password: $("#r-password").val(),
+            cPassword: $("#r-cpassword").val(),
+            userId: @Model.StudentId,
+            districtId : @Model.DistrictId
+        };
+
+        $.ajax({
+            url: '@Url.Action("RegistrationCodeStep3", "Student")',
+            type: 'POST',
+            data: data,
+            success: function (result) {
+                if (result.type == 'error') {
+                    $('#login-block').removeBlockMessages().blockMessage(result.message, { type: 'error' });
+                    $('#r-userName').addClass('error');
+                }
+                else {
+                    if (result.HasTemporaryPassword) {
+                        location.href = "/Account/SetAccountInformation/?id=" + result.UserID + "&pw=" + result.HasTemporaryPassword;
+                    } else {
+                        location.href = result.RedirectUrl;
+                    }
+                }
+
+                $('#btnRegistrationCodeStep2').prop('disabled', false);
+            }
+        });
+    });
+
+    $('#r-password').blur(function () {
+        var regex = new RegExp('@ConfigurationManager.AppSettings["PasswordRegex"]');
+        var errorMessage = '@ConfigurationManager.AppSettings["PasswordRequirements"]';
+        if (regex.test($(this).val())) {
+            $('#login-block').removeBlockMessages();
+            $('#r-password').removeClass('error');
+        }
+        else {
+            $('#login-block').removeBlockMessages().blockMessage(errorMessage, { type: 'error' });
+            $('#r-password').addClass('error');
+        }
+    });
+</script>

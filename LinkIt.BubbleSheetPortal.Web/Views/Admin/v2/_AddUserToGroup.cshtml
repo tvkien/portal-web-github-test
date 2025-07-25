@@ -1,0 +1,612 @@
+@model  LinkIt.BubbleSheetPortal.Models.XLIGroup
+<style>
+    .ui-widget-content .ui-dialog-titlebar-close {
+        right: 5px;
+        top: 5px;
+        z-index: 10;
+    }
+
+    .tag-editor {
+        border: 1px solid #89bad3;
+        border-radius: 0.417em;
+        margin-bottom: 30px;
+    }
+    .boxUserAddGroup .no-margin.last-child {
+        margin: 0;
+    }
+    #portal-v2-containter .ui-dialog .ui-dialog-titlebar-close {
+        top: 2.5rem;
+        right: .8rem;
+    }
+    #portal-v2-containter .btn-plus-icon:disabled:after {
+        color: var(--disabledColor)
+    }
+    #portal-v2-containter table.datatable {
+        min-height: 75px;
+    }
+    #portal-v2-containter .tag-editor {
+        padding: .3rem;
+        border: 2px solid var(--selectBorder) !important;
+        min-height: 2.72rem;
+        border-radius: 0;
+        display: flex;
+        gap: 0.3rem;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    #portal-v2-containter .tag-editor li {
+        padding: .2rem .8rem .2rem .2rem;
+        background: var(--lightBlue);
+        margin: 0;
+        position: relative;
+    }
+
+    #portal-v2-containter .tag-editor li:first-child {
+        display: none;
+    }
+
+    #portal-v2-containter .tag-editor li .tag-editor-spacer {
+        display: none;
+    }
+    #portal-v2-containter .tag-editor li .tag-editor-delete li {
+        width: 10px;
+        position: relative;
+    }
+    #portal-v2-containter .tag-editor li div {
+        background: var(--lightBlue);
+        padding: 0;
+    }
+
+    #portal-v2-containter .tag-editor .tag-editor-delete {
+        min-width: 10px;
+    }
+
+    #portal-v2-containter .tag-editor .tag-editor-delete i:before {
+        content: '\f00d';
+        font-family: "Font Awesome 6 Free";
+        font-weight: 900;
+        color: var(--white);
+        font-size: 0.875rem;
+        z-index: 2;
+        position: absolute;
+        top: 50%;
+        right: .3rem;
+        transform: translate(0,-50%);
+        z-index: 2;
+    }
+
+    #portal-v2-containter .tag-editor li .tag-editor-tag.active {
+        padding: 0;
+    }
+
+    #portal-v2-containter .tag-editor li .tag-editor-tag.active input {
+        background-color: white !important;
+        padding: 0 .2rem !important;
+        border: 0;
+        height: auto !important;
+        min-height: auto;
+    }
+
+    #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-assignAvailableClasses"] {
+        height: auto !important;
+    }
+</style>
+
+<link href="/Content/themes/DataLocker/jquery.tag-editor.css" rel="stylesheet" type="text/css" />
+<script src="@Url.Content("~/Scripts/Lib/jquery.tag-editor.js")" type="text/javascript"></script>
+<section class="grid-12 block-content block-24">
+    <div class="block-border">
+        <div class="form">
+            <h2 class="header">Add User To Group: @Model.Name</h2>
+            <input type="hidden" value="@Model.XLIGroupID" id="xliGroupID" />
+            <div class="d-flex flex-row mt-2">
+                <div class="col">
+                    <label>School</label>
+                    <select id="selectSchool" class="full-width"></select>
+                </div>
+                <div class="col ms-3">
+                    <label>Role</label>
+                    <select id="selectRole" class="full-width"></select>
+                </div>
+            </div>
+        </div>
+        <div class="form" style="margin-top: 4rem;">
+            <div class="mt-3 d-flex flex-row justify-content-end">
+                <div style="display: none" id="btnShowAddActiveUsersBtn" class="form-check form-switch d-flex flex-row align-items-center mt-3 ps-0 float-left">
+                    <label class="form-check-label mb-0 deactivated-title" for="showActiveAddUsers">Show Inactive Users:</label>
+                    <span class="ms-1 me-3" id="spanClassActivePopup">Off</span>
+                    <div>
+                        <input class="form-check-input js-change-inactive-addusers" type="checkbox" name="showActiveAddUsers" id="showActiveAddUsers">
+                    </div>
+                </div>
+                <button class="btn-blue" disabled="disabled" id="btnClearAll" style="display: none; margin-right: 8px">
+                    Clear all selected user(s)
+                </button>
+                <button class="btn-plus-icon btn-text ms-3" disabled="disabled" id="btnAddUsersToGroup">
+                    Add user(s) to group
+                </button>
+            </div>
+
+            <div class="u-clearfix u-m-t-15" style="margin-bottom:40px;">
+                <input type="text" id="selectedUserTags" />
+            </div>
+
+            <div class="boxUserAddGroup">
+                <table id="usersDataTable" class="datatable table no-margin datatable-add-user-group" width="100%">
+
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 2%; text-align:center">
+                                <input type="checkbox" id="checkAllUsers" />
+                            </th>
+
+                            <th scope="col" style="width: 14%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Last Name
+                            </th>
+
+                            <th scope="col" style="width: 12%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                First Name
+                            </th>
+
+                            <th scope="col" style="width: 14%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Username
+                            </th>
+
+                            <th scope="col" style="width: 14%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Role
+                            </th>
+                            <th scope="col" style="width: 17%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Schools
+                            </th>
+                            <th scope="col" style="width: 10%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Status
+                            </th>
+                            <th scope="col" style="width: 17%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                User Groups
+                            </th>
+                        </tr>
+                    </thead>
+
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    var dataTable;
+    var selectedUsers = [];
+    var tempUser = ""
+
+    function initDropDownList() {
+        $.get('@Url.Action("GetSchoolsManageByCurrentUser", "Admin")', { districtID: @Model.DistrictID }, function (states) {
+            addSelectListItemsWithDefaultValue($('#selectSchool'), states, 'Select School');
+        });
+
+        $.get('@Url.Action("GetManageRolesByCurrentUser", "Admin")', { xliGroupID: $('#xliGroupID').val() }, function (roles) {
+            addSelectListItemsWithDefaultValue($('#selectRole'), roles, 'Select Role');
+        });
+    }
+
+    function loadUsersToDatabale() {
+        var options = {
+            bServerSide: true,
+            sServerMethod: "POST",
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetUsersAddToGroup", "Admin")',
+            fnServerParams: function (aoData) {
+                var isShowInactive = $('#showActiveAddUsers').hasClass('show-inactive');
+                aoData.push(
+                    { name: "DistrictID", value: @Model.DistrictID },
+                    { name: "SchoolId", value: $('#selectSchool').val() },
+                    { name: "RoleId", value: $('#selectRole').val() },
+                    { name: "IsShowInactiveUser", value: isShowInactive },
+                    { name: "GroupID", value: $('#xliGroupID').val() }
+                );
+            },
+
+            iDisplayLength: 10,
+            aoColumns: [
+                { mData: 'UserId', sName: 'UserId', bSearchable: false, bSortable: false },
+                { mData: 'LastName', sName: 'LastName', bSearchable: true, bSortable: true },
+                { mData: 'FirstName', sName: 'FirstName', bSearchable: true, bSortable: true },
+                { mData: 'UserName', sName: 'UserName', bSearchable: true, bSortable: true },
+                { mData: 'RoleName', sName: 'RoleName', bSearchable: true, bSortable: true },
+                { mData: 'SchoolList', sName: 'SchoolList', bSearchable: true, bSortable: false },
+                { mData: 'UserStatusId', sName: 'UserStatusId', bSearchable: false, bSortable: true },
+                { mData: 'GroupName', sName: 'GroupName', bSearchable: false, bSortable: true },
+            ],
+            aaSorting: [[1, "asc"]],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#usersDataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#usersDataTable').unblock();
+                $("#assignAvailableClasses").dialog('widget')
+                                            .css({ top: '120px' });
+                setCheckboxChecked();
+            },
+            fnRowCallback: function (nRow, aData) {
+                if (aData['UserStatusId'] == '1')
+                    $('td:eq(6)', nRow).html('Active');
+                else
+                    $('td:eq(6)', nRow).html('Inactive');
+
+                $('td:eq(0)', nRow).html(setIconCheckBox(aData));
+            },
+            fnInitComplete: function () {
+                $('#usersDataTable_wrapper .block-custom-header').prepend($('#btnShowAddActiveUsersBtn'));
+                $('#usersDataTable_wrapper .data-table-action').prepend($('#btnClearAll'));
+                $('#btnShowAddActiveUsersBtn').show();
+                $("#btnClearAll").show();
+                tranformSearchInputDataTable('usersDataTable_filter')
+            }
+        };
+
+        $('#usersDataTable').data('options', options);
+
+        dataTable = initializeDataTable($("#usersDataTable"));
+    }
+
+    function setCheckboxChecked() {
+        var $checkboxes = $('input[name="chkUserId"][type="checkbox"]');
+        var count = 0;
+
+        $checkboxes.each(function () {
+            var userId = $(this).val();
+            var found = selectedUsers.find(element => element.userId === userId);
+            if (typeof found !== "undefined") {
+                $(this).prop('checked', true);
+                $(this).parents('tr').addClass('is-selected');
+                count++;
+            }
+        });
+
+        if (count === 0) {
+            $('#checkAllUsers').prop('checked', false);
+            $('#btnAddUsersToGroup').prop('disabled', (selectedUsers.length === 0));
+            $('#btnClearAll').prop('disabled', (selectedUsers.length === 0));
+        }
+        else {
+            $('#btnAddUsersToGroup').prop('disabled', false);
+            $('#btnClearAll').prop('disabled', false);
+            $('#checkAllUsers').prop('checked', (count === $checkboxes.length));
+        }
+    }
+
+    function ShowHideBtnAddUsersToGroup() {
+        var anyCheck = false;
+        var checkboxes = $('input[name="chkUserId"][type="checkbox"]');
+        for (var i = 0; i < checkboxes.length; i++) {
+            if ((checkboxes[i]).checked == true) {
+                anyCheck = true;
+                break;
+            }
+        }
+
+        if (anyCheck || selectedUsers.length > 0) {
+            $('#btnAddUsersToGroup').prop('disabled', false);
+            $('#btnClearAll').prop('disabled', false);
+        }
+        else {
+            $('#btnAddUsersToGroup').prop('disabled', true);
+            $('#btnClearAll').prop('disabled', true);
+        }
+    }
+
+    function setIconCheckBox(aData) {
+        var checkboxString = '<div style="text-align: center;">' + '<input style="text-align: center;" type="checkbox" name="chkUserId" userName="' + aData['UserName'] + '" groupName="' + aData['GroupName'] + '" value="' + aData['UserId'] + '" /></div>';
+        return checkboxString;
+    }
+
+    function drawDatatable() {
+        var dataTable = $('#usersDataTable').dataTable();
+        dataTable.fnDraw();
+
+        var elCheckAll = $("#checkAllUsers");
+        if (!elCheckAll.is(':checked') && elCheckAll.hasClass("input-checked-v2")) {
+            elCheckAll.removeClass("input-checked-v2")
+        }
+    }
+
+    function cancelClearAll() {
+        $("#confirmClearAllDialog").dialog("close")
+    }
+
+    function confirmYesClearAll() {
+        var tags = $('#selectedUserTags').tagEditor('getTags')[0].tags;
+        for (i = 0; i < tags.length; i++) {
+            $('#selectedUserTags').tagEditor('removeTag', tags[i], true);
+        }
+        $("#checkAllUsers").removeClass("input-checked-v2");
+        cancelClearAll()
+    }
+
+    function confirmAddUser() {
+        var data = { userIDs: tempUser, groupID: $('#xliGroupID').val() };
+
+        ShowBlock($('#usersDataTable'), "Adding");
+        $.post('@Url.Action("AddUsersToGroup", "Admin")', data, function (result) {
+            $('#usersDataTable').unblock();
+            if (result) {
+                var tags = $('#selectedUserTags').tagEditor('getTags')[0].tags;
+                for (i = 0; i < tags.length; i++) {
+                    $('#selectedUserTags').tagEditor('removeTag', tags[i], true);
+                }
+                selectedUsers = [];
+                drawDatatable();
+            }
+            tempUser = "";
+            cancelAddUser();
+        });
+    }
+
+    function cancelAddUser() {
+        $("#confirmAddUserDialog").dialog("close");
+        tempUser = "";
+    }
+
+    $(function () {
+
+        loadUsersToDatabale();
+
+        $('#selectedUserTags').tagEditor({
+            allowUserTags: false,
+            forceLowercase: false,
+            beforeTagDelete: function (field, editor, tags, val) {
+                selectedUsers = selectedUsers.filter(function (item) { return item.userName !== val; });
+                var $checkboxes = $('input[name="chkUserId"][type="checkbox"]');
+                var found = false;
+                $checkboxes.each(function () {
+                    var userName = $(this).attr('userName');
+                    if (userName === val) {
+                        $(this).prop('checked', false);
+                        found = true;
+                        $(this).parents('tr').removeClass('is-selected');
+                    }
+                });
+
+                ShowHideBtnAddUsersToGroup();
+                $('#checkAllUsers').prop('checked', !found);
+
+                return true;
+            }
+        });
+
+        initDropDownList();
+
+        $('#selectSchool').change(function () {
+            drawDatatable();
+        });
+
+        $('#selectRole').change(function () {
+            drawDatatable();
+        });
+
+        $('#checkAllUsers').live('click', function (e) {
+            var $checkboxes = $('input[name="chkUserId"][type="checkbox"]');
+            if (this.checked) {
+                $checkboxes.prop('checked', true);
+                $checkboxes.each(function () {
+                    var userId = $(this).val();
+                    var found = selectedUsers.find(element => element.userId === userId);
+                    if (typeof found === "undefined") {
+                        selectedUsers.push({
+                            "userId": userId,
+                            "groupName": $(this).attr('groupName'),
+                            "userName": $(this).attr('userName')
+                        });
+
+                        $('#selectedUserTags').tagEditor('addTag', $(this).attr('userName'), true);
+                    }
+
+                    $(this).parents('tr').addClass('is-selected');
+                });
+            }
+            else {
+                $checkboxes.prop('checked', false);
+                $checkboxes.each(function () {
+                    var userId = $(this).val();
+                    $(this).parents('tr').removeClass('is-selected');
+                    selectedUsers = selectedUsers.filter(function (item) { return item.userId !== userId; });
+                    $('#selectedUserTags').tagEditor('removeTag', $(this).attr('userName'), true);
+                });
+            }
+
+            ShowHideBtnAddUsersToGroup();
+        });
+
+        $('.js-change-inactive-addusers').on('change', function (ev) {
+            ev.preventDefault();
+            var $self = $(this);
+            if ($self.hasClass('show-inactive')) {
+                $self.removeClass('show-inactive');
+                $("#spanClassActivePopup").html('Off');
+            }
+            else {
+                $self.addClass('show-inactive');
+                $("#spanClassActivePopup").html('On');
+            }
+
+            drawDatatable();
+        });
+
+        $('input[name="chkUserId"][type=checkbox]').live("click", function (e) {
+            var $chkAllUsers = $('#checkAllUsers');
+            var $trRow = $(this).parents('tr');
+            if (this.checked) {
+                $trRow.addClass('is-selected');
+                var checkboxes = $('input[name="chkUserId"][type="checkbox"]');
+                var isCheckAll = true;
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if ((checkboxes[i]).checked == false) {
+                        $chkAllUsers.prop('checked', false);
+                        $chkAllUsers.removeClass('input-checked-v2')
+                        isCheckAll = false;
+                    }
+                }
+
+                if (isCheckAll) {
+                    $chkAllUsers.prop('checked', true);
+                    $chkAllUsers.addClass('input-checked-v2')
+                }
+
+                var userId = this.value;
+                var found = selectedUsers.find(element => element.userId === userId);
+                if (typeof found === "undefined") {
+                    selectedUsers.push({
+                        "userId": userId,
+                        "groupName": $(this).attr('groupName'),
+                        "userName": $(this).attr('userName')
+                    });
+                    $('#selectedUserTags').tagEditor('addTag', $(this).attr('userName'), true);
+                    handleActiveTag()
+                }
+            }
+            else {
+                var userId = this.value;
+                $trRow.removeClass('is-selected');
+                $chkAllUsers.prop('checked', false);
+                $chkAllUsers.removeClass('input-checked-v2')
+                selectedUsers = selectedUsers.filter(function (item) { return item.userId !== userId; });
+                $('#selectedUserTags').tagEditor('removeTag', $(this).attr('userName'), true);
+            }
+
+            ShowHideBtnAddUsersToGroup();
+        });
+
+
+        $('#btnAddUsersToGroup').on('click', function (e) {
+            var users = [];
+            var userName = '';
+            var message = "";
+
+            if (selectedUsers.length === 1) {
+                if (selectedUsers[0]["groupName"] !== 'null')
+                    message = selectedUsers[0]["userName"] + ' is currently in Group ' + selectedUsers[0]["groupName"] + ', are you sure you want to move this user to @Model.Name?';
+                else
+                    message = 'Are you sure you want to add 1 user(s) to @Model.Name?';
+
+                users.push(selectedUsers[0]["userId"]);
+            }
+            else {
+                var count = 0;
+                var found = false;
+                for (var i = 0; i < selectedUsers.length; i++) {
+                    if (userName !== '')
+                        userName += ", " + selectedUsers[i]["userName"];
+                    else
+                        userName += selectedUsers[i]["userName"];
+
+                    if (selectedUsers[i]["groupName"] !== 'null') {
+                        found = true;
+                        if (count > 0)
+                            existUsername += ", " + selectedUsers[i]["userName"];
+                        else
+                            existUsername = selectedUsers[i]["userName"];
+                        count++;
+                    }
+
+                    users.push(selectedUsers[i]["userId"]);
+                }
+
+                if (found) {
+                    if (count < users.length) {
+                        if (count > 1)
+                            message = 'Users: ' + existUsername + ' are already in a User Group, are you sure you want to move them to @Model.Name and add ' + (users.length - count) + ' user(s) to this group?';
+                        else
+                            message = message = 'Users: ' + existUsername + ' is already in a User Group, are you sure you want to move them to @Model.Name and add ' + (users.length - count) + ' user(s) to this group?';
+                    }
+                    else
+                        message = 'Users: ' + userName + ' are already in a User Group, are you sure you want to move them to to @Model.Name?';
+                }
+                else
+                    message = 'Are you sure you want to add ' + (users.length) + ' user(s) to @Model.Name?';
+            }
+
+            tempUser = JSON.stringify(users)
+            confirmMessageV2(
+                {
+                    message,
+                    cbYesBtnFuncName: 'confirmAddUser()',
+                    cbCancelBtnFuncName: 'cancelAddUser()'
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'confirmAddUserDialog'
+                        }
+                    }
+                }
+            )
+        });
+
+
+        $('#btnClearAll').on('click', function (e) {
+            confirmMessageV2(
+                {
+                    message: 'Are you sure you want to remove all selected user(s)?',
+                    cbYesBtnFuncName: 'confirmYesClearAll()',
+                    cbCancelBtnFuncName: 'cancelClearAll()'
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'confirmClearAllDialog'
+                        }
+                    }
+                }
+            )
+        });
+
+        function handleActiveTag() {
+            $(".tag-editor-tag").on('click', function () {
+                var tagEl = $(this)
+                setTimeout(function () {
+                    var input = tagEl.find("input");
+                    var parent = tagEl.parent();
+                    if (input) {
+                        $(parent).find(".tag-editor-delete").hide();
+                        $(parent).css("padding-right", '.4rem')
+                        $(input).on('focusout', function () {
+                            $(parent).find(".tag-editor-delete").show();
+                            $(parent).css("padding-right", '.8rem')
+                        })
+                    }
+                }, 10)
+            })
+        }
+    });
+</script>

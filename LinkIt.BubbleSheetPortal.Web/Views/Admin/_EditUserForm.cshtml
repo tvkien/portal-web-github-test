@@ -1,0 +1,262 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.EditUserViewModel
+
+<ul style="display: none" id="error-messages" class="message error"></ul>
+<ul style="display: none" id="success-message" class="message success">
+    <li>User successfully updated.</li>
+</ul>
+
+@Html.HiddenFor(x => x.UserId)
+
+<div class="columns">
+    
+    <fieldset>
+        <legend>Select Role</legend>
+        <div class="columns">
+            <div class="colx2-left">
+                <p>
+                    <label>Role</label>
+                    <span class="relative">
+                        @Html.DropDownListFor(x => x.RoleId, Model.AvailableRoles, new { id = "selectAvailableRoles", @class = "full-width" })
+                    </span>
+                </p>
+            </div>
+        </div>
+    </fieldset> 
+    @if (Model.CanSelectState || Model.CanSelectDistrict)
+    {
+        <fieldset id="locationFieldset">
+            <legend>Location Info</legend>
+            <div class="columns">
+                @if (Model.CanSelectState)
+                {
+                    <div class="colx2-left">
+                        <p id="states">
+                            <label>Select State</label>
+                            <span class="relative">
+                                @Html.DropDownListFor(x => x.StateId, Model.AvailableStates, new {id = "selectState", @class = "full-width"})
+                            </span>
+                        </p>
+                    </div>
+                    <div class="colx2-right">
+                        <p id="districts">
+                            <label>Select @LabelHelper.DistrictLabel</label>
+                            <span class="relative">
+                                @Html.DropDownListFor(x => x.DistrictId, Model.AvailableDistricts, new {id = "selectDistrict", @class = "full-width"})
+                            </span>
+                        </p>
+                    </div>
+                }
+                else if (Model.CanSelectDistrict)
+                {
+                    @Html.HiddenFor(x => x.StateId)
+                    <div class="colx2-left">
+                        <p id="districts">
+                            <label>Select @LabelHelper.DistrictLabel</label>
+                            <span class="relative">
+                                @Html.DropDownListFor(x => x.DistrictId, Model.AvailableDistricts, new {id = "selectDistrict", @class = "full-width"})
+                            </span>
+                        </p>
+                    </div>
+                }
+            </div>
+        </fieldset>
+    }
+    else
+    {
+        @Html.HiddenFor(x => x.StateId)
+        @Html.HiddenFor(x => x.DistrictId)
+    }
+    <fieldset>
+        <legend>Account Info</legend>
+        <div class="columns">
+            <div class="colx2-left">
+                <p>
+                    <label>Username</label>
+                    <span class="relative">
+                        @Html.TextBoxFor(x => x.UserName, new { @class = "full-width", tabindex = "1" })
+                        @Html.ValidationMessageFor(x => x.UserName, " ")
+                    </span>
+                </p>
+            </div>
+            <div class="colx2-right">
+                <p>
+                    <label>Email Address <i>(Optional)</i></label>
+                    <span class="relative">
+                        @Html.TextBoxFor(x => x.EmailAddress, new { @class = "full-width", tabindex = "2" })
+                    </span>
+                </p>
+            </div>
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>Personal Info</legend>
+        <div class="columns">
+            <div class="colx2-left">
+                <p>
+                    <label>First Name</label>
+                    <span class="relative">
+                        @Html.TextBoxFor(x => x.FirstName, new { @class = "full-width", tabindex = "3" })
+                        @Html.ValidationMessageFor(x => x.FirstName, " ")
+                    </span>
+                </p>
+                <p>
+                    <label>Phone Number <i>(Optional)</i></label>
+                    <span class="relative">
+                        @Html.TextBoxFor(x => x.PhoneNumber, new { @class = "full-width", tabindex = "5" })
+                    </span>
+                </p>
+                <p>
+                    <label>State Code <i>(Optional)</i></label>
+                    <span class="relative">
+                        @Html.TextBoxFor(x => x.StateCode, new { @class = "full-width", tabindex = "7" })
+                    </span>
+                </p>
+            </div>
+            <div class="colx2-right">
+                <p>
+                    <label>Last Name</label>
+                    <span class="relative">
+                        @Html.TextBoxFor(x => x.LastName, new { @class = "full-width", tabindex = "4" })
+                    </span>
+                </p>
+                <p>
+                    <label>Local Code</label>
+                    <span class="relative">
+                        @Html.TextBoxFor(x => x.LocalCode, new { @class = "full-width", tabindex = "6" })
+                    </span>
+                </p>
+            </div>
+        </div>
+    </fieldset>
+    @if (Model.CanBeAssociatedWithSchool)
+    {
+        <fieldset>
+            <legend>Schools</legend>
+            <a id="btnAddUserSchool" href="javascript:void(0);" class="button">
+                <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                Add New School
+            </a>
+            <div id="userSchoolsContainer"></div>
+        </fieldset>
+    }
+</div>
+<button id="btnSubmit" type="submit" name="Save">Submit</button>  
+<button id="btnCancel" type="button" class="grey">Back</button>
+<input type="hidden" id="CurrentUserRoleId" name="CurrentUserRoleId" />
+<script type="text/javascript">
+    $(function () {
+        $('#CurrentUserRoleId').val(@Model.CurrentUserRoleId);
+        if ('@Model.StateId' > 0) {
+            populateStates();
+        }
+
+        $('#selectAvailableRoles').change(function () {
+            clearSelectBoxes();
+            var rolesValue = $(this).val();
+            if (rolesValue != 'select') {
+                $('#locationFieldset').show();
+                $('#schools').show();
+                switch (rolesValue) {
+                    case '3':
+                        $('#schools').hide();
+                        break;
+                }
+                if ('@Model.CanSelectState' === 'True') {
+                    populateStates();
+                }
+                else if ('@Model.CanSelectDistrict' === 'True') {
+                    populateDistricts($('#selectDistrict'));
+                }
+            }
+        });
+
+        $('#selectState').change(function () {
+            if ($(this).val() != 'select') {
+                populateDistricts($('#selectDistrict'));
+            }
+            else {
+                $('#selectDistrict').empty();
+                $('#selectSchool').empty();
+            }
+        });
+
+        loadSchools();
+        $(".validation-summary-errors ul").addClass("no-margin").addClass('message').addClass('error');
+
+        $('#btnAddUserSchool').click(function () {
+            $('#sideContainer').load('@Url.Action("AddUserSchool", new { userId = Model.UserId })');
+        });
+    });
+
+    function clearSelectBoxes() {
+        $('#selectState').empty();
+        $('#selectDistrict').empty();
+    }
+
+    function populateStates() {
+        var stateSelect = $('#selectState');
+        stateSelect.empty();
+        $.get('@Url.Action("GetStates")', function (response) {
+            addDefaultOption(stateSelect, "State");
+            addSelectListItems(stateSelect, response);
+            if ('@Model.StateId' > 0) {
+                $('#selectState option[value="@Model.StateId"]').attr("selected", "selected");
+                populateDistricts($('#selectDistrict'));
+            }
+
+        });
+    }
+
+    function populateDistricts(districtSelect) {
+        districtSelect.empty();
+        $('#selectSchool').empty();
+        var stateValue = $('#selectState').val();
+        $.get('@Url.Action("GetDistricts")', { stateId: stateValue }, function (response) {
+            addDefaultOption(districtSelect, "@LabelHelper.DistrictLabel");
+            addSelectListItems(districtSelect, response);
+            if ('@Model.DistrictId' > 0) {
+                $('#selectDistrict option[value="@Model.DistrictId"]').attr("selected", "selected");
+                populateSchools($('#selectSchool'));
+            }
+        });
+    }
+
+    function removeUserFromSchool(userSchoolId, userId, schoolId) {
+        if(confirm("Are you sure you want to remove this user from this school?")) {
+            $.post('@Url.Action("RemoveUserFromSchool")', { userSchoolId: userSchoolId, userId: userId, schoolId: schoolId }, function (response) {
+                if (response == true) {
+                    loadSchools();
+                }
+                else {
+                    alert("Invalid user, please try again.");
+                }
+            });
+        }
+    }
+    function populateSchools(schoolSelect) {
+        schoolSelect.empty();
+        var districtValue = $('#selectDistrict').val();
+        $.get('@Url.Action("GetSchools")', { districtId: districtValue }, function (response) {
+            addDefaultOption(schoolSelect, "School");
+            addSelectListItems(schoolSelect, response);
+        });
+    }
+    $('#btnCancel').click(function () {
+        location.href = '@Url.Action("ManageUsers")';
+     });
+
+    disableDistrict();
+
+    function disableDistrict() {
+        var districtAdmin = 3;
+        var publisher = 5;
+        var networkAdmin = 27;
+
+        if (@Model.RoleId != districtAdmin && @Model.RoleId != publisher && @Model.RoleId != networkAdmin) {
+            $('#selectState').attr("disabled", true);
+            $('#selectState').css("background", "lightgrey");
+            $('#selectDistrict').attr("disabled", true);
+            $('#selectDistrict').css("background", "lightgrey");
+        }
+    }
+</script>

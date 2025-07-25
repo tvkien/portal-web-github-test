@@ -1,0 +1,192 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.ReportItemSGOManager, "SGO Admin Review",true);
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@*@MvcHtmlString.Create(
+    Bundle.Css()
+        .Add(@Url.Content("~/Content/css/custom.css"))
+        .Add(@Url.Content("~/Content/css/sgohome.css"))
+        .Render("/Content/themes/Constellation/css/SGOAdminReview_combined_#.css"))*@
+@*@MvcHtmlString.Create(
+    Bundle.JavaScript()
+        .Add("/Scripts/knockout-3.0.0.js")
+        .Add("/Content/themes/TestMaker/ckeditor_utils.js")
+        .Render("/Content/themes/Constellation/js/SGOAdminReview_combined_#.js")
+    )*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleSGOManageAdminReviewBundleV2()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptSGOManageAdminReviewBundle()
+<link href="@BundleHelper.Version("~/Content/css/v2/sgo-admin-review.css")" rel="stylesheet" />
+
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGOObjectViewModel
+<article class="container_12" id="idTopNavigation">
+    @Html.Action("LoadNavigation", "SGOManage", new { sgoId = @Model.SGOId })
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form">
+                <input type="hidden" id="sgoId" value="@Model.SGOId" />
+                <h3 class="h3 mb-3"> Admin Review</h3>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success"></ul>
+                <div class="box-warning">
+                    <img src="/Content/images/icons/icon-info.svg" class="ico-info">
+                    @Html.Raw(Model.AdminReviewDirections)
+                </div>
+
+                <hr class="mt-4 mb-3" />
+
+                <h5 class="h5 mb-3">Feedback</h5>
+
+                <div class="coolfieldset w-50">
+                    <textarea id="idtareaFeedback" rows="10" spellcheck="true" class="full-width" onchange=" DisableMessage(); ">@Html.Raw(Html.Encode(Model.Feedback))</textarea>
+                </div>
+
+                <hr class="mt-4 mb-3" />
+
+                @Html.Action("LoadSGONote", "SGOManage", new { sgoId = Model.SGOId, pageName = LinkIt.BubbleSheetPortal.Models.SGO.SGOPageNameConstant.AdminReview })
+
+                <hr class="my-3" />
+
+                <div class="text-end">
+                    <button id="btnAdminReviewDeny" type="button" class="btn-blue ms-3">Deny</button>
+                    <button id="btnAdminReviewAuthorizeRevision" type="button" class="btn-blue ms-3">Authorize Revision</button>
+                    <button id="btnAdminReviewApprove" type="button" class="btn-red ms-3">Approve</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script>
+    $(function() {
+        breadcrumbDetailPage('.stats', '#rpSGOManager');
+
+        @*var feedback = htmlDecode('@Model.Feedback');
+        feedback = feedback.replace(/<br>/g, '\n');*@
+        @*$('#idtareaFeedback').val(htmlDecode('@Model.Feedback'));*@
+        //$('#idtareaFeedback').html((feedback));
+        initNavigationTabs(6, @Model.SGOId);
+
+        if (@Model.PermissionAccess != 3) //Full Update
+        {
+            LockAllUI();
+        }
+
+        @*if ('@Model.IsReviewer' === 'True') {
+            $('#btnAdminReviewAuthorizeRevision').removeAttr('disabled');
+        }*@
+
+        $('#btnAdminReviewAuthorizeRevision').removeAttr('disabled');
+    });
+
+    $('#btnAdminReviewAuthorizeRevision').click(function() {
+        DisableMessage();
+        var alertMessage = '<div class="text-bold p-1">Are you sure you want to authorize a revision?</div>';
+        popupAlertMessage('confirm', alertMessage, 420, 500);
+    });
+
+    $('#btnAdminReviewDeny').click(function() {
+        ShowBlock($('#idTopNavigation'), "Processing");
+        DisableMessage();
+        var sgoId = @Model.SGOId;
+        //var vfeedback = htmlEncode ($('#idtareaFeedback').val().trim());
+        var vfeedback =  $('#idtareaFeedback').val() ;
+        if (vfeedback.length == 0) {
+            $('#error-messages').html('<li>Please enter reason.</li>');
+            $('#error-messages').show();
+            $(window).scrollTop(0);
+            $('#idTopNavigation').unblock();
+        } else {
+            $.post('@Url.Action("SGODeny", "SGOManage")', { sgoId: sgoId, strFeedback: vfeedback }, function (response) {
+                if (!response) {
+                    $('#error-messages').html('<li>An error occurred. Please try again.</li>');
+                    $('#error-messages').show();
+                    $(window).scrollTop(0);
+                } else {
+                    var url = "/SGOManage/Index";
+                    window.location.href = url;
+                }
+                $('#idTopNavigation').unblock();
+            }).always(function() {
+                $('#idTopNavigation').unblock();
+            });
+        }
+    });
+
+    $('#btnAdminReviewApprove').click(function() {
+        ShowBlock($('#idTopNavigation'), "Processing");
+        DisableMessage();
+        var sgoId = @Model.SGOId;
+        //var strFeedback =  htmlEncode ($('#idtareaFeedback').val().trim());
+        var strFeedback =   $('#idtareaFeedback').val() ;
+        $.post('@Url.Action("SGOApprove", "SGOManage")', { sgoId: sgoId, strFeedback: strFeedback }, function(response) {
+            if (!response) {
+                $('#error-messages').html('<li>An error occurred. Please try again.</li>');
+                $('#error-messages').show();
+                $(window).scrollTop(0);
+            } else {
+                var url = "/SGOManage/Index";
+                window.location.href = url;
+            }
+            $('#idTopNavigation').unblock();
+        }).always(function() {
+            $('#idTopNavigation').unblock();
+        });
+    });
+
+    function DisableMessage() {
+        $('#error-messages').hide();
+        $('#success-message').hide();
+    }
+
+    function LockAllUI() {
+        $('#idTopNavigation :input').attr('disabled', true);
+        $('#idTopNavigation :button').attr('disabled', true);
+        $('#txtSGONote').removeAttr('disabled');
+        $('#btnSaveNote').removeAttr('disabled');
+    }
+
+    function YesConfirmPopup(e) {
+        ShowBlock($('#idTopNavigation'), "Authorize Revision");
+        var $self = $(e);
+        $self.parents('.ui-dialog').remove();
+        var strFeedback =   $('#idtareaFeedback').val() ;
+        $.post('@Url.Action("AuthorizeRevision", "SGOManage")', { sgoId: @Model.SGOId, strFeedback: strFeedback }, function (response) {
+            var url = "/SGOManage/Index";
+            window.location.href = url;
+            $('#idTopNavigation').unblock();
+        }).always(function() {
+            $('#idTopNavigation').unblock();
+        });
+    }
+
+    function htmlEncode(value) {
+        //create a in-memory div, set it's inner text(which jQuery automatically encodes)
+        //then grab the encoded contents back out.  The div never exists on the page.
+        return $('<div/>').text(value).html();
+    }
+
+    function htmlDecode(value) {
+        return $('<div/>').html(value).text();
+    }
+    function supportNavigationSaveAndRedirect(param) {
+        //SaveStudentPopulation(0,param);
+    }
+</script>

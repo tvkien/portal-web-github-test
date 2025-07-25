@@ -1,0 +1,195 @@
+@model LinkIt.BubbleSheetPortal.Models.Student
+<section>
+    <div class="block-border">
+        <div class="block-section-custom form pb-0">
+            <h1 class="title-large m-0 mb-4 p-0">Available Classes</h1>
+            <div id="dataTableAvaiableClasses_scroll">
+                <div class="mb-3 w-50">
+                    <p class="title-large mb-3">Select School</p>
+                    <div class="columns block-content-dropdown-marquee">
+                        <label>School</label>
+                        <div class="block-text-name w-100">
+                            <select id="selectAvailableSchool" name="selectAvailableSchool" class="w-100"></select>
+                            <div class="box-select">
+                                <span class="overlay"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="no-margin last-child">
+                    <table id="dataTableAvaiableClasses" class="datatable table no-margin center-first-column" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width: 35px">
+                                    Actions
+                                </th>
+                                <th scope="col" style="width: 22%">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Class Name
+                                </th>
+                                <th scope="col" style="width: 22%">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    School
+                                </th>
+                                <th scope="col" style="width: 22%">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.Term
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Teacher
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                </div>
+            </div>
+            <div class="modal-component-footer d-flex justify-content-center align-items-center" style="margin-left: -1.5rem; margin-right: -1.5rem;">
+                <button id="btnCloseClasses" type="button" class="btn-red classProgramButton">Close</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    function initDropdownListSchool() {
+        var currentUserRoleId = '@ViewBag.CurrentUserRoleId';
+        var currentUserId = '@ViewBag.CurrentUserId';
+        var selectedDistrictId = '@Model.DistrictId';
+        var selectedSchoolId = '@ViewBag.SelectedSchoolId';
+        var url = currentUserRoleId == '8' || currentUserRoleId == '2' ? '@Url.Action("GetSchoolsByUser")' : '@Url.Action("GetSchools", "Admin")';
+
+        $.ajax({
+            url: url,
+            data: { districtId: selectedDistrictId, userId: currentUserId },
+            dataType: 'json',
+            async: false,
+            success: function (schools) {
+                addDefaultOption($('#selectAvailableSchool'), "School");
+                addSelectListWithDefaultValue($('#selectAvailableSchool'), schools, selectedSchoolId);
+
+                // Auto select school in case there's just 1 record
+                if (schools.length == 1) {
+                    $('#selectAvailableSchool option').eq(1).attr('selected', 'selected');
+                }
+                $("#selectAvailableSchool").marquee()
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        initDropdownListSchool();
+        initDataToTable();
+
+        $('.control-next').css('margin-right', '0px');
+        $('.block-controls').css('z-index', '');
+    });
+
+    $('#dataTableAvaiableClasses').on('click', '.classAdd', function () {
+        var classId = $(this).attr('classId');
+        confirmMessageV2(
+            {
+                message: 'Do you want to assign this student to this class?',
+                cbYesBtnFuncName: 'yesRemoveAvailableClass(' + classId + ')',
+                cbCancelBtnFuncName: 'closeRemoveAvailableClass()',
+                cbCloseBtnFuncName: 'closeRemoveAvailableClass()',
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'deleteClassConfirm'
+                    }
+                }
+            }
+        )
+    });
+    function closeRemoveAvailableClass() {
+        $("#deleteClassConfirm").dialog("close");
+    }
+    function yesRemoveAvailableClass(classId) {
+        closeRemoveAvailableClass();
+
+            $.post('@Url.Action("AssignClassForStudent")', { classId: classId, studentId: '@Model.Id' }, function (response) {
+                if (response == true) {
+                    ui.dataTableAvaiableClasses.fnDraw();
+                    ui.dataTablesStudentClasses.fnDraw();
+                    $('.with-tip').tip().hideTip();
+                } else {
+                    alert(response.message);
+                }
+            });
+    }
+
+    $('#selectAvailableSchool').change(function () {
+        var dataTable = $('#dataTableAvaiableClasses').dataTable();
+        dataTable.fnDraw();
+    });
+
+    function initDataToTable() {
+        var optionsClass =
+        {
+            oLanguage: { "sSearch": "" },
+            bServerSide: true,
+            sServerMethod: "GET",
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetAvailableClassesByStudentId")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "StudentId", value: '@Model.Id' },
+                    { name: "SchoolId", value: $('#selectAvailableSchool').val() }
+                );
+            },
+            bAutoWidth: true,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { mData: 'ClassId', sName: 'ClassId', bSearchable: false, bSortable: false },
+                { mData: 'ClassName', sName: 'ClassName', bSearchable: true, bSortable: true },
+                { mData: 'SchoolName', sName: 'SchoolName', bSearchable: true, bSortable: true },
+                { mData: 'TermName', sName: 'TermName', bSearchable: true, bSortable: true },
+                { mData: 'TeacherName', sName: 'TeacherName', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                var addIcon = '<i class="custom-icon fa-solid fa-circle-plus icon-green"></i>';
+                $('td:eq(0)', nRow).html('<a href="javascript:void(0)" title="Add to student" classId="' + aData["ClassId"] + '" class="with-tip classAdd">' + addIcon + '</a>');
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableAvaiableClasses'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableAvaiableClasses').unblock();
+                $('.with-tip').tip();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTableAvaiableClasses_filter');
+                var elSearchInput = elSearchLabel.find('input');
+                elSearchInput.attr('style', 'padding-left: 32px !important; position: relative;');
+                $('#dataTableAvaiableClasses_filter').addClass('data-search');
+            }
+        };
+
+        $("#dataTableAvaiableClasses").data("options", optionsClass);
+        initializeDataTable($("#dataTableAvaiableClasses"));
+    }
+</script>

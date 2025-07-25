@@ -1,0 +1,234 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testmanagement, "Test Export Library");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@if (Model.IsPublisher || Model.IsNetworkAdmin)
+{
+    <article class="container_12" style="padding-bottom: 0px;">
+        <section class="grid_12">
+            <div class="block-border">
+                <div class="block-content form">
+                    <div class="row g-3">
+                        <div class="col-3">
+                            <label>State</label>
+                            <div class="block-text-name w-100">
+                                <select id="selectState" class="w-100"></select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <label>@LabelHelper.DistrictLabel</label>
+                            <div class="block-text-name w-100">
+                                <select id="selectDistrict" class="w-100"></select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </article>
+}
+else
+{
+    <input id="idhdfDistrictId" type="hidden" value="@Model.CurrentDistrictId" />
+}
+
+
+<article class="container_12">
+    <section class="grid_12 m-0">
+        <div class="block-border" id="exportFilter">
+            <ul style="display: none" id="error-messages" class="message error">
+                <li>Have some error. Please try again</li>
+            </ul>
+            <div class="block-section-custom mb-4">
+                <p class="title-large">Library Export</p>
+                <fieldset class="field-set-block no-padding" style="margin-bottom:24px">
+                    <label class="fieldset-label">Select Type of Export</label>
+                    <div class="d-flex mb-2 group-checkboxs">
+                        <div class="me-4">
+                            <div class="d-flex">
+                                <input class="d-block me-2" type="radio" id="radioItemLibrary" name="typeSelection" checked="checked">
+                                <span>Item Library</span>
+                            </div>
+                        </div>
+                        <div class="me-4">
+                            <div class="d-flex">
+                                <input class="d-block me-2" type="radio" id="radioTestLibrary" name="typeSelection">
+                                <span>Test Library</span>
+                            </div>
+                        </div>
+                        <div class="me-4">
+                            <div class="d-flex">
+                                <input class="d-block me-2" type="radio" id="radioPassageLibrary" name="typeSelection">
+                                <span>Passage Library</span>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+            <div class="block-section-custom mb-4" style="text-align: right">
+                <button id="btnExport" class="btn-red">Export to CSV</button>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+
+    $(function () {
+
+        $('#selectDistrict').marquee();
+        $('#selectState').marquee();
+
+        @if (Model.IsPublisher)
+        {
+            <text>
+                $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                    populateStates(states);
+                });
+            </text>
+        }
+        else if (Model.IsNetworkAdmin)
+        {
+            <text>
+                $.get('@Url.Action("GetStatesByDictricIds", "PopulateStateDistrict")', { dictricIds: '@ViewBag.ListDictrictIds' }, function (states) {
+                    populateStates(states);
+                });
+            </text>
+        }
+
+        @if (Model.IsPublisher || Model.IsNetworkAdmin)
+        {
+            <text>
+                $('#btnExport').disableBt();
+                $('#selectState').change(function () {
+                    populateDistricts();
+                });
+            </text>
+        }
+
+        function populateStates(states) {
+            addDefaultOption($('#selectState'), "State");
+            addSelectListItems($('#selectState'), states);
+        }
+
+        function populateDistricts() {
+            $('#selectDistrict').empty();
+            var stateValue = $('#selectState').val();
+            if (stateValue != 'select') {
+                if ('@Model.IsPublisher' === 'True') {
+                    $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#selectDistrict'), districts);
+                    });
+                }
+                if ('@Model.IsNetworkAdmin' === 'True') {
+                    $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#selectDistrict'), districts);
+                    });
+                }
+            }
+        }
+
+        function GetDistrictId() {
+            @if (Model.IsPublisher || Model.IsNetworkAdmin)
+            {
+                <text>
+                    return $('#selectDistrict').val();
+                </text>
+            } else
+            {
+                <text>
+                    return $('#idhdfDistrictId').val();
+                </text>
+            }
+        }
+
+        $('#selectState').change(function () {
+            $('#btnExport').disableBt();
+        });
+
+        $('#selectDistrict').change(function () {
+            if ($('#selectDistrict').val() > 0) {
+                $('#btnExport').enableBt();
+            }
+            else {
+                $('#btnExport').disableBt();
+            }
+        });
+
+        $("#btnExport").live("click", function (e) {
+            var type = -1;
+            if ($('#radioItemLibrary').is(':checked')) {
+                type = 1
+            } else if ($('#radioTestLibrary').is(':checked')) {
+                type = 2
+            } else if ($('#radioPassageLibrary').is(':checked')) {
+                type = 3
+            }
+            var getUrl = '@Url.Action("ExportToCSV")/?&type=' + type + '&districtID=' + GetDistrictId();
+
+            ShowBlock($('#exportFilter'), "Loading");
+
+            $.ajax(getUrl).done(function (response) {
+                if (response.search("ExportToCSV-Exception") == -1) {
+                    $('#error-messages').hide();
+
+                    var fileName = "";
+
+                    const blob = new Blob(["\uFEFF"+response], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+
+                    switch (type) {
+                        case 1:
+                            fileName = "Export Item Library.csv";
+                            break;
+                        case 2:
+                            fileName = "Export Test Library.csv";
+                            break;
+                        case 3:
+                            fileName = "Export Passage Library.csv";
+                            break;
+                        default:
+                            break;
+                    }
+
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', fileName);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    $('#exportFilter').unblock();
+                } else {
+                    $('#error-messages').show();
+                    $('#exportFilter').unblock();
+                }
+            });
+
+        });
+    })
+
+</script>

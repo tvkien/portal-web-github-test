@@ -1,0 +1,160 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.AuthorGroup.AddAuthorGroupUserSchoolDistrictViewModel
+<div class="no-margin last-child">
+    <table id="dataTableAuthorGroupSchool" class="datatable table no-margin" width="100%">
+        <thead>
+            <tr>
+                <th scope="col" style="width: 15px">Actions</th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Name
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .actions-btn {
+        text-align: center !important;
+    }
+
+    #confirmDeleteSchoolAuthorGroupDialog .block-content {
+        padding: 24px !important;
+    }
+
+    #confirmDeleteSchoolAuthorGroupDialog .main-content {
+        padding: 0 !important;
+    }
+
+    #confirmDeleteSchoolAuthorGroupDialog .button-custom-new-skin {
+        padding: 11px 32px !important;
+    }
+
+    #confirmDeleteSchoolAuthorGroupDialog .red-btn:hover {
+        background-color: var(--red2) !important;
+    }
+
+    #dataTableAuthorGroupSchool tbody tr .dataTables_empty {
+        text-align: center !important;
+    }
+</style>
+
+<script type="text/javascript">
+    $(function () {
+        LoadDataTablesAuthorGroupSchools(@Model.AuthorGroupId);
+    });
+
+    function LoadDataTablesAuthorGroupSchools(authorGroupID) {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetAuthorGroupSchools")/?authorGroupID=' + authorGroupID,
+            fnServerParams: function (aoData) {
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'SchoolId', bSearchable: false, bSortable: false, sClass: 'actions-btn' },
+                { sType: 'string', sName: 'SchoolName', bSearchable: true, bSortable: true }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableAuthorGroupSchool'), "Loading");
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilitySchool(aData[0], aData[1]));
+                return nRow;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableAuthorGroupSchool').unblock();
+                $('.with-tip').tip();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTableAuthorGroupSchool_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTableAuthorGroupSchool_filter').addClass('data-search');
+            }
+        };
+
+        $("#dataTableAuthorGroupSchool").data("options", options);
+        initializeDataTable($("#dataTableAuthorGroupSchool"));
+    }
+
+    function setIconVisibilitySchool(schoolId, schoolName) {
+        var deleteIcon = '<span class="icon fa-solid fa-circle-xmark icon-red"></span>';
+        var deleteString = '<a authorGroupId="' + '@Model.AuthorGroupId' + '" schoolId="' + schoolId + '" schoolName="' + encodeURI(schoolName) + '" href="javascript:void(0);" onclick="DeleteSchoolInGroup(this);" title="Remove school" class="with-tip" style="display: inline-block !important">' + deleteIcon + '</a>';
+
+        if ('@Model.CanEditGroup' != 'True') {
+            deleteString = '';
+        }
+        return deleteString;
+    }
+
+    function DeleteSchoolInGroup(control) {
+        var self = $(control);
+        var authorGroupId = self.attr('authorGroupId');
+        var schoolName = self.attr('schoolName');
+
+        var schoolId = self.attr('schoolId');
+        deleteSchoolDialogComfirmation('Are you sure you want to remove the school "' + decodeURI(schoolName) + '" from the author group?', authorGroupId, schoolId);
+    }
+
+    function deleteSchoolDialogComfirmation(message, authorGroupId, schoolId) {
+        confirmMessageV2(
+            {
+                message: message,
+                cbYesBtnFuncName: 'HandleManageSchoolOKClick(' + authorGroupId + ',' + schoolId +')',
+                cbCancelBtnFuncName: 'HandleManageSchoolCancelClick()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'confirmDeleteSchoolAuthorGroupDialog'
+                    }
+                }
+            }
+        )
+    }
+
+    function HandleManageSchoolOKClick(authorGroupId, schoolId) {
+        $.post('@Url.Action("RemoveSchoolFromAuthorGroup")', { authorGroupId: authorGroupId, schoolId: schoolId }, function (response) {
+                if (response.Success == true) {
+                    $("#dataTableAuthorGroupSchool").dataTable().fnDraw();
+                    $("#confirmDeleteSchoolAuthorGroupDialog").dialog("close");
+                }
+        });
+    }
+
+    function HandleManageSchoolCancelClick() {
+        $("#confirmDeleteSchoolAuthorGroupDialog").dialog("close");
+    }
+</script>

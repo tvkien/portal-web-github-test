@@ -1,0 +1,142 @@
+﻿@model int 
+<style>
+    #divChoiceVariableAnswerScore .block-controls {
+        display: none;
+    }
+     #divChoiceVariableAnswerScore .block-footer{
+        display: none;
+    }
+    #dataTableChoiceVariableVirtualQuestionAnswerScores_info {
+        display: none;
+    }
+    #divChoiceVariableAnswerScore {
+        border-width: 1px;
+        margin-top: 25px;
+    }
+    .PointsTextBox {
+        width: 30px;
+    }
+    #dataTableChoiceVariableVirtualQuestionAnswerScores th {
+        color: #333;
+    }
+    #dataTableChoiceVariableVirtualQuestionAnswerScores tbody tr td {
+        vertical-align: middle;
+    }
+</style>
+<table id="dataTableChoiceVariableVirtualQuestionAnswerScores" class="datatable table" style="width: 320px;border: 1px solid gray">
+    <thead>
+        <tr>
+            <th scope="col">
+                Answer
+            </th>
+            <th scope="col">
+               Original Score
+            </th>
+            <th scope="col">
+                Test Score
+            </th>
+            <th scope="col">
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+<script type="text/javascript">
+    $(function () {
+        LoadChoiceVariableVirtualQuestionAnswerScoresTable();
+    });
+    function LoadChoiceVariableVirtualQuestionAnswerScoresTable() {
+        var count = 1;
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetChoiceVariableVirtualQuestionAnswerScoresTable")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "virtualQuestionId", value: '@Model' }
+                );
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'iDisplayLength') {
+                        item.value = 10000;
+                    }
+                }
+            },
+            bStateSave: false,
+            bPaginate: false,
+            bFilter: false,
+            bAutoWidth: false,
+            iDisplayLength: 1000,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'string', sName: 'Answer', bSearchable: false, bSortable: false, sWidth: '30px' },
+                { sType: 'string', sName: 'QtiItemScore', bSearchable: true, bSortable: true, sWidth: '86px' },
+                { sType: 'int', sName: 'TestScore', bSearchable: true, bSortable: true, sWidth: '120px' },
+                { sType: 'int', sName: 'VirtualQuestionAnswerScoreId', bSearchable: false, bSortable: false, bVisible: false, sWidth: '0px' }
+            
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(2)', nRow).html(addChoiceVariablePointsTextBox(aData[2], aData[3]));
+                count = parseInt(count) + 1;
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                return true;
+            },
+            fnDrawCallback: function () {
+                var $choiceVariableAnswerScore = $('#divChoiceVariableAnswerScore');
+
+                $('.with-tip').tip();
+                $("#dataTableChoiceVariableVirtualQuestionAnswerScores_wrapper").removeClass("no-margin");
+
+                if ($choiceVariableAnswerScore.parent('.is-algorithmic').length) {
+                   $choiceVariableAnswerScore.find('input[type="text"].PointsTextBox').addClass('is-grey').prop('disabled', true); 
+                }
+            }
+        };
+        
+        $("#dataTableChoiceVariableVirtualQuestionAnswerScores").data("options", options);
+        initializeDataTable($("#dataTableChoiceVariableVirtualQuestionAnswerScores"));
+    }
+    function addChoiceVariablePointsTextBox(testScore, virtualQuestionAnswerScoreId) {
+        var result = '';
+        result = '<div>' +
+            '<input type="text" id="' + virtualQuestionAnswerScoreId + '" class="PointsTextBox" width="130px" value="' + testScore + '" onkeydown="choiceVariablePointsTextBox_Keydown(event)" "/>' +
+            '</div>';
+        return result;
+    }
+    function choiceVariablePointsTextBox_Keydown(e) {
+        
+        // Allow: backspace, delete, tab, escape, enter and .
+        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+            // Allow: Ctrl+A
+            (e.keyCode == 65 && e.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (e.keyCode >= 35 && e.keyCode <= 39)) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+    }
+   
+
+    function exportChoiceVariableItemPossiblePointXml() {
+        var xml = '<PossiblePoints xmlns="http://www.imsglobal.org/xsd/imsqti_v2p0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">';
+        
+        $('#dataTableChoiceVariableVirtualQuestionAnswerScores .PointsTextBox').each(function (idx, txt) {
+            var id = $(txt).attr('id'); //responseIdentifier-qtischemaId
+            xml += '<PossiblePoint VirtualQuestionAnswerScoreId="' + id +  '"';
+
+            var score = $(txt).val();
+            xml += ' Score="' + score + '"';
+            xml += '/>';
+        });
+        xml += '</PossiblePoints>';
+        return xml;
+    }
+</script>

@@ -1,0 +1,138 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGO.SGOLoadCandidateClassForReplacementViewModel
+
+@{ 
+    var removedClassIds = Model.SGOCandidateClasses.Select(x => x.RemovedClassId).Distinct().ToList();
+}
+
+
+<style>
+    td[choose="1"]{
+        background: #5fb3d8 !important;
+    }
+</style>
+
+<section style='z-index: 2004'>
+    <div class='block-border' style='z-index: 2004'>
+        <div id="iddivChangeWeighs" class='block-content' style='z-index: 1004'>
+            <h1>Select Classes</h1>
+            @if (removedClassIds.Any())
+            {
+                <div style="max-height:400px;overflow-y:auto;">
+                    <div style="width: 100%;">
+                        @foreach (var removedClassId in removedClassIds)
+                        {
+                            var candidateClasses = Model.SGOCandidateClasses.Where(x => x.RemovedClassId == removedClassId).ToList();
+                            var students = Model.SGOStudents.Where(x => x.ExtracId == removedClassId).OrderBy(x => x.Name).ToList();
+                            var rowNo = Math.Max(candidateClasses.Count(), students.Count());
+
+                        <table name="tblRemovedClass" style="text-align: center; width: 100%" class="table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%">Students</th>
+                                    <th>Candidate Classes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (var i = 0; i < rowNo; i++)
+                                {
+                                    <text>
+                                        <tr>
+                                            <td>
+                                                @if (students.Count() > i)
+                                                {
+                                                    <span>@students[i].Name</span>
+                                                }
+                                            </td>
+                                            @if (i == 0)
+                                            {
+                                                <td class="td-candidate-class" choose="1" data-removed-classid="@removedClassId" data-candidate-classid="@candidateClasses[i].CandidateClassId">@candidateClasses[i].CandidateClassName</td>
+                                            }
+                                            else if (candidateClasses.Count() > i)
+                                            {
+                                                <td class="td-candidate-class" data-removed-classid="@removedClassId" data-candidate-classid="@candidateClasses[i].CandidateClassId">@candidateClasses[i].CandidateClassName</td>
+                                            }
+                                            else
+                                            {
+                                                <td></td>
+                                            }
+                                        </tr>
+                                    </text>
+                                }
+                            </tbody>
+                        </table>
+                        <br />
+                        }
+                    </div>
+                </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <button id="btnApplyClassReplacement" type="button" onclick="btnApplyClassReplacement()">Apply</button>
+                    <button type="button" onclick="btnClosePopupLoadCandidateClassForReplacementAndRedirectToHome()">Close</button>
+                </div>
+            }
+            else
+            {
+                <div style="max-height:400px;">
+                    <div style="width: 100%;">
+                        There are not any classes to select.
+                    </div>
+                </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <button type="button" onclick="btnClosePopupLoadCandidateClassForReplacement()">Close</button>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<script>
+    function btnClosePopupLoadCandidateClassForReplacementAndRedirectToHome() {
+        $("#PopupLoadCandidateClassForReplacement").dialog("close");
+        location.href = '@Url.Action("Index", "SGOManage")';
+    }
+
+    function btnClosePopupLoadCandidateClassForReplacement() {
+        $("#PopupLoadCandidateClassForReplacement").dialog("close");
+    }
+
+    function btnApplyClassReplacement() {
+        var replacementInfo = '';
+        $('.td-candidate-class[choose=1]').each(function () {
+            var a = $(this).attr('data-removed-classid');
+            var b = $(this).attr('data-candidate-classid');
+            if (replacementInfo == '') {
+                replacementInfo += a + '|' + b;
+            } else {
+                replacementInfo += ';' + a + '|' + b;
+            }
+        });
+
+        $('#btnApplyClassReplacement').attr('disabled', 'disabled');
+        var url = '@Url.Action("ApplyCandidateClassForReplacement", "SGOManage")';
+        $.ajax(
+            {
+                url: url,
+                data: {
+                    sgoId: GetSGOID(),
+                    replacementInfo: replacementInfo
+                },
+                cache: false
+            })
+            .done(function (response) {
+
+                $("#PopupLoadCandidateClassForReplacement").dialog("close");
+                location.reload();
+            });
+    }
+
+    $('.td-candidate-class').click(function () {
+        $('.td-candidate-class[data-removed-classid=' + $(this).attr('data-removed-classid') + ']').each(function () {
+            $(this).removeAttr('choose');
+        });
+
+        if ($(this).attr('choose') == '1') {
+            $(this).removeAttr('choose');
+        } else {
+            $(this).attr('choose', '1');
+        }
+    });
+</script>

@@ -1,0 +1,165 @@
+@using System.Configuration
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.AccountInformationViewModel
+@{
+    Layout = "~/Views/Shared/_LogOnPartial.cshtml";
+}
+
+<script src="@Url.Content("~/Content/themes/TestMaker/ckeditor_utils.js")" type="text/javascript"></script>
+
+<section id="login-block" class="accountInfo">
+    <div class="block-border">
+        <div class="block-content form">
+            @if (!string.IsNullOrEmpty(Model.ChangePasswordToken))
+            {
+                <div class="block-header">Reset Password</div>
+            }
+            else
+            {
+                <div class="block-header">Account Details</div>
+            }
+
+            <p class="message loading no-margin" id="loading-message" style="display:none">Please wait..</p>
+            <ul style="display: none" id="error-messages" class="message error">
+            </ul>
+            @if (!Model.HasEmailAddress)
+            {
+                <fieldset>
+                    <legend>Email</legend>
+                    <ul class="no-margin message">
+                        <li>Your account does not have an associated Email Address. Please set one now before continuing.</li>
+                    </ul>
+                    <p>
+                        <input id="email" type="text" class="full-width" />
+                        <div class="visuallyhidden">
+                            <input type="text" value="@Model.UserName" name="username">
+                        </div>
+                    </p>
+                </fieldset>
+            }
+            @if (!Model.HasSecurityQuestion)
+            {
+                <fieldset>
+                    <legend>Security Question/Answer</legend>
+                    <ul class="no-margin message">
+                        <li>Your account does not have an associated Security Question/Answer set. Please set one up now before continuing.</li>
+                    </ul>
+                    <p>
+                        @Html.DropDownList("Questions", Model.Questions, new { @id = "question", @style = "width:302px" })
+                    </p>
+                    <p>
+                        <input id="answer" type="text" class="full-width" />
+                        <div class="visuallyhidden">
+                            <input type="text" value="@Model.UserName" name="username">
+                        </div>
+                    </p>
+                </fieldset>
+            }
+            @if (Model.HasTemporaryPassword)
+            {
+                <fieldset>
+                    <legend>Submit new password</legend>
+                    <p>
+                        <label>New Password</label>
+                        <input id="password" type="password" maxlength="50" class="full-width" />
+                    </p>
+                    <p>
+                        <label>Confirm New Password</label>
+                        <input id="confirm-password" type="password" maxlength="50" class="full-width" />
+                    </p>
+                </fieldset>
+            }
+
+            @if (Model.ShowDisclaimerContent)
+            {
+                <fieldset>
+                    <legend>Terms Of Use</legend>
+                    <div class="teacherRegistration-terms">
+                        <div class="teacherRegistration-terms-content" style="height: 100px; overflow: auto; margin-bottom: 15px;">
+                            <p>
+                                @Html.Raw(Model.DisclaimerContent)
+                            </p>
+                        </div>
+                        <div class="teacherRegistration-terms-argree">
+                            <input id="idchbTermsOfUse" name="TermsofUse" tabindex="10" type="checkbox" value="true"><input name="TermsofUse" type="hidden" value="false">
+                            <label for="idchbTermsOfUse" style="display: inline-block;">@Model.DisclaimerCheckboxLabel</label>
+                        </div>
+                    </div>
+                </fieldset>
+            }
+            <button id="btnSubmit" type="submit" @(Model.ShowDisclaimerContent ? "disabled" : "")>Submit</button>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    function submitSetAccountInformation() {
+            var showDisclaimerContent = '@Model.ShowDisclaimerContent' == 'True';
+            if (showDisclaimerContent) {
+                if (!$('#idchbTermsOfUse').is(":checked")) {
+                    popupAlertMessage('alert', 'Please check the agreement', 400, 100);
+                    return;
+                }
+            }
+            $('#btnSubmit').disableBt();
+            $('#loading-message').show();
+            $.post('@Url.Action("SetAccountInformation")',
+                {
+                    HasEmailAddress: '@Model.HasEmailAddress',
+                    HasSecurityQuestion: '@Model.HasSecurityQuestion',
+                    HasTemporaryPassword: '@Model.HasTemporaryPassword',
+                    Email: $('#email').val(),
+                    Question: $('#question').val(),
+                    Answer: $('#answer').val(),
+                    UserID: '@Model.UserID',
+                    Password: $('#password').val(),
+                    ConfirmPassword: $('#confirm-password').val(),
+                    TermOfUse: $('#idchbTermsOfUse').is(':checked'),
+                    ChangePasswordToken: '@Model.ChangePasswordToken'
+                },
+                function (data) {
+                    $('#loading-message').hide();
+                    if (data.Success) {
+                        $('#error-messages').hide();
+                        location.href = data.RedirectUrl;
+                    }
+                    else {
+                        $('#btnSubmit').enableBt();
+                        if (data.ErrorMessage != undefined && data.ErrorMessage != null) {
+                            $('#error-messages').empty();
+                            $('#error-messages').append('<li>' + data.ErrorMessage + '</li>');
+                            $('#error-messages').show();
+                        } else {
+                            addErrorMessages(data);
+                            $('#error-messages').addClass('no-margin');
+                        }
+                    }
+                });
+        }
+    $(function () {
+        $('#btnSubmit').click(submitSetAccountInformation);
+
+        $('#password').blur(function () {
+            var regex = new RegExp('@ConfigurationManager.AppSettings["PasswordRegex"]');
+            var errorMessage = '@ConfigurationManager.AppSettings["PasswordRequirements"]';
+            if (regex.test($(this).val())) {
+                $('#error-messages').hide();
+                $('#error-messages').empty();
+            }
+            else {
+                $('#error-messages').empty();
+                $('#error-messages').append('<li>' + errorMessage + '</li>');
+                $('#error-messages').show();
+                $('#error-messages').addClass('no-margin');
+            }
+        });
+    });
+
+    $('#idchbTermsOfUse').change(function () {
+        if ($(this).is(':checked')) {
+            $('#btnSubmit').removeAttr('disabled');
+        } else {
+            $('#btnSubmit').attr('disabled', 'disabled');
+        }
+    });
+   
+</script>

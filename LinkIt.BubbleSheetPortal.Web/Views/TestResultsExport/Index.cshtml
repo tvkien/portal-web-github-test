@@ -1,0 +1,216 @@
+@{
+    /**/
+
+    ViewBag.Title = "Test Result Export";
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleCustomBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptTestResultsExportBundle()
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="stDistrict">
+            <div class="block-content form" style="padding-bottom: 14px;">
+                <h1>Filter Tests</h1>
+                <div>
+                    <div style="float: right;">
+
+                    </div>
+                    <div style="width: 100%;">
+                        <ul style="display: none; margin-bottom: 10px;" id="error-messages" class="message error">
+                            <li></li>
+                        </ul>
+                        <ul style="display: none; margin-bottom: 10px;" id="success-message" class="message success">
+                            <li></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="columns">
+                    <div id="divContentFilterForm" class="columns" style="margin-bottom: 0.667em;">
+
+                    </div>
+                    <div class="u-text-right">
+                        <button id="clearFilter" onclick="ClearAll()" class="grey" type="button">Clear Filter</button>
+                        <button id="filterSheets" onclick=" LoadTestReTagToView()" class="u-m-l-10" type="button" disabled>Apply Filters</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<div class="clear">
+</div>
+<div id="divTestResultDisplay">
+</div>
+
+<style>
+    .btnTestResult {
+        float: right;
+        display: inline-block;
+        border: 1px solid;
+        border-color: #50a3c8 #297cb4 #083f6f;
+        background: #0c5fa5 url(../../Content/themes/Constellation/images/old-browsers-bg/button-element-bg.png) repeat-x left top;
+        -webkit-background-size: 100% 100%;
+        -moz-background-size: 100% 100%;
+        -o-background-size: 100% 100%;
+        background-size: 100% 100%;
+        background: -moz-linear-gradient(top, white, #72c6e4 4%, #0c5fa5);
+        background: -webkit-gradient(linear, left top, left bottom, from(white), to(#0c5fa5), color-stop(0.03, #72c6e4));
+        -moz-border-radius: 0.333em;
+        -webkit-border-radius: 0.333em;
+        -webkit-background-clip: padding-box;
+        border-radius: 0.333em;
+        color: white;
+        -moz-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+        -webkit-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+        -moz-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        -webkit-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        font-size: 1.167em;
+        padding: 0.286em 1em 0.357em;
+        line-height: 1.429em;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+        .btnTestResult:hover {
+            border-color: #1eafdc #1193d5 #035592;
+            background: #057fdb url(../../Content/themes/Constellation/images/old-browsers-bg/button-element-hover-bg.png) repeat-x left top;
+            background: -moz-linear-gradient(top, white, #2bcef3 4%, #057fdb);
+            background: -webkit-gradient(linear, left top, left bottom, from(white), to(#057fdb), color-stop(0.03, #2bcef3));
+        }
+
+        .btnTestResult:active {
+            border-color: #5b848b #b2def1 #b2def1 #68a6ba;
+            background: #3dbfed url(../../Content/themes/Constellation/images/old-browsers-bg/button-element-active-bg.png) repeat-x top;
+            background: -moz-linear-gradient(top, #89e7f9, #3dbfed);
+            background: -webkit-gradient(linear, left top, left bottom, from(#89e7f9), to(#3dbfed));
+            -moz-box-shadow: none;
+            -webkit-box-shadow: none;
+            box-shadow: none;
+        }
+
+    a.PopupHelp {
+        background: url(../../Content/themes/Constellation/images/icons/help-icon_1.png) no-repeat top left;
+        display: block;
+        width: 25px;
+        height: 25px;
+        text-indent: -99999px; /* hides the link text */
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        top: 100px !important;
+    }
+</style>
+<script type="text/javascript">
+    $(function () {
+        $.ajax({
+            url: '/TestResultsExport/LoadTestFilter',
+            cache: false
+        }).done(function (html) {
+            $("#divContentFilterForm").html(html);
+            });
+            $('#divTestResultDisplay').load('@Url.Action("LoadTestResultByFilter")',
+            {
+                districtId: 0, virtualTestId: 0, classId: 0,
+                studentName: ""  , schoolId: 0, teacherName: "" ,termId: 0, timePeriod: 0
+            }, function (response) {
+            $('#adminContent').unblock();
+            $('html,body').animate({ scrollTop: $('#divTestResultDisplay').offset().top }, 'slow');
+            if (typeof (showFooter) === 'function') showFooter();
+        });
+        //LoadPopuConfirm();
+        $('#divShowHideButton').hide();
+    });
+
+
+    $('#btnClearAll').click(function () {
+        ClearAll();
+    });
+
+
+    function ProcessTestResult(data) {
+        var testresultIds = data.testResultIDs;
+        var total = testresultIds.toString().split(',');
+        var dataTable = $("#dataTable");
+
+         $.ajax({
+            type: 'POST',
+            url: '/TestResultsExport/RetagTestResultsSelected',
+             data: { lstTestResultIds: testresultIds, districtId: GetDistrictId(), isGradebook: data.isGradebook, isStudentRecord: data.isStudentRecord, isCleverApi: data.isCleverApi, isExportRawScore: data.isExportRawScore },
+
+            success: function (data) {
+            ClearAll();
+            $('#success-message').html('<li style="text-transform:none;font-size:100%"> ' + total.length + ' test result(s) have been marked for export and they will be included in the next regularly scheduled data export which usually runs every weeknight. </li>');
+            $('#success-message').show();
+           },
+            error: function (err) {
+                 console.log(response.Message);
+                $('#error-messages').html('<li style="text-transform:none;font-size:100%"> Have some error, Please try again. </li>');
+                $('#error-messages').show();
+             },
+            complete: function () {
+
+          $('#divTestResultDisplay').load('@Url.Action("LoadTestResultByFilter")',
+            {
+                districtId: 0, virtualTestId: 0, classId: 0,
+                studentName: ''  , schoolId: 0, teacherName: '' ,termId: 0, timePeriod: 0
+            }, function (response) {
+            $('#adminContent').unblock();
+            $('html,body').animate({ scrollTop: $('#divTestResultDisplay').offset().top }, 'slow');
+            if (typeof (showFooter) === 'function') showFooter();
+        });
+
+             $('html,body').animate({ scrollTop: $('#stDistrict').offset().top }, 'slow');
+            $('#stDistrict').unblock();
+             $(".dialog").dialog("close");
+            }
+            });
+    }
+
+
+    function LoadTestReTagToView() {
+        $('#detailDiv').empty();
+        var districtId = GetDistrictId();
+        var schoolId = $("#ftSchoolSelect").val() || 0;
+        var virtualTestId = $('#ftTestSelect').val() || 0;
+        var classId = $("#ftClassSelect").val() || 0;
+        var  termId = $("#ftTermSelect").val() || 0;
+        var teacherName = $("#txtTeacher").val();
+        var studentName = $("#txtStudent").val();
+        var timePeriod = $('#dateTime').val();
+        $('#btnSubmitSelected').attr("disabled", "disabled");
+
+        $('#divTestResultDisplay').load('@Url.Action("LoadTestResultByFilter")',
+            {
+                districtId: districtId, virtualTestId: virtualTestId, classId: classId,
+                studentName: studentName  , schoolId: schoolId, teacherName: teacherName ,termId: termId, timePeriod: timePeriod
+            }, function (response) {
+            $('#adminContent').unblock();
+            $('html,body').animate({ scrollTop: $('#divTestResultDisplay').offset().top }, 'slow');
+            if (typeof (showFooter) === 'function') showFooter();
+        });
+    }
+
+    function CurrentPageShowHideReviewButton(flag) {
+        if (flag > 0) {
+            $('#divShowHideButton').show();
+        } else {
+            $('#divShowHideButton').hide();
+            $("#divTestResultDisplay").html('');
+        }
+    }
+
+    function HideResultContent() {
+        $("#divTestResultDisplay").html('');
+        $('#btnSubmitSelected').attr("disabled", "disabled");
+    }
+
+    function confirmRetagTestResult(data) {
+        ProcessTestResult(data);
+    }
+</script>

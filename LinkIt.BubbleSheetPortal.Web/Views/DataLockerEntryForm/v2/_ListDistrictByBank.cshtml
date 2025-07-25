@@ -1,0 +1,226 @@
+@model int
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog-draggable.css")" rel="stylesheet" type="text/css" />
+
+<style>
+    .center {
+        text-align: center !important;
+    }
+    #dataTablePublishedDistrict {
+        min-height: 80px;
+    }
+    #dataTablePublishedDistrict .blockUI.blockMsg {
+        width: 100% !important;
+        left: 0 !important;
+    }
+    #portal-v2-containter #listDistrictDiv .last-child .block-controls {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    #portal-v2-containter .dialog.dialog-custom-new-skin.ui-dialog-content {
+        display: flex;
+        justify-content: center;
+        position: relative;
+        top: -10vh;
+    }
+    #portal-v2-containter .ui-dialog {
+        overflow: visible !important
+    }
+</style>
+
+<article class="container_12" style="margin-top: 2px; width: 700px;">
+    <section class="grid_9">
+        <div class="block-border">
+            <div class="block-content block-24 form">
+                <div class="row g-0 mb-2 align-items-center justify-content-between">
+                    <h2 class="header">
+                        Published @LabelHelper.DistrictLabels
+                    </h2>
+                </div>
+
+                <div id="notification">
+                    @if (!ViewBag.IsPublisher)
+                    {
+                        <ul style="display: none" id="success-message" class="message success">
+                            <li>The bank has been published to the @LabelHelper.DistrictLabel.</li>
+                        </ul>
+                    }
+
+                    <ul style="display: none" id="success-depublish-message" class="message success">
+                        <li>@LabelHelper.DistrictLabel is removed.</li>
+                    </ul>
+                </div>
+                <div class="row g-0 align-items-center justify-content-end">
+                    @if (ViewBag.IsPublisher || ViewBag.IsNetworkAdmin)
+                    {
+                        <text>
+                            <button id="shareNewDistrict" class="btn-plus-icon btn-text" onclick="displayShareNewDistrictView(event)">
+                                Share to new @LabelHelper.DistrictLabel
+                            </button>
+                        </text>
+                    }
+                    else
+                    {
+                        <button id="shareNewDistrict" class="btn-plus-icon btn-text" onclick="shareMyDistrict(event)">
+                            Share to my @LabelHelper.DistrictLabel
+                        </button>
+                    }
+                </div>
+                <div class="table-box">
+                    <table id="dataTablePublishedDistrict" class="datatable table" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="black-cell"><span class="loading"></span></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.DistrictLabel Name
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbodys></tbodys>
+                    </table>
+                    <div class="row justify-content-center modal-component-footer ps-0" style="margin: 0 -24px -24px -24px">
+                        <div slot="footer">
+                            <button type="button" class="btn-red btnCloseUserClick classProgramButton" data-dialog="close" style="width: auto; margin: 0">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            bFilter: true,
+            bPaginate: true,
+            sAjaxSource: '@Url.Action("GetPublishedDistrict")?bankId=@Model',
+            bAutoWidth: false,
+            aLengthMenu: [10, 25, 50],
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'int', sName: 'BankDistrictId', bSearchable: false, bSortable: false, sWidth: '40px', sClass: 'alignRight' },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTablePublishedDistrict'), "Loading");
+                $('#dataTablePublishedDistrict').find('.loading').show();
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).addClass('center');
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+            },
+            fnDrawCallback: function () {
+                $('#dataTablePublishedDistrict').unblock();
+                $('.with-tip').tip();
+                $('#dataTablePublishedDistrict').find('.loading').hide();
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('dataTablePublishedDistrict_filter')
+            }
+        };
+
+        function setIconVisibility(bankDistrictId) {
+            var editString = '<a href="#" id="bnt_' + bankDistrictId + '" title="Remove" class="with-tip icon-remove" onclick="depublishDistrict(event,' + bankDistrictId + ')"><i class="fa-solid fa-xmark"></i></a>';
+
+            return editString;
+        }
+
+        $("#dataTablePublishedDistrict").data("options", options);
+        initializeDataTable($("#dataTablePublishedDistrict"));
+    });
+    function closedepublishDistricClick () {
+        $("#depublishDistrictConfirm").dialog("close");
+    }
+    function yesDepublishDistricClick(bankDistrictId) {
+        $("#bnt_" + bankDistrictId).hide();
+        closedepublishDistricClick();
+        $.post('@Url.Action("DepublishDistrict")', { bankDistrictId: bankDistrictId }, function (response) {
+            if (response == true) {
+                $("#success-depublish-message").show();
+                setTimeout(function () {
+                    $("#success-depublish-message").hide()
+                    ui.dataTablePublishedDistrict.fnDraw();
+                }, 2000)
+            } else {
+                alert('An error has occured. Please try again.');
+            }
+        });
+    }
+    function depublishDistrict(event, bankDistrictId) {
+        event.preventDefault();
+        confirmMessageV2(
+            {
+                message: "Do you want to remove this @LabelHelper.DistrictLabel?",
+                cbYesBtnFuncName: 'yesDepublishDistricClick(' + bankDistrictId + ')',
+                cbCancelBtnFuncName: 'closedepublishDistricClick()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'depublishDistrictConfirm'
+                    }
+                }
+            }
+        )
+    }
+
+    function displayShareNewDistrictView(event) {
+        event.preventDefault();
+        $('#listDistrictDiv').hide();
+        $('#shareDistrictDiv').show();
+        $('#shareDistrictDiv').empty();
+        $('#shareDistrictDiv').load('@Url.Action("LoadPublishToDistrict")?bankId=@Model', function () {
+        });
+    }
+    function shareMyDistrict(event) {
+        event.preventDefault();
+        $('#listDistrictDiv').show();
+
+        var url = '@Url.Action("PublishToMyDistrict")';
+
+        ShowBlock($('#dataTablePublishedDistrict'), "Loading");
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: { bankId: @Model },
+            success: function (response) {
+                $('#dataTablePublishedDistrict').unblock();
+                if (response.Success != false) {
+                    //CustomAlert("Bank has been shared to @LabelHelper.DistrictLabel Admin's District successfully.");
+                    $('.ui-dialog-titlebar-close').show();
+                    $('#success-message').show();
+                    setTimeout(function () {
+                        ui.dataTablePublishedDistrict.fnDraw(false);
+                        $('#listDistrictDiv').show();
+                        $('#success-message').hide();
+                    }, 2000);
+
+                } else {
+                    //CustomAlert(response.ErrorMessage, true);
+                    showConfirmMessage(response.ErrorMessage);
+                    $('.ui-dialog-titlebar-close').show();
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+
+    }
+    $('.btnCloseUserClick').live("click", function (e) {
+        //Reload property
+        LoadBankProperty(@Model);//defined in _TestBanks.cshtml
+        $(".dialog").dialog("close");
+
+    });
+</script>

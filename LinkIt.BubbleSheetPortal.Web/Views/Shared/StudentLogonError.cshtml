@@ -1,0 +1,100 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models.Constants
+@using LinkIt.BubbleSheetPortal.Web
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <title>Student Logon Error</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="robots" content="none">
+
+    @BundleHelper.StyleErrorBundle()
+
+    <!-- Favicon -->
+    @Html.Partial("_Favicons")
+
+    @BundleHelper.ScriptErrorBundle()
+
+    <!-- Ajax error report -->
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('#send-report').submit(function (event) {
+                // Stop full page load
+                event.preventDefault();
+
+                var submitBt = $(this).find('button[type=submit]');
+                submitBt.disableBt();
+
+                // Target url
+                var target = $(this).attr('action');
+                if (!target || target == '') {
+                    // Page url without hash
+                    target = document.location.href.match(/^([^#]+)/)[1];
+                }
+
+                // Request
+                var data = {
+                    Comment: $('#a').val(),
+                    Report: $('#report').val(),
+                    Description: $('#description').val(),
+                    Sender: $('#sender').val(),
+                    Controller: $('#Controller').val(),
+                    Action: $('#Action').val()
+                };
+
+                if (data.Description == "") {
+                    submitBt.enableBt();
+                    return $('#send-report').removeBlockMessages().blockMessage('Please provide a description of the error.', { type: 'warning' });
+                }
+
+                // Send
+                $.ajax({
+                    url: target,
+                    dataType: 'json',
+                    type: 'POST',
+                    data: data,
+                    success: function (data, textStatus, XMLHttpRequest) {
+                        if (data.IsReceived) {
+                            $('#send-report').removeBlockMessages().blockMessage(data.Message, { type: 'success' });
+                        }
+                        else {
+                            // Message
+                            $('#send-report').removeBlockMessages().blockMessage('An unexpected error occured, please try again', { type: 'error' });
+
+                            submitBt.enableBt();
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        // Message
+                        $('#send-report').removeBlockMessages().blockMessage('Error while contacting server, please try again', { type: 'error' });
+
+                        submitBt.enableBt();
+                    }
+                });
+
+                // Message
+                $('#send-report').removeBlockMessages().blockMessage('Please wait, sending report...', { type: 'loading' });
+            });
+        });
+    </script>
+</head>
+<body class="special-page error-bg red dark">   
+    <section id="error-desc">        
+        <div class="block-border">
+            <div class="block-content">
+                <h1>Student Logon</h1>
+                <div class="block-header">Error Message</div>
+                <h2>What happened?</h2>
+                <p>
+                    @LocalizeHelper.Localized("StudentLogon.KioskMode.Message")
+                </p>
+            </div>
+        </div>
+    </section>       
+</body>
+</html>

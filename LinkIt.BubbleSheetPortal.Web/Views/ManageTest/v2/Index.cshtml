@@ -1,0 +1,219 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testdesign, "Manage Test");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleDataLockerTemplateBundle()
+<link href="@BundleHelper.Version("~/Content/css/v2/tests-main.css")" rel="stylesheet" type="text/css" />
+
+<article id="manage-test" class="manage-columns container_12">
+    <div class="row g-3">
+        <div id="divTestBanks" class="col-5 test-design-test-main">
+            @Html.Partial("v2/_TestBanks")
+        </div>
+        <div id="divVirtualTests" class="col-3-5 d-flex flex-column" v-bind:class="gradeLevelClasses">
+            @Html.Partial("v2/_VirtualTests")
+        </div>
+        <div id="divPropertiy" class="col-3-5">
+            <div id="divTestBankProperties" v-bind:class="gradeLevelClasses"></div>
+            <div id="divVirtualTestProperties" v-bind:class="gradeLevelClasses"></div>
+        </div>
+    </div>
+    <input type="hidden" id="SelectedTestBankId" value="0" />
+
+</article>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor_mkV2.js")"></script>
+<link rel="stylesheet" href="https://cdn.materialdesignicons.com/5.0.45/css/materialdesignicons.min.css">
+<link href="/Content/libs/select2/comboTreePlugin.css" rel="stylesheet" />
+<script src="/Content/libs/select2/comboTreePlugin.js"></script>
+<style>
+    html {
+        overflow-x: auto;
+    }
+
+    body {
+        min-width: 1035px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background-color: var(--white);
+        padding: 0 !important;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .sticky {
+        padding-left: 500px;
+    }
+
+    #dataTableTestBank_filter {
+        float: left !important;
+    }
+
+    #dataTableVirtualTest_filter {
+        float: left !important;
+    }
+
+    /*Retrict table css*/
+
+    table#retricttable {
+        font-size: 16px;
+        font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+        border-collapse: collapse;
+        border-spacing: 0;
+        width: 100%;
+    }
+
+    #retricttable td, #retricttable th {
+        border: 1px solid #ddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+        #retricttable td:not(:first-child) {
+            text-align: center;
+        }
+
+    #retricttable tr:nth-child(even) {
+        background-color: var(--grey1);
+    }
+
+    #retricttable th {
+        padding-top: 11px;
+        padding-bottom: 11px;
+        background-color: var(--blue1);
+        color: #262626;
+        font-weight: 700;
+    }
+
+    .icon-sgo-delete-disbale {
+        background: url(/Content/themes/Constellation/images/icons/fugue/cross-circle-disable.png) no-repeat;
+    }
+</style>
+
+<script>
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+</script>
+<!-- Custom alert message box -->
+<script type="text/javascript">
+    function CustomAlert(message, isLongMessage) {
+        var yesButton = '<button style="width:63px;margin-left:0px;" onclick="CustomAlertYesClick(this);">OK</button>';
+        var messageTextAlign = 'center';
+        var messageBoxWidth = 240;
+        var diaglogWidth = 300;
+
+        if (typeof isLongMessage != "undefined" && isLongMessage == true) {
+            messageTextAlign = 'left';
+            messageBoxWidth = 540;
+            diaglogWidth = 600;
+        }
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + messageBoxWidth + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;text-align:center;"><div style="text-align:' + messageTextAlign + ';line-height: 18px;">' + message +
+            '</div><div style="text-align: center;padding-top:20px;padding-bottom:10px;">' + yesButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "CustomAlertDialog")
+            .appendTo("body")
+
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: diaglogWidth,
+                maxheight: 400,
+                resizable: false,
+                open: function () { $(".ui-dialog-titlebar-close").hide(); }
+            });
+    }
+
+    function CustomAlertYesClick(item) {
+        $("#CustomAlertDialog").dialog("close");
+        var url = $(item).attr('url');
+        if (url != undefined && $.trim(url) != '') window.open(url);
+    }
+</script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor.js"></script>
+<script type="text/javascript">
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+</script>
+@section scripts {
+    <script type="text/javascript">
+    var ManageTestModel = new Vue({
+        el: '#manage-test',
+        data: {
+            gradeLevelClasses: ''
+        },
+        ready: function () {
+            var gradeLabel = '@LabelHelper.GradeLabel';
+
+            if (gradeLabel == null || gradeLabel.length <= 6) {
+                this.gradeLevelClasses = 'gradeLevelClasses';
+            } else {
+                this.gradeLevelClasses = 'noGradeLevelClasses';
+            }
+        }
+    });
+    </script>
+}

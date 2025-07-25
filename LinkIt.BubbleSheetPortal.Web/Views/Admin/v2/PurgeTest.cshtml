@@ -1,0 +1,428 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestFilterViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testmanagement, "Purge Tests");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StylePurgeTestBundle()
+
+<article class="container_12">
+    <ul class="message warning" id="purge-message" style="display: none; width: 100%;">
+        <li>
+            Caution: Only tests without test results can be purged. Once the test is purged,
+            all tag and item associations previously assigned to this test will be lost
+        </li>
+    </ul>
+    <section class="grid_12">
+        <div class="block-border" id="stDistrict">
+            <div class="block-content form" id="divOnTop">
+                <div class="d-flex flex-row justify-content-between">
+                    <h1>Purge Test</h1>
+                    <img src="~/Content/images/icons/help-icon-outline.svg" class="cursor-pointer help-icon" onclick="loadPurgeInstruction()">
+                </div>
+
+                <div>
+                    <div style="width: 100%;">
+                        <ul style="display: none; margin-bottom: 10px;" id="error-messages" class="message error">
+                            <li></li>
+                        </ul>
+                        <ul style="display: none; margin-bottom: 10px;" id="success-message" class="message success">
+                            <li></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                    {
+                        <div class="col-3">
+                            <label>State</label>
+                            <select id="stateSelect"></select>
+                        </div>
+                        <div class="col-3">
+                            <label>@LabelHelper.DistrictLabel</label>
+                            <div class="block-text-name">
+                                <select id="districtSelect"> </select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @Html.Hidden("CurrentDistrictId", Model.DistrictId);
+                    }
+                    <div class="col-3">
+                        <label>Teacher</label>
+                        <div class="block-text-name">
+                            <select id="userSelect">
+                            </select>
+                            <div class="box-select">
+                                <span class="overlay"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <label>Test</label>
+                        <div class="block-text-name">
+                            <select id="virtualTestSelect">
+                            </select>
+                            <div class="box-select">
+                                <span class="overlay"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="divTestResult" style="display:none">
+                    <div class="d-flex justify-content-end mt-4">
+                        <button id="btnConfirmPurgeTest" class="btn-red" type="submit" style="width:115px">Submit</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<style>
+
+    #portal-v2-containter .message.warning {
+        max-width: inherit;
+        margin-bottom: 24px;
+    }
+
+    #stDistrict .block-text-name {
+        width: 100% !important;
+    }
+
+    .help-icon {
+        width: 25px;
+        height: 25px;
+        margin-top: 5px;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-confirmPurgeTestDialog"] {
+        height: auto !important;
+    }
+
+        .ui-dialog[aria-labelledby="ui-dialog-title-confirmPurgeTestDialog"] section {
+            float: none;
+            display: block;
+        }
+
+        .ui-dialog[aria-labelledby="ui-dialog-title-confirmPurgeTestDialog"] .block-border {
+            width: auto !important;
+        }
+</style>
+<script type="text/javascript">
+    $(function () {
+        InitData();
+        $('#districtSelect').marquee();
+        $('#userSelect').marquee();
+        $('#virtualTestSelect').marquee();
+    });
+
+    function InitData() {
+        @if (Model.IsPublisher)
+        {
+            <text>
+                $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                    populateStates(states);
+                });
+            </text>
+        }
+        else if (Model.IsNetworkAdmin)
+        {
+            <text>
+                $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                    populateStates(states);
+                });
+            </text>
+        }
+
+        var hiddenFieldDistrictId = $('#CurrentDistrictId').val();
+        if (hiddenFieldDistrictId != null && hiddenFieldDistrictId > 0) {
+            LoadTestNotResult();
+            LoadAuthorTest();
+        }
+    }
+
+    function LoadAuthorTest() {
+        $("#userSelect").empty();
+        $("#virtualTestSelect").empty();
+
+        var districtId = GetDistrictId();
+
+        ShowBlock($('#stDistrict'), "Loading Teachers");
+        $.get('@Url.Action("GetAuthorTestForPurgeByDistrictId", "Admin")', { Id: districtId }, function (testResultsAuthor) {
+            @if (Model.IsTeacher)
+        {
+            <text>AddSelectListItemsWithSelectedValue($('#userSelect'), testResultsAuthor, 'Select Teacher', '@Model.UserID');</text>
+        }
+        else
+        {
+            <text>AddSelectListItems($('#userSelect'), testResultsAuthor, 'Select Teacher');</text>
+        }
+
+            //TODO: end waiting
+            $('#stDistrict').unblock();
+        }).fail(function () {
+            //TODO: end waiting
+            $('#stDistrict').unblock();
+        });
+    }
+
+    $('#stateSelect').change(function () {
+        $('#districtSelect').empty();
+        $("#userSelect").empty();
+        $("#virtualTestSelect").empty();
+        if ($('#stateSelect').val() != 'select') {
+            populateDistricts();
+        }
+    });
+
+    $('#districtSelect').change(function () {
+
+        HideMessage();
+        $("#virtualTestSelect").empty();
+
+
+        $("#userSelect").empty();
+        var vDistrictSelected = $('#districtSelect').val();
+        if (vDistrictSelected != null && vDistrictSelected > 0) {
+            LoadAuthorTest();
+        }
+    });
+
+    $('#userSelect').change(function () {
+        HideMessage();
+        LoadTestNotResult();
+    });
+
+    $('#virtualTestSelect').change(function () {
+        HideMessage();
+        ShowHidePurgeButton();
+    });
+
+    function ShowHidePurgeButton() {
+        var virtualTestId = $('#virtualTestSelect').val();
+        if (virtualTestId != null && virtualTestId > 0) {
+            $("#divTestResult").show();
+            $('#purge-message').show();
+        } else {
+            $("#divTestResult").hide();
+            $('#purge-message').hide();
+        }
+    }
+
+    function LoadTestNotResult() {
+        $("#virtualTestSelect").empty();
+
+        var authorId = 0;
+        if ($('#userSelect').val() != null && $('#userSelect').val() > 0) {
+            authorId = $('#userSelect').val();
+        }
+        else {
+            return;
+        }
+        var districtId = GetDistrictId();
+        //TODO: waiting
+        ShowBlock($('#stDistrict'), "Loading Tests");
+        $.get('@Url.Action("GetVirtualTestNoResult", "Admin")', { authorId: authorId, districtid: districtId }, function (virtualtestList) {
+            AddSelectListItems($('#virtualTestSelect'), virtualtestList, 'Select Test');
+            ShowHidePurgeButton();
+            //TODO: end waiting
+            $('#stDistrict').unblock();
+        }).fail(function () {
+            //TODO: end waiting
+            $('#stDistrict').unblock();
+        });
+    }
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        selectList.empty();
+        if (results.length == 0) {
+            //selectList.html('<option>Match Not Found</option>');
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                        .attr("value", value.Id)
+                        .text(value.Name));
+        });
+    }
+
+    function AddSelectListItemsWithSelectedValue(selectList, results, defaultValue, selectedValue) {
+        selectList.empty();
+        if (results.length == 0) {
+            //selectList.html('<option>Match Not Found</option>');
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            if (selectedValue == value.Id) {
+                selectList.append($("<option></option>").attr("selected", "selected").attr("value", value.Id).text(value.Name));
+            } else {
+                selectList.append($("<option></option>").attr("value", value.Id).text(value.Name));
+            }
+        });
+        LoadTestNotResult();
+    }
+
+    function PurgeTestSelected() {
+        //Close popup
+        cancelPurgeTestDialog();
+        // waiting
+        var virtualTestSelected = $('#virtualTestSelect').val();
+        var virtualTestName = $("#virtualTestSelect option:selected").text();;
+        if (virtualTestSelected != null && virtualTestSelected > 0) {
+            ShowBlock($('#stDistrict'), "Purge Test");
+            $.post('@Url.Action("PurgeTestByTestId", "Admin")', { virtualTestId: virtualTestSelected }, function (response) {
+                if (response.Success == true) {
+                    //TODO: end waiting
+                    $('#stDistrict').unblock();
+                    LoadTestNotResult();
+                    $('#success-message').html('<li style="text-transform:none;font-size:100%"> Test Purged: ' + virtualTestName + ' </li>');
+                    $('#success-message').show();
+                } else {
+                    $('#stDistrict').unblock();
+                    $('#error-messages').html('<li style="text-transform:none;font-size:100%"><p>The test has NOT been purged. Please email <a href="mailto:technology@linkit.com">technology@linkit.com</a> for assistance.</p></li>');
+                    $('#error-messages').show();
+                }
+            }).fail(function () {
+                //TODO: end waiting
+                $('#stDistrict').unblock();
+                $('#error-messages').html('<li style="text-transform:none;font-size:100%"><p>The test has NOT been purged. Please email <a href="mailto:technology@linkit.com">technology@linkit.com</a> for assistance.</p></li>');
+                $('#error-messages').show();
+            });
+
+        }
+    }
+
+    function GetDistrictId() {
+
+        var tmp = $('#CurrentDistrictId').val();
+        if (tmp > 0) {
+            return tmp;
+        } else {
+            tmp = $('#districtSelect').val();
+        }
+        return tmp;
+    }
+
+    function HideMessage() {
+        $('#success-message').html('');
+        $('#error-messages').html('');
+        $('#success-message').hide();
+        $('#error-messages').hide();
+    }
+
+    $('#btnConfirmPurgeTest').click(function () {
+        var alertMessage = 'Are you sure you want to purge the test?';
+        confirmPurgeTestDialog(alertMessage, "PurgeTestSelected()");
+    });
+
+    function confirmPurgeTestDialog(message, yesFn, closeFn) {
+        var params = { message };
+
+        if (yesFn) {
+            params.cbYesBtnFuncName = yesFn;
+        } else {
+            params.cbYesBtnFuncName = 'cancelPurgeTestDialog()';
+        }
+
+        if (!closeFn) {
+            params.cbCancelBtnFuncName = 'cancelPurgeTestDialog()'
+        }
+        confirmMessageV2(
+            params,
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'confirmPurgeTestDialog'
+                    }
+                },
+                option: {
+                    width: 440
+                }
+            }
+        )
+    }
+
+    function cancelPurgeTestDialog() {
+        $("#confirmPurgeTestDialog").dialog("close");
+    }
+
+    function loadPurgeInstruction() {
+        var url = '@Url.Action("LoadPurgeInstruction", "Admin")';
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="PopupPurgeTestInstruction" class="dialog"></div>');
+                $("#PopupPurgeTestInstruction").append(html);
+                $('#PopupPurgeTestInstruction').dialog({
+                    title: "",
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupPurgeTestInstruction').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+            })
+    }
+
+    function populateStates(states) {
+        addDefaultOption($('#stateSelect'), "State");
+        addSelectListItems($('#stateSelect'), states);
+    }
+
+    function populateDistricts() {
+        $('#districtSelect').empty();
+        var stateValue = $('#stateSelect').val();
+            if (stateValue != 'select') {
+                if ('@Model.IsPublisher' === 'True') {
+                    $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#districtSelect'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#districtSelect'), districts);
+                    });
+                }
+                if ('@Model.IsNetworkAdmin' === 'True') {
+                    $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#districtSelect'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#districtSelect'), districts);
+                    });
+                }
+            }
+        }
+
+
+
+</script>

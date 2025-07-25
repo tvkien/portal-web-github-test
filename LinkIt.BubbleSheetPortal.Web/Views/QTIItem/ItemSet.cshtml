@@ -1,0 +1,137 @@
+@using System.Configuration
+@model LinkIt.BubbleSheetPortal.Web.Print.ItemSetPrintingModel
+@{
+    Layout = null;
+    var url = ConfigurationManager.AppSettings["LinkItUrl"];
+    var portalUrl = (url.Contains("devblock.net") ? "http://demo." : "http://portal.") + url;
+    var portalImgPrint = portalUrl + "/Content/themes/Print/Images/";
+    var portalFontPrint = portalUrl + "/Content/themes/Print/";
+}
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Images Test</title>
+    <link href="@portalUrl/Content/themes/LinkitStyleSheet.css" rel="stylesheet" />
+    <style type="text/css">
+        @Html.Raw(Model.Css)
+    </style>
+    <style type="text/css">
+        @@font-face {
+            font-family: "dejavu_sansbook";
+            src: url("@(portalFontPrint)dejavusans/dejavusans-webfont.eot");
+            src: url("@(portalFontPrint)dejavusans/dejavusans-webfont.eot?#iefix") format("embedded-opentype"),
+                url("@(portalFontPrint)dejavusans/dejavusans-webfont.woff") format("woff"),
+                url("@(portalFontPrint)dejavusans/dejavusans-webfont.ttf") format("truetype"),
+                url("@(portalFontPrint)dejavusans/dejavusans-webfont.svg#dejavu_sansbook") format("svg");
+            font-weight: normal;
+            font-style: normal;
+        }
+        @@font-face {
+			font-family: "dejavu_sansbook";
+			src: prince-lookup("dejavu_sansbook")
+		}
+		@@font-face {
+			font-family: serif;
+			src: prince-lookup("dejavu_sansbook")
+		}
+		@@font-face {
+			font-family: 'Arial Unicode MS';
+			src: url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.eot');
+			src: url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.eot?#iefix') format('embedded-opentype'),
+				url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.woff2') format('woff2'),
+				url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.woff') format('woff'),
+				url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.eot') format('truetype');
+			font-weight: normal;
+			font-style: normal;
+			font-display: swap;
+		}
+
+        .mainBody {
+            word-wrap: break-word;
+            word-break: keep-all;
+        }
+
+        .hotspot-checkbox {
+            background: url(@(portalImgPrint)icon-table-checkbox.png) no-repeat;
+        }
+
+        .hotspot-circle {
+            background: url(@(portalImgPrint)icon-table-circle.png) no-repeat;
+        }
+    </style>
+</head>
+<body>
+    <div id="testContainer" class="test PrintItemSet Itemset-print">
+        <div class="testInfo">
+            <div class="testTitle">@Model.TestTitle</div>
+            <div id="teacherName">@Model.TeacherName</div>
+            <div id="className">@Model.ClassName</div>
+        </div>
+        <div class="testSections" maxwidth="280">
+            <div class="section">
+                <div class="sectionData"></div>
+                <div class="questions">
+                    @{ var questionsAdded = false; }
+                    @foreach (var item in Model.Items)
+                    {
+                        var hasPassage = item.PassageTexts != null && item.PassageTexts.Count > 0;
+                        if (hasPassage)
+                        {
+                            @Html.Raw("</div>")
+                            @Html.Raw(questionsAdded ? "" : "<div class=\"questionsNotYetAdded\">")
+                            foreach (var passageText in item.PassageTexts)
+                            {
+                                @Html.Raw(passageText)
+                            }
+                            @Html.Raw(questionsAdded ? "" : "</div>")
+                            @Html.Raw("<div class=\"questions\">")
+                        }
+                        questionsAdded = true;
+                        @Html.Raw(item.XmlContent)
+
+                    }
+                </div>
+            </div>
+        </div>
+        <div id="glossaryContainer"></div>
+    </div>
+    <script>
+        @Html.Raw(Model.JS)
+    </script>
+    <script>
+		var imgServiceUrl = '@portalUrl' + '/Asset/GetViewReferenceImg?imgPath=';
+        jQuery.fn.outerHTML = function (s) {
+            return (s)
+                ? this.before(s).remove()
+                : jQuery("<p>").append(this.eq(0).clone()).html();
+        };
+
+        $(document).ready(function () {
+            var $printItemSet = $('#testContainer');
+
+            $('.questionsNotYetAdded .passage').first().css('page-break-before', 'auto');
+            // Support Print Mathjax
+            $('div[xmlns]').removeAttr('xmlns');
+            $('math').removeAttr('mode');
+
+            // Scripts\PrintTest\PrintTest.js
+            $('.textEntryInteraction').html('<span>__________</span>');
+            DisplayGlossary($printItemSet);
+			DisplayDragAndDrop();
+			DisplayImageHotspot('.testSections',  imgServiceUrl + '/');
+            DisplayNumberlineHotspot();
+            CorrectImages($printItemSet, '@portalUrl');
+            $('tableitem,span[typehotspot]').removeClass('selected');
+            ImageItemType();
+
+            // Replace br with line break with u-pre class
+            $printItemSet.find('br[style]').remove();
+            $printItemSet.find('br').replaceWith(function() {
+                return $('<span class="u-linebreak"/>');
+            });
+        });
+    </script>
+</body>
+</html>

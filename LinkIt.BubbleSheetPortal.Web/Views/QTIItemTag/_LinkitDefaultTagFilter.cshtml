@@ -1,0 +1,160 @@
+<article class="container_12" id="artLinkitDefault">
+    <section class="grid_12">
+        <div class="block-border"  style="margin-top: -40px">
+            <div  class="block-content form bubbleSheetSelector">
+                <h1>Filter Tags</h1>
+                <fieldset>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <label>Linkit default category</label>
+                                <select id="linkitDefaultCategorySelect">
+                                    <option value="1" selected="selected"> Topic</option>
+                                    <option value="2"> Skill</option>
+                                    <option value="3"> Other</option>
+                                </select>
+                                
+                            </p>
+                           
+                        </div>
+                        <div class="colx2-right">
+                            <p>
+                                @*<label>Tag</label>
+                                <input type="text" id="txtTag" class="full-width" onblur="getEncryptByteString()"/>*@
+                            </p>
+                        </div>
+                    </div>
+                </fieldset>
+                <button id="btnApplyFilterLinkitDefaultTag" class="float-right" type="button" style="display: none">Apply Filters</button>
+                <button id="btnClearFilterFilterLinkitDefaultTag" class="float-right grey" type="button" style="margin-right: 5px; display: none">Clear Filter</button>
+                <div class="clear"></div>
+                
+            </div>
+        </div>
+        <br />
+        <br />
+        <div class="block-border" id="divLinkitDefaultTagResult">
+            <div class="block-content form">
+                @*<h1>Filtered Tags
+                </h1>*@
+                <p style="height: 11px"></p>
+                <div class="no-margin last-child">
+                    <table id="LinkitDefaultTagDataTable" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                @*<th scope="col"> </th>*@
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Tag
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+    </section>
+</article>
+
+<script type="text/javascript">
+    var encryptedByteStringSearchText = '';
+    $(function () {
+        LoadLinkitDefaultTagToTable();
+
+    });
+    $("#btnApplyFilterLinkitDefaultTag").die("click");
+    $("#btnApplyFilterLinkitDefaultTag").click(function () {
+        //DataTableParser.GetRequestFromHttpContext will encouter an error if user input something like <a>,..
+        //The reason is that HttpContext.Current.Request.Params.AllKeys will ignore all the params after tagToSearch if  tagToSearch contains something like <a>
+        //It must find a way to pass this situation, a solution applied here is changing input string into utf8 byte string and then reverse when using it.
+        @*encryptedByteStringSearchText = '';
+        var tag = $('#txtTag').val();
+        tag = tag.trim();
+        $.get('@Url.Action("EncryptByteString")', { str: encodeURI(tag) }, function (response) {
+            encryptedByteStringSearchText = response.EncryptString;
+            $("#LinkitDefaultTagDataTable").dataTable().fnReloadAjax(getAjaxSourceLinkitDefaultTag());
+        });*@
+        //no use txtTag anymore
+        $("#LinkitDefaultTagDataTable").dataTable().fnReloadAjax(getAjaxSourceLinkitDefaultTag());
+    });
+    
+
+    function LoadLinkitDefaultTagToTable(subjectIdParameter) {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            cache: false,
+            sServerMethod: "POST",
+            sAjaxSource: getAjaxSourceLinkitDefaultTag(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox 
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bFilter: true,
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                //{ sType: 'integer', sName: 'TagId', bSearchable: false, bSortable: false,bVisible:false, sWidth: '0px'},
+                { sType: 'string', sName: 'TagName', bSearchable: true, bSortable: true, sWidth: '1000px' }
+            ],
+            fnRowCallback: function (nRow, aData) {
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#LinkitDefaultTagDataTable'), 'Load');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#LinkitDefaultTagDataTable').unblock();
+            }
+        };
+
+        $("#LinkitDefaultTagDataTable").data("options", options);
+        initializeDataTable($("#LinkitDefaultTagDataTable"));
+
+    }
+    
+    function getAjaxSourceLinkitDefaultTag() {
+        var category = $("#linkitDefaultCategorySelect option:selected").text();
+        //return '@Url.Action("GetLinkitDefaultTags")?category=' + encodeURIComponent(category) + '&tagToSearch=' + encryptedByteStringSearchText;
+        //no use txtTag to search anymore
+        return '@Url.Action("GetLinkitDefaultTags")?category=' + encodeURIComponent(category);
+    }
+
+    $("#btnClearFilterFilterLinkitDefaultTag").die("click");
+    $("#btnClearFilterFilterLinkitDefaultTag").click(function () {
+
+        $('#linkitDefaultCategorySelect').val(1);//default topic
+        //$('#txtTag').val('');
+    });
+    $('#linkitDefaultCategorySelect').die('change');
+    $('#linkitDefaultCategorySelect').change(function () {
+        $("#LinkitDefaultTagDataTable").dataTable().fnReloadAjax(getAjaxSourceLinkitDefaultTag());
+    });
+</script>

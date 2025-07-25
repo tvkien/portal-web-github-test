@@ -1,0 +1,251 @@
+(function ($) {
+    $.widget('jquery.SimpleChoiceAlgorithmic', {
+        options: {
+            SimpleChoiceAlgorithmicUtil: null,
+            PostProcessQuestionDetails: null,
+            Self: null
+        },
+
+        Display: function (question) {
+            var that = this;
+            var options = that.options;
+            var self = options.Self;
+
+            //apply guidance and rationale
+            var objTypeMessage = '';
+            var htmlGuidanceRationale = '';
+            var itemHtml = '';
+
+            var answerChoice = '';
+            if (!options.SimpleChoiceAlgorithmicUtil.IsNullOrEmpty(question.Answer())) answerChoice = question.Answer().AnswerChoice();
+
+            var tree = $('<div></div>');
+            tree.addClass('box-answer');
+            tree.html(question.ItemBody());
+            tree.find('p').replaceWith(function () {
+                var p = $(this);
+                var div = $('<div></div>');
+                div.html(p.html());
+                CopyAttributes(p, div);
+                return $(div.outerHTML());
+            });
+
+            $('<div class="clearfix"></div>').prependTo(tree);
+            $('<div class="clearfix"></div>').appendTo(tree);
+            tree.find('choiceInteraction')
+                .replaceWith(function () {
+                    var choiceInteraction = $(this);
+                    var responseIdentifier = $(choiceInteraction).attr('responseIdentifier');
+                    var originChoiceInteraction = $(question.DataXmlContent()).find('[responseIdentifier="' + responseIdentifier + '"]');
+                    var newChoiceInteraction = $('<div></div>');
+                    newChoiceInteraction.html(choiceInteraction.html());
+                    CopyAttributes(choiceInteraction, newChoiceInteraction);
+                    newChoiceInteraction.find('simpleChoice').replaceWith(function () {
+                        var simpleChoice = $(this);
+                        var simpleChoiceIdentifier = simpleChoice.attr('identifier');
+                        var originSimpleChoice = originChoiceInteraction.find('simpleChoice[identifier="' + simpleChoiceIdentifier + '"]');
+                        simpleChoice.find('.answer').each(function () {
+                            var answerElement = $(this);
+                            answerElement.after('<span style="float: right; padding-right: 40px;" class="iconGuidance"></span>');
+                            answerElement.removeClass('answer');
+                        });
+
+                        //get data guidance if exist
+                      if (simpleChoice.find('div[typemessage]').length || originSimpleChoice.find('div[typemessage]').length) {
+
+                            var iconString = '<img identifier="' + simpleChoiceIdentifier + '" alt="Guidance" style="margin-left: 5px; width: 1.5em; height: 1.5em" class="imageupload bntGuidance" src="../../Content/themes/TestMaker/v2/multiplechoice_images_guidance_unchecked.svg" title="">';
+                            var tagGuidances = simpleChoice.find('div[typemessage]');
+                            if (tagGuidances.length === 0) {
+                              tagGuidances = originSimpleChoice.find('div[typemessage]');
+                            }
+                            var isShowIconGuidance = false;
+                            for (var i = 0, lenTagGuidances = tagGuidances.length; i < lenTagGuidances; i++) {
+                                var itemGuidance = tagGuidances[i];
+                                var $itemGuidance = $(itemGuidance);
+                                var audio = $itemGuidance.attr('audioref');
+                                var typemessage = $itemGuidance.attr('typemessage');
+                                var stringHtml = $itemGuidance.html();
+                                var isRatioContent = false;
+
+                                isRatioContent = Reviewer.GetGuidanceRationaleContent($itemGuidance);
+
+                                if (isRatioContent) {
+                                    if (typemessage === 'rationale' || typemessage === 'guidance_rationale') {
+                                        objTypeMessage = {
+                                            typeMessage: typemessage,
+                                            audioRef: audio,
+                                            valueContent: stringHtml,
+                                            identifier: simpleChoiceIdentifier,
+                                            responseidentifier: $(choiceInteraction).attr('responseidentifier')
+                                        };
+
+                                        itemHtml = self.CreateGraphicGuidance(objTypeMessage, objTypeMessage.typeMessage, 'simpleChoice');
+                                        htmlGuidanceRationale += itemHtml;
+                                        isShowIconGuidance = true;
+                                    }
+                                }
+
+                                objTypeMessage = '';
+                                itemHtml = '';
+                            }
+                            simpleChoice.find('div[typemessage]').remove();
+                            if (isShowIconGuidance) {
+                                simpleChoice.find('.iconGuidance').html(iconString);
+                            }
+                            simpleChoice.append(htmlGuidanceRationale);
+                            simpleChoice.attr('stylename', 'answer');
+                            htmlGuidanceRationale = '';
+                        }
+                        var checkbox = '<input name="' + responseIdentifier + '" type="radio" disabled="disabled" style="margin-right:10px;">';
+
+                        var newSimpleChoice = $('<div></div>');
+                        newSimpleChoice.html(simpleChoice.html());
+                        CopyAttributes(simpleChoice, newSimpleChoice);
+                        newSimpleChoice.addClass('white').addClass('answer');
+
+                        if (simpleChoiceIdentifier === answerChoice) {
+                            newSimpleChoice.addClass('studentChoose answer-student');
+                            $('<span class="jsIsUserAnswer"><i class="fa-solid fa-user me-2"></i> Student’s answer</span>').appendTo(newSimpleChoice);
+                        }
+
+                        var checkBoxHtml = self.MultipleChoiceClickMethod() === '0' ? checkbox : '';
+                        $('<div style="width:auto; margin-right:2px;">' + checkBoxHtml + simpleChoiceIdentifier + '.</div>').prependTo(newSimpleChoice);
+
+                        return $(newSimpleChoice.outerHTML());
+                    });
+
+                    return $(newChoiceInteraction.outerHTML());
+                });
+
+            var questionDetails = tree.outerHTML();
+
+            if (question.AlgorithmicCorrectAnswers() != null && question.AlgorithmicCorrectAnswers().length) {
+                questionDetails += '<br> <div class="btn-show-all-correct-answer big-button" onClick="ShowAllCorrectAnswers()">Show all correct answers</div>';
+            }
+
+            if (options.PostProcessQuestionDetails != null && typeof (options.PostProcessQuestionDetails) == "function") {
+                questionDetails = options.PostProcessQuestionDetails(questionDetails);
+            }
+
+            self.Respones(questionDetails);
+        },
+
+        ShowAllCorrectAnswers: function (self, question) {
+            var that = this;
+            var options = that.options;
+            var self = options.Self;
+            var algorithmicCorrectAnswers = $('<div/>');
+            var algorithmicPoints = [];
+            
+            ko.utils.arrayForEach(question.AlgorithmicCorrectAnswers(), function (item) {
+                var correctAnswer;
+                var tree;
+
+                if (typeof item.Amount === 'function' && item.Amount() > 0) {
+                    correctAnswer = item.ConditionValue();
+                    tree = that.FillCorrectAnswer(self, question, correctAnswer.toString(), true, item.Amount(), item.PointsEarned());
+                    tree.appendTo(algorithmicCorrectAnswers);
+                    algorithmicPoints.push(item.PointsEarned);
+                } else {
+                    correctAnswer = item.ConditionValue();
+                    tree = that.FillCorrectAnswer(self, question, correctAnswer.toString());
+                    tree.appendTo(algorithmicCorrectAnswers);
+                    algorithmicPoints.push(item.PointsEarned);
+                }
+            });
+
+            algorithmicCorrectAnswers.find('label.sc-label').each(function(index, element) {
+                !$(element).text() && $(element).remove();
+            })
+            algorithmicCorrectAnswers.find('.highlighted').each(function(index, element) {
+                $(element).replaceWith($(element).html())
+            })
+            var questionDetails = algorithmicCorrectAnswers.outerHTML();
+            Reviewer.popupAlertMessage(questionDetails, 'ui-popup-fullpage ui-popup-algorithmic-correct-answer', 700, 500, false);
+            Reviewer.createTabWidget('.ui-popup-fullpage.ui-popup-algorithmic-correct-answer', algorithmicPoints);
+        },
+
+        FillCorrectAnswer: function (self, question, correctAnswer, isAtleast, amount, pointEarned) {
+            var tree = $('<div></div>');
+            tree.addClass('box-answer');
+
+            if (isAtleast) {
+                var elAtleast = Reviewer.getAtleast(amount, pointEarned, self.QTIItemSchemaID());
+                tree.append(elAtleast.outerHTML);
+            }
+
+            tree.append(question.ItemBody());
+            tree.find('p').replaceWith(function () {
+                var p = $(this);
+                var div = $('<div></div>');
+                div.html(p.html());
+                CopyAttributes(p, div);
+                return $(div.outerHTML());
+            });
+
+            $('<div class="clearfix"></div>').prependTo(tree);
+            $('<div class="clearfix"></div>').appendTo(tree);
+
+            tree.find('choiceInteraction')
+                .replaceWith(function () {
+                    var choiceInteraction = $(this);
+                    var responseIdentifier = $(choiceInteraction).attr('responseIdentifier');
+                    var newChoiceInteraction = $('<div></div>');
+                    newChoiceInteraction.html(choiceInteraction.html());
+                    CopyAttributes(choiceInteraction, newChoiceInteraction);
+                    newChoiceInteraction.find('simpleChoice').replaceWith(function () {
+                        var simpleChoice = $(this);
+                        var simpleChoiceIdentifier = simpleChoice.attr('identifier');
+
+                        simpleChoice.find('.answer').each(function () {
+                            var answerElement = $(this);
+                            answerElement.after('<span style="float: right; padding-right: 40px;" class="iconGuidance"></span>');
+                            answerElement.css('float', 'unset');
+                            answerElement.removeClass('answer');
+                        });
+
+                        //get data guidance if exist
+
+                        var checkbox = '<input name="' + responseIdentifier + '" type="radio" disabled="disabled" style="margin-right:10px;">';
+
+                        var newSimpleChoice = $('<div></div>');
+                        newSimpleChoice.html(simpleChoice.html());
+                        CopyAttributes(simpleChoice, newSimpleChoice);
+                        newSimpleChoice.addClass('white').addClass('answer');
+
+                        if (isAtleast) {
+
+                            if (!Reviewer.IsNullOrEmpty(correctAnswer)) {
+                                ko.utils.arrayForEach(correctAnswer.split(','), function(item) {
+                                    if ($.trim(item) === simpleChoiceIdentifier)
+                                        newSimpleChoice.addClass('green').css('border', '1px solid green');
+                                });
+                            }
+
+                        } else {
+                            if (simpleChoiceIdentifier === correctAnswer) {
+                                newSimpleChoice.addClass('green').css('border', '1px solid green');
+                            }
+                        }
+
+                        var checkBoxHtml = self.MultipleChoiceClickMethod() === '0' ? checkbox : '';
+                        $('<div style="width:auto; margin-right:2px;" class="answer-label">' + checkBoxHtml + simpleChoiceIdentifier + '.</div>').prependTo(newSimpleChoice);
+
+                        return $(newSimpleChoice.outerHTML());
+                    });
+
+                    return $(newChoiceInteraction.outerHTML());
+                });
+
+            return tree;
+        },
+
+        _getHtmlValue: function (id) {
+            return $.trim($('#' + id).html());
+        },
+
+        _setHtmlValue: function (id, val) {
+            $('#' + id).html(val);
+        }
+    });
+}(jQuery));

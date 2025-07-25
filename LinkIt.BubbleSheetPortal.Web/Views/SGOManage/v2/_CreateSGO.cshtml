@@ -1,0 +1,312 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGOObjectViewModel
+
+<style>
+
+    #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-PopupCreateNewSGO"] {
+        width: 655px !important;
+        height: auto !important;
+    }
+
+</style>
+
+<section id="idAddEditSGOFunction">
+    <div id="dvCreateSGO" class="block-content form p-4">
+        @if (Model.SGOId > 0)
+        {
+            <p class="title-large mb-4">Edit SGO</p>
+        }
+        else
+        {
+            <p class="title-large mb-4">Create SGO</p>
+        }
+        <ul style="display: none" id="error-messages" class="message error"></ul>
+        <ul style="display: none" id="success-message" class="message success"></ul>
+        <fieldset class="field-set-block no-padding">
+            <div class="row g-3" style="margin-bottom:24px">
+                <div class="col-5">
+                    <label>SGO Name</label>
+                    <input type="text" id="idSGOinputName" class="w-100" value="@Model.StrName" />
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-5" style="margin-right: 48px">
+                    <label>Start Date</label>
+                    <input type="text" class="datepicker" id="idSGOStartDate" readonly="readonly" />
+                </div>
+                <div class="col-5">
+                    <label>End Date</label>
+                    <input type="text" class="datepicker" id="idSGOEndDate" readonly="readonly" />
+                </div>
+            </div>
+        </fieldset>
+        <div class="no-padding" style="margin-bottom:24px">
+            <label class="label-lg" style="margin-bottom:24px">@LabelHelper.TestGrade</label>
+            <table class="table-sgo-new-v2">
+                <tr>
+                    <td colspan="2" class="no-padding no-border">
+                        <div id="idPopulateGrade">
+                            @if (Model.ListFullGrades.Count > 0)
+                            {
+                                <div class="columns" id="idGradeList">
+                                    <ul id="ulidGrades">
+                                        @if (Model.ListGradeSelected.Count == 0)
+                                        {
+                                            foreach (var item in Model.ListFullGrades)
+                                            {
+                                                <li style="margin-bottom:20px;">
+                                                    <input type="checkbox" id="Grade-'@item.Id'" value="@item.Name" key='@item.Id' class="m-r-5" />
+                                                    <label class="label-lg" for="Grade-'@item.Id'">@item.Name</label>
+                                                </li>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            foreach (var item in Model.ListFullGrades)
+                                            {
+                                                <li style="margin-bottom:20px;">
+                                                    <input type="checkbox" id="Grade-'@item.Id'" value="@item.Name" key='@item.Id' @( Model.ListGradeSelected.Contains(item.Id) ? "checked='checked'" : "") class="m-r-5" />
+                                                    <label class="label-lg" for="Grade-'@item.Id'">@item.Name</label>
+                                                </li>
+                                            }
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="d-flex" style="margin-bottom:24px">
+            <input class="d-block me-2" name="IsUnstructuredSgo" id="IsUnstructuredSgo" type="checkbox" @if (Model.IsUnstructuredSgo) { <text> checked="checked" </text> } @if (Model.SGOId > 0) { <text> disabled="disabled" </text> } />
+            <label class="label-lg">SGO is not associated with a LinkIt! roster.</label>
+        </div>
+        <div id="trAssociatedSchool" class="row g-3" @if (!Model.IsUnstructuredSgo) { <text> style="display: none;" </text> }>
+            <div class="col-6" style="margin-bottom:24px">
+                <label>Associated School:</label>
+                <div class="block-text-name">
+                    <select id="selectAssociatedSchool"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-component-footer mx-n4 px-4">
+            <div slot="footer">
+                @if (Model.SGOId > 0)
+                {
+                    <button type="button" id="idAddEditSGOCancel" onclick="cancelCreateSGO()">Cancel</button>
+                    <button type="button" id="idAddEditSGOContinue" onclick="AddEditSGOContinue(@Model.SGOId)">Continue</button>
+                    <button type="button" class="btn-red" onclick="SaveAndReturn()">Update</button>
+                    <button type="button" class="btn-red" onclick="createSGO()">Save and Continue</button>
+                }
+                else
+                {
+                    <button type="button" onclick="cancelCreateSGO()">Cancel</button>
+                    <button type="button" id="btnCreateSGO" class="btn-red" onclick="createSGO()">Create</button>
+                }
+                <input type="hidden" id="idhdfSGOID" value="@Model.SGOId" />
+                <input type="hidden" id="idhdfIsUpdate" value="0" />
+
+            </div>
+        </div>
+    </div>
+</section>
+<input type="hidden" id="idhdfDefaultWeek" value="@Model.DefaultWeek"/>
+
+
+<script>
+    $(document).ready(function () {
+
+        $(".datepicker").datepicker({
+            dateFormat: jqueryDatePickerFormat(),
+            beforeShow: function (input) {
+                $(input).css({
+                    "position": "relative",
+                    "z-index": '2000'
+                });
+            }
+        });
+        $("#idSGOStartDate").datepicker('setDate', '@Model.StrStartDate');
+        $("#idSGOEndDate").datepicker('setDate', '@Model.StrEndDate');
+
+        $('#IsUnstructuredSgo').click(function () {
+            if ($("#IsUnstructuredSgo").is(':checked')) {
+                $("#trAssociatedSchool").css("display", "");
+                $('#selectAssociatedSchool').marquee();
+                if ($('#selectAssociatedSchool').val() != '' && $('#selectAssociatedSchool').val() != 'select') {
+                    $('#btnCreateSGO').removeAttr('disabled');
+                } else {
+                    $('#btnCreateSGO').attr('disabled', 'disabled');
+                }
+            } else {
+                $('#btnCreateSGO').removeAttr('disabled');
+                $("#trAssociatedSchool").css("display", "none");
+            }
+        });
+
+    });
+    $(function () {
+
+        $('#ulidGrades').easyListSplitter({ colNumber: 3 });
+        $('.listCol1').addClass('colx3-left no-padding');
+        $('.listCol2').addClass('colx3-center no-padding');
+        $('.listCol3').addClass('colx3-right no-padding');
+
+        populateAssociatedSchools();
+
+        $('#idSGOinputName').val(htmlDecode($('#idSGOinputName').val()));
+
+        if (@Model.PermissionAccess != 3) {
+            LockAllUI();
+        }
+        window.oldJSONData = GetJSONDataAddEditSGO();
+
+    });
+
+    function populateAssociatedSchools() {
+        $('#selectAssociatedSchool').empty();
+        var districtValue = GetDistrictId();
+        if (districtValue != 'select') {
+            $.get('@Url.Action("GetAssociatedSchools", "SGOManage")', { districtId: districtValue }, function (schools) {
+                addDefaultOption($('#selectAssociatedSchool'), "School");
+                addSelectListItemsWithSelectedValueIgnoreAutoSelectSingleOption($('#selectAssociatedSchool'), schools, '@Model.AssosiatedSchoolId');
+            });
+        }
+    }
+
+
+
+    $('#selectAssociatedSchool').change(function(){
+        if($("#IsUnstructuredSgo").is(':checked')){
+            if($('#selectAssociatedSchool').val() != '' && $('#selectAssociatedSchool').val() != 'select'){
+                $('#btnCreateSGO').removeAttr('disabled');
+            }else{
+                $('#btnCreateSGO').attr('disabled','disabled');
+            }
+        }
+    });
+
+    $('#idSGOinputName').keydown(function() {
+        $('#error-messages').hide();
+    });
+    $('#idSGOStartDate').keydown(function() {
+        $('#error-messages').hide();
+    });
+    $('#idSGOEndDate').keydown(function() {
+        $('#error-messages').hide();
+    });
+
+    function AddEditSGOContinue(id, isUnstructuredSgo) {
+        var url = "/SGOManage/StudentPopulation/" + id;
+        if ('@Model.IsUnstructuredSgo' == 'True') {
+            url = "/SGOScoringPlanTarget/Index?sgoId=" + id;
+        }
+        if (@Model.PermissionAccess === 3) {
+            var oldJSONData = window.oldJSONData;
+            var newJSONData = GetJSONDataAddEditSGO();
+            var isDataChanged = false;
+            if (JSON.stringify(oldJSONData) !== JSON.stringify(newJSONData)) {
+                isDataChanged = true;
+            }
+            if (isDataChanged) {
+                window.paramsDirectPageSGO = url;
+                customConfirm('Do you want to save changes before moving to the next screen?', {
+                    minWidth: '500px',
+                    buttons: [
+                        {
+                            label: 'Cancel',
+                            color: 'grey',
+                            style: "background: none;"
+                        },
+                        {
+                            label: 'No',
+                            color: 'grey',
+                            style: "background: none;",
+                            callback: function () {
+                                RedirectPage();
+                            }
+                        },
+                        {
+                            label: 'Yes',
+                            color: 'red',
+                            callback: function () {
+                                SaveAndRedirectPage();
+                            }
+                        }
+                    ]
+                })
+                return false;
+            }
+        }
+        window.location.href = url;
+    }
+
+    function LockAllUI() {
+        $('#idAddEditSGOFunction input').each(function () {
+            $(this).prop('disabled', 'disabled');
+        });
+        $('#idAddEditSGOFunction button').each(function () {
+            $(this).prop('disabled', 'disabled');
+        });
+        $('#idAddEditSGOFunction select').each(function () {
+            $(this).prop('disabled', 'disabled');
+        });
+        $('#idAddEditSGOContinue').removeAttr('disabled');
+        $('#idAddEditSGOCancel').removeAttr('disabled');
+    }
+
+    /**
+     * Get JSON Data Add Edit SGO
+     */
+    function GetJSONDataAddEditSGO() {
+        var data = {};
+        var GradeArr = [];
+        // Grade SGO
+        $('#idGradeList input[type="checkbox"]').each(function(ind, input) {
+            var $input = $(input);
+            var inputId = $input.attr('id');
+            var inputChecked = $input.is(':checked');
+            var inputHtml = '';
+
+            inputHtml = inputId + '-' + inputChecked;
+            GradeArr.push(inputHtml);
+        });
+
+        data.Grade = GradeArr;
+        data.Name = $('#idSGOinputName').val();
+        data.StartDate = $('#idSGOStartDate').val();
+        data.EndDate = $('#idSGOEndDate').val();
+
+        return data;
+    }
+
+    /**
+     * Get JSON Data Add/Edit SGO
+     */
+
+    /**
+    * Save And Redirect Page
+    */
+    function SaveAndRedirectPage() {
+        $('.popup-alert-controls button[id^="btn-"]').attr('disabled','disabled');
+        createSGO();
+    }
+
+    /**
+    * Save And Redirect Page
+    */
+    function SaveAndRedirectPage() {
+        $('.popup-alert-controls button[id^="btn-"]').attr('disabled','disabled');
+        createSGO();
+    }
+
+    /**
+     * Redirect Page
+     */
+    function RedirectPage() {
+        $('.popup-alert-controls button[id^="btn-"]').attr('disabled','disabled');
+        window.location.href = window.paramsDirectPageSGO;
+    }
+</script>

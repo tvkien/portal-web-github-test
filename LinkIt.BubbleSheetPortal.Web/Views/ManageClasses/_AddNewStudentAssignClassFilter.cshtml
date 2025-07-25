@@ -1,0 +1,433 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.AddNewStudentAssignClassFilter
+<style type="text/css">
+    #dataTableAssignClass_wrapper {
+        /*margin-top: -10px;*/
+    }
+
+    #dataTableAssignClass_length {
+        /*display: none;*/
+    }
+
+    #dataTableAssignClass_filter {
+        /*display: none;*/
+    }
+
+    #divFilterSchools select {
+        width: 250px;
+    }
+
+    #dataTableAssignClass_wrapper {
+        margin-top: 25px;
+    }
+</style>
+<link href="@Url.Content("~/Content/css/dialog.css")" rel="stylesheet" type="text/css" />
+<section>
+    <div class='block-border'>
+        <div class="block-content form">
+            <ul style="display: none" id="error-messages-classList" class="message error"></ul>
+            <div id="divFilterSchools">
+                <fieldset class="grey-bg">
+                    <div class="columns">
+                        <div class="colx2-left">
+                            @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                            {
+                                <p>
+                                    State<br />
+                                    <select id="selectStateAssignClass"></select>
+                                </p>
+                            }
+                            @if (!Model.IsTeacher)
+                            {
+                                <p>
+                                    School<br />
+                                    <select id="selectSchoolAssignClass"></select>
+                                </p>
+                            }
+
+                        </div>
+                        <div class="colx2-right">
+                            @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                            {
+                                <p>
+                                    @LabelHelper.DistrictLabel<br />
+                                    <select id="selectDistrictAssignClass"></select>
+                                </p>
+                            }
+                            @if (!Model.IsTeacher)
+                            {
+                                <p>
+                                    @*<a href="javascript:void(0)" id="teacher" onclick="ClassManager.loadTeacherContent()"></a>*@
+                                    Teacher<br />
+                                    <select id="selectTeacherAssignClass"></select>
+                                </p>
+                            }
+                        </div>
+                    </div>
+                </fieldset>
+
+            </div>
+            <h1>
+                Filter Classes
+            </h1>
+            <div id="manageClassNotificationContainer"></div>
+            <p style="height: 5px"></p>
+            <div class="block-content form">
+                <h1>
+                    Classes
+                    <a id="addNewClassFilter" href="javascript:void(0)">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Assign classes
+                    </a>
+                </h1>
+                <table id="dataTableAssignClass" class="datatable table no-margin" width="100%">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 5%">Select<input type="checkbox" id="chkAllClass" /></th>
+                            <th scope="col" style="width: 25%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Name
+                            </th>
+                            <th scope="col" style="width: 20%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Term
+                            </th>
+                            <th scope="col" style="width: 25%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Teacher
+                            </th>
+                            <th scope="col" style="width: 25%">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>School
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="clear-10"></div>
+        </div>
+    </div>
+</section>
+<input type="hidden" id="hidClassId" value="" />
+<script type="text/javascript">
+
+    $(function () {
+        if ('@Model.IsTeacher' == 'True') {
+            $('#divFilterSchools').hide();
+        } else {
+            $('#divFilterSchools').show();
+        }
+        if ('@Model.IsPublisher' == 'True' || '@Model.IsNetworkAdmin' == 'True') {
+            if ('@Model.IsPublisher' == 'True') {
+                loadStateForPublisher();
+            }
+            if ('@Model.IsNetworkAdmin') {
+                loadStateForNetworkAdmin();
+            }
+        }
+        else {
+            //load school
+            if ('@Model.IsDistrictAdmin' == 'True' || '@Model.IsSchoolAdmin'=='True') {
+                loadSchool();
+            }
+        }
+
+        var optionsAssignClass = {
+            bServerSide: false,
+            bDestroy: true,
+            sServerMethod: "GET",
+            sAjaxSource: '@Url.Action("GetClassesForManageStudent")?AssignedClassIdString=' + classIdString,
+            fnServerParams: function (aoData) {
+                var userId = 0;
+                if ('@Model.IsTeacher' == 'False') {
+                    var userId = $('#selectTeacherAssignClass').val();
+                    if (userId == null || userId == '' || userId == 'select') {
+                        userId = 0;
+                    }
+                } else {
+                    userId = '@Model.UserId'
+                }
+
+                aoData.push(
+                    { name: "UserId", value: userId }
+                );
+            },
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { mData: 'SchoolID', bSearchable: false, bSortable: false },
+                { mData: 'Name', bSearchable: true, bSortable: true },
+                { mData: 'Term', bSearchable: true, bSortable: true },
+                { mData: 'PrimaryTeacher', bSearchable: true, bSortable: true },
+                { mData: 'SchoolName', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityFilter(aData["ID"]));
+                $('td:eq(0)', nRow).css('text-align', 'center')
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableAssignClass'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableAssignClass').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        $("#dataTableAssignClass").data("options", optionsAssignClass);
+        initializeDataTable($("#dataTableAssignClass"));
+
+    });
+    function getAjaxSourceAssignClass() {
+        if ('@Model.IsTeacher' == 'False') {
+            var userId = $('#selectTeacherAssignClass').val();
+            if (userId == null || userId == '' || userId == 'select') {
+                userId = 0;
+            }
+            return '@Url.Action("GetClassesForManageStudent")?userID=' + userId + '&assignedClassIdString=' + classIdString;
+        } else {
+            return '@Url.Action("GetClassesForManageStudent")?userID=@Model.UserId'+'&assignedClassIdString=' + classIdString;;
+        }
+
+    }
+    function setCheckBoxFilter(classId) {
+        var checkboxString = '<input type="checkbox" name="chkClass" value="' + classId + '" />';
+        return checkboxString;
+    }
+
+    function setIconVisibilityFilter(classId) {
+        var checkboxString = setCheckBoxFilter(classId);
+        return checkboxString;
+    }
+
+
+    $('INPUT[name="chkClass"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkClass"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllClass').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllClass').attr('checked', 'checked');
+            }
+            setDisabledButtons(false);
+        }
+        else {
+            $('#chkAllClass').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkClass"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                setDisabledButtons(false);
+            }
+            else {
+                setDisabledButtons(true);
+            }
+        }
+    });
+
+    $('#chkAllClass').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkClass"][type=checkbox]').attr('checked', 'checked');
+            setDisabledButtons(false);
+        }
+        else {
+            $('INPUT[name="chkClass"][type=checkbox]').removeAttr('checked');
+            setDisabledButtons(true);
+        }
+    });
+    $('#addNewClassFilter').click(function() {
+        if (classIdString == null) {
+            classIdString = '';    //classIdString is defined in _AddNewStudentAssignClass.cshtml
+        }
+        classIdString += getSelectedClassIds();
+        $("#dataTableAssignClass").dataTable().fnReloadAjax(getAjaxSourceAssignClass());
+    });
+
+    function getSelectedClassIds() {
+        var classIds = '';
+        $('INPUT[name="chkClass"][type=checkbox]:checked').each(function (i, e) {
+            classIds += ',' + $(e).val() + ',';
+        });
+        return classIds;
+    }
+
+    $(document).on('click', '[data-dialog="close"]', function (e) {
+        var self = $(e.target);
+        self.closest('.dialog').dialog('close');
+    });
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+
+    function loadStateForPublisher() {
+        $('#selectStateAssignClass').empty();
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            AddSelectListItems($('#selectStateAssignClass'), states, 'Select State');
+            if (@Model.StateId > 0) {
+                $('#selectStateAssignClass').val(@Model.StateId);
+            }
+            //set default state as selected state
+            loadDistrictOfStateForPublisherPopup();
+        });
+    }
+
+    function loadDistrictOfStateForPublisherPopup() {
+
+        if ($('#selectStateAssignClass').val() != 'select') {
+            $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: $('#selectStateAssignClass').val() }, function (districts) {
+                AddSelectListItems($('#selectDistrictAssignClass'), districts, 'Select @LabelHelper.DistrictLabel');
+                if (@Model.DistrictId > 0) {
+                    $('#selectDistrictAssignClass').val(@Model.DistrictId);
+                }
+                $('#selectDistrictAssignClass').change();
+            });
+        }
+    }
+
+    function loadStateForNetworkAdmin() {
+        $('#selectStateAssignClass').empty();
+        $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+            AddSelectListItems($('#selectStateAssignClass'), states, 'Select State');
+            if (@Model.StateId > 0) {
+                $('#selectStateAssignClass').val(@Model.StateId);
+            }
+            //set default state as selected state
+            loadDistrictOfStateForNetworkAdmin();
+        });
+    }
+
+    function loadDistrictOfStateForNetworkAdmin() {
+
+        if ($('#selectStateAssignClass').val() != 'select') {
+            $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: $('#selectStateAssignClass').val() }, function (districts) {
+                AddSelectListItems($('#selectDistrictAssignClass'), districts, 'Select @LabelHelper.DistrictLabel');
+                if (@Model.DistrictId > 0) {
+                    $('#selectDistrictAssignClass').val(@Model.DistrictId);
+                }
+                $('#selectDistrictAssignClass').change();
+            });
+        }
+    }
+    $("#selectStateAssignClass").die("change");
+    $('#selectStateAssignClass').change(function () {
+        if ($('#selectStateAssignClass').val() != 'select') {
+            $('#selectDistrictAssignClass').empty();
+            var stateValue = $('#selectStateAssignClass').val();
+            if (stateValue != 'select') {
+                if ('@Model.IsPublisher' === 'True') {
+                    loadDistrictOfStateForPublisherPopup();
+                }
+                if ('@Model.IsNetworkAdmin' === 'True') {
+                    loadDistrictOfStateForNetworkAdmin();
+                }
+            }
+        }
+    });
+
+    $("#selectDistrictAssignClass").die("change");
+    $('#selectDistrictAssignClass').change(function () {
+        loadSchool();
+    });
+
+    function loadSchool() {
+        $('#selectSchoolAssignClass').empty();
+        var selectedDistrictId = @Model.DistrictId;
+        var userId = '@Model.UserId';
+        var url = '';
+
+        if ('@Model.IsSchoolAdmin' == 'True' || '@Model.IsTeacher' == 'True') {
+            url = '@Url.Action("GetSchoolsByUser")';
+        } else {
+            url = '@Url.Action("GetSchools", "Admin")';
+        }
+
+
+        if ('@Model.IsPublisher' == 'True' || '@Model.IsNetworkAdmin' == 'True') {
+            //Publisher and NetworkAdmin can select district
+            //get district from dropdown list (Publisher and NetworkAdmin)
+            selectedDistrictId = $('#selectDistrictAssignClass').val();
+            if (selectedDistrictId == 'select' || selectedDistrictId <= 0) {
+                selectedDistrictId = 0;
+            }
+            if (selectedDistrictId == 0) {
+                return;
+            }
+        }
+        $.ajax({
+            url: url,
+            data: { districtId: selectedDistrictId, userId: userId },
+            dataType: 'json',
+            async: false,
+            success: function (schools) {
+                AddSelectListItems($('#selectSchoolAssignClass'), schools, 'Select School');
+                $('#selectSchoolAssignClass').change();
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+            }
+        });
+    }
+    $("#selectSchoolAssignClass").die("change");
+    $('#selectSchoolAssignClass').change(function () {
+        loadTeacher();
+    });
+    function loadTeacher() {
+        $('#selectTeacherAssignClass').empty();
+
+        var selectedSchoolId = $('#selectSchoolAssignClass').val();
+        if (selectedSchoolId == null || selectedSchoolId == '' || selectedSchoolId == 'select' || selectedSchoolId < 0) {
+            selectedSchoolId = 0;
+        }
+        $.ajax({
+            url: '@Url.Action("GetTeachersInSchool")',
+            data: { schoolId: selectedSchoolId },
+            dataType: 'json',
+            async: false,
+            success: function (teachers) {
+                 addDefaultOption($('#selectTeacherAssignClass'), "Teacher");
+                 addSelectListWithDefaultValue($('#selectTeacherAssignClass'), teachers, 'Select Teacher', function(item) {
+                    return item.DisplayName;
+                });
+                $('#selectTeacherAssignClass').change();
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+            }
+        });
+    }
+    $("#selectTeacherAssignClass").die("change");
+    $('#selectTeacherAssignClass').change(function () {
+        //load data table
+        $("#dataTableAssignClass").dataTable().fnReloadAjax(getAjaxSourceAssignClass());
+
+    });
+</script>

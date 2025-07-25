@@ -1,0 +1,94 @@
+﻿<article class="container_12" style="width: 100%">
+    <section class="grid_12" style="width: 93%">
+        <div class="block-border" style="width: 100%">
+            <div class="block-content form" id="divOnTopSet">
+                <h1>Create New Test
+                </h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>Test successfully created.</li>
+                </ul>
+                <ul style="display: none" id="create-bank-success-message" class="message success">
+                    <li>Test Bank successfully created.</li>
+                </ul>
+                <div id="createTestBankDiv" style="display: none">
+                    @Html.Partial("_CreateTestBank")
+                </div>
+
+                <fieldset>
+                    <legend>Test Detail</legend>
+                    <div class="columns">
+                        <p>
+                            <label>Test Name</label>
+                            <span class="relative">
+                                <input type="text" id="testName" name="testName" class="full-width" />
+                            </span>
+                        </p>
+                    </div>
+                </fieldset>
+                <p>
+                    <button id="btnCreateTest" type="button" name="Create" style="margin-left: 22px">Create</button>
+                </p>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function ()
+    {
+        if ($('#btnCreateTestBank').length > 0) {
+            $('#btnCreateTest').attr('disabled', 'disabled');
+        }
+    });
+
+    $('#btnCreateTest').click(function () {
+        if ($('#testName').val() == null || $('#testName').val().length == 0) {
+            showError('Please input Test Name');
+            return;
+        }
+        $('#btnCreateTest').disableBt();
+
+        var bankId = 0;
+        if($("input[name='inputTestType']:checked").val() == 'createNewTestBank') {
+            bankId = $('#CreatedTestBankId').val();            
+        } else {
+            bankId = $('#SelectedTestBankId').val();
+        }
+        
+        if (bankId == 0) {
+            showError('Please select a Bank');
+            return;
+        }
+        
+        ShowBlock($('#divMainCreateTest'), "Creating");
+        $.ajax({
+            url: '@Url.Action("CreateVirtualTest","CreateTest")',
+            type: 'POST',
+            data: {
+                bankId: bankId,
+                testName: $('#testName').val()
+            },
+            success: function (response) {
+                $('#divMainCreateTest').unblock();
+                if (response.Success) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                    setTimeout(function () {
+                        window.location.href = '@Url.Action("Index","VirtualTest")/?virtualTestId=' + response.VirtualTestId;
+                    }, 3000);
+                }
+                else {
+                    addErrorMessages(response);
+                    $('#success-message').hide();
+                    $('#error-messages').show();
+                    $('#btnCreateTest').enableBt();
+                }
+            },
+            failure: function (response) {
+                alert(response);
+                $('#btnCreateTest').enableBt();
+            }
+        });
+    });
+</script>

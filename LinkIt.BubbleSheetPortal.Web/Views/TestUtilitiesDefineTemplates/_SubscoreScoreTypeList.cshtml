@@ -1,0 +1,805 @@
+@model LinkIt.BubbleSheetPortal.Models.VirtualTestCustomSubScore
+<style type="text/css">
+    tr.even.row_selected td {
+        background-color: var(--blue7) !important;
+    }
+    tr.odd.row_selected td {
+        background-color: var(--blue7) !important;
+    }
+     #dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)_wrapper {
+         margin: 0;
+     }
+     #dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId) tbody tr {
+     }
+     #dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId) tr td {
+         padding-left: 4px;
+         padding-right: 4px;
+     }
+     #dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)_length {
+         display: none
+     }
+    #dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)_filter {
+         display: none
+    }
+   .word-break {
+      word-break: break-all;
+  }
+  #dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)_wrapper .sindu_dragger table td {
+      padding: 0.75em 4px;
+  }
+  #dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)_wrapper .sindu_dragger {
+      padding-left: 0;
+  }
+  #dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)_wrapper #dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId) {
+    margin-top: 0;
+    width: 100% !important;
+  }
+
+    .new-style-popup .btn-yes {
+        width: auto !important;
+        color: var(--white) !important;
+        border: 0 !important;
+        padding: 11px 32px;
+        margin-left: 0 !important;
+        background-color: var(--btnAcceptBackground) !important;
+    }
+
+    .disabled-drag {
+        cursor: no-drop;
+    }
+
+    #fsPreAssessmentDataPoint,
+    #fsPreAssessmentDataPoint div,
+    #fsPreAssessmentDataPoint tbody {
+        z-index: auto !important;
+    }
+    .datatable tbody tr td:first-child {
+        text-align: left !important;
+    }
+</style>
+<div class="block-content form" id="divOnTop_@(Model.VirtualTestCustomSubScoreId)" style="background-color: #fcfcfc;">
+    <table id="dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)" class="datatable table no-margin" style="width: 100%" table-id="@(Model.VirtualTestCustomSubScoreId)" table-scoreid="@(Model.VirtualTestCustomScoreId)" table-type="subscore">
+        <thead>
+            <tr>
+                <th scope="col">Actions</th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Name
+                </th>
+                <th scope="col">Type</th>
+                <th scope="col">Description</th>
+                <th scope="col">Validation Properties</th>
+            </tr>
+        </thead>
+        <tbody class="connectedSortable" style="cursor: pointer"></tbody>
+    </table>
+</div>
+
+<script type="text/javascript">
+    subScoreColumnForCalculate["SubscoreName_@(Model.VirtualTestCustomSubScoreId)"] = [];
+    var subScoreRawMaxScore_@(Model.VirtualTestCustomSubScoreId) = null;
+    var oTableOverallScore_@(Model.VirtualTestCustomSubScoreId);
+    var hasPercentScoreAutoSub_@(Model.VirtualTestCustomSubScoreId) = false;
+    var hasRawSubAuto_@(Model.VirtualTestCustomSubScoreId) = false;
+    var hasCustomScoreType_@(Model.VirtualTestCustomSubScoreId) = false;
+    hasConversionSetSubScore['@(Model.VirtualTestCustomSubScoreId)'] = '@Model.HasConversionSet' === 'True';
+
+    $(function() {
+        //removeTips();
+        var options_@(Model.VirtualTestCustomSubScoreId) = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            bFilter:false,
+            "searching": false,
+            bLengthChange: false,
+            rowReorder: true,
+            sAjaxSource: getAjaxSourceSubscoreScoreTypeList_@(Model.VirtualTestCustomSubScoreId)(),
+            fnServerParams: function(aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+                hasCustomScoreType_@(Model.VirtualTestCustomSubScoreId) = false;
+            },
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'Id', bSearchable: false, bSortable: false, sWidth: "60px" },
+                { sType: 'string', sName: 'ScoreTypeName', bSearchable: true, bSortable: false, sWidth: "150px" },
+                { sType: 'string', sName: 'ScoreName', bSearchable: true, bSortable: false, sWidth: "150px" },
+                { sType: 'string', sName: 'Description', bSearchable: true, bSortable: false, sWidth: "450px" },
+                { sType: 'string', sName: 'Overview', bSearchable: true, bSortable: false, sWidth: "350px" },
+                { sType: 'string', sName: 'ShortOverview', bSearchable: false, bSortable: false,bVisible:false, sWidth: "0px" },
+                { sType: 'string', sName: 'ScoreTypeCode', bSearchable: false, bSortable: false,bVisible:false, sWidth: "0px" },
+                { sType: 'string', sName: 'VirtualTestCustomSubScoreID', bSearchable: false, bSortable: false,bVisible:false, sWidth: "0px" },
+                { sType: 'string', sName: 'IsPredefinedList', bSearchable: false, bSortable: false,bVisible:false, sWidth: "0px" },
+                { sType: 'string', sName: 'ShortScoreType', bSearchable: false, bSortable: false,bVisible:false, sWidth: "0px" },
+                { sType: 'string', sName: 'IsAutoCalculation', bSearchable: false, bSortable: false,bVisible:false, sWidth: "0px" },
+                { sType: 'string', sName: 'MaxScore', bSearchable: false, bSortable: false,bVisible:false, sWidth: "0px" },
+                { sType: 'string', sName: 'VirtualTestCustomMetaDataID', bSearchable: false, bSortable: false, bVisible: false, sWidth: "0px" },
+            ],
+            fnRowCallback: function(nRow, aData) {
+                var itemForCalculate = {
+                    type: aData[6],
+                    name: aData[2],
+                    id: aData[0],
+                    column: aData[9],
+                    expressionKey: `${@Model.VirtualTestCustomSubScoreId}&${aData[9]}`,
+                    expressionColumns: "",
+                    expressionValue: "",
+                    isAutoCalculation: false
+                }
+                if(['TEXT_CUSTOM_SCORE', 'NUMERIC_CUSTOM_SCORE'].includes(itemForCalculate.type)) {
+                    hasCustomScoreType_@(Model.VirtualTestCustomSubScoreId) = true;
+                }
+                if(itemForCalculate.type == "PERCENT_SCORE" && aData[10] == "True") {
+                    hasPercentScoreAutoSub_@(Model.VirtualTestCustomSubScoreId) = true;
+                }
+                if(itemForCalculate.type == "RAW_SCORE" && aData[10] != "True") {
+                    subScoreRawMaxScore_@(Model.VirtualTestCustomSubScoreId) = aData[11];
+                }
+                if(itemForCalculate.type == "RAW_SCORE" && aData[10] == "True") {
+                    hasRawSubAuto_@(Model.VirtualTestCustomSubScoreId) = true;
+                }
+                if(itemForCalculate.type == "RAW_SCORE" || itemForCalculate.type == "NUMERIC_CUSTOM_SCORE") {
+                    if(subScoreColumnForCalculate.SubscoreName_@(Model.VirtualTestCustomSubScoreId) === undefined) {
+                        subScoreColumnForCalculate.SubscoreName_@(Model.VirtualTestCustomSubScoreId) = [];
+                    }
+                    if (aData[10] === 'True') {
+                        itemForCalculate.expressionValue = aData[4].replace('calculation:', '');
+                        itemForCalculate.isAutoCalculation = true;
+                        subScoreCalculateDetails.push(buildItemForCalculateDetail(@Model.VirtualTestCustomSubScoreId, aData[6], aData[4]));
+                    }
+                    subScoreColumnForCalculate.SubscoreName_@(Model.VirtualTestCustomSubScoreId).push(itemForCalculate);
+                }
+                $(nRow).children().addClass('handle');
+                if (aData[4].indexOf('List value') != -1) {
+                    aData[4] = aData[4].replace('<', '&lt;');
+                    aData[5] = aData[5].replace('<', '&lt;');
+                    aData[4] = aData[4].replace('&lt;/br>', '</br>');
+                    aData[5] = aData[5].replace('&lt;/br>', '</br>');
+                }
+
+                $('td:eq(0)', nRow).html(setIconVisibilitySubscoreOverallScore_@(Model.VirtualTestCustomSubScoreId)(aData[2], aData[1], aData[9]));
+                $('td:eq(1)', nRow).html(truncateText_@(Model.VirtualTestCustomSubScoreId)($('td:eq(1)', nRow),aData[2],35));
+                $('td:eq(1)', nRow).attr('name', aData[2]);
+                $('td:eq(2)', nRow).html(truncateText_@(Model.VirtualTestCustomSubScoreId)($('td:eq(2)', nRow),aData[1],35));
+                $('td:eq(3)', nRow).html(truncateText_@(Model.VirtualTestCustomSubScoreId)($('td:eq(3)', nRow),aData[3],85));
+                $('td:eq(4)', nRow).html(showShortOverview_@(Model.VirtualTestCustomSubScoreId)($('td:eq(4)', nRow),aData[4],aData[5],aData[8],aData[2],aData[10]));
+                $('td:eq(3)', nRow).addClass('word-break');
+                $(nRow).attr('table-id', '@(Model.VirtualTestCustomSubScoreId)');
+                $(nRow).attr('table-scoreid', '@Model.VirtualTestCustomScoreId');
+                $(nRow).attr('virtualTestCustomMetaDataID', aData[12]);
+            },
+            fnPreDrawCallback: function (oSettings) {
+                ShowBlock($('#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)'), "Loading");
+                var aData = oSettings.aoData;
+                var subscoreID = @(Model.VirtualTestCustomSubScoreId);
+                var subscoreName = 'SubscoreName_' + subscoreID;
+                subScoreColumnForCalculate.SubscoreName_@(Model.VirtualTestCustomSubScoreId) = [];
+                listDisableSub[subscoreName] = listDisableScore[subscoreName] || [];
+                aData.forEach(function (rowData) {
+                    var data = rowData._aData;
+                    if (data[10] === "True") {
+                        listDisableSub[subscoreName].push(data[9]);
+                        if (data[2] === 'Percent') listDisableSub[subscoreName].push("Raw");
+
+                        var overview = data[4].split("calculation:");
+                        var expressions = overview[1];
+                        // Overall sum/average with others score columns of others Subscore
+                        var subscoreRelateds = getColumnFromExpression(expressions).filter(function (item) { return item.scoreid != 0 });
+                        if (subscoreRelateds && subscoreRelateds.length > 0) {
+                            subscoreRelateds.forEach(function (subScore) {
+                                listDisableSub['SubscoreName_' + subScore.scoreid] = listDisableSub['SubscoreName_' + subScore.scoreid] || [];
+                                listDisableSub['SubscoreName_' + subScore.scoreid].push(subScore.column);
+                            });
+                        }
+
+                        listDisableSub[subscoreName] = uniqueArray(listDisableSub[subscoreName]);
+                    }
+                })
+                subScoreCalculateDetails = subScoreCalculateDetails.filter(function (item) { return item.subScoreId != @Model.VirtualTestCustomSubScoreId });
+                return true;
+            },
+            fnDrawCallback: function() {
+                $('#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)').unblock();
+                $('#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)').css('width', 'auto');
+                $('.with-tip').tip();
+                var idDatatableSubCore = @Model.VirtualTestCustomSubScoreId;
+                var table = document.querySelector('#dataTableOverallScore_'+ idDatatableSubCore);
+                if('@Model.HasAssociatedTestResult' == 'False' && '@Model.HasAssociatedAutoSave' == 'False') {
+                    $(table).find("tbody").sortable({
+                        connectWith: ".connectedSortable",
+                        cancel: ".dataTables_empty, .disabled-drag",
+                        helper: function (event, ui) {
+                            var $clone = $(ui).clone();
+                            $clone.css('position', 'absolute');
+                            $clone.addClass('ui-sortable-helper');
+                            return $clone.get(0);
+                        },
+                        start: function (event, ui) {
+                            const width = $('.ui-sortable-placeholder').width();
+                            $('.ui-sortable-helper').css('width', width + 'px');
+                            $('.ui-sortable-helper').css('background-color', 'white');
+                            $(".ui-sortable-placeholder").parents("table").find("thead th").each(function (index, el) {
+                                $(`.ui-sortable-helper td:nth-child(${index + 1})`).css('flex-basis', el.clientWidth + 'px');
+                            });
+                        },
+                        receive: function (event, ui) {
+                            var $currentTarget = ui.item;
+                            var $senderTableInstance = $(ui.sender);
+                            var $targetTableInstance = $(this);
+                            var isFromOverallTable = $senderTableInstance.parents("table").attr("table-type") === "overall";
+                            var isFromSubToSub = $senderTableInstance.parents("table").attr("table-type") === "subscore";
+                            var currentScore = $currentTarget.find("[class*=EditOverallScore]").attr("scoretype");
+                            var scoreName = $currentTarget.find("[class*=EditOverallScore]").attr('name');
+                            var scoreTypeName = $currentTarget.find("[class*=EditOverallScore]").attr('scoretypename');
+                            function updateScoreData(nameReplace, typeReplace, isReplace) {
+                                var scoreId = $currentTarget.attr('table-scoreid');
+                                var name = $currentTarget.find("[class*=EditOverallScore]").attr('name');
+                                var from = $currentTarget.attr('table-id');
+                                var rawIndex = $(ui.item).parents('tbody').find('tr').toArray().indexOf(ui.item[0]);
+                                var url = '@Url.Action("UpdateMetaDataRaw")';
+                                $targetTableInstance.find(".dataTables_empty").parent('tr').remove();
+                                $.ajax({
+                                    type: 'POST',
+                                    url: url,
+                                    contentType: 'application/json',
+                                    data: JSON.stringify({
+                                        scoreId: scoreId,
+                                        name: encodeURIComponent(name),
+                                        scoreTypeName: currentScore,
+                                        from: from, // ID of score from
+                                        to: parseInt($targetTableInstance.parents('table').attr('table-id')), // ID of score to
+                                        rawIndex: rawIndex + 1,
+                                        isFromScore: isFromOverallTable,
+                                        isSubSub: isFromSubToSub, // if move score from sub to sub => true
+                                        isReplace: isReplace,
+                                        nameReplace: nameReplace,
+                                        scoreTypeNameReplace: typeReplace
+                                    })
+                                }).done(function (response) {
+                                    if (!response.success) {
+                                        customAlert(response.error);
+                                    }
+                                    $senderTableInstance.parents("table").dataTable().fnDraw(false);
+                                    $targetTableInstance.parents("table").dataTable().fnDraw(false);
+                                });
+                            }
+                            var nameCompare = $targetTableInstance.find("[class*='EditOverallScore-" + parseInt($targetTableInstance.parents('table').attr('table-id')) + "']").filter((idx, ele) => ele.name.toLowerCase() === scoreName.toLowerCase())
+                            if ((isFromOverallTable && listDisableScore['Overall'] && listDisableScore['Overall'].includes(currentScore)) || (!isFromOverallTable && listDisableSub['SubscoreName_' + $senderTableInstance.parents('table').attr('table-id')] && listDisableSub['SubscoreName_' + $senderTableInstance.parents('table').attr('table-id')].includes(currentScoreType))) {
+                                customConfirm('You cannot move this column; it is being used by a calculation. Remove the calculation first.', {
+                                    minWidth: '500px',
+                                    textLeft: true,
+                                    buttons: [
+                                        {
+                                            label: 'OK',
+                                            color: 'red',
+                                            callback: function () {
+                                                $senderTableInstance.sortable("cancel");
+                                            }
+                                        }
+                                    ]
+                                });
+                            } else if (nameCompare != null && nameCompare.length > 0) {
+                                if (listDisableSub['SubscoreName_' + $targetTableInstance.parents('table').attr('table-id')] && listDisableSub['SubscoreName_' + $targetTableInstance.parents('table').attr('table-id')].includes($(nameCompare[0]).attr('scoretype'))) {
+                                    customConfirm('You cannot replace this column. It is being used by a calculation.', {
+                                        minWidth: '500px',
+                                        textLeft: true,
+                                        buttons: [
+                                            {
+                                                label: 'OK',
+                                                color: 'red',
+                                                callback: function () {
+                                                    $senderTableInstance.sortable("cancel");
+                                                }
+                                            }
+                                        ]
+                                    });
+                                } else {
+                                    var name = nameCompare.attr("name");
+                                    var type = nameCompare.attr("scoretype");
+                                    CustomConfirm({
+                                        message: 'This score type already exists. Do you want to replace it?',
+                                        textLeft: true,
+                                        customClass: 'new-style-popup',
+                                        yes: function () {
+                                            updateScoreData(name, type, true);
+                                        },
+                                        no: function () {
+                                            $senderTableInstance.sortable("cancel");
+                                        },
+                                        yesMessage: "Replace",
+                                        noMessage: "Cancel",
+                                    });
+                                }
+                            } else if (($targetTableInstance.find("[class*='EditOverallScore-" + parseInt($targetTableInstance.parents('table').attr('table-id')) + "'][scoretypename='" + scoreTypeName + "']").length > 3)
+                                && (currentScore.includes('CustomN_') || currentScore.includes('CustomA_'))) {
+                                var message = 'You have created the maximum number of numeric custom score allowed (4). If you need to create more scores, you can set them up as new subscores.';
+                                if (currentScore.includes('CustomA_')) {
+                                    message = 'You have created the maximum number of text custom score allowed (4). If you need to create more scores, you can set them up as new subscores.';
+                                }
+                                customConfirm(message, {
+                                    minWidth: '500px',
+                                    textLeft: true,
+                                    buttons: [
+                                        {
+                                            label: 'OK',
+                                            color: 'red',
+                                            callback: function () {
+                                                $senderTableInstance.sortable("cancel");
+                                            }
+                                        }
+                                    ]
+                                });
+                            } else {
+                                updateScoreData(null, null, false);
+                            }
+                        },
+                        update: function (event, ui) {
+                            var idDatatableSubCore = @Model.VirtualTestCustomSubScoreId;
+                            var overallScoreId = @Model.VirtualTestCustomScoreId;
+                            var delClass = '.EditOverallScore-' + idDatatableSubCore;
+                            var scoreType = $(ui.item).find("[scoreType]").attr("scoreType");
+                            var scoreName = $(ui.item).find("[scoreType]").attr("name");
+                            var rawIndex = $(ui.item).parents('tbody').find('tr').toArray().indexOf(ui.item[0]);
+
+                            var idDatatableSubCoreSource = $(this).parent().attr('table-id');
+                            var idDatatableSubCoreDestination = $(ui.item).parent().parent().attr('table-id');
+
+                             if (idDatatableSubCoreSource == idDatatableSubCoreDestination && $(ui.item).attr("table-id") === $(ui.item).parents("table").attr("table-id")) {
+                                 var url = '@Url.Action("UpdateMetaDataOrder")';
+                                 $.ajax({
+                                     type: 'POST',
+                                     url: url,
+                                     contentType: 'application/json',
+                                     data: JSON.stringify({ scoreId: overallScoreId, subScoreId: idDatatableSubCore, scoreType: scoreType, name: scoreName, rawIndex: rawIndex + 1 }),
+                                 });
+                             }
+                        }
+                    });
+                }
+            }
+        };
+
+        $("#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)").data("options", options_@(Model.VirtualTestCustomSubScoreId));
+        initializeDataTable($("#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)"));
+
+        $('.DeleteOverallScore-@(Model.VirtualTestCustomSubScoreId)').live('click', function () {
+            var name = $(this).attr('Name');//Name as the key
+            var scoreTypeName = $(this).attr('ScoreTypeName');
+            var scoreType = $(this).attr('scoretype');
+
+            var canDelete = checkRelatedCalculation(@Model.VirtualTestCustomSubScoreId, scoreType);
+
+            if(canDelete == false) {
+                customAlertMessage({ message: 'You cannot delete this column; it is being used by a calculation. Remove the calculation first.', customClass: 'new-style-popup'});
+                return;
+            }
+
+            if(hasPercentScoreAutoSub_@(Model.VirtualTestCustomSubScoreId) && scoreType == 'Raw') {
+                customAlertMessage({ message: 'You cannot delete this column; it is being used by a calculation. Remove the calculation first.', customClass: 'new-style-popup'});
+                return;
+            }
+
+            LoadConfirmDeleteOverallScore_@(Model.VirtualTestCustomSubScoreId)(name, scoreTypeName, scoreType);
+
+        });
+
+        $('.EditOverallScore-@(Model.VirtualTestCustomSubScoreId)').live('click', function () {
+            $('.EditOverallScore-@(Model.VirtualTestCustomSubScoreId)').prop('disabled', true);
+            var name = $(this).attr('Name');//name is used as identifier
+            var scoreTypeName = $(this).attr('ScoreTypeName');
+            currentScoreType = $(this).attr('scoretype');
+            LoadEditScoreType_@(Model.VirtualTestCustomSubScoreId)(name, scoreTypeName);
+        });
+
+        $('.CloneSubScore-@(Model.VirtualTestCustomSubScoreId)').live('click', function () {
+            $('.CloneSubScore-@(Model.VirtualTestCustomSubScoreId)').prop('disabled', true);
+            var name = $(this).attr('Name');//name is used as identifier
+            var scoreTypeName = $(this).attr('ScoreTypeName');
+            currentScoreType = $(this).attr('scoretype');
+            scoreTypeClone = currentScoreType;
+            scoreNameClone = scoreTypeName;
+            loadCloneSubScoreType_@(Model.VirtualTestCustomSubScoreId)(name, scoreTypeName);
+        });
+
+        var isOpenAddNewOverallScore_@(Model.VirtualTestCustomSubScoreId) = false;
+        $('.CreateOverallScore-@(Model.VirtualTestCustomSubScoreId)').live('click', function () {
+            var url = '@Url.Action("LoadCreateOverallScore")?templateId=@Model.VirtualTestCustomScoreId&subscoreId=@Model.VirtualTestCustomSubScoreId';
+            if (isOpenAddNewOverallScore_@(Model.VirtualTestCustomSubScoreId) == true) {
+                return;
+            }
+            isOpenAddNewOverallScore_@(Model.VirtualTestCustomSubScoreId) = true;
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function(html) {
+                    $("#divOnTop_@(Model.VirtualTestCustomSubScoreId)").append('<div id="PopupCreateOverallScore_@(Model.VirtualTestCustomSubScoreId)" class="dialog"></div>');
+                    $("#PopupCreateOverallScore_@(Model.VirtualTestCustomSubScoreId)").append(html);
+                    $('#PopupCreateOverallScore_@(Model.VirtualTestCustomSubScoreId)').dialog({
+                        title: "",
+                        open: function() {
+                            //Create overlay for popup
+                            $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        },
+                        beforeclose: function() {
+                            return true;
+                        },
+                        close: function() {
+                            $('#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)').dataTable().fnDraw(false);
+                            $('#PopupCreateOverallScore_@(Model.VirtualTestCustomSubScoreId)').remove();
+                            $("body .my-overlay").remove();
+                            isOpenAddNewOverallScore_@(Model.VirtualTestCustomSubScoreId) = false;
+                            //refresh the subscore's score type list
+                            refreshScoreTypeList_@(Model.VirtualTestCustomSubScoreId)();
+                        },
+                        modal: false,
+                        width: 585,
+                        resizable: false
+                    });
+
+                });
+
+            $(".close").unbind("click");
+            $(".close").live("click", function(e) {
+                e.preventDefault();
+            });
+        });
+
+        $('.upload-conversion-table-btn-@(Model.VirtualTestCustomSubScoreId)').live('click', function () {
+            // TODO: import conversion table
+            console.log("import conversion table");
+        });
+    });
+
+    function getAjaxSourceSubscoreScoreTypeList_@(Model.VirtualTestCustomSubScoreId)() {
+        return '@Url.Action("LoadSubscoreScoreTypeList")?virtualTestCustomSubScoreID=@Model.VirtualTestCustomSubScoreId';
+
+    }
+    function setIconVisibilitySubscoreOverallScore_@(Model.VirtualTestCustomSubScoreId)(name, scoreTypeName, scoreType) {
+        var hasConversionTable = hasConversionSetSubScore['@(Model.VirtualTestCustomSubScoreId)'];
+        var editIcon = '<span class="custom-icon fa-solid fa-pencil icon-grey"></span>';
+        var editString = '<a href="javascript:void(0)" class="d-inline-block align-middle' +
+            (hasConversionTable ? ' item-disabled' : ' EditOverallScore-@(Model.VirtualTestCustomSubScoreId)') +
+            '" Name="' + encodeURIComponent(name) + '" ScoreTypeName="' + scoreTypeName + '" scoreType="' + scoreType + '">' + editIcon + '</a>';
+
+        var deleteIcon = '<span class="custom-icon fa-solid fa-circle-xmark icon-red"></span>';
+        var deleteIconString = '<a href="javascript:void(0)" class="d-inline-block align-middle ms-2' +
+            (hasConversionTable ? ' item-disabled' : ' DeleteOverallScore-@(Model.VirtualTestCustomSubScoreId)') +
+            '" Name="' + encodeURIComponent(name) + '" ScoreTypeName="' + scoreTypeName + '" scoreType="' + scoreType + '">' +
+            deleteIcon +
+            '</a>';
+
+        var copyIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/icon-copy-v2.svg")';
+        var copyString = '<a href="javascript:void(0)" title="Clone" Name="' + encodeURIComponent(name) + '" ScoreTypeName="' + scoreTypeName + '" scoreType="' + scoreType + '"'
+            + 'class="' + (hasConversionTable ? ' item-disabled' : ' CloneSubScore-@(Model.VirtualTestCustomSubScoreId)') + ' with-tip d-inline-block align-middle ms-2" > <img src="' + copyIcon + '" width="16"></a>';
+
+        if (scoreType.includes('CustomN_') || scoreType.includes('CustomA_') || scoreType.includes('NOTE_COMMENT')) {
+            editString = editString + copyString;
+        }
+
+        if ('@Model.HasAssociatedTestResult' == 'False' || hasConversionTable) {
+            return editString + deleteIconString;
+        } else {
+            return editString ;
+        }
+    }
+    function truncateText_@(Model.VirtualTestCustomSubScoreId)(td,text, maxLength) {
+        if (text == null) {
+            text = '';
+        }
+
+        text = unescapeHtml(text);
+
+        if (text.length > maxLength) {
+            intialTooltip(td, text);
+            var limiText = '';
+            limiText = text.substring(0, maxLength);
+            return limiText + ' ...';
+
+        } else {
+            return text;
+        }
+    }
+    function displayClassDetailTooltip_@(Model.VirtualTestCustomSubScoreId)(e, data, maxItemTooltipLength) {
+        if (data == null) {
+            data = '';
+        }
+        var width = '100px'; //default
+        if (maxItemTooltipLength <= 50) {
+            width = '200px';
+        }
+        else if (maxItemTooltipLength <= 100) {
+            width = '300px';
+        }
+        else if (maxItemTooltipLength <= 150) {
+            width = '450px';
+        }
+        else if (maxItemTooltipLength <= 200) {
+            width = '600px';
+        }
+        else {
+            width = '800px';
+        }
+
+        $(e).attr('title', '<p style="text-align:left;width:' + width + ';white-space: normal;word-break: break-all">' + data.split('|').join('<br />') + '</p>');
+    }
+    function LoadConfirmDeleteOverallScore_@(Model.VirtualTestCustomSubScoreId)(name, scoreTypeName, scoreType) {
+        name = decodeURIComponent(name);
+        CustomConfirm({
+            message: 'Are you sure you want to delete ' + name + '?',
+            textLeft: true,
+            customClass: 'new-style-popup',
+            yes: function () {
+                ShowBlock($('#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)'), "Deleting");
+                $.post('@Url.Action("DeleteScoreType")',
+                    { templateId: @Model.VirtualTestCustomScoreId,
+                        name:encodeURIComponent(name),
+                        scoreTypeName: scoreTypeName,
+                        subscoreId:@Model.VirtualTestCustomSubScoreId }, function (response) {
+                    $('#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)').unblock();
+                    if (response.success == true) {
+                        customAlertMessage({ message: 'Score type has been deleted.', customClass: 'new-style-popup'});
+                        $('#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)').dataTable().fnDraw(false);
+
+                        subScoreColumnForCalculate.SubscoreName_@(Model.VirtualTestCustomSubScoreId) = [];
+                        hasPercentScoreAutoSub_@(Model.VirtualTestCustomSubScoreId) = false;
+                        subScoreRawMaxScore_@(Model.VirtualTestCustomSubScoreId) = null;
+                        hasRawSubAuto_@(Model.VirtualTestCustomSubScoreId) = false;
+                    } else {
+                        customAlertMessage({message: response.error});
+                    }
+                });
+            },
+            no: function () {
+            },
+            open: function () {
+            },
+            close: function () {
+            }
+        });
+    }
+    function refreshScoreTypeList_@(Model.VirtualTestCustomSubScoreId)() {
+        $("#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)").dataTable().fnReloadAjax( getAjaxSourceSubscoreScoreTypeList_@(Model.VirtualTestCustomSubScoreId)());
+    }
+    function LoadEditScoreType_@(Model.VirtualTestCustomSubScoreId)(name, scoreTypeName) {
+        var url = '@Url.Action("LoadEditOverallScore")?templateId=@Model.VirtualTestCustomScoreId&subscoreId=@Model.VirtualTestCustomSubScoreId&subscoreName=' + encodeURIComponent('@Model.Name') + '&name=' + encodeURIComponent(name) + '&scoreTypeName=' + scoreTypeName;
+
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTop_@(Model.VirtualTestCustomSubScoreId)").append('<div id="PopupEditOverallScore_@(Model.VirtualTestCustomSubScoreId)" class="dialog"></div>');
+                $("#PopupEditOverallScore_@(Model.VirtualTestCustomSubScoreId)").append(html);
+                $('#PopupEditOverallScore_@(Model.VirtualTestCustomSubScoreId)').dialog({
+                    title: "",
+                    open: function () {
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupEditOverallScore_@(Model.VirtualTestCustomSubScoreId)').remove();
+                        $('#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)').dataTable().fnDraw(false);
+                        $("body .my-overlay").remove();
+                        refreshScoreTypeList_@(Model.VirtualTestCustomSubScoreId)();
+                    },
+                    modal: false,
+                    width: 585,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    function loadCloneSubScoreType_@(Model.VirtualTestCustomSubScoreId)(name, scoreTypeName) {
+        var url = '@Url.Action("LoadCloneOverallScore")?templateId=@Model.VirtualTestCustomScoreId&subscoreId=@Model.VirtualTestCustomSubScoreId&subscoreName=' + encodeURIComponent('@Model.Name') + '&name=' + encodeURIComponent(name) + '&scoreTypeName=' + scoreTypeName;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTop_@(Model.VirtualTestCustomSubScoreId)").append('<div id="PopupCloneOverallScore_@(Model.VirtualTestCustomSubScoreId)" class="dialog"></div>');
+                $("#PopupCloneOverallScore_@(Model.VirtualTestCustomSubScoreId)").append(html);
+                $('#PopupCloneOverallScore_@(Model.VirtualTestCustomSubScoreId)').dialog({
+                    title: "",
+                    open: function () {
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupCloneOverallScore_@(Model.VirtualTestCustomSubScoreId)').remove();
+                        $('#dataTableOverallScore_@(Model.VirtualTestCustomSubScoreId)').dataTable().fnDraw(false);
+                        $
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 585,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    function cancelOverallScore() {
+        $(".dialog").dialog("close");
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    function escapeHTML(str) {
+        if (str == null || typeof str !== 'string') return str;
+        return str.replace(/[&<>"']/g, function (match) {
+            switch (match) {
+                case '&':
+                    return '&amp;';
+                case '<':
+                    return '&lt;';
+                case '>':
+                    return '&gt;';
+                case '"':
+                    return '&quot;';
+                case "'":
+                    return '&#39;';
+                default:
+                    return match;
+            }
+        });
+    }
+
+    function escapeOverview(overview) {
+        try {
+            var pre = overview.split('&lt;')[0] + '&lt;';
+            var scoreStr = overview.split('&lt;')[1].split('</br>')[0];
+            var suf = overview.replace(pre, '').replace(scoreStr, '');
+            return pre + escapeHTML(scoreStr) + suf;
+        } catch (err) {
+            return overview;
+        }
+    }
+
+    function showShortOverview_@(Model.VirtualTestCustomSubScoreId)(td,overview,shortOverview,isPredefinedList,scoreName, isAutoCal) {
+        overview = overview == null ? '' : overview;
+        shortOverview = shortOverview == null ? '' : shortOverview;
+        overview = escapeOverview(overview);
+        shortOverview = escapeOverview(shortOverview);
+        if (isAutoCal === 'True' && scoreName != 'Percent') {
+            var arrOverview = overview.split(';');
+            var type = arrOverview[0] == 'sum' ? "- Sum of columns: " : "- Average of columns: ";
+
+            var textSubscore = '';
+            for (var i = 1; i < arrOverview.length; i++) {
+                var overviewSubscore = arrOverview[i].split('-');
+                var subscoreHeader = $('#' + overviewSubscore[0]).val();
+                var subscoreColumns = overviewSubscore[1].split(',');
+
+                var arrSubscoreColumn = [];
+                for (var s = 0; s < subscoreColumns.length; s++) {
+                    arrSubscoreColumn.push(getColumnNameByColumnType(overviewSubscore[0], subscoreColumns[s]));
+                }
+                textSubscore += '+ ' + subscoreHeader + ": " + arrSubscoreColumn.join(', ') + '</br>';
+            }
+            overview = type + '</br>' + textSubscore;
+            shortOverview = overview.substring(0, 45);
+            shortOverview += ' ...';
+
+            overview = '';
+            shortOverview = '';
+        }
+
+        if (isAutoCal === 'True' && scoreName == 'Percent') {
+            overview = '';
+            shortOverview = '';
+        }
+
+        if ((isPredefinedList != undefined && isPredefinedList == 'True') || scoreName == 'Artifact' || shortOverview.indexOf('List value') != -1) {
+            // limit the  overview to make the shortOverview
+            var arrStr = overview.split("</br>");
+            var count = 0;
+            var limitChar = 45;
+            var arrResult = [];
+            arrStr.forEach(text => {
+                if (count < limitChar) {
+                    if ((count + text.length) > limitChar) {
+                        arrResult.push(text.substring(0, (limitChar - count)) + '...');
+                    } else {
+                        arrResult.push(text);
+                    }
+                }
+                count += text.length;
+            })
+            shortOverview = arrResult.join("</br>");
+        }
+        if (overview) {
+            intialTooltip(td, overview);
+        }
+        return shortOverview;
+    }
+
+    function getColumnNameByColumnType(parentType, scoreType) {
+        return scoreType;
+    }
+
+    function intialTooltip(td ,text) {
+        $(td).qtip({
+            overwrite: false,
+            content: {
+                text: text
+            },
+            position: {
+                my: 'bottom center',
+                at: 'top center'
+            },
+            show: {
+                event: 'mouseover'
+            },
+            hide: {
+                event: 'mouseout'
+            },
+            hide: {
+                fixed: true,
+                delay: 100
+            },
+            events: {
+                show: function () {
+                var maxHeight = 0;
+                $(td).offset().top > 450 ?  maxHeight = 450 : maxHeight =  $(td).offset().top ;
+                var marginTop = 20;
+                if($(this).height() > maxHeight) {
+                    $(this).addClass('custom-top');
+                    $(this).children('.qtip-content').css({
+                        'max-height': maxHeight - marginTop + 'px'
+                    });
+                    }
+                }
+            }
+        });
+    }
+
+    function uniqueArray(arrArg) {
+        return arrArg.filter(function (elem, pos, arr) {
+            return arr.indexOf(elem) == pos;
+        });
+    };
+</script>

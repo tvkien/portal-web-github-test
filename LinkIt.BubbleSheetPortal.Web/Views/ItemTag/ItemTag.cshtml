@@ -1,0 +1,388 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.ItemTagViewModel 
+@*@MvcHtmlString.Create(
+Bundle.Css()
+            .Add(@Url.Content("~/Content/themes/base/jquery.ui.autocomplete.css"))
+    .Render("/Content/themes/Constellation/css/itemtag_#.css")
+    )*@
+
+<link href="~/Content/themes/base/jquery.ui.autocomplete.css" rel="stylesheet" />
+
+<style>
+    html {
+        overflow-x: auto;
+    }
+    body {
+        min-width: 1035px;
+    }
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+     .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .sticky {
+        padding-left: 500px;
+    }
+</style>
+
+<article class="container_12" id="artDistrict">
+    <section class="grid_12">
+        @*<div class="block-border" style="margin-top: 0px" >
+            <div  class="block-content form bubbleSheetSelector">
+               
+
+                <fieldset>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <label>Tag/Description</label>
+                                <input type="text" id="txtItemTag" class="full-width"/>
+                            </p>
+                        </div>
+                    </div>
+                </fieldset>
+                <button id="btnApplyFilterDistrictTag" class="float-right" type="button">Apply Filters</button>
+                <button id="clearFilterDistrictTag" class="float-right grey" type="button" style="margin-right: 5px;">Clear Filter</button>
+                <div class="clear"></div>
+                
+            </div>
+            
+        </div>
+        <br />
+        <br />*@
+        <div class="block-border" id="divDistrictTagList">
+            <div class="block-content form">
+                 <h1 id="headingCategoryName" style="max-width: 683px;max-height: 30px"> 
+                     <span id="spanCategoryName"></span>
+                     <a href="javascript:void(0)" class="CreateNewDistrictTag">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Add New @LabelHelper.DistrictLabel Tag
+                    </a>
+                </h1>
+                <p style="height: 11px"></p>
+                <div class="no-margin last-child">
+                    <table id="DistrictTagDataTable" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="black-cell">
+                                    @*<input type="checkbox" id="chkAllItem"/>*@
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Tag
+                                </th>
+                                <th scope="col">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+             <div class="clear-10"></div>
+            <div style="padding-left: 0px; margin-left: 0px">
+                <button id="btnCancelItemTag" type="button" class="grey" tabindex="18" style="margin-left: 0px;">Cancel</button>
+            </div>
+        </div>
+        
+    </section>
+</article>
+<input type="hidden" id="hdCategoryName"/>
+<script type="text/javascript">
+    $(function () {
+        $('.write').addClass('current');
+        $('#qtiItemTags').addClass('current');
+
+        displayCategoryName();
+        
+        LoadDistrictTagToTable();
+    });
+
+    function displayCategoryName() {
+        $('#hdCategoryName').val('@Model.CategoryName');
+        $('#hdCategoryName').val( htmlDecode($('#hdCategoryName').val()));
+        var category = '@Html.Raw(Model.CategoryName)';
+        if (category == null) {
+            category = '';
+        }
+        category = htmlDecode(category);
+        if (category.length >= 140) {
+            category = category.substring(0, 137) + '...';
+            $("#headingCategoryName").attr('title', '<p style="text-align:left;width:400px;white-space: normal;word-break: break-all">' + $("#hdCategoryName").val().split('|').join('<br />') + '</p>');
+            $("#headingCategoryName").tip();
+        }
+        $("#spanCategoryName").text(category);
+    }
+    $("#btnApplyFilterDistrictTag").die("click");
+    $("#btnApplyFilterDistrictTag").click(function () {
+      
+    });
+
+    $("#clearFilterDistrictTag").die("click");
+    $("#clearFilterDistrictTag").click(function () {
+        //$('#txtItemTag').val('');
+    });
+
+    $('#btnCancelItemTag').click(function () {
+        var link = '@Url.Action("Index","QTIItemTag")?\option=DistrictTag' + '&stateId=@Model.SelectedStateId' + '&districtId=@Model.SelectedDistrictId' + '&searchBoxText=' + encodeURIComponent('@Model.SearchBoxText');
+        link = encodeURI(link);
+        window.location.href = link;
+    });
+    
+    function LoadDistrictTagToTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceDistrictTag(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox 
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bFilter: true,
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'ItemTagID', bSearchable: false, bSortable: false, sWidth: "50px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: "400px" },
+                { sType: 'string', sName: 'Description', bSearchable: true, bSortable: false, sWidth: "450px" }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0],aData[1],0));
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#DistrictTagDataTable'), 'Load');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#DistrictTagDataTable').unblock();
+            }
+        };
+
+        $("#DistrictTagDataTable").data("options", options);
+        initializeDataTable($("#DistrictTagDataTable"));
+
+    }
+
+    function getAjaxSourceDistrictTag() {
+        return '@Url.Action("SearchItemTag")?itemTagCategoryId=' + '@Model.ItemTagCategoryID';
+    }
+    function setIconVisibility(itemTagId,categoryName,qtiItemCount) {
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a href="javascript:void(0)" title="Update Tag" itemTagId="' + itemTagId + '" class="with-tip EditItemTag"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var deleteIconString = '<a href="javascript:void(0)" title="Delete Tag" itemTagId="' + itemTagId + '" qtiItemCount="'+ qtiItemCount + '"  class="with-tip DeleteItemTag"><img src="' + deleteIcon + '" width="16" height="16" style="margin-right: 0px"></a>';
+        
+        return editString + deleteIconString ;
+    }
+    
+    var isOpenAddNewItemTag = false;
+    
+    $('.CreateNewDistrictTag').die('click');
+    $('.CreateNewDistrictTag').live('click', function () {
+
+        
+        var url = '@Url.Action("LoadCreateItemTag")?\itemTagCategoryId=' + '@Model.ItemTagCategoryID' + '&districtId=@Model.SelectedDistrictId';
+        if (isOpenAddNewItemTag == true) {
+            return;
+        }
+        isOpenAddNewItemTag = true;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divDistrictTagList").append('<div id="PopupCreateItemTag" class="dialog"></div>');
+                $("#PopupCreateItemTag").append(html);
+                $('#PopupCreateItemTag').dialog({
+                    title: "",
+                    open: function () {
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#DistrictTagDataTable').dataTable().fnDraw(false);
+                        $('#PopupCreateItemTag').remove();
+                        $("body .my-overlay").remove();
+                        isOpenAddNewItemTag = false;
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    });
+    $('.EditItemTag').die('click');
+    $('.EditItemTag').live('click', function () {
+        var itemTagId = $(this).attr('itemTagId');
+        LoadEditItemTag(itemTagId);
+    });
+    function LoadEditItemTag(itemTagId) {
+        ShowBlock($('#DistrictTagDataTable'), "Loading");
+        var url = '@Url.Action("LoadEditItemTag")?itemTagId=' + itemTagId + '&districtId=@Model.SelectedDistrictId';
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divDistrictTagList").append('<div id="PopupEditItemTag" class="dialog"></div>');
+                $("#PopupEditItemTag").append(html);
+                $('#PopupEditItemTag').dialog({
+                    title: "",
+                    open: function () {
+                        ShowBlock($('#DistrictTagDataTable'), "Loading");
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupEditItemTag').remove();
+                        $('#DistrictTagDataTable').dataTable().fnDraw(false);
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    $('.DeleteItemTag').die('click');
+    $('.DeleteItemTag').live('click', function () {
+        var itemTagId = $(this).attr('itemTagId');
+        var qtiItemCount = $(this).attr('qtiItemCount');
+        var confirmMessage = 'Do you want to delete this tag?';
+        if (qtiItemCount > 0) {
+            confirmMessage = 'This tag is used in '+ qtiItemCount + ' item(s). Do you want to delete this tag?';
+        }
+        ConfirmDistrictTagDelete(confirmMessage, itemTagId);
+
+    });
+   
+</script>
+<script type="text/javascript">
+    function ConfirmDistrictTagDelete(message, id) {
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section class="grid_5" style="height:140px;">' +
+                        '<div class="block-border" style="width: 350px; min-height: 100px;">' +
+                        '<div class="block-content form" style="padding-bottom:0px">' +
+                        '<table cellpadding="0" cellspacing="0" style="margin-top:-15px;"><tr><td><p class="styleMessage" style="margin-bottom:10px;">' + message +
+                        '</p></td></tr><tr><td>' +
+                        '<p class="plButton"  style="margin-bottom:10px;text-align: center">' +
+                        '<button id="btnOk" type="button" name="ok" onclick="ConfirmDistrictTagDeleteOkClick(' + id + ')">OK</button>' +
+                        '<button id="btnCancel" type="button" name="cancel" onclick="ConfirmDistrictTagDeleteCancellick()" style="margin-left:10px;">Cancel</button>' +
+                        '</p></td></tr></table></div></div></section>';
+        $("<div></div>")
+                    .html(strHtml)
+                    .addClass("dialog")
+                    .attr("id", "ConfirmDistrictTagDeleteDialog")
+                    .appendTo("body")
+                    .dialog({
+                        close: function () { $(this).remove(); },
+                        modal: true,
+                        width: 420,
+                        maxheight: 100,
+                        resizable: false
+                    });
+
+        $(".ui-dialog").css("height", hbody);
+
+    }
+
+    function ConfirmDistrictTagDeleteOkClick(itemTagId) {
+        ShowBlock($('#DistrictTagDataTable'), "Loading");
+        $.post('@Url.Action("DeleteItemTag")', { itemTagId: itemTagId }, function (response) {
+
+           $('#DistrictTagDataTable').unblock();
+           $('#DistrictTagDataTable').dataTable().fnDraw(false);
+           $("#ConfirmDistrictTagDeleteDialog").dialog("close");
+           if (response == true) {
+           } else {
+               //addErrorMessages(response);
+           }
+       });
+    }
+
+    function ConfirmDistrictTagDeleteCancellick() {
+        $("#ConfirmDistrictTagDeleteDialog").dialog("close");
+    }
+</script>

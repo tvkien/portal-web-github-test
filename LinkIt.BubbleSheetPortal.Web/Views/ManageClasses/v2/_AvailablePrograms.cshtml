@@ -1,0 +1,112 @@
+@model LinkIt.BubbleSheetPortal.Models.Student
+
+<section>
+    <div class="block-border">
+        <div class="block-section-custom form pb-0">
+            <p class="title-large mb-4">Available Programs</p="title-large">
+
+            <div class="last-child">
+                <table id="dataTableProgram" class="datatable table center-first-column" width="100%">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 35px">
+                                Actions
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Program Name
+                            </th>            
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="modal-component-footer d-flex justify-content-center align-items-center" style="margin-left: -1.5rem; margin-right: -1.5rem;">
+                    <button id="btnCloseProgram" type="button" class="btn-red classProgramButton">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    $(function () {
+        var optionsProgram =
+        {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetAvailableProgramsByStudentId")?studentId=@Model.Id',
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            oLanguage: {
+                sSearch: ""
+            },
+            aoColumns: [
+                { sType: 'integer', sName: 'Id', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableProgram'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableProgram').unblock();
+                $('.with-tip').tip();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTableProgram_filter');
+                var elSearchInput = elSearchLabel.find('input');
+                elSearchInput.attr('style', 'padding-left: 32px !important; position: relative;');
+                $('#dataTableProgram_filter').addClass('data-search');
+            }
+        };
+
+        function setIconVisibility(programId) {
+            var addIcon = '<i class="custom-icon fa-solid fa-circle-plus icon-green"></i>';
+            return '<a href="javascript:void(0)" title="Add to student" programId="' + programId + '" class="with-tip program">' + addIcon + '</a>';
+        }
+
+        $("#dataTableProgram").data("options", optionsProgram);
+        initializeDataTable($("#dataTableProgram"));
+    });
+    $('#dataTableProgram').on('click', '.program', function () {
+        var programId = $(this).attr('programId');
+        confirmMessageV2(
+            {
+                message: 'Do you want to add this program to this student?',
+                cbYesBtnFuncName: 'yesRemoveAvailableProgram(' + programId + ')',
+                cbCancelBtnFuncName: 'closeRemoveAvailableProgram()',
+                cbCloseBtnFuncName: 'closeRemoveAvailableProgram()',
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'deleteClassConfirm'
+                    }
+                }
+            }
+        )
+    });
+    function closeRemoveAvailableProgram() {
+        $("#deleteClassConfirm").dialog("close");
+    }
+    function yesRemoveAvailableProgram(programId) {
+        closeRemoveAvailableProgram();
+
+        $.post('@Url.Action("AddProgramToStudent")', { programId: programId, studentId: '@Model.Id' }, function(response) {
+            if (response == true) {
+                ui.dataTableProgram.fnDraw();
+                ui.dataTableStudentProgram.fnDraw();
+                $('.with-tip').tip().hideTip();
+            } else {
+                alert('An error has occured. Please try again.');
+            }
+        });
+    }
+</script>

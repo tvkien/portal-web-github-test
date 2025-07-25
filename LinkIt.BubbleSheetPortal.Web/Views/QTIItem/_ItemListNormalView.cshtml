@@ -1,0 +1,878 @@
+<style type="text/css">
+    tr.even.row_selected td {
+        background-color: #82CAFA !important;
+    }
+
+    tr.odd.row_selected td {
+        background-color: #82CAFA !important;
+    }
+
+    #qtiItemDataTable tbody input[type="checkbox"] {
+        margin: 0;
+        padding: 0;
+        vertical-align: middle;
+    }
+
+    #qtiItemDataTable p {
+        line-height: 20px;
+    }
+
+    sourceObject {
+        border: 1px solid #bebebe;
+        background-color: #eeeeee;
+        cursor: pointer;
+        display: inline-block;
+        min-width: 30px;
+        min-height: 20px;
+    }
+
+        sourceObject[type=text] {
+            padding: 0 0 2px 1px;
+            margin: 2px 0px;
+            background-color: #eeeeee;
+            border: 1px solid #0088cc;
+            color: #1c94c4;
+            font-weight: bold;
+            overflow: hidden;
+            max-width: 600px;
+        }
+
+    destinationObject {
+        display: inline-block;
+        position: relative;
+    }
+
+        destinationObject[type=text] {
+            border-radius: 6px;
+            border: solid 1px #bebebe;
+            padding: 2px;
+            display: inline-block;
+            font-style: italic;
+            min-width: 50px;
+            min-height: 20px;
+            color: #ccc;
+            margin: 2px 0px;
+        }
+
+    .questionItem {
+        max-height: 60px;
+        overflow: hidden;
+        max-width: 700px;
+        line-height: 1.57143em;
+        font-size: 14px;
+        font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook;
+    }
+</style>
+<div style="display: none;">QTIIem\_ItemListNormalView</div>
+<table id="qtiItemDataTable" class="datatable table no-margin" width="100%">
+    <thead>
+        <tr>
+            <th scope="col">
+                Select
+                <input type="checkbox" id="chkAllQtiItem" />
+            </th>
+            <th scope="col" style="text-align: center;">
+                <span class="column-sort">
+                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                </span>
+                Question Order
+            </th>
+            <th scope="col" style="text-align: center;">
+                <span class="column-sort">
+                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                </span>
+                Content
+            </th>
+            <th scope="col" style="text-align: center;">
+                <span class="column-sort">
+                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                </span>
+            </th>
+            <th style="display: none"></th>
+            <th style="display: none"></th>
+            <!--Tooltip-->
+            <th style="display: none"></th>
+            <!--Tooltip-->
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="height: 60px;"></td>
+        </tr>
+    </tbody>
+</table>
+<input type="hidden" id="hdSelectedQtiItemIds" />
+<script type="text/javascript">
+
+    var oTableQtiItem;
+    var firstLoadItemSet = true;
+
+    $(function () {
+
+        LoadQTIItemsToTable();
+
+        $('#qtiItemDataTable tbody').click(function (event) {
+            $(oTableQtiItem.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+
+        });
+
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function (e) {
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+        });
+
+    });
+
+    function LoadQTIItemsToTable() {
+
+        var options = {
+            bServerSide: true,
+            bStateSave: false,
+            bFilter: false,
+            sServerMethod: "POST",
+            bDestroy: true,
+            bProcessing: false,
+            sAjaxSource: '@Url.Action("GetQTIItems", "QTIITem")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "QTIItemGroupID", value: '@ViewBag.QTIItemGroupID' }
+                );
+                aoData.push(
+                   { name: "returnEmptyData", value: firstLoadItemSet }
+                );
+            },
+            iDisplayLength: 100,
+            aoColumns: [
+                { sType: 'string', sName: 'QuestionOrder', bSearchable: true, bSortable: false, bVisible: true, sWidth: '62px' },
+                { sType: 'string', sName: 'QTIItemID', bSearchable: true, bSortable: false, bVisible: true, sWidth: '50px' },
+                { sType: 'string', sName: 'Title', bSearchable: true, bSortable: false, bVisible: true },
+                { sType: 'string', sName: 'VirtualTestCount', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'TestDisplay', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'ToolTip', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'int', sName: 'MaxItemTooltipLength', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'Array', sName: 'TestList', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'int', sName: 'VirtualQuestionCount', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'int', sName: 'VirtualQuestionRubricCount', bSearchable: false, bSortable: false, bVisible: false },
+            ],
+
+            aaSorting: [[0, "asc"]],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(2)', nRow).html(DisplayQTIItemTile(aData[1], aData[2]));
+                $('td:eq(2)', nRow).find("video").each(function () {
+                    this.pause();
+                });
+                $('td:eq(2)', nRow).attr('id', aData[1]);//Add attribute Id for column Item Bank as QTIItemID
+                $('td:eq(2)', nRow).attr("onclick", 'showEditQtiItemPopupIndex(' + aData[1] + ',1)');
+                $('td:eq(2)', nRow).addClass('cursor-pointer');
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[1], aData[3], aData[4], aData[9]));
+                $('td:eq(0)', nRow).closest('tr').attr('id', aData[1]);
+                $('td:eq(0)', nRow).css({'width': '12%'});
+                $('td:eq(1)', nRow).html(aData[0]);
+                $('td:eq(2)', nRow).addClass('with-tip');
+                $('td:eq(2)', nRow).bind({
+                    mouseenter: function () {
+                        displayClassDetailTooltip($(this), aData[5],aData[6]);
+                    },
+                    mouseleave: function () {
+                        $(this).removeClass('with-tip');
+                        $('#tips div:last-child').html('');
+                    }
+                });
+
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                $('#filterSheets').attr("disabled", "disabled");
+                ShowBlock($('#qtiItemDataTable'), 'Loading');
+                return true;
+            },
+            fnDrawCallback: function () {
+                var checkboxes = $('INPUT[name="chkQtiItem"][type=checkbox]');
+                var checkall = true;
+                var checkedCount = 0;
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if (!(checkboxes[i]).checked) {
+                        $('#chkAllQtiItem').removeAttr('checked');
+                        checkall = false;
+                        //break;
+                    } else {
+                        checkedCount++;
+                    }
+                }
+                if (checkedCount > 0) {
+                    if (checkall) {
+                        $('#chkAllQtiItem').attr('checked', 'checked');
+                    }
+                    disableActionButton(false);
+                } else {
+                    $('#chkAllQtiItem').removeAttr('checked');
+                    disableActionButton(true);
+                }
+
+                $('#qtiItemDataTable').unblock();
+                $('#filterSheets').removeAttr("disabled");
+                $('.with-tip').tip();
+
+                var oSettings = $('#qtiItemDataTable').dataTable().fnSettings();
+                if (oSettings != null) {
+                    var iTotalRecords = oSettings.fnRecordsTotal();
+                    if (iTotalRecords == 0) {
+                        $("#imgCreateTestGrey").show();
+                        $("#imgCreateTest").hide();
+                    } else {
+                        $("#imgCreateTestGrey").hide();
+                        $("#imgCreateTest").show();
+                    }
+                }
+
+                LoadImages('#qtiItemDataTable');
+                MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+                //fraction is broken in new line
+                $("#qtiItemDataTable").find('span[class="math-tex"]').each(function (index, value) {
+                    var span = $(value);
+                    //add display:inline-block
+                    span.css('display', 'inline-block');
+                });
+
+                $('partialsequence sourceitem').each(function () {
+                    var sourceItem = $(this);
+                    sourceItem.css({ 'width': sourceItem.attr('width'), 'height': sourceItem.attr('height') });
+                });
+
+                //replace list by ol ( list is generated from xmlcontent )
+
+                //$("#qtiItemDataTable list[liststyletype='decimal']").each(function (index, value) {
+                //    var html = '<ol style="list-style-type:decimal;list-style-position: inside">';
+                //    $(value).find('li').each(function (idx, li) {
+                //        html += $(li).outerHTML();
+                //    });
+                //    html += '</ol>';
+                //    $(value).html(html);
+                //}); // now it will be replaced in server
+
+                $('.ui-widget-overlay').remove();
+                loadContentImageHotSpot('#qtiItemDataTable');
+                loadContentNumberLineHotspot('#qtiItemDataTable');
+                loadContentDragAndDrop('#qtiItemDataTable');
+                $('#file_upload_blackboard').show();
+                return true;
+            },
+        };
+        $("#qtiItemDataTable").data("options", options);
+        initializeDataTable($("#qtiItemDataTable"));
+
+        firstLoadItemSet = false;
+        $('#qtiItemDataTable').dataTable()
+            .rowReordering({
+                sURL: '@Url.Action("UpdateQuestionOrder")',
+                idToMaskLoading: 'qtiItemDataTable',
+                fnAlert: (function (message) {
+                    alert(message);
+                })
+            });
+
+        oTableQtiItem = $('#qtiItemDataTable').dataTable();
+    }
+
+    //function DisplayQTIItemTile(qtiItemID, xmlContent) {
+    //    var title = '';
+    //    $(xmlContent).find('.mainbody, .mainBody').each(function (idx, item) {
+    //        title = $(item).html();
+    //    });
+    //    if (title == null) {
+    //        title = '';
+    //    }
+
+    //    if (title.trim().length == 0) {//sometime there's no class mainbody or mainbody
+    //        title = $(xmlContent).find('itemBody').first().html();
+    //        if (title == null) {
+    //            title = '';
+    //        }
+
+    //        if (title.trim().length == 0) {
+    //            title = $(xmlContent).find('itembody').first().html();
+    //        }
+    //    }
+
+    //    if (title == null) {
+    //        title = '';
+    //    }
+    //    var divTitle = '<div style="max-height:60px; overflow:hidden;max-width:700px;line-height: 20px;" onclick="showEditQtiItemPopupIndex(' + qtiItemID + ',1)">' + title + '</div>';///LNKT-5785
+    //    return divTitle;
+    //}
+
+    function CopyAttributes(from, to) {
+        var attrs = from.prop("attributes");
+        $.each(attrs, function (index, attribute) {
+            to.attr(attribute.name, attribute.value);
+        });
+    }
+
+    function DisplayQTIItemTile(qtiItemID, xmlContent) {
+
+        var title = '';
+        xmlContent = correctInlineChoice(xmlContent);
+
+        $(xmlContent).find('.itemBody, itemBody, itembody').each(function () {
+            var itemBody = $(this);
+            itemBody.find("videolinkit").replaceWith(function () {
+                return $('');
+            });
+            if ($(xmlContent).find("responsedeclaration").attr("partialgrading") == "1") {
+                itemBody.find("sourcetext").each(function () {
+                    if ($(this).attr("pointvalue") > 0) {
+                        $(this).addClass("marker-correct");
+                    }
+                });
+            } else {
+                $(xmlContent).find("correctResponse").each(function () {
+                    var id = $(this).attr("identifier");
+                    itemBody.find("sourcetext[identifier=\"" + id + "\"]").addClass("marker-correct");
+                });
+            }
+
+            title = itemBody.html();
+        });
+
+        //var divTitle = '<div style=" overflow:hidden;max-width:700px;max-height:70px;line-height: 20px;" onclick="showEditQtiItemPopupIndex(' + qtiItemID + ',1)">' + title + '</div>';///LNKT-5785
+        var divTitle = '<div style=" overflow:hidden;max-width:700px;max-height:70px;line-height: 20px;">' + title + '</div>';///LNKT-5785
+
+        return divTitle;
+    }
+
+    jQuery.fn.outerHTML = function (s) {
+        return (s)
+            ? this.before(s).remove()
+            : jQuery("<p>").append(this.eq(0).clone()).html();
+    };
+
+    function DisplayIcons(qtiItemID, qtiItemOrder) {
+        var duplicateIcon = '@Url.Content("~/Content/themes/AssignmentRegrader/images/icon-pencil.png")';
+        var duplicateLink = '<a href="javascript:void(0);" title="Duplicate item" class="with-tip jsDuplicateItem" '
+            + ' qtiItemID="' + qtiItemID + '"'
+            + '><img src ="' + duplicateIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        var tagIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle.png")';
+        var tagIconString = '<a href="javascript:void(0)" onclick="showTagPopup(' + qtiItemID + ')" title="Assign Tag" class="with-tip"><img src="' + tagIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        var standardIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")';
+        var standardIconString = '<a href="javascript:void(0)" onclick="showStandardPopup(' + qtiItemID + ')" title="Assign Standard" class="with-tip"><img src="' + standardIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var deleteIconString = '<a href="javascript:void(0)" title="Delete" qtiItemID="' + qtiItemID + '" qtiItemOrder="' + qtiItemOrder + '" class="with-tip deleteQtiItem"><img src="' + deleteIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        return duplicateLink + tagIconString + standardIconString + deleteIconString;
+    }
+
+    function DisplayVirtualTestIcons(qtiItemID, virtualTestCount, testDisplay) {
+        if (virtualTestCount > 0) {
+            var title = testDisplay.replace(/\, /g, '<br />');// add line break for each item
+            title = 'Used on test(s):' + title;
+
+            var virtualTestIcon = '@Url.Content("~/Content/themes/AssignmentRegrader/images/virtual-question.png")';
+            var virtualTestIconLink = '<a href="javascript:void(0);" class="with-tip" title="' + title + '"'
+                + ' qtiItemID="' + qtiItemID + '"'
+                + '><img src ="' + virtualTestIcon + '" width="16" height="16" style="margin-right: 4px" "></a>';
+
+            return virtualTestIconLink;
+        } else {
+            return '';
+        }
+    }
+
+    function setIconVisibility(qTIItemID, virtualTestCount, testDisplay, rubricQuestionCount) {
+        var checkboxString = '<input type="checkbox" name="chkQtiItem" value="' + qTIItemID + '"  />';
+        //Set checked if the item has been selected before redrawing table
+        if ($('#hdSelectedQtiItemIds').val().indexOf('-' + qTIItemID + '-,') >= 0) {
+            checkboxString = '<input type="checkbox" name="chkQtiItem" value="' + qTIItemID + '" checked />';
+        }
+        var virtualTestIconLink = '';
+        //LNKT-5663:Linkit want to display icon in the leftmost column,not the last comlumn
+        if (virtualTestCount > 0) {
+            //var title = testDisplay.replace(/\, /g, '\n');// add line break for each item
+            var title = testDisplay.replace(/\, /g, '<br />');// add line break for each item
+            // title = htmlEncode(htmlEncode(title));
+            title = 'Used on test(s):<br />' + title;
+            var virtualTestIcon = '@Url.Content("~/Content/themes/AssignmentRegrader/images/virtual-question.png")';
+            virtualTestIconLink = '<a href="javascript:void(0);" class="with-tip" title="' + title + '"'
+                + ' qtiItemID="' + qTIItemID + '"'
+                + '><img src ="' + virtualTestIcon + '" width="16" height="16" style="margin-left: 6px;margin-right:2px; margin-top:0px"></a>';
+        }
+
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a href="@Url.Action("Edit", "TestMaker")?qtiItemId=' + qTIItemID + generateDistrictIdParamsFromURL() + '" title="Edit Item" class="with-tip"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px;margin-left:6px"></a>';
+        var warningString = '';
+        if (rubricQuestionCount > 0) {
+            var warningIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/exclamation-diamond.png")';
+            warningString = '<a href="javascript:void(0);" title="Modification of scoring or points<br> will remove rubric from this question" class="with-tip"><img src="' + warningIcon + '" width="16" height="16" style="margin-right: 4px;margin-left:6px"></a>';
+        }
+        return checkboxString + virtualTestIconLink + editString + warningString;
+
+        //return checkboxString + virtualTestIconLink ;
+    }
+
+    $('#qtiItemDataTable').on('click', '.jsDuplicateItem', function (event) {
+        event.preventDefault();
+        var qtiItemID = $(this).attr('qtiItemID');
+        DuplicateQTIItem(qtiItemID);
+    });
+
+    function DuplicateQTIItem(qtiItemID) {
+        ShowBlock($('#qtiItemDataTable'), 'Loading');
+        var dataTable = $('#qtiItemDataTable').dataTable();
+
+        $.ajax({
+            url: '@Url.Action("DuplicateQTIItem", "QTIItem")',
+            data: { qtiItemID: qtiItemID },
+            type: 'post',
+            cache: false
+        }).done(function () {
+            dataTable.fnDraw();
+        }).error(function (request) {
+            $('#qtiItemDataTable').unblock();
+        });
+    }
+
+    function DuplicateQTIItems() {
+        ShowBlock($('#qtiItemDataTable'), 'Duplicating');
+        disableActionButton(true);//declared in QtiItem/Index.cshtml, the parent view of this view
+        var dataTable = $('#qtiItemDataTable').dataTable();
+        var selectedQtiItemIds = getSelectedQtiItemIds();
+        $('#hdSelectedQtiItemIds').val(getSelectedQtiItemIdsForRemark());
+        $.ajax({
+            url: '@Url.Action("DuplicateQTIItems", "QTIItem")',
+            data: { qtiItemIdString: selectedQtiItemIds },
+            type: 'post',
+            cache: false
+        }).done(function () {
+            dataTable.fnDraw();
+            //disableActionButton(true);//declared in QtiItem/Index.cshtml, the parent view of this view
+            $('#chkAllQtiItem').removeAttr('checked');
+        }).error(function (request) {
+            $('#qtiItemDataTable').unblock();
+        });
+    }
+
+    function DeleteQTIItems() {
+        if (confirm('Do you really want to delete the selected item(s)? This deletion is permanent and cannot be undone. Are you sure to continue?')) {
+            ShowBlock($('#qtiItemDataTable'), 'Loading');
+            var dataTable = $('#qtiItemDataTable').dataTable();
+            var selectedQtiItemIds = getSelectedQtiItemIds();
+            $.ajax({
+                url: '@Url.Action("DeleteQtiItems", "QTIItem")',
+                data: { qtiItemIdString: selectedQtiItemIds },
+                type: 'post',
+                cache: false
+            }).done(function (response) {
+                dataTable.fnDraw();
+                disableActionButton(true);//declared in QtiItem/Index.cshtml, the parent view of this view
+                //$('#chkAllQtiItem').removeAttr('checked');
+                if (response.success == 'true') {
+                    //ui.qtiItemDataTable.fnReloadAjax();
+                } else {
+                    alert(response.errorMessage);
+                }
+            }).error(function (request) {
+                $('#qtiItemDataTable').unblock();
+            });
+        }
+    }
+
+    $('.deleteQtiItem').live('click', function () {
+        var qtiItemID = $(this).attr('qtiItemID');
+
+        if (confirm('Do you really want to delete the selected item?')) {
+            $.post('@Url.Action("DeleteQtiItem")', { qtiItemId: qtiItemID }, function (response) {
+                if (response.success == 'true') {
+                    ui.qtiItemDataTable.fnReloadAjax();
+                } else {
+                    alert(response.errorMessage);
+                }
+            });
+        }
+    });
+
+    $('#chkAllQtiItem').die('click');
+    $('#chkAllQtiItem').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkQtiItem"][type=checkbox]').attr('checked', 'checked');
+            disableActionButton(false);
+        }
+        else {
+            $('INPUT[name="chkQtiItem"][type=checkbox]').removeAttr('checked');
+            disableActionButton(true);
+        }
+    });
+
+    $('INPUT[name="chkQtiItem"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkQtiItem"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllQtiItem').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllQtiItem').attr('checked', 'checked');
+            }
+            disableActionButton(false);
+        }
+        else {
+            $('#chkAllQtiItem').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkQtiItem"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                disableActionButton(false);
+            }
+            else {
+                disableActionButton(true);
+            }
+        }
+    });
+
+    function getSelectedQtiItemIds() {
+        var qtiItemIds = '';
+        $('INPUT[name="chkQtiItem"][type=checkbox]:checked').each(function (i, e) {
+            qtiItemIds += $(e).val() + ',';
+        });
+        return qtiItemIds.substr(0, qtiItemIds.length - 1);
+    }
+
+    function clearCheckAll() {
+        $('#chkAllQtiItem').removeAttr('checked');
+        $('INPUT[name="chkQtiItem"][type=checkbox]:checked').each(function (i, e) {
+            $(e).removeAttr('checked');
+        });
+
+    }
+    function displayClassDetailTooltip(e, data, maxItemTooltipLength) {
+        if (data == null) {
+            data = '';
+        }
+        var width = '100px'; //default
+        if (maxItemTooltipLength <= 50) {
+            width = '200px';
+        }
+        else if (maxItemTooltipLength <= 100) {
+            width = '300px';
+        }
+        else if (maxItemTooltipLength <= 150) {
+            width = '450px';
+        }
+        else if (maxItemTooltipLength <= 200) {
+            width = '600px';
+        }
+        else {
+            width = '800px';
+        }
+
+        $(e).attr('title', '<p style="text-align:left;width:' + width + ';white-space: normal;word-break: break-all">' + data.split('|').join('<br />') + '</p>');
+    }
+</script>
+
+<script>
+    //Tag
+    function showTagPopup() {
+        var selectedQtiItemIds = getSelectedQtiItemIds();
+        $('#hdSelectedQtiItemIds').val(getSelectedQtiItemIdsForRemark());
+        var worker = $('<div />');
+        worker
+            .addClass("dialog TagPopUpDialogCSS")
+            .attr("id", "addTagDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowTagPopup")\?qtiItemIdString=' + selectedQtiItemIds, function () {
+                worker.dialog({
+                    open: function () {
+                        $('#tips').html('');
+                    },
+                    title: $(this).attr("Tag"),
+                    close: function () {
+                        selectStateId_dt = $('#selectState').val();
+                        if (selectStateId_dt == null || selectStateId_dt == '' || selectStateId_dt == 'select' || selectStateId_dt == 'All') {
+                            selectStateId_dt = 0;
+                        }
+                        selectDistrictId_dt = $('#selectDistrict').val();
+                        if (selectDistrictId_dt == null || selectDistrictId_dt == '' || selectDistrictId_dt == 'select' || selectDistrictId_dt == 'All') {
+                            selectDistrictId_dt = '';
+                        }
+                        selectCategoryId_dt = $('#selectCategory').val();
+                        if (selectCategoryId_dt == null || selectCategoryId_dt == '' || selectCategoryId_dt == 'select' || selectCategoryId_dt == 'All') {
+                            selectCategoryId_dt = '';
+                        }
+                        textToSearch_dt = $('#txtTextToSearch').val();
+
+                        $('.ui-widget-overlay').remove();//will be remove when table display completelly
+                        $(this).remove();
+                        $('#tips').html('');
+                        //clearCheckAll();
+                        //disableActionButton(true);
+                        $('#qtiItemDataTable').dataTable().fnDraw(false);
+                    },
+                    modal: false,
+                    width: 980,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    //Build custom alert window message
+    function alertMessageTagPopUp(message) {
+        var oldzIndex = $('.TagPopUpDialogCSS').parent('.ui-dialog').css('z-index');
+        //alert(oldzIndex);
+        $('.TagPopUpDialogCSS').parent('.ui-dialog').css({ 'z-index': '1000' });
+        var overlayHeight = $('.ui-widget-overlay').height();
+        //alert(overlayHeight);
+        //set the height for overlay
+        //alert($(document).height());
+        $('.ui-widget-overlay').height($(document).height());
+
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $('.TagPopUpDialogCSS').parent('.ui-dialog').css({ 'z-index': oldzIndex });//recover the old value
+                    $('.ui-widget-overlay').height($(document).height());
+                    $('.ui-widget-overlay:last').remove();//only the second overlay
+
+                    $(this).remove();
+
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+    function closeAlert() {
+        $('#alertDialog').dialog('close');
+    }
+    //Master Standard
+    function showStandardPopup() {
+
+        var selectedQtiItemIds = getSelectedQtiItemIds();
+        $('#hdSelectedQtiItemIds').val(getSelectedQtiItemIdsForRemark());
+        if (selectedQtiItemIds == null) {
+            return;
+        }
+        if (selectedQtiItemIds.length == 0) {
+            return;
+        }
+        var url = '@Url.Action("ShowStandardPopup")\?qtiItemId=' + selectedQtiItemIds;
+        if (selectedQtiItemIds.indexOf(",", 0) < 0) {
+            //If user has selected only one qti item to assign standard
+            var worker = $('<div />');
+            worker
+                .addClass("dialog StandardPopUpDialogCSS")
+                .attr("id", "addStandardDialog")
+                .appendTo("body")
+                .load(url, function () {
+                    worker.dialog({
+                        open: function () {
+                            $('#tips').html('');
+                        },
+                        title: $(this).attr("Standard"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();//will be remove when table display completelly
+                            selectStateId = $('#selectState').val();
+                            if (selectStateId == null || selectStateId == '' || selectStateId == 'select' || selectStateId == 'All') {
+                                selectStateId = 0;
+                            }
+                            selectSubjectId = $('#selectSubject').val();
+                            if (selectSubjectId == null || selectSubjectId == '' || selectSubjectId == 'select' || selectSubjectId == 'All') {
+                                selectSubjectId = '';
+                            }
+                            selectGradeId = $('#selectGrade').val();
+                            if (selectGradeId == null || selectGradeId == '' || selectGradeId == 'select' || selectGradeId == 'All') {
+                                selectGradeId = '';
+                            }
+
+                            $(this).remove();
+                            $('#tips').html('');
+                            //clearCheckAll();
+                            //disableActionButton(true);
+                            $('#qtiItemDataTable').dataTable().fnDraw(false);
+                        },
+                        modal: false,
+                        width: 905,
+                        resizable: false
+                    });
+                });
+        }
+        else {
+            //If user has selected more than one qti item to assign standard
+            var worker = $('<div />');
+            worker
+                .addClass("dialog StandardPopUpDialogCSS")
+                .attr("id", "addStandardDialog")
+                .appendTo("body")
+                .load('@Url.Action("ShowStandardPopupForManyQtiItem")\?qtiItemIdString=' + selectedQtiItemIds, function () {
+                    worker.dialog({
+                        open: function () {
+                            $('#tips').html('');
+                        },
+                        title: $(this).attr("Standard"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();//will be remove when table display completelly
+                            selectStateId = $('#selectState').val();
+                            if (selectStateId == null || selectStateId == '' || selectStateId == 'select' || selectStateId == 'All') {
+                                selectStateId = 0;
+                            }
+                            selectSubjectId = $('#selectSubject').val();
+                            if (selectSubjectId == null || selectSubjectId == '' || selectSubjectId == 'select' || selectSubjectId == 'All') {
+                                selectSubjectId = '';
+                            }
+                            selectGradeId = $('#selectGrade').val();
+                            if (selectGradeId == null || selectGradeId == '' || selectGradeId == 'select' || selectGradeId == 'All') {
+                                selectGradeId = '';
+                            }
+                            $(this).remove();
+                            $('#tips').html('');
+                            //clearCheckAll();
+                            //disableActionButton(true);
+                            $('#qtiItemDataTable').dataTable().fnDraw(false);
+                        },
+                        modal: false,
+                        width: 905,
+                        resizable: false
+                    });
+                });
+            }
+            showModalDialogBG();
+        }
+
+        //Build custom alert window message
+        function alertMessageStandardPopUp(message) {
+            var oldzIndex = $('.StandardPopUpDialogCSS').parent('.ui-dialog').css('z-index');
+            $('.StandardPopUpDialogCSS').parent('.ui-dialog').css({ 'z-index': '1000' });
+            $('.ui-widget-overlay').height($(document).height());
+
+            var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+            var strHtml = '<section class="grid_5">' +
+                '<div class="block-border" style="width: ' + 400 + 'px;">' +
+                '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+                '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+            $("<div></div>")
+                .html(strHtml)
+                .addClass("dialog")
+                .attr("id", "alertDialog")
+                .appendTo("body")
+                .dialog({
+                    close: function () {
+                        $('.StandardPopUpDialogCSS').parent('.ui-dialog').css({ 'z-index': oldzIndex });//recover the old value
+                        $('.ui-widget-overlay').height($(document).height());
+                        $('.ui-widget-overlay:last').remove();//only the second overlay
+
+                        $(this).remove();
+                        //clearCheckAll();
+
+                    },
+                    modal: false,
+                    width: 460,
+                    maxheight: 500,
+                    resizable: false,
+                });
+
+            showModalDialogBG();
+        }
+</script>
+<script>
+    //Passage
+    function showPassagePopup() {
+        var selectedQtiItemIds = getSelectedQtiItemIds();
+        $('#hdSelectedQtiItemIds').val(getSelectedQtiItemIdsForRemark());
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassagePopUpDialogCSS")
+            .attr("id", "addPassageDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowPassagePopupForManyQtiItem")\?selectedQtiItemId=' + selectedQtiItemIds, function () {
+                worker.dialog({
+                    open: function () {
+                        $('#tips').html('');
+                    },
+                    title: $(this).attr("Standard"),
+                    close: function () {
+                        $('.ui-widget-overlay').remove();//will be remove when table display completelly
+                        $(this).remove();
+                        $('#tips').html('');
+                        //$('#chkAllQtiItem').removeAttr('checked');
+                        //clearCheckAll();
+                        //disableActionButton(true);
+                        //reload qtiItem list
+                        $('#qtiItemDataTable').dataTable().fnDraw(false);
+                    },
+                    modal: false,
+                    width: 1084,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+</script>
+<script>
+    function getSelectedQtiItemIdsForRemark() {
+        var qtiItemIds = '';
+        $('INPUT[name="chkQtiItem"][type=checkbox]:checked').each(function (i, e) {
+            qtiItemIds += '-' + $(e).val() + '-,';
+        });
+        return qtiItemIds;
+    }
+</script>
+
+<script>
+    //Copy/Move Item
+    function showCopyMoveItemPopup() {
+        var selectedQtiItemIds = getSelectedQtiItemIds();
+        $('#hdSelectedQtiItemIds').val(getSelectedQtiItemIdsForRemark());
+        var worker = $('<div />');
+        worker
+            .addClass("dialog CopyMoveItemPopUpDialogCSS")
+            .attr("id", "copyMoveItemDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowCopyMoveItemPopup")\?qtiItemIdString=' + selectedQtiItemIds, function () {
+                worker.dialog({
+                    open: function () {
+                        $('#tips').html('');
+                    },
+                    title: $(this).attr("Standard"),
+                    close: function () {
+                        $('.ui-widget-overlay').remove();//will be remove when table display completelly
+                        $(this).remove();
+                        $('#tips').html('');
+                        //$('#chkAllQtiItem').removeAttr('checked');
+                        //clearCheckAll();
+                        //disableActionButton(true);
+                        //reload qtiItem list
+                        $('#qtiItemDataTable').dataTable().fnDraw(false);
+                    },
+                    modal: false,
+                    width: 925,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+</script>

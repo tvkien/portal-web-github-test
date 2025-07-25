@@ -1,0 +1,382 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers;
+
+@{
+    ViewBag.Title = "Item List View";
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleUpload3pItemBundle()
+<script type="text/ecmascript">
+    if ($.browser.msie  && parseInt($.browser.version, 10) == 9) {
+        $("body").addClass("ie9");
+    }
+</script>
+
+
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor_utils.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor_mkV2.js")"></script>
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script type="text/javascript" src="@Url.Content("~/Scripts/qtiItemLoadMedia.js")"></script>
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleUpload3pItemBundle2()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptUpload3pItemBankBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptUpload3pItemBankBundle2()
+
+<link href="@BundleHelper.Version("~/Content/css/v2/teacherReview.css")" rel="stylesheet" />
+<link href="@Url.Content("~/Content/css/v2/upload3pItemBank-ItemListView.css")" rel="stylesheet" type="text/css" />
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content block-24 form" id="divQtiiTemListView">
+                <h1 class="">
+                    @if (ViewBag.FileName != null)
+                    {@ViewBag.FileName}
+                </h1>
+                <table id="qti3pItemDataTable" class="datatable table no-margin" width="100%">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="text-align: center;">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Question Order
+                            </th>
+                            <th scope="col" style="text-align: center;">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                File Name
+                            </th>
+                            <th scope="col" style="text-align: center;">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Content
+                            </th>
+                            <th style="display: none"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="height: 60px;"></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="d-flex flex-row justify-content-end">
+                    <button id="btnCancelQtiItem" type="button" class="grey" tabindex="18" style="border: none">Cancel</button>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+
+    var oTableQtiItem;
+
+    $(function () {
+
+        LoadQTIItemsToTable();
+
+        $('#qti3pItemDataTable tbody').click(function (event) {
+            $(oTableQtiItem.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+
+        });
+
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function (e) {
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+        });
+
+        $('#btnCancelQtiItem').click(function () {
+            var link = '/Upload3pItemBank';
+            link = encodeURI(link);
+            window.location.href = link;
+        });
+        breadcrumbDetailPage('.write', '#Upload3pItemBank');
+    });
+
+    function LoadQTIItemsToTable() {
+
+        var options = {
+            bServerSide: true,
+            bStateSave: false,
+            bFilter: false,
+            sServerMethod: "POST",
+            bDestroy: true,
+            bProcessing: false,
+            sAjaxSource: '@Url.Action("GetQTI3pItems")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "dataFileUploadLogId", value: '@ViewBag.DataFileUploadLogId' }
+                );
+            },
+            iDisplayLength: 10,
+            aoColumns: [
+                { sType: 'string', sName: 'QuestionOrder', bSearchable: false, bSortable: false, sWidth: '55px' },
+                { sType: 'string', sName: 'ResourceFileName', bSearchable: false, bSortable: false, sWidth: '150px' },
+                { sType: 'string', sName: 'Content', bSearchable: false, bSortable: false },
+                { sType: 'integer', sName: 'QTI3pItemId', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+
+            aaSorting: [[0, "asc"]],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(2)', nRow).html(DisplayQTIItemTile(aData[2]));
+                $('td:eq(2)', nRow).find("video").each(function () {
+                    this.pause();
+                });
+                //$('td:eq(2)', nRow).attr('id', aData[1]);//Add attribute Id for column Item Bank as QTIItemID
+                $('td:eq(2)', nRow).attr("onclick", 'ShowQti3pItemDetail(' + aData[3] + ',1)');
+                $('td:eq(2)', nRow).addClass("cursor-pointer");
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                //ShowBlock($('#qti3pItemDataTable'), 'Loading');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#qti3pItemDataTable').unblock();
+                LoadImages('#qti3pItemDataTable');
+                MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+                //fraction is broken in new line
+                $("#qti3pItemDataTable").find('span[class="math-tex"]').each(function (index, value) {
+                    var span = $(value);
+                    //add display:inline-block
+                    span.css('display', 'inline-block');
+                });
+
+                $('partialsequence sourceitem').each(function () {
+                    var sourceItem = $(this);
+                    sourceItem.css({ 'width': sourceItem.attr('width'), 'height': sourceItem.attr('height') });
+                });
+
+                $('.ui-widget-overlay').remove();
+                loadContentImageHotSpot('#qti3pItemDataTable');
+                loadContentNumberLineHotspot('#qti3pItemDataTable');
+                loadContentDragAndDrop('#qti3pItemDataTable');
+                return true;
+            },
+        };
+        $("#qti3pItemDataTable").data("options", options);
+        initializeDataTable($("#qti3pItemDataTable"));
+
+        oTableQtiItem = $('#qti3pItemDataTable').dataTable();
+    }
+
+
+    function CopyAttributes(from, to) {
+        var attrs = from.prop("attributes");
+        $.each(attrs, function (index, attribute) {
+            to.attr(attribute.name, attribute.value);
+        });
+    }
+
+    function DisplayQTIItemTile(xmlContent) {
+
+        var title = '';
+        xmlContent = correctInlineChoice(xmlContent);
+
+        $(xmlContent).find('.itemBody, itemBody, itembody').each(function () {
+            var itemBody = $(this);
+            itemBody.find("videolinkit").replaceWith(function () {
+                return $('');
+            });
+            if ($(xmlContent).find("responsedeclaration").attr("partialgrading") == "1") {
+                itemBody.find("sourcetext").each(function () {
+                    if ($(this).attr("pointvalue") > 0) {
+                        $(this).addClass("marker-correct");
+                    }
+                });
+            } else {
+                $(xmlContent).find("correctResponse").each(function () {
+                    var id = $(this).attr("identifier");
+                    itemBody.find("sourcetext[identifier=\"" + id + "\"]").addClass("marker-correct");
+                });
+            }
+
+            title = itemBody.html();
+        });
+
+        //var divTitle = '<div style=" overflow:hidden;max-width:700px;max-height:70px;line-height: 20px;" onclick="showEditQtiItemPopupIndex(' + qtiItemID + ',1)">' + title + '</div>';///LNKT-5785
+        var divTitle = '<div style=" overflow:hidden;max-width:700px;max-height:70px;line-height: 20px;">' + title + '</div>';///LNKT-5785
+
+        return divTitle;
+    }
+
+    jQuery.fn.outerHTML = function (s) {
+        return (s)
+            ? this.before(s).remove()
+            : jQuery("<p>").append(this.eq(0).clone()).html();
+    };
+
+    function displayClassDetailTooltip(e, data, maxItemTooltipLength) {
+        if (data == null) {
+            data = '';
+        }
+        var width = '100px'; //default
+        if (maxItemTooltipLength <= 50) {
+            width = '200px';
+        }
+        else if (maxItemTooltipLength <= 100) {
+            width = '300px';
+        }
+        else if (maxItemTooltipLength <= 150) {
+            width = '450px';
+        }
+        else if (maxItemTooltipLength <= 200) {
+            width = '600px';
+        }
+        else {
+            width = '800px';
+        }
+
+        $(e).attr('title', '<p style="text-align:left;width:' + width + ';white-space: normal;word-break: break-all">' + data.split('|').join('<br />') + '</p>');
+    }
+</script>
+
+<script>
+    var isShowQti3pItemDetail = false;
+    function ShowQti3pItemDetail(qti3pItemId, showPassage) {
+        //open dialog
+        if (isShowQti3pItemDetail == true) return;
+        isShowQti3pItemDetail = true;
+        var worker = $('<div />');
+        worker
+            .addClass("dialog")
+            .attr("id", "qti3pQuestionList")
+            .appendTo("body")
+            .load('@Url.Action("ShowEditQtiItemItem","ItemBank")\?qtiItemId=0' +  '&showPassage=1' + '&qti3pItemIdUploaded=' + qti3pItemId, function () {
+                worker.dialog({
+                    title: $(this).attr("Standard"),
+                    open: function () {
+                        AdjustQtiItemDetail();//declared in _Qti3pItemDetail.cshtml
+
+                        var qtiItemHTML = $('#divQtiItemDetail ').html();
+                        qtiItemHTML = qtiItemHTML.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+                        $('#divQtiItemDetail ').html(qtiItemHTML);
+                        loadContentImageHotSpot('#divQtiItemDetail ');
+                        loadContentDragAndDrop('#divQtiItemDetail ');
+
+                        $('#divQtiItemDetail ').find('video').trigger('play');
+
+                        loadContentNumberLineHotspot('#divQtiItemDetail ');
+                        loadDivITemDetailPassage()
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+                        isShowQti3pItemDetail = false;
+                    },
+                    modal: false,
+                    width: 620,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    //Passage
+    function showPassagePopup() {
+        var selectedQtiItemIds = getSelectedQtiItemIds();
+        console.log('selectedQtiItemIds', selectedQtiItemIds)
+        $('#hdSelectedQtiItemIds').val(getSelectedQtiItemIdsForRemark());
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassagePopUpDialogCSS")
+            .attr("id", "addPassageDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowPassagePopupForManyQtiItem")\?selectedQtiItemId=' + selectedQtiItemIds, function () {
+                worker.dialog({
+                    open: function () {
+                        $('#tips').html('');
+                    },
+                    title: $(this).attr("Standard"),
+                    close: function () {
+                        $('.ui-widget-overlay').remove();//will be remove when table display completelly
+                        $(this).remove();
+                        $('#tips').html('');
+                        //$('#chkAllQtiItem').removeAttr('checked');
+                        //clearCheckAll();
+                        //disableActionButton(true);
+                        //reload qtiItem list
+                        $('#qti3pItemDataTable').dataTable().fnDraw(false);
+                    },
+                    modal: false,
+                    width: 1084,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+
+    function LoadImages(containerSelector) {
+        $(containerSelector).find("img").each(function () {
+            var image = $(this);
+            var imageUrl = image.attr("src");
+            if (IsNullOrEmpty(imageUrl)) {
+                imageUrl = image.attr("source");
+            }
+
+            if (IsNullOrEmpty(imageUrl)) imageUrl = '@Url.Content("~/Content/images/emptybg.png")';
+
+            var testItemMediaPath = $('#hidTestItemMediaPath').val();
+            var isLoadImage = imageUrl.indexOf(testItemMediaPath) != -1;
+
+            if (isLoadImage) imageUrl = imageUrl.replace(testItemMediaPath, '');
+
+            if (imageUrl.charAt(0) == '/') imageUrl = imageUrl.substring(1);
+
+            image.attr("source", '');
+            image.attr("src", imageUrl);
+            if (imageUrl.toLowerCase().indexOf("http") == 0) return;
+            if (((imageUrl && imageUrl.toLowerCase().indexOf("itemset") >= 0) || isLoadImage)
+                && imageUrl.toLowerCase().indexOf("getviewreferenceimg") < 0) {
+                imageUrl = 'TestAssignmentRegrader/GetViewReferenceImg?imgPath=' + imageUrl;
+                imageUrl = imageUrl + "&timestamp=" + new Date().getTime();
+                image.attr("src", imageUrl);
+            }
+        });
+
+        //ResizeImagesBaseOnPercent('#qti3pItemDataTable');
+    }
+    function IsNullOrEmpty(value) {
+        return typeof (value) === "undefined" || value == null || $.trim(value) == '';
+    }
+
+    function loadDivITemDetailPassage() {
+        $('#divQtiItemDetailPassage > div').css('float', 'none');
+        var elDivDetailPassag = $('#divQtiItemDetailPassage');
+        var elButton = elDivDetailPassag.find('button').addClass('btn-blue');
+        elButton.css('margin', '16px 0 0 0');
+        elButton.css('text-align', 'left');
+
+        $('#glossaryMessage .glossary-content').css('padding', '16px 0 0 0');
+    }
+</script>

@@ -1,0 +1,137 @@
+
+<style>
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+     .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .sticky {
+        padding-left: 500px;
+    }
+
+    [aria-labelledby=ui-dialog-title-PopupTLDSRecall] div {
+        z-index: auto !important;
+    }
+
+    .custom-reason-popup {
+        padding: 0;
+    }
+
+    .custom-reason-popup section {
+        width: 100%;
+        margin: 0;
+    }
+
+    .custom-reason-popup .block-border {
+        margin: auto;
+    }
+</style>
+<section class="m-0">
+    <div class="block-border" id="divRecallProfile">
+        <div class="block-content form bubbleSheetSelector p-4">
+            <h1 class="title-large ps-0">Recall Statement</h1>
+            <ul id="recall-profile-success-message" class="message success u-m-t-20" style="display: none">
+                <li>Profile has been recalled</li>
+            </ul>
+            <ul id="recall-profile-error-message" class="message error u-m-t-20" style="display: none">
+                <li> </li>
+            </ul>
+            <div class="mb-3">By clicking recall you will get this TLDS back from the School and will be able to edit so the Statement can be amended and resubmitted.</div>
+            <div>
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0 me-2" style="width: 35%">Submitted Student:</div>
+                    <div class="">@ViewBag.SubmittedStudent</div>
+                </div>
+                <div class="d-flex">
+                    <div class="flex-shrink-0 me-2" style="width: 35%">Enter reason:</div>
+                    <div class="">
+                        <textarea id="Reason" cols="35" rows="5" class="w-100"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-component-footer">
+            <div slot="footer">
+                <button type="button" id="btnCancelRecallProfile" onclick="closeRecallDialog()">Cancel</button>
+                <button type="button" id="btnCallProfile" onclick="recallProfile(@ViewBag.ProfileId)">Recall</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    function recallProfile(profileId) {
+        var reason = $('#Reason').val();
+        if (reason.trim().length == 0) {
+            CustomAlert('Please enter reason');
+            $('.ui-dialog').last().addClass('custom-reason-popup');
+            return;
+        }
+
+        ShowBlock($('#divRecallProfile'), 'Recall');
+        $.ajax({
+            type: 'POST',
+            url: '@Url.Action("RecallTLDS", "TLDSManage")',
+            data: { profileId: profileId, reason: encodeURIComponent(reason) },
+            dataType: 'json',
+            success: function (data) {
+                if (data.Success) {
+                    $('#btnCallProfile').prop('disabled', true);
+                    $('#divRecallProfile').unblock();
+                    $('#recall-profile-success-message').show();
+                    setTimeout(function () {
+                        closeRecallDialog();
+                        refreshDataTable();
+                    }, 3000);
+                } else {
+                    $('#recall-profile-error-message').show();
+                    $('#recall-profile-error-message').html('<li>' + data.Error + '</li>');
+                    $('#divRecallProfile').unblock();
+                }
+            }
+        });
+    }
+
+    function closeRecallDialog() {
+        $('#PopupTLDSRecall').dialog("close");
+    }
+
+    
+</script>
+

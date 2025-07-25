@@ -1,0 +1,361 @@
+@using LinkIt.BubbleSheetPortal.Models.AuthorizeItemLib
+@using LinkIt.BubbleSheetPortal.Common.DataFileUpload
+@using LinkIt.BubbleSheetPortal.Models
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testdesign, "Item Library");
+    Layout = "~/Views/Shared/_Layout_v2.cshtml";
+
+    var xliFunctionAccess = (XliFunctionAccess)ViewBag.XLIFunctionAccess;
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleItemsFromLibraryBundle()
+
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script type="text/javascript">
+    // Optimize: data here for the first time load pop up Add Item from Library
+    var virtualTestUrl = {
+        qTI3PSubjectDataUrl: '@Url.Action("GetQTI3PSubject", "ItemBank")',
+        criteriaGradesDataUrl: '@Url.Action("GetCriteriaGrades", "ItemBank")',
+        criteriaQTI3PDOKDataUrl: '@Url.Action("GetCriteriaQTI3PDOK", "ItemBank")',
+        qTI3PDifficultyDataUrl: '@Url.Action("GetQTI3PDifficulty", "ItemBank")',
+        qTI3PBloomsDataUrl: '@Url.Action("GetQTI3PBlooms", "ItemBank")',
+        qTI3PPassageNumberDataUrl: '@Url.Action("GetQTI3PPassageNumber", "ItemBank")',
+        passageGradesDataUrl: '@Url.Action("GetPassageGrades", "ItemBank")',
+        assignedGradesForPassagesDataUrl: '@Url.Action("GetQTI3PPassageSubject", "ItemBank")',
+        qtiPassageSubjectsDataUrl: '@Url.Action("GetQtiPassageSubjects", "Passage")',
+        qTI3PWordCountDataUrl: '@Url.Action("GetQTI3PWordCount", "ItemBank")',
+        qTI3PTextTypeDataUrl: '@Url.Action("GetQTI3PTextType", "ItemBank")',
+        qTI3PTextSubTypeDataUrl: '@Url.Action("GetQTI3PTextSubType", "ItemBank")',
+        qTI3PFleschKincaidDataUrl: '@Url.Action("GetQTI3PFleschKincaid", "ItemBank")',
+        itemBanksPersonalDataUrl: '@Url.Action("GetItemBanksPersonal", "ItemBank")',
+        districtCategoryDataUrl: '@Url.Action("GetDistrictCategory", "ItemTag")',
+        personalStateStandardDataUrl: '@Url.Action("GetStateStandardWithCCForFilter", "PopulateStateDistrict")/?qti3p=false&personal=true',
+        getItemDistrict: '@Url.Action("GetItemDistrict", "ItemBank")',
+        getItemBanksPersonalAndDistrict: '@Url.Action("GetItemBanksPersonalAndDistrict", "ItemBank")',
+        loadListItemsFromLibraryUpload: '@Url.Action("LoadListItemsFromLibraryUpload", "VirtualTest")',
+        loadStandardFilter: '@Url.Action("LoadStandardFilter","ItemBank")',
+        checkQtiItemExists: '@Url.Action("CheckQtiItemExists", "ItemBank")',
+        showEditQtiItemItem: '@Url.Action("ShowEditQtiItemItem","ItemBank")'
+    };
+</script>
+
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor.js"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_functions.js"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_utils.js"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_mkV2.js"></script>
+
+<script src="@Url.Content("~/Scripts/Texttospeech/responsivevoice.js")"></script>
+<script src="@Url.Content("~/Scripts/Texttospeech/text-to-speech-plugins.js")"></script>
+<script src="@Url.Content("/Scripts/qtiItemLoadMedia.js")"></script>
+<script src="@Url.Content("/Scripts/imagesloaded.pkgd.js")"></script>
+<script src="@Url.Content("/Scripts/PrintTest/PrintTest.js")"></script>
+<script src="@Url.Content("/Scripts/knockout-3.0.0.js")"></script>
+<script src="@Url.Content("/Scripts/jquery.coolfieldset.js")"></script>
+<script src="@Url.Content("/Scripts/ItemLibrary/script.js")"></script>
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleItemsFromLibraryBundleV2()
+<link href="@BundleHelper.Version("~/Content/css/v2/items-from-library-v2.css")" rel="stylesheet" />
+
+<style type="text/css">
+    .ui-widget-header {
+        top: 37px !important;
+    }
+
+    #portal-v2-containter .table-wrapper-scroll-import-item {
+        max-height: 482px !important;
+        min-height: 482px !important;
+        overflow: auto;
+        border-top: 1px solid var(--borderColor);
+    }
+
+        #portal-v2-containter .table-wrapper-scroll-import-item .dataTables_empty {
+            height: 444px;
+        }
+
+    #btnEditPassageDetail {
+        display: none !important;
+        cursor: default;
+        pointer-events: none;
+    }
+
+    #btnCloseUserClickPassageDetail {
+        border: 2px solid var(--red) !important;
+        color: var(--white);
+        background-color: var(--red) !important;
+        padding: 11px 32px !important;
+    }
+
+        #btnCloseUserClickPassageDetail:hover {
+            background-color: var(--red2) !important;
+            border-color: var(--red2) !important;
+            color: var(--red3) !important;
+        }
+
+    #breadcrumbHeader {
+        margin-top: 0;
+    }
+</style>
+
+<input type="hidden" id="isInitItemBankData" value="false" />
+<input type="hidden" id="isSearched" value="false" />
+<article class="container_12 ItemsFromLibraryV2">
+    <div class="block-border form" id="divItemFromLibrary">
+        <div id="ItemFromLibraryFilterID" class="bubbleSheetSelector">
+            <div class="block-section-custom mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h3 class="h3 mb-0">Item Library</h3>
+                </div>
+
+                <div class="d-flex align-items-center mb-4 itemLibraryFilter">
+                    <div class="itemLibraryFilter-result">
+                        <div class="form-check form-check-inline mb-0 form-check-none-bg ps-0">
+                            <input id="radioPersonalItemLibrary" type="checkbox" name="ItemLibrarySelection" checked="checked" />
+                            <label class="form-check-label text-bold" for="radioPersonalItemLibrary">Personal Item Library</label>
+                        </div>
+
+                        @if (xliFunctionAccess.DistrictLibraryAccessible)
+                        {
+                            <div class="form-check form-check-inline mb-0 form-check-none-bg">
+                                <input id="radioDistrictItemLibrary" type="checkbox" name="ItemLibrarySelection" />
+                                <label class="form-check-label text-bold" for="radioDistrictItemLibrary">@LabelHelper.DistrictLabel Item Library</label>
+                            </div>
+                        }
+                        @if (xliFunctionAccess.CerticaLibraryAccessible || xliFunctionAccess.ProgressLibraryAccessible)
+                        {
+                            <div class="form-check form-check-inline mb-0 form-check-none-bg">
+                                <input id="radioNWEAItemLibrary" type="checkbox" name="ItemLibrarySelection" />
+                                <label class="form-check-label text-bold" for="radioNWEAItemLibrary" id='lblRadioNWEAItemLibrary'>Third-Party Libraries </label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0 form-check-none-bg">
+                                <select id="selectSource" style="min-width: 150px; display: none"></select>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="block-section-custom">
+                <div class="itemLibraryTab mb-4">
+                    <ul class="itemLibraryTab-list nav-v2 nav nav-pills mb-4">
+                        <li class="nav-item itemLibraryTab-list-item active" data-tab="data-item-criteria-new">
+                            <a href="javascript:void(0)" class="nav-link">Standard/Item Criteria</a>
+                        </li>
+                        <li class="nav-item itemLibraryTab-list-item" data-tab="data-passage-criteria">
+                            <a href="javascript:void(0)" class="nav-link">Passage Criteria</a>
+                        </li>
+                    </ul>
+                    <div class="itemLibraryTab-content">
+                        @Html.Partial("v2/_ItemFromLibraryFilterNew")
+                        <div id="data-passage-criteria" class="itemLibraryTab-pane">
+                            <div class="qtiItemSelector p-0" id="divPassageCriteria">
+                                <div class="row g-3">
+                                    <div class="col-2 mb-3" id="lblPassageName">
+                                        <label>Name</label>
+                                        <input type="text" id="txtRefObjectTitle" class="full-width" />
+                                        <div class="block-text-name w-100">
+                                            <select id="selectPassageTitle" class="full-width">
+                                                <option value="">All</option>
+                                            </select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-2 mb-3" id="lblPassageNumberFilter">
+                                        <label>Passage Number</label>
+                                        <select id="selectPassageNumber" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectPassageGradeLabel">
+                                        <label>@LabelHelper.TestGrade</label>
+                                        <select id="selectPassageGrade" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                        <select id="selectPassageGradeNew" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectPassageSubjectLabel">
+                                        <label>@LabelHelper.Subject</label>
+                                        <select id="selectPassageSubject" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                        <div class="block-text-name w-100">
+                                            <select id="selectPassageSubjectNew" class="full-width">
+                                                <option value="">All</option>
+                                            </select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-2 mb-3" id="lblWordCountFilter">
+                                        <label>Word Count</label>
+                                        <select id="selectWordCount" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-2 mb-3" id="selectTextTypeLabel">
+                                        <label>Text Type</label>
+                                        <div class="block-text-name w-100">
+                                            <select id="selectTextType" class="full-width">
+                                                <option value="">All</option>
+                                            </select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectPassageTypeLabel">
+                                        <label>Passage Type</label>
+                                        <select id="selectPassageType" class="full-width"></select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectPassageGenreLabel">
+                                        <label>Genre </label>
+                                        <select id="selectPassageGenre" class="full-width"></select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectTextSubTypeLabel">
+                                        <label>Text Sub Type</label>
+                                        <div class="block-text-name w-100">
+                                            <select id="selectTextSubType" class="full-width">
+                                                <option value="">All</option>
+                                            </select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectFleschKincaidIdsLabel">
+                                        <label>Flesch Kincaid</label>
+                                        <select id="selectFleschKincaidIds" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectQTI3pPassageLanguageLabel">
+                                        <label>Language</label>
+                                        <select id="selectQTI3pPassageLanguage" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectQTI3pPassageLabelLexileMin">
+                                        <label>Lexile Min</label>
+                                        <input id="selectQTI3pPassageLexileMin" type="text" class="full-width" maxlength="10">
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectQTI3pPassageLabelLexileMax">
+                                        <label>Lexile Max</label>
+                                        <input id="selectQTI3pPassageLexileMax" type="text" class="full-width" maxlength="10">
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                        <div div style="text-align: right;">
+                                            <button id="clearFilterPassage" class="btn btn-link ms-0" type="button">Reset <i class="fa-solid fa-arrow-rotate-right ms-1"></i></button>
+                                            <button id="searchByPassage" type="submit" class="btn-red ms-0">Search by Passage</button>
+                                        </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div id="divResult" class="row g-3">
+                    <div id="qti3pItemResult" class="col-12">
+                        @Html.Partial("v2/_ListItemsFromLibrary")
+                    </div>
+                    <div id="qti3pItemUploadResult" class="col-12" style="display: none">
+                    </div>
+                    <div id="qtiItemResult" class="col-12">
+                        @Html.Partial("v2/_ListItemsFromLibraryNew")
+                    </div>
+                    <div id="passageResult" class="col-12" style="display: none;">
+                        @Html.Partial("v2/_ListItemsPassageNew")
+                    </div>
+                    <div id="passage3pResult" class="col-12" style="display: none;">
+                        @Html.Partial("v2/_ListItemsPassage")
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="divTempContent"></div>
+</article>
+
+@Html.Action("LoadImportItemFromLibraryScript", "ItemBank")
+
+<script type="text/javascript">
+    var createdByPassage = 0;
+    var isPublisher = false;
+    $(document).ready(function () {
+        createdByPassage = '@ViewBag.UserId' || 0;
+        isPublisher = '@ViewBag.IsPublisher';
+        removeInputCheckV2();
+        initCompleteDataTable1();
+
+        window.onload = function () {
+            $(".itemLibraryTab-list-item").on("click", function () {
+                marqueeInput();
+            })
+
+            $('input[name="ItemLibrarySelection"]').click(function () {
+                clearMarqueeInput();
+            })
+            $("#selectSource").change(function () {
+                marqueeInput();
+                clearMarqueeInput();
+                if ($('#selectTextSubType').val() != -1) {
+                    $('#selectTextSubType').val('')
+                }
+            })
+        }
+
+        $("#clearFilterPassage").click(function () {
+            clearMarqueeInput();
+            $('#selectQTI3pPassageLexileMin').val('');
+            $('#selectQTI3pPassageLexileMax').val('');
+        });
+    })
+
+    function initCompleteDataTable1() {
+        $('#dataTable1').on('init.dt', function () {
+            var tableEl = $('#dataTable1')[0];
+            var wrapper = document.createElement('div');
+            wrapper.classList.add('table-wrapper-scroll');
+            wrapper.classList.add('table-wrapper-scroll-import-item');
+            tableEl.parentNode.insertBefore(wrapper, tableEl);
+            wrapper.appendChild(tableEl);
+        });
+    }
+
+    function removeInputCheckV2() {
+        $('.itemLibraryFilter input[type="checkbox"]').change(function () {
+            if ($('.itemLibraryFilter input[type="checkbox"]').hasClass('input-checked-v2')) {
+                $('.itemLibraryFilter input[type="checkbox"]').removeClass('input-checked-v2');
+            }
+        })
+    }
+
+    function marqueeInput() {
+        if ($('#selectTextTypeLabel .overlay.animation-text').length == 0) {
+            $('#selectTextType').marquee();
+        }
+
+        if ($('#selectTextSubTypeLabel .overlay.animation-text').length == 0) {
+            $('#selectTextSubType').marquee();
+        }
+
+        if ($('#selectPassageSubjectLabel .overlay.animation-text').length == 0) {
+            $('#selectPassageSubjectNew').marquee();
+        }
+
+        if ($('#lblPassageName .overlay.animation-text').length == 0) {
+            $('#selectPassageTitle').marquee();
+        }
+    }
+</script>

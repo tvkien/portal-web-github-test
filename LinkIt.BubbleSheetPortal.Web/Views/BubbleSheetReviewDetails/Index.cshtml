@@ -1,0 +1,328 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.BubbleSheetReviewDetailsViewModel
+
+@{
+    ViewBag.Title = "Bubble Sheet Details";
+}
+
+<script type="text/javascript" src="../../Scripts/manualentry.js"></script>
+
+@section stylesheet {
+    <link rel="stylesheet" href="/Content/css/vue-components/vue-modal.css">
+    <link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/BubbleSheetClassReview.css">
+    <link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/Common.css">
+}
+
+<style>
+.student-active td {
+    background-color: blanchedalmond !important;
+}
+</style>
+
+<div class="container_12 u-m-t-20">
+    <div class="grid_12">
+        <div class="fleft u-w-p-50">
+            <ul class="u-clearfix">
+                <li class="fleft">
+                    <a href="#" class="bubbleSheetClassReviewPage is-first" data-url="Index">
+                        <span class="u-inline-block u-v-align-middle">Student Review</span>
+                    </a>
+                </li>
+                <li class="fleft">
+                    <a href="#" class="bubbleSheetClassReviewPage is-second" data-url="ClassViewPage">
+                        <span class="u-inline-block u-v-align-middle">Class Review</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<article class="container_12" id="parentContainer" vue="bubbleSheetReviewDetails">
+    <input type="hidden" id="selectedStudentIndex" value="0"/>
+    <input type="hidden" id="hiddenTicket" value="@Model.Ticket"/>
+    <input type="hidden" id="hiddenClassId" value="@Model.ClassId"/>
+    <input type="hidden" id="hiddenGetBubbleSheetDetailUrl" value="@Url.Action("GetBubbleSheetDetails", "BubbleSheetReviewDetails")"/>
+    <input type="hidden" id="hiddenApplyAllCorrectAnswer" value="0" />
+    <input type="hidden" id="hiddenApplyFullCreditAnswer" value="0" />
+    <input type="hidden" id="hiddenApplyZeroCreditAnswer" value="0" />
+
+    <section class="grid_5">        
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Students</h1>
+                <div class="block-reviewer block-reviewer-cancel">
+                    <a href="/BubbleSheetReview" class="big-button btn-reviewbbs">Back to Review Bubble Sheets</a>
+                </div>
+                <h4 class="u-m-t-15">Test Name: <span class="u-fw-400">@Model.TestName</span></h4>
+                @if (!Model.CanAccess)
+                {
+                    <ul class="message error">
+                        <li>You do not have access to that test, or it does not exist.</li>
+                    </ul>
+                }
+                else
+                {
+                    <script type="text/javascript">
+                        function pad(number, length) {
+                            var str = '' + number;
+                            while (str.length < length) {
+                                str = '0' + str;
+                            }
+
+                            return str;
+                        }
+
+                        function getRefreshTime() {
+                            var lastUpdated = new Date();
+                            var hours = lastUpdated.getHours();
+                            var ampm = "am";
+                            if (hours > 12) {
+                                hours -= 12;
+                                ampm = "pm";
+                            }
+
+                            $("#refreshTime").html(hours + ':' + pad(lastUpdated.getMinutes(), 2) + ampm);
+                        }
+                    </script>
+                    if (Model.HasGenericSheet)
+                    {
+                        <p>
+                            This test contains generic sheets.
+                            @if (Model.IsMultipage)
+                            {
+                                <a href="@Url.Action("AssignStudentsToTestMultiPage", "GenericSheet", new { id = Model.Ticket })">Click here to assign students.</a>
+                            }
+                            else
+                            {
+                                <a href="@Url.Action("AssignStudentsToTest", "GenericSheet", new { id = Model.Ticket })">Click here to assign students.</a>
+                            }
+                        </p>
+                    }
+                    <p class="u-m-t-20">
+                        <a onclick="javascript:refreshStudentsGrid();" href="#">Refresh Student Details</a>
+                        <font size="-1">
+                            | Refreshed at <span id="refreshTime">
+                                <script type="text/javascript">getRefreshTime();</script>
+                            </span>
+                        </font>
+                    </p>
+                    <span id="refreshTime">
+                        <script type="text/javascript">getRefreshTime();</script>
+                    </span>
+
+                    <p style="height: 5px"></p>
+                    <div class="no-margin last-child">
+                        <table id="dataTable" class="datatable table no-margin" width="100%">
+                            <thead>
+                                <tr>
+                                    <th colspan="4">
+                                        <input type="checkbox" id="statusComplete" class="statusFilter" />
+                                        <label class="statusFilterLabel" for="statusComplete">
+                                            <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/status.png")" alt="Finished" height="12px" width="12px" />Finished
+                                        </label>
+                                        <input type="checkbox" id="statusReview" class="statusFilter" checked="checked" />
+                                        <label class="statusFilterLabel" for="statusReview">
+                                            <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/status-away.png")" alt="Review" height="12px" width="12px" />Review
+                                        </label>
+                                        <input type="checkbox" id="statusNotRead" class="statusFilter" checked="checked" />
+                                        <label class="statusFilterLabel" for="statusNotRead">
+                                            <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/status-busy.png")" alt="Not Graded" height="12px" width="12px" />Not Graded
+                                        </label>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Student
+                                    </th>
+                                    <th scope="col" style="width: 60px">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Status
+                                    </th>
+                                    <th scope="col" style="width: 60px">
+                                        Items (Pages) Processed
+                                    </th>
+                                    <th scope="col" style="width: 60px">
+                                        Points Earned
+                                    </th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody style="cursor: pointer"></tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+    <div id="bubbleSheetDetails"></div>
+
+    @Html.Partial("_ViewBubbleSheetImage")
+</article>
+
+<script type="text/javascript">
+    var FINAL_STATUS = {
+        Finished: 1,
+        Review: 2,
+        NotGrade: 3
+    }
+    $(function () {
+        var url = '@Url.Action("GetStudentsForTest", "BubbleSheetReviewDetails")/' + '@Model.Ticket' + '?classId=' + '@Model.ClassId';
+        $('#generateTab').addClass('current');
+        $('#managebubblesheetsReview').addClass('current');
+        var options = {
+            sAjaxSource: url,
+            bAutoWidth: true,
+            iDisplayLength: 25,
+            aaSorting: [[0, "asc"]],
+            oLanguage: {
+			    sLengthMenu: "Show _MENU_"
+			},
+            aoColumns: [
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Status', bSearchable: true, bSortable: true, sWidth: '100px' },
+                { sType: 'string', sName: 'Graded', bSearchable: true, bSortable: false, sWidth: '60px', sClass: 'columnRight' },
+                { sType: 'string', sName: 'PointsEarned', bSearchable: true, bSortable: false, sWidth: '45px', sClass: 'columnRight' },
+                { sType: 'integer', sName: 'Id', bSearchable: true, bSortable: true, bVisible: false },
+                { sType: 'integer', sName: 'BubbleSheetFinalStatus', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).parent().attr('StudentId', aData[4]).addClass('student');
+                $('td:eq(1)', nRow).html(assignKeyword(aData[1], aData[4]));
+                return nRow;
+            },
+            fnInitComplete: function () {
+                $('#statusComplete').change();
+            },
+            fnDrawCallback: function (oSettings) {
+            },
+            fnPreDrawCallback: function () {
+                return true;
+            }
+        };
+
+        $("#dataTable").data("options", options);
+
+        $('.statusFilter').change(function () {
+            var filters = buildFilter();
+            var joinedFilters = filters.join("|");
+            ui.dataTable.fnFilter(joinedFilters, 5, true);
+        });
+
+        $('.student').live('click', function () {
+            $('#selectedStudentIndex').val($('#dataTable .student').index($(this)));
+            viewBubbleSheetDetail();
+        });
+    });
+
+    function buildFilter() {
+        var filter = [];
+        if ($('#statusComplete').is(':checked')) {
+            filter.push(FINAL_STATUS.Finished);
+        }
+        if ($('#statusReview').is(':checked')) {
+            filter.push(FINAL_STATUS.Review);
+        }
+        if ($('#statusNotRead').is(':checked')) {
+            filter.push(FINAL_STATUS.NotGrade);
+        }
+
+        return filter;
+    }
+
+    function onlyUnique(value, index, self) {
+        return self.indexOf(value) === index;
+    }
+
+    function assignKeyword(keyword, studentId) {
+        var html = '<ul studentId="' + studentId + '" class="keywords">';
+
+        if (keyword) {
+            var array = [];
+
+            if (keyword.length && typeof keyword === 'object') {
+                array = keyword;
+            } else {
+                array = keyword.split('|').filter(onlyUnique);
+            }
+
+            for (var i = 0; i < array.length; i++) {
+                switch (array[i]) {
+                    case 'Auto':
+                        html += '<li class="green-keyword">Auto</li>';
+                        break;
+                    case 'Absent':
+                        html += '<li class="green-keyword">Absent</li>';
+                        break;
+                    case 'Confirmed':
+                        html += '<li class="green-keyword">Confirmed</li>';
+                        break;
+                    case 'Complete':
+                        html += '<li class="green-keyword">Complete</li>';
+                        break;
+                    case 'Missing':
+                        html += '<li class="red-keyword">Missing</li>';
+                        break;
+                    case 'Multi-Mark':
+                        html += '<li class="orange-keyword">Multi-Mark</li>';
+                        break;
+                    case 'Blank':
+                        html += '<li class="orange-keyword">Blank</li>';
+                        break;
+                    case 'Incomplete':
+                        html += '<li class="orange-keyword">Incomplete</li>';
+                        break;
+                    case 'Manual':
+                        html += '<li class="orange-keyword">Manual</li>';
+                        break;
+                    case 'Unavailable':
+                        html += '<li class="red-keyword">Unavailable</li>';
+                        break;
+                    case 'Invalid':
+                        html += '<li class="orange-keyword">Invalid</li>';
+                        break;
+                    case 'Loading':
+                        html += '<li class="orange-keyword">Loading</li>';
+                        break;
+                    default:
+                        html += '<li class="red-keyword">Unavailable</li>';
+                }
+            }
+        }
+
+        html += '</ul>';
+        return html;
+    }
+
+	var timer = setInterval(refreshStudentsGrid, 30000000);
+
+    function refreshStudentsGrid() {
+        ui.dataTable.fnReloadAjax();
+		stopTimer();
+        getRefreshTime();
+    }
+
+    function stopTimer() {
+        clearInterval(timer);
+   }
+
+    function restartTimer() {
+        timer = setInterval(refreshStudentsGrid, 10000);
+    }
+</script>
+
+@section scripts {
+    <script src='@Url.Content("~/Scripts/BubbleSheetClassReview/BubbleSheetReview.js")'></script>
+    <script src='@Url.Content("~/Scripts/BubbleSheetReviewDetails/BubbleSheetReviewDetails.js")'></script>
+    <script type="text/javascript">
+        $(function () {
+            BubbleSheetReview.getBubbleReviewDetailsPage('.bubbleSheetClassReviewPage');
+        });
+    </script>
+}

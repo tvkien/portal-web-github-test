@@ -1,0 +1,173 @@
+@model LinkIt.BubbleSheetPortal.Models.District
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+
+<article class="container_12">
+    <section class="grid-full-with">
+        <div style="display: none" id="formTitle" class="class-title form-check form-switch d-flex flex-row align-items-center mt-2 ps-0 float-left">@Model.Name</div>
+        <div class="block-border" id="block-school">
+            <div class="block-content form">
+                <div class="heading-container">
+                    <h1>Schools</h1>
+                    <a href="@Url.Action("AddNewSchool")" class="btn btn-link pe-0 btnAddNew">
+                        Add new school
+                        <i class="fa-solid fa-plus ms-2"></i>
+                    </a>
+                </div>
+                <table id="dataTable" width="100%" cellspacing="0" class="datatable table no-margin">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 90px">
+                                Actions
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                School Name
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                @LabelHelper.SchoolCode
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                @LabelHelper.SchoolStateCode
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td style="height: 60px;"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</article>
+<style type="text/css">
+    .pIcon {
+        height: 16px;
+        width: 16px;
+        display: inline-block;
+    }
+
+    .class-title {
+        margin-bottom: 12px;
+        padding: 0;
+    }
+
+    .block-content .no-margin {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .no-margin .last-child {
+        margin-bottom: 24px;
+    }
+
+    .grid-full-with {
+        margin-bottom: 20px;
+    }
+
+    .last-child .block-pagination {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .heading-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+    }
+
+    .heading-container h1 {
+        margin-bottom: 0 !important;
+    }
+
+    #dataTable_wrapper #dataTable tbody .dataTables_empty {
+        text-align: center;
+    }
+
+    .class-title {
+        font-size: 16px !important;
+        color: var(--navyColor);
+    }
+
+    .block-controls {
+        padding-left: 0!important;
+    }
+</style>
+<script type="text/javascript">
+    $(function () {
+        var textSearch = sessionStorage.getItem('textSearch') === null ? '' : sessionStorage.getItem('textSearch');
+        var isApllyFilter = sessionStorage.getItem('isApplyFilter');
+        var schoolId = '@ViewBag.SchoolID';
+        var pageSize = sessionStorage.getItem('pageSizeSchool') && sessionStorage.getItem('pageSizeSchool') > 0 ? parseInt(sessionStorage.getItem('pageSizeSchool')) : 10;
+        var options = {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetSchoolsByDistrictV2")?districtId=@Model.Id&schoolId=' + schoolId,
+            oLanguage: { "sZeroRecords": isApllyFilter === 'true' ? "Your search returned no results. Try changing your selection and click on 'Apply Filters'" : "Make a selection and click on 'Apply Filters'" },
+            bInfo: true,
+            oSearch: {
+                sSearch: textSearch
+            },
+            bAutoWidth: true,
+            iDisplayLength: pageSize,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'SchoolID', bSearchable: false, bSortable: false, sClass: 'col-action' },
+                { sType: 'string', sName: 'SchoolName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Code', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'StateCode', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                sessionStorage.setItem('pageSizeSchool', $('#block-school #dataTable_length select').find(":selected").val());
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+                searchDelay($("#dataTable_filter input[type='text']"), $("#dataTable"));
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTable_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTable_filter').addClass('data-search');
+
+                var elTitle = $('#formTitle');
+                elTitle.css({ position: 'absolute', marginTop: '10px', visibility: 'visible' });
+                $('.block-custom-header').prepend(elTitle);
+
+            }
+
+        };
+
+        $("#dataTable").data("options", options);
+
+        initializeDataTable($("#dataTable"));
+
+        function setIconVisibility(schoolId) {
+            var editIcon = '<span class="icon fa-solid fa-pencil icon-grey";></span>';
+            var editString = '<a href="/ManageClasses/EditSchool/' + schoolId + '" title="Edit" class="with-tip pIcon">' + editIcon + '</a>';
+
+            return editString;
+        }
+    });
+</script>

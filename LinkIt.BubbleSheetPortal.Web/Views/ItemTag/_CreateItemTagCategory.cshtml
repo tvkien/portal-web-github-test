@@ -1,0 +1,229 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.ItemTagCategoryViewModel
+<section>
+    <div class="block-border" id="divCreateEditItemTagCategory">
+        <div class="block-content">
+            <h1>Create a @LabelHelper.DistrictLabel Category</h1>
+            <ul style="display: none" id="error-messages" class="message error"></ul>
+            <ul style="display: none" id="success-message" class="message success">
+                <li>Create a @LabelHelper.DistrictLabel Category successfully.</li>
+            </ul>
+            <table class="form full-width">
+                 @if(Model.IsPublisher||Model.IsNetworkAdmin)
+                {
+                 <tr>
+                    <td class="u-text-right u-p-r-10">
+                        State:
+                    </td>
+                     <td>
+                         <div class="u-m-b-10">
+                             <select id="selectState1" class="full-width u-m-w-250"></select>
+                         </div>
+                    </td>
+                </tr>
+                 <tr>
+                    <td class="u-text-right u-p-r-10">
+                        @LabelHelper.DistrictLabel:
+                    </td>
+                     <td>
+                         <div class="u-m-b-10">
+                             <select id="selectDistrict1" class="full-width u-m-w-250"></select>
+                         </div>
+                    </td>
+                </tr>
+                }
+                <tr>
+                    <td class="u-text-right u-p-r-10">
+                        Name:
+                    </td>
+                    <td>
+                        <div class="u-m-b-10">
+                            <input type="text" id="inputItemTagCategoryName" class="full-width u-m-w-250" maxlength="500" />
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="u-text-right u-p-r-10">
+                        Description:
+                    </td>
+                    <td>
+                        <input type="text" id="inputItemTagCategoryDescription" class="full-width u-m-w-250" maxlength="1000"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button type="button" id="btnCreateItemTagCategory" class="u-m-t-15 u-m-l-5">Create</button>
+                        <button type="button" id="btnCancelCreateItemTagCategory">Cancel</button>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</section>
+<script type="text/javascript">
+    $(function () {
+        $.browser.chrome = /chrome/.test(navigator.userAgent.toLowerCase());
+
+        @if (Model.IsPublisher)
+        {
+            <text>
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                AddSelectListItems($('#selectState1'), states, 'Select State');
+
+                //set default state as selected state
+                if( $('#selectState').val() != 'select')
+                {
+                    $('#selectState1').val($('#selectState').val());
+                    $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: $('#selectState').val() }, function (districts) {
+                        AddSelectListItems($('#selectDistrict1'), districts, 'Select @LabelHelper.DistrictLabel');
+
+                        if ($('#selectDistrict').val() != null && $('#selectDistrict').val() != '' && $('#selectDistrict').val() != 'select' && $('#selectDistrict').val() > 0) {
+                            $('#selectDistrict1').val($('#selectDistrict').val());
+                            $('#btnCreateItemTagCategory').removeAttr('disabled');
+                        }
+                        else {
+                            $('#btnCreateItemTagCategory').attr('disabled', 'disabled');
+                        }
+
+                    });
+
+                }
+            });
+
+            </text>
+        }
+        @if(Model.IsNetworkAdmin)
+        {
+
+            <text>
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+            AddSelectListItems($('#selectState1'), states, 'Select State');
+
+            //set default state as selected state
+            if ($('#selectState').val() != 'select') {
+                $('#selectState1').val($('#selectState').val());
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: $('#selectState').val() }, function (districts) {
+                    AddSelectListItems($('#selectDistrict1'), districts, 'Select @LabelHelper.DistrictLabel');
+
+                        if ($('#selectDistrict').val() != null && $('#selectDistrict').val() != '' && $('#selectDistrict').val() != 'select' && $('#selectDistrict').val() > 0) {
+                            $('#selectDistrict1').val($('#selectDistrict').val());
+                            $('#btnCreateItemTagCategory').removeAttr('disabled');
+                        }
+                        else {
+                            $('#btnCreateItemTagCategory').attr('disabled', 'disabled');
+                        }
+
+                    });
+
+                }
+            });
+
+            </text>
+
+        }
+    });
+
+    $("#selectState1").die("change");
+    $('#selectState1').change(function () {
+        if ($('#selectState1').val() != 'select') {
+            $('#selectDistrict1').empty();
+            var stateValue = $('#selectState1').val();
+            if (stateValue != 'select') {
+                if ('@Model.IsPublisher' === 'True') {
+                    $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                        AddSelectListItems($('#selectDistrict1'), districts, 'Select @LabelHelper.DistrictLabel');
+
+                        if ($('#selectDistrict').val() != 'select') {
+                            $('#selectDistrict1').val($('#selectDistrict').val());
+
+                        }
+                    });
+                }
+                if ('@Model.IsNetworkAdmin' === 'True') {
+                    $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        AddSelectListItems($('#selectDistrict1'), districts, 'Select @LabelHelper.DistrictLabel');
+
+                        if ($('#selectDistrict').val() != 'select') {
+                            $('#selectDistrict1').val($('#selectDistrict').val());
+
+                        }
+                    });
+                }
+            }
+        }
+    });
+
+    $("#selectDistrict1").die("change");
+    $('#selectDistrict1').change(function () {
+        var districtId = $('#selectDistrict1').val();
+        if (districtId == null || districtId == '' || districtId == 'select' || districtId <= 0) {
+            $('#btnCreateItemTagCategory').attr('disabled', 'disabled');
+        } else {
+            $('#btnCreateItemTagCategory').removeAttr('disabled');
+        }
+    });
+
+
+    $("#inputItemTagCategoryName").keypress(function( event) {
+        if($.browser.msie||$.browser.chrome) {
+            var limit = 500;
+            var len = $("#inputItemTagCategoryName").val().length ;
+            if(len+1>limit) {
+                event.preventDefault();
+            }
+        }
+    });
+
+    $("#inputItemTagCategoryDescription").keypress(function( event) {
+        if($.browser.msie||$.browser.chrome) {
+            var limit = 1000;
+            var len = $("#inputItemTagCategoryDescription").val().length ;
+            if(len+1>limit) {
+                event.preventDefault();
+            }
+        }
+    });
+
+
+    $('#btnCancelCreateItemTagCategory').die('click');
+    $('#btnCancelCreateItemTagCategory').live('click', function () {
+        $(".dialog").dialog("close");
+    });
+
+    $('#btnCreateItemTagCategory').die('click');
+    $('#btnCreateItemTagCategory').live('click', function () {
+
+        var categoryName = $("#inputItemTagCategoryName").val();
+        categoryName = categoryName.trim();
+
+        var description = $("#inputItemTagCategoryDescription").val();
+        var districtId = 0;
+        @if (Model.IsPublisher||Model.IsNetworkAdmin)
+        {
+            <text>
+            districtId = $('#selectDistrict1').val();
+            </text>
+        }
+        if (districtId == null || districtId=='' ||districtId == 'select' ) {
+            districtId = 0;
+        }
+        if (categoryName.length > 0) {
+
+            $('#btnCreateItemTagCategory').attr('disabled', true);
+
+            $.post('@Url.Action("CreateItemTagCategory")', { districtId: districtId, categoryName: encodeURIComponent(categoryName), description: encodeURIComponent(description) }, function (response) {
+                if (response == true) {
+                    $('#success-message').show();
+                    setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                } else {
+                    addErrorMessages(response);
+                    $('#btnCreateItemTagCategory').removeAttr('disabled');
+                }
+            });
+        } else {
+            var response = { ErrorList:[{ErrorMessage:'Please input Item Tag Category Name'}]};
+            addErrorMessages(response);
+        }
+    });
+
+</script>

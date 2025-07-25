@@ -1,0 +1,193 @@
+@model LinkIt.BubbleSheetPortal.Models.School
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Add School");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+<script src="@Url.Content("~/FeLibs/jquery-validation/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/FeLibs/jquery-validation/additional-methods.min.js")" type="text/javascript"></script>
+<style>
+    h1 {
+        padding: 0 !important;
+        margin-bottom: 24px !important;
+    }
+
+    .block-content {
+        padding: 24px !important;
+    }
+
+    .btn-container {
+        display: flex;
+        gap: 18px;
+        justify-content: flex-end;
+    }
+
+    fieldset {
+        padding: 0 !important;
+        margin-bottom: 24px !important;
+    }
+
+    .title-large {
+        margin-bottom: 24px;
+    }
+
+    .lastVisibleSection {
+        margin: 0 !important;
+    }
+</style>
+<article class="container_12" id="add-metadata-school">
+    <section style="width:70%">
+        <ul style="display: none" id="error-messages" class="message error"></ul>
+        <ul style="display: none" id="success-message" class="message success">
+            <li>School successfully created.</li>
+        </ul>
+        @using (Html.BeginForm("AddSchool", "Admin", FormMethod.Post, new { id = "addSchoolForm", @class = "form" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true)
+            <div class="block-content mb-4">
+                <h1>Add School</h1>
+                <fieldset>
+                    <p class="title-large">School</p>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label>
+                                School Name
+                            </label>
+                            <span class="relative">
+                                @Html.TextBoxFor(model => model.Name, new { @class = "full-width", tabindex = "1", maxlength = 99 })
+                                @Html.ValidationMessageFor(model => model.Name)
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <label>
+                                @LabelHelper.SchoolCode
+                            </label>
+                            <span class="relative">
+                                @Html.TextBoxFor(model => model.Code, new { @class = "full-width", tabindex = "2", maxlength = 19 })
+                                @Html.ValidationMessageFor(model => model.Code)
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <label>
+                                @LabelHelper.SchoolStateCode
+                            </label>
+                            <span class="relative">
+                                @Html.TextBoxFor(model => model.StateCode, new { @class = "full-width", tabindex = "3", maxlength = 19 })
+                                @Html.ValidationMessageFor(model => model.StateCode)
+                            </span>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+            <div class="block-content mb-4">
+                <p class="title-large">Other School Data</p>
+                <div class="row g-3">
+                    <div class="col-6" v-for="field in fields">
+                        <label v-text="field.Label"></label>
+                        <span class="relative">
+                            <input name="{{ field.Type }}" type="text" class="full-width" v-model="field.Value" />
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="block-content">
+                <div class="d-flex flex-row justify-content-end">
+                    <button id="btnCancel" type="button" class="grey btn-blue">
+                        Cancel
+                    </button>
+                    <button id="btnSubmit" type="submit" name="Save" class="btn-red ms-3">
+                        Submit
+                    </button>
+                </div>
+            </div>
+            <input type="hidden" id="SchoolMetaDatas" name="SchoolMetaDatas" />
+        }
+    </section>
+</article>
+<script type="text/javascript">
+
+    sessionStorage.setItem('ManageSchoolAndClass', true);
+    $(function () {
+        loadSchoolMeta();
+        $('.dataadmin').addClass('current');
+        $('#dtaManageSchools').addClass('current');
+        breadcrumbDetailPage('.dataadmin', '#dtaManageSchools');
+
+    });
+    $('#addSchoolForm').submit(function (event) {
+        event.preventDefault();
+        $('#btnSubmit').disableBt();
+
+        var dataConvertTemp = metadataSchoolModel.fields.map(function (meta) { return { name: meta.Name, value: meta.Value, label: meta.Label, type: meta.Type } });
+        var schoolMetaDatas = JSON.stringify(dataConvertTemp);
+        $('#SchoolMetaDatas').val(schoolMetaDatas);
+
+        $.ajax({
+            url: $(this).target,
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function (response) {
+                if (response.Success != false) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                    ClearAllText();
+                }
+                else {
+                    addErrorMessages(response);
+                }
+                $('#btnSubmit').enableBt();
+                $("html, body").animate({ scrollTop: 0 }, 200);
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+
+    $('#btnCancel').click(function () {
+        sessionStorage.setItem('ManageSchoolAndClass', true);
+        location.href = '@Url.Action("ManageSchoolAndClass")';
+    });
+
+    function ClearAllText() {
+        $('input[type=text]').val('');
+    }
+</script>
+
+<script type="text/javascript">
+        var metadataSchoolModel = new Vue({
+            el: '#add-metadata-school',
+            data: {
+                fields: []
+            }
+        });
+
+        function loadSchoolMeta() {
+            $.get('@Url.Action("GetListSchoolMetaData", "ManageClasses")', { schoolId: 0, districtId: '@Model.DistrictId' },
+                function(response) {
+                    metadataSchoolModel.fields = htmlDecodeMeta(response.data);
+                });
+        }
+        function htmlDecodeMeta(lists) {
+            return lists.map(function (list) {
+                var $div = $('<div/>');
+                list.Value = $div.html(list.Value || '').text();
+                return list;
+            });
+        }
+</script>

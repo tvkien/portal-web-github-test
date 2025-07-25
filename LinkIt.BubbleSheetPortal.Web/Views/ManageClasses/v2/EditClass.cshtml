@@ -1,0 +1,440 @@
+@using LinkIt.BubbleSheetPortal.Models
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model Class
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Edit Class");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleDataLockerTemplateBundle()
+<script src="@BundleHelper.Version("~/Scripts/select2.full.min.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Content/css/select2.css")" rel="stylesheet" />
+<link href="@BundleHelper.Version("~/Content/css/v2/manage-class.css")" rel="stylesheet" type="text/css" />
+
+<style type="text/css">
+    .not-active {
+        pointer-events: none;
+        cursor: default;
+        text-decoration: none;
+        color: black;
+    }
+
+    #portal-v2-containter .title-assign-teacher {
+        font-size: var(--fontSizeHeader) !important;
+        color: var(--navyColor) !important;
+        font-weight: bold !important;
+        line-height: normal !important;
+    }
+
+    #portal-v2-containter .footer-btn-wrapper {
+        margin: 0;
+        background: none;
+    }
+
+        #portal-v2-containter .footer-btn-wrapper > div {
+            justify-content: flex-end !important;
+        }
+
+        #portal-v2-containter .footer-btn-wrapper #btnCloseUserClick {
+            border: 2px solid var(--blue3) !important;
+            padding: 11px 32px;
+            color: var(--navyColor);
+            margin-right: 1rem;
+        }
+
+            #portal-v2-containter .footer-btn-wrapper #btnCloseUserClick:hover {
+                background-color: var(--blue3);
+            }
+
+            #portal-v2-containter .footer-btn-wrapper #btnCloseUserClick:disabled {
+                opacity: .5;
+                touch-action: none;
+                cursor: auto;
+            }
+
+        #portal-v2-containter .footer-btn-wrapper .footer-btn {
+            height: auto;
+        }
+
+    #portal-v2-containter .block-section-custom {
+        padding-bottom: 1.5rem !important;
+    }
+
+    #portal-v2-containter .form select:disabled {
+        background-color: var(--disabledColorBg);
+        opacity: 0.5;
+    }
+    .portal-v2-containter .select2-results__option {
+        padding-left: 18px !important;
+    }
+</style>
+
+<article class="container_12 d-flex" id="edit-class">
+    <section class="" style="width: 70%">
+        <div class="block-border">
+            <div>
+                @using (Html.BeginForm("EditClass", "ManageClasses", FormMethod.Post, new { id = "editClassForm", @class = "form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.ValidationSummary(true)
+                    <div class="block-content form mb-4">
+                        <h1>Edit Class</h1>
+                        <ul style="display: none" id="error-messages" class="message error"></ul>
+                        <ul style="display: none" id="success-message" class="message success">
+                            <li>Class successfully updated.</li>
+                        </ul>
+                        <p class="title-large">Class Detail</p>
+                        <div class="columns">
+                            <div class="row g-3">
+                                <div class="col-6 mb-3">
+                                    <label>Group/Course Name</label>
+                                    <span class="relative">
+                                        @Html.HiddenFor(model => model.Id)
+                                        @Html.TextBoxFor(model => model.Course, new { @class = "w-100", tabindex = "1", maxlength = 49 })
+                                    </span>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label>Section (optional)</label>
+                                    <span class="relative">
+                                        @Html.TextBoxFor(model => model.Section, new { @class = "w-100", tabindex = "2", maxlength = 49 })
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-6 mb-3">
+                                    <label>Course Number (optional)</label>
+                                    <span class="relative">
+                                        @Html.TextBoxFor(model => model.CourseNumber, new { @class = "w-100", tabindex = "3", maxlength = 49 })
+                                    </span>
+                                </div>
+                                <div class="col-6 mb-3 block-content-dropdown-marquee">
+                                    <label>@LabelHelper.Term</label>
+                                    <div class="block-text-name w-100">
+                                        @Html.DropDownListFor(model => model.DistrictTermId, new SelectList(ViewBag.ListDistrictTerm, "Id", "Name"), new { @class = "w-100", tabindex = "4" })
+                                        @Html.ValidationMessageFor(model => model.DistrictTermId)
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-6 block-content-dropdown-marquee">
+                                    <label>Class Type</label>
+                                    <div class="block-text-name w-100">
+                                        @Html.DropDownListFor(x => x.ClassType, ViewBag.ClassTypes as IEnumerable<SelectListItem>, new { @class = "w-100", tabindex = "5" })
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="isShowClassMeta" class="block-content form mb-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <ul class="tabs js-tabs p-0">
+                                <li class="current">
+                                    <h2 class="header">Other Class Data</h2>
+                                </li>
+                            </ul>
+                            <a v-on:click="handleAddNewSubject()" class="btn btn-link pe-0 m-0">
+                                Add New @LabelHelper.Subject
+                                <i class="fa-solid fa-plus ms-2"></i>
+                            </a>
+                        </div>
+                        <div class="tabs-content custom-tabs-content">
+                            <div v-if="classMetas.length > 0">
+                                <div class="row g-3">
+                                    <div class="col-6" v-for="field in classMetas">
+                                        <label>{{field.Name}}</label>
+                                        <span class="relative" style="display: flex; ">
+                                            <select class="selectTag w-100" :value="field.Data" :classmetaid="field.ClassMetaID">
+                                                <option v-for="item in getMetaOptions(field)" v-bind:value="item.value">{{ item.text }}</option>
+                                            </select>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="block-content mb-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <ul class="tabs js-tabs p-0">
+                                <li class="current"><a href="#tab-teachers" class="title-large p-0 m-0 border-0">Teachers</a></li>
+                            </ul>
+                            <a id="btnAddExistingTeacher" href="javascript:void(0);" class="btn btn-link pe-0 m-0 studentOperation">
+                                Assign teacher
+                                <i class="fa-solid fa-plus ms-2"></i>
+                            </a>
+                        </div>
+                        <div class="tabs-content custom-tabs-content">
+                            <div id="tab-teachers">
+
+                                <div id="divTeacherList"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="block-content mt-0">
+                        <div class="d-flex justify-content-end">
+                            <button id="btnCancel" type="button" class="btn-blue d-block me-3">Back</button>
+                            <button id="btnSubmit" type="submit" name="Save" class="btn-red d-block">Submit</button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="ClassMetaStr" value="value" id="ClassMetaStr" />
+                }
+            </div>
+        </div>
+    </section>
+    <div id="divSideContent" class="ms-4" style="width: 30%;"></div>
+</article>
+<script type="text/javascript">
+    localStorage.setItem('loadHistory', true);
+    var metaDataClassModel = new Vue({
+        el: '#edit-class',
+        data: {
+            isShowClassMeta: false,
+            classMetas: [],
+            classMetaOptions: [],
+        },
+        watch: {
+            classMetas: function () {
+                $('.selectTag').select2({
+                    allowClear: true,
+                    minimumResultsForSearch: -1,
+                    placeholder: ' '
+                })
+                .on('select2:select', function (e) {
+                    metaDataClassModel.$nextTick(() => {
+                        var classMetaID = parseInt($(e.target).attr('classmetaid'));
+                        var model = metaDataClassModel.classMetas.find(x => x.ClassMetaID === classMetaID);
+                        if (model != null) {
+                            model.Data = e.params.data.id;
+                        }
+                        metaDataClassModel.$nextTick(() => { metaDataClassModel.handleMaintainSelect2(); });
+                        //metaDataClassModel.classMetas.forEach(item => {
+                        //    if (item !== model && item.Data === model.Data) {
+                        //        item.Data = '';
+                        //        $(`.selectTag[label="${item.Label}"]`).val('').trigger('change');
+                        //    }
+                        //})
+                    })
+                }).on('select2:clear', function (e) {
+                    metaDataClassModel.$nextTick(() => {
+                        var classMetaID = parseInt($(e.target).attr('classmetaid'));
+                        var model = metaDataClassModel.classMetas.find(x => x.ClassMetaID === classMetaID);
+                        if (model != null) {
+                            model.Data = '';
+                        }
+                        metaDataClassModel.$nextTick(() => { metaDataClassModel.handleMaintainSelect2(); });
+                    })
+                });
+            }
+        },
+        methods: {
+            handleAddNewSubject: function () {
+                var self = this;
+                var index = 0;
+                var sortList = self.classMetas.sort((a, b) => b.ClassMetaID - a.ClassMetaID);
+                if (sortList != null && sortList.length > 0) {
+                    index = sortList[0].ClassMetaID + 1; 
+                }
+                var newClassMetas = self.classMetas.concat({ ClassID: 0, ClassMetaID: index, Data: "", Label: "", Name: "@LabelHelper.Subject " + (sortList.length + 1) });
+                self.classMetas = newClassMetas.sort((a, b) => a.ClassMetaID - b.ClassMetaID);
+            },
+            getMetaOptions: function (field) {
+                var findSubject = metaDataClassModel.classMetas.find(function (item) { return (item.ClassMetaID == field.ClassMetaID) });
+                if (findSubject != null) {
+                    var optionRemoves = metaDataClassModel.classMetas.filter(function (item) { return (item.ClassMetaID != field.ClassMetaID) });
+                    return metaDataClassModel.classMetaOptions.filter(function (item) {
+                        return !optionRemoves.some(function (itemRemove) { return itemRemove.Data === item.text })
+                    });
+                }
+                return metaDataClassModel.classMetaOptions;
+            },
+            handleMaintainSelect2: function () {
+                metaDataClassModel.classMetas.forEach(function (item) {
+                    if (item.Data == '') {
+                        $('.selectTag[classmetaid=' + item.ClassMetaID + ']').val('').trigger('change');
+                    }
+                });                
+            }
+        }
+    });
+
+    $(function () {
+        metaDataClassModel.isShowClassMeta = '@Model.HasConfigClassMeta' == 'True' ? true : false;
+        if ('@Model.SubjectMappingOptionJson' != null && '@Model.SubjectMappingOptionJson' != '') {
+            var dataMap = @Html.Raw(Json.Encode(Model.ClassMetas));
+            metaDataClassModel.classMetas = dataMap.sort((a, b) => a.ClassMetaID - b.ClassMetaID);
+            dataMap.map(function (item, index) {
+                index++;
+                item.Name = item.Name + " " + index;
+            });
+            var configs = JSON.parse(htmlDecode('@Model.SubjectMappingOptionJson')) || [];
+            configs.map(function (classMeta, index) {
+                metaDataClassModel.classMetaOptions.push({ value: classMeta.AggregateSubjectName, text: classMeta.AggregateSubjectName })
+            });
+            dataMap.map(function (classMeta) {
+                var findSubject = metaDataClassModel.classMetaOptions.find(function (item) { return (item.value == classMeta.Data) })
+                if ((findSubject == null || findSubject == 'undefined') && classMeta.Data != '') {
+                    metaDataClassModel.classMetaOptions.push({ value: classMeta.Data, text: classMeta.Data })
+                }
+            });
+        }
+
+        if('@ViewBag.FromManageSchools' === 'True') {
+            $('#dtaManageSchools').addClass('current');
+        } else {
+            $('#dtaManageClasses').addClass('current');
+        }
+
+        PopulateDataGrids();
+
+        $('#btnAddExistingTeacher').click(function () {
+            var isAutoFocusGroup = ('@Model.ModifiedBy' === 'Focus Group Automation');
+            $('#divSideContent').html('');
+            $('#divSideContent').load('@Url.Action("AddTeacherToClass")?classId=' + '@Model.Id' + '&isAutoFocusGroup=' + isAutoFocusGroup);
+        });
+
+        if('@ViewBag.IsRosteredClasses' === 'True' || '@Model.ModifiedBy' === 'Focus Group Automation') {
+            $("input[id*='Course']").prop('disabled', true);
+            $("input[id*='Section']").prop('disabled', true);
+            $("select[id*='DistrictTermId']").prop('disabled', true);
+            $("select[id*='ClassType']").prop('disabled', true);
+        }
+
+        $('#DistrictTermId').marquee();
+        $('#ClassType').marquee();
+    });
+    
+    $('#editClassForm').submit(function (event) {
+        event.preventDefault();
+        $('#error-messages').hide();
+        $('#success-message').hide();
+        var valueArr = metaDataClassModel.classMetas.filter(function (item) {
+            return item.Data != '';
+        }).map(function (item) {
+            return item.Data
+        });
+        var isDuplicate = valueArr.some(function (item, idx) {
+            return valueArr.indexOf(item) != idx
+        });
+        if (isDuplicate) {
+            $('#error-messages').html('<li>Subjects are not allowed to be the same in this Class.</li>');
+            $('#error-messages').show();
+            $("html, body").animate({ scrollTop: 0 }, 200);
+            return false;
+        }
+        var metaSave = metaDataClassModel.classMetas.filter(function (item) {
+            return item.Data != '';
+        });
+        $('#ClassMetaStr').val(JSON.stringify(metaSave));
+        $('#btnSubmit').disableBt();
+        $.ajax({
+            url: $(this).target,
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function (response) {
+                if (response.Success != false) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                }
+                else {
+                    addErrorMessages(response);
+                    $('#success-message').hide();
+                }
+                $("html, body").animate({ scrollTop: 0 }, 200);
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+
+    $('#addTeacherToClassForm').die();
+    $('#addTeacherToClassForm').live('submit', function (event) {
+        var $this = $(this);
+        event.preventDefault();
+
+        $.ajax({
+            url: $this.attr('action'),
+            type: 'POST',
+            data: $this.serialize(),
+            success: function (response) {
+                if (response == true) {
+                    CloseSideContent();
+                    ui.dataTableClassTeacher.fnDraw();
+                }
+                else {
+                    addErrorMessagesTeachers(response);
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+
+    function PopulateDataGrids() {
+        $('#divTeacherList').load('@Url.Action("GetTeachersListView", new { classId = Model.Id })', function (response) {
+            if (response == false) {
+                alert(response);
+            }
+        });
+    }
+
+    $('#btnCancel').click(function () {
+        if ('@ViewBag.FromManageSchools' === 'True') {
+            location.href = '@Url.Action("ManageSchoolAndClass")';
+        } else {
+            location.href = '@Url.Action("ManageClass")';
+        }
+    });
+
+    function CloseSideContent() {
+        $('#divSideContent').empty();
+    }
+
+    $('#replacePrimaryTeacherForm').die();
+    $('#replacePrimaryTeacherForm').live('submit', function (event) {
+        var $this = $(this);
+        event.preventDefault();
+
+        $.ajax({
+            url: $this.attr('action'),
+            type: 'POST',
+            data: $this.serialize(),
+            success: function (response) {
+                if (response == true) {
+                    CloseSideContent();
+                    ui.dataTableClassTeacher.fnDraw();
+                }
+                else {
+                    addErrorMessagesTeachers(response);
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+</script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        breadcrumbDetailPage('.dataadmin', '#dtaManageClasses');
+    })
+</script>

@@ -1,0 +1,128 @@
+@model LinkIt.BubbleSheetPortal.Models.DTOs.TLDS.TLDSProfileTeacherDTO
+<style>
+    #dvCreateProfileTeacher.form select {
+        height: auto;
+    }
+</style>
+<section class="m-0" style='z-index: 2004'>
+    <div style='z-index: 2004'>
+        <div id="dvCreateProfileTeacher" class='block-content bubbleSheetSelector form p-4' style='z-index: 1004'>
+            <p class="title-large mb-4" id="frmAddTeacherProfileTitle">Add Educator Profile</p>
+            <ul style="display: none" id="error-messages-create" class="message error"></ul>
+            <ul style="display: none" id="success-message-create" class="message success">
+                <li>Educator Profile Successfully Created Successfully</li>
+            </ul>
+            @using (Html.BeginForm("CreateProfileTeacher", "TLDSManage", FormMethod.Post, new { id = "createTldsProfileTeacher" }))
+            {
+                <div>
+                    <div class="mb-3">
+                        <label>
+                            Name of Educator <span class="required-field">(*)</span>
+                        </label>
+                        @Html.TextBoxFor(m => m.EducatorName, new { @class = "w-100", @maxlength = "100" })
+                    </div>
+                    <div class="mb-3">
+                        <label>
+                            Highest level of qualification <span class="required-field">(*)</span>
+                        </label>
+                        @Html.DropDownListFor(m => m.TLDSLevelQualificationID, (List<SelectListItem>)ViewBag.QualificationList)
+                    </div>
+                    <div>
+                        <div class="tag-editor-datalocker">
+                            <label for="inputCode">
+                                Position <span class="required-field">(*)</span>
+                            </label>
+                            @Html.TextBoxFor(m => m.Position, new { @class = "w-100", @maxlength = "100" })
+                        </div>
+                    </div>
+                    <div class="modal-component-footer mx-n4 mt-4">
+                        <div slot="footer">
+                            <button type="button" id="btnCancel" onclick="cancel()">Close</button>
+                            <button type="submit" id="btnCreateProfileTeacher">Submit</button>
+                        </div>
+                    </div>
+                    <input type="hidden" id="hdDistrictId" value="@ViewBag.DistrictId" />
+                    <input type="hidden" id="TLDSProfileTeacherID" />
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    $('#createTldsProfileTeacher').submit(function (event) {
+        event.preventDefault();
+
+        if (!validateControls()) {
+            return;
+        }
+
+        var formData = $(this).serializeArray();
+        var profileID = $('#TLDSProfileTeacherID').val();
+        formData.push({ name: 'TLDSProfileTeacherID', value: profileID });
+        var url = '@Url.Action("CreateProfileTeacher")';
+
+        if (profileID) {
+            ShowBlock($('#dvCreateProfileTeacher'), "Updating");
+        } else {
+            ShowBlock($('#dvCreateProfileTeacher'), "Creating");
+        }
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            success: function (response) {
+                if (response.Success) {
+                    if (profileID) {
+                        $('#success-message-create').html('<li>Educator Profile Updated Successfully</li>');
+                    } else {
+                        $('#success-message-create').html('<li>Educator Profile Created Successfully</li>');
+                    }
+                   
+                    $('#error-messages-create').hide();
+                    $('#success-message-create').show();
+                    setTimeout(function () {
+                        $(".dialog").dialog("close");
+                    },
+                        3000);
+                    setTimeout(function () {
+                        $('#success-message-create').hide();
+                    },
+                        5000);
+                } else {
+                    $('#error-messages-create').html('<li> ' + response.ErrorMessage + ' </li>');
+                    $('#error-messages-create').show();
+                    setTimeout(function () {
+                        $('#error-messages-create').hide();
+                    },
+                        5000);
+                    $('#success-message-create').hide();
+                }
+                $('#dvCreateProfileTeacher').unblock();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+
+    function cancel() {
+        $(".dialog").dialog("close");
+    }
+
+    function validateControls() {
+        let errors = [];
+        if (!$("#EducatorName").val()) errors.push("Educator name is required.");
+        if ($("#TLDSLevelQualificationID").val() === "0") errors.push("TLDS level qualification is required.");
+        if (!$("#Position").val()) errors.push("Position is required.");
+
+        $("#error-messages-create").empty();
+        for (var i = 0; i < errors.length; i++) {
+            $("#error-messages-create").append("<li>" + errors[i] + "</li>");
+            $("#error-messages-create").show();
+        }
+
+        return errors.length == 0;
+    }
+</script>

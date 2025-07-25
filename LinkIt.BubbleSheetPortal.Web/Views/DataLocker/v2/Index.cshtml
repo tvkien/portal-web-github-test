@@ -1,0 +1,573 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleCustomBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptDataLockerBundle()
+@using LinkIt.BubbleSheetPortal.Models
+
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.ResultsEntryDataLocker, "Define Template");
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<link href="@BundleHelper.Version("~/Content/css/v2/data-docker.css")" rel="stylesheet" />
+
+<article class="container_12" id="idTopNavigation">
+    <section class="grid_12 data-locker-v2">
+        <div class="block-border bg-white p-4" id="myTemplateList">
+            <div class="form">
+                <div style="visibility: hidden;" id="formCheckDeactivate" class="form-check form-switch d-flex flex-row align-items-center ms-0 ps-0">
+                    <label class="form-check-label mb-0 deactivated-title" for="flexSwitchCheckDefault">Show Archived:</label>
+                    <span class="ms-1 me-3" id="spanClassActive">Off</span>
+                    <div id="btnShowArchived">
+                        <input class="form-check-input" type="checkbox" id="flexSwitchCheckDefault">
+                    </div>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h1 class="page-title mb-0">
+                        Template List
+                    </h1>
+                    <a id="AddNewtemplateId" href="javascript:void(0)" class="btn btn-link pe-0">
+                        Add Template
+                        <i class="fa-solid fa-plus ms-2"></i>
+                    </a>
+                </div>
+                <div class="last-child datatable-wrapper">
+                    <table id="templateListDataTable" class="datatable table center-first-column" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" width="100" class="black-cell col-action"><span class="loading"></span>Actions</th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Author
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Created Date
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Last Modified Date
+                                </th>
+                                <th scope="col">
+                                    Published Districts
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<input type="hidden" id="idHiddenFileTemplateSelected" value="0" />
+@Html.Partial("v2/_CloneTemplatePopup")
+
+@section scripts {
+    <script src="/Scripts/DataLocker/DatalockerCloneTemplate.js"></script>
+    <script>
+        (function ($) {
+            "use strict";
+            $(document).ready(function () {
+                addTemplate();
+                ArchivedInitLoad();
+            });
+            function addTemplate() {
+                var addNewtempalteButton = $('#AddNewtemplateId');
+                if (!addNewtempalteButton) return;
+                addNewtempalteButton.live('click', function () {
+                    console.log('clicked');
+                    window.location = '/DataLocker/AddTemplate';
+                });
+            }
+
+            function ArchivedInitLoad() {
+                var checkboxEl = $("#flexSwitchCheckDefault");
+                var flagInit = true;
+
+                if (!checkboxEl) return;
+                if (flagInit && checkboxEl.is(':checked')) {
+                    checkboxEl.removeAttr('checked');
+                    flagInit = false;
+                }
+            }
+        })(jQuery);
+
+
+        $(function () {
+            var showArchiveTemplate = false;
+            $("#spanClassActive").html(showArchiveTemplate ? "On" : "Off");
+            $('#btnShowArchived').attr("class", showArchiveTemplate ? "on" : "off");
+            if (localStorage.getItem("nextClickShowArchived") !== null) {
+                localStorage.removeItem("nextClickShowArchived");
+            }
+            loadListTemplate(showArchiveTemplate);
+
+            $('#btnShowArchived').click(function () {
+                var showArchiveTemplate = null;
+                var checkboxEl = $("#flexSwitchCheckDefault");
+            if (localStorage.getItem("nextClickShowArchived") === null) {
+                showArchiveTemplate = true;
+                $("#spanClassActive").html(showArchiveTemplate ? "On" : "Off");
+                $('#btnShowArchived').attr("class", showArchiveTemplate ? "on" : "off");
+                localStorage.setItem("nextClickShowArchived", showArchiveTemplate);
+                checkboxEl.attr("checked", showArchiveTemplate ? true : false);
+
+            } else {
+                if (localStorage.getItem("nextClickShowArchived").toLowerCase() == "true") {
+                    showArchiveTemplate = false;
+                } else {
+                    showArchiveTemplate = true;
+                }
+                localStorage.setItem("nextClickShowArchived", showArchiveTemplate);
+                $("#spanClassActive").html(showArchiveTemplate ? "On" : "Off");
+                $('#btnShowArchived').attr("class", showArchiveTemplate ? "on" : "off");
+                checkboxEl.attr("checked", showArchiveTemplate ? true : false);
+            }
+             var dataTable = $('#templateListDataTable').dataTable();
+             dataTable.fnSettings().sAjaxSource = getAjaxSource(showArchiveTemplate);
+             dataTable.fnDraw();
+          });
+        });
+
+        function getAjaxSource(showArchiveTemplate) {
+            return '@Url.Action("LoadListTemplate")?archived=' + showArchiveTemplate;
+        }
+
+        function loadListTemplate(showArchiveTemplate) {
+            var optionstemplateList =
+            {
+                bServerSide: true,
+                sAjaxSource: '@Url.Action("LoadListTemplate")?archived=' + showArchiveTemplate,
+                oLanguage: { 'sSearch': '', "sZeroRecords": "No results meet your search criteria. Try changing your date range or other filters and search again." },
+                bAutoWidth: false,
+                bDestroy: true,
+                iDisplayLength: 25,
+                aaSorting: [[1, "asc"]],
+                aoColumns: [
+                    { sType: 'integer', sName: 'VirtualTestCustomScoreID', bSearchable: false, bSortable: false },
+                    { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true },
+                    { sType: 'string', sName: 'Author', bSearchable: false, bSortable: true },
+                    { sType: 'string', sName: 'CreatedDate', bSearchable: false, bSortable: true },
+                    { sType: 'string', sName: 'UpdatedDate', bSearchable: false, bSortable: true },
+                    { sType: 'string', sName: 'PublishedDistricts', bSearchable: false, bSortable: false },
+                    { sType: 'string', sName: 'FirstName', bSearchable: true, bSortable: true, bVisible: false },
+                    { sType: 'string', sName: 'LastName', bSearchable: true, bSortable: true, bVisible: false },
+                    { sType: 'integer', sName: 'TotalVirtualTestAssociated', bSearchable: false, bSortable: false, bVisible: false },
+                    { sType: 'boolean', sName: 'IsPublished', bSearchable: false, bSortable: false, bVisible: false },
+                    { sType: 'boolean', sName: 'Archived', bSearchable: false, bSortable: false, bVisible: false }
+                ],
+                fnRowCallback: function (nRow, aData) {
+                    $('td:eq(0)', nRow).html(setIconVisibility(aData[0], aData[8], aData[9], aData[10]));
+                    $('td:eq(2)', nRow).html(setAuthorName(aData[6], aData[7], aData[9]));
+                    $('td:eq(3)', nRow).html(displayDateWithFormat(aData[3], aData[3]));
+                    $('td:eq(4)', nRow).html(displayDateWithFormat(aData[4], aData[4]));
+                    $('td:eq(5)', nRow).html(formatPublishedDistricts(aData[5]));
+                    return nRow;
+                },
+                fnPreDrawCallback: function () {
+                    ShowBlock($('#templateListDataTable'), "Loading");
+                    $('#templateListDataTable').find('.loading').show();
+                    return true;
+                },
+                fnDrawCallback: function () {
+                    $('#templateListDataTable').unblock();
+                    $('.with-tip').tip();
+                    $('#templateListDataTable').find('.loading').hide();
+                },
+                fnInitComplete: function () {
+                    var myTemplateListElement = $('#myTemplateList');
+
+                    if (myTemplateListElement) {
+                        var showArchivedElement = $('#formCheckDeactivate');
+                        var headerDataTableElement = $('.block-custom-header');
+
+                        if (!showArchivedElement || !headerDataTableElement) {
+                            return;
+                        }
+
+                        showArchivedElement.css('visibility', 'visible');
+                        headerDataTableElement.prepend(showArchivedElement);
+                    }
+
+                    var filterDataTableElement = $('#templateListDataTable_filter');
+                    if (filterDataTableElement) {
+                        filterDataTableElement.addClass('data-search')
+                    }
+
+
+                }
+            };
+            $("#templateListDataTable").data("options", optionstemplateList);
+        }
+
+        function setIconVisibility(virtualtestId, totalTestRersult, isPublished, archived) {
+
+            var editIcon = '<span class="custom-icon fa-solid fa-pencil icon-grey"></span>';
+            var editString = `<a href="javascript:void(0)" title="Edit Template" templateId="${virtualtestId}" class="with-tip editTemplate d-inline-block me-3 mb-2">${editIcon}</a>`;
+
+            var deleteIcon = '<span class="custom-icon fa-solid fa-circle-xmark icon-red"></span>';
+            var deleteIconString = `<a href="javascript:void(0)" title="Delete Template" templateId="${virtualtestId}" class="with-tip deleteTemplate d-inline-block mb-2">${deleteIcon}</a>`;
+            if (totalTestRersult > 0) {
+                deleteIconString = `<a href="javascript:void(0)" title="Delete Template" class="item-disabled with-tip d-inline-block mb-2">${deleteIcon}</a>`;
+            }
+
+            var publishIcon = '<span class="custom-icon fa-solid fa-share icon-grey"></span>';
+            var publishIconHtml = `<a href="javascript:void(0)" title="Publish Template" templateId="${virtualtestId}" class="with-tip publishTemplate d-inline-block me-3">${publishIcon}</a>`;
+            var canPublish = @ViewBag.CanPublish.ToString().ToLower();
+
+            var copyIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/icon-copy-v2.svg")';
+            var copyString = '<a href="javascript:void(0)" title="Copy" templateId="' + virtualtestId + '" class="with-tip copyTemplate d-inline-block me-3 mb-2"><img src="' + copyIcon + '" width="16"></a>';
+
+
+            var titleArchived = '';
+            var slashEyesIcon = '';
+            if (archived.toLowerCase() == "false") {
+                slashEyesIcon = '<i class="custom-icon fa-solid fa-eye-slash icon-grey"></i>';
+               titleArchived = 'Archive Template';
+            } else {
+                slashEyesIcon = '<i class="custom-icon fa-solid fa-eye icon-grey"></i>';
+               titleArchived = 'Unarchive Template';
+            }
+            var archivedHtml = `<a href="javascript:void(0)" class="with-tip archiveTemplate d-inline-block mb-2" title="${titleArchived}" templateId="${virtualtestId}" archived="${archived}">${slashEyesIcon}</a>`;
+
+            var returnHtml = "";
+            if (canPublish == true) {
+                returnHtml = editString + deleteIconString + copyString + archivedHtml + publishIconHtml + '<span class="d-inline-block" style="width: 16px; float: none"></span>';
+            } else {
+                returnHtml = editString + deleteIconString + copyString + archivedHtml ;
+            }
+
+            if (isPublished.toLowerCase() == "true") {
+                var viewIcon = '@Url.Content("~/Content/images/icons/icon-info.svg")';
+                var viewIconHtml = '<a href="javascript:void(0)" title="View Template" templateId="' + virtualtestId + '" class="with-tip viewTemplate btn-review-assignment"><img src="' + viewIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+                return viewIconHtml;
+            }
+
+            return returnHtml;
+        }
+
+        function formatPublishedDistricts(publishedDistricts) {
+            var returnStr = '';
+            if (publishedDistricts.length > 0) {
+                var summary = publishedDistricts.substring(0, 29)
+                if (publishedDistricts.length > 30)
+                    summary += '...';
+                returnStr = '<span class="with-tip" title="' + publishedDistricts + '">' + summary + '</span>'
+            }
+            return returnStr;
+        }
+
+        function setAuthorName(firstName, lastName, isPublished) {
+            var author = '';
+            if (firstName == null) {
+                firstName = '';
+            }
+            if (lastName == null) {
+                lastName = '';
+            }
+            if (isPublished.toLowerCase() == "false") {
+                if (firstName.length > 0 && lastName.length > 0) {
+                    author = lastName + ', ' + firstName;
+                } else {
+                    author = lastName + firstName;;
+                }
+            } else {
+                author = "Published";
+            }
+            return author;
+        }
+
+        $('.archiveTemplate').live('click', function () {
+            var submitArchived = null;
+            var templateId = $(this).attr('templateId');
+            var archived = $(this).attr('archived');
+            if (archived == "False") {
+                submitArchived = true;
+            } else {
+                submitArchived = false;
+            }
+            popUpArchiveTemplate({ message: messageArchive(submitArchived), submitArchived, templateId})
+        });
+        function popUpArchiveTemplate(args) {
+            var configData = {
+                message: args.message,
+                cbYesBtnFuncName: 'confirmArchiveTemplate(' + args.submitArchived + ',' + args.templateId + ')',
+                cbCancelBtnFuncName: 'cancelArchiveTemplate()'
+            }
+            var strHtml = makeYesNoDialog(configData)
+            $("<div></div>")
+                .html(strHtml)
+                .addClass("dialog dialog-custom-new-skin")
+                .attr("id", "popUpArchiveTemplate")
+                .appendTo("body")
+                .dialog({
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove()
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                    },
+                    modal: false,
+                    width: 460,
+                    height: 197,
+                    maxheight: 144,
+                    resizable: false,
+                });
+            showModalDialogBG();
+        }
+        function popUpAlertMessage(message) {
+            var popUpID = "popup-alert-message-" + new Date().getTime()
+            var configData = {
+                message: message,
+                cbYesBtnFuncName: "closepopUpAlertMessage('" + popUpID + "')",
+            }
+            var strHtml = makeAnnounceDialog(configData)
+            $("<div></div>")
+                .html(strHtml)
+                .addClass("dialog dialog-custom-new-skin")
+                .attr("id", popUpID)
+                .appendTo("body")
+                .dialog({
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove()
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove()
+                        $(this).remove();
+                    },
+                    modal: false,
+                    width: 360,
+                    maxheight: 500,
+                    resizable: false,
+                });
+            showModalDialogBG();
+        }
+        function confirmArchiveTemplate(submitArchived, templateId) {
+            cancelArchiveTemplate();
+            ShowBlock($('#idTopNavigation'), messageArchiveProcess(submitArchived));
+            $.post('@Url.Action("ArchiveTemplate")', { templateId: templateId, archived: submitArchived }, function (response) {
+                        $('#idTopNavigation').unblock();
+                        if (response.success == true) {
+                            popUpAlertMessage(messageArchiveSuccess(submitArchived))
+                            $('#templateListDataTable').dataTable().fnDraw(false);
+                        } else {
+                            popUpAlertMessage(response.error)
+                        }
+                    });
+        }
+        function cancelArchiveTemplate() {
+            $("#popUpArchiveTemplate").dialog("close");
+
+        }
+        function cancelDeleteTemplate() {
+            $("#popUpDeleteTemplate").dialog("close");
+
+        }
+        function closepopUpAlertMessage(id) {
+            $("#"+id).dialog("close");
+        }
+
+        function showModalDialogBG() {
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+        }
+
+        function messageArchive(submitArchived) {
+            return submitArchived ? 'Are you sure you want to archive this template?' : 'Are you sure you want to unarchive this template?';
+        }
+
+        function messageArchiveSuccess(submitArchived) {
+            return submitArchived ? 'Template has been archived.' : 'Template has been unarchived.';
+        }
+
+        function messageArchiveProcess(submitArchived) {
+            return submitArchived ? 'Archiving' : 'Unarchiving';
+        }
+
+        $('.deleteTemplate').live('click', function() {
+        var templateId = $(this).attr('templateId');
+            var message = "Are you sure you want to DELETE this template?"
+            popUpDeleteTemplate({ message, templateId })
+        });
+
+        function popUpDeleteTemplate(args) {
+            var configData = {
+                message: args.message,
+                cbYesBtnFuncName: 'confirmDeleteTemplate(' + args.templateId + ')',
+                cbCancelBtnFuncName: 'cancelDeleteTemplate()'
+            }
+            var strHtml = makeYesNoDialog(configData)
+            $("<div></div>")
+                .html(strHtml)
+                .addClass("dialog dialog-custom-new-skin")
+                .attr("id", "popUpDeleteTemplate")
+                .appendTo("body")
+                .dialog({
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove()
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                    },
+                    modal: false,
+                    width: 454,
+                    height: 197,
+                    maxheight: 144,
+                    resizable: false,
+                });
+            showModalDialogBG();
+        }
+
+        function confirmDeleteTemplate(templateId) {
+            cancelDeleteTemplate()
+            ShowBlock($('#idTopNavigation'), "Deleting");
+                    $.post('@Url.Action("DeleteTemplate")', { templateId: templateId }, function (response) {
+                        $('#idTopNavigation').unblock();
+                        if (response.success == true) {
+                            popUpAlertMessage('Template has been deleted.');
+                            $('#templateListDataTable').dataTable().fnDraw(false);
+                        } else {
+                            popUpAlertMessage(response.error);
+                        }
+                    });
+        }
+
+        $('.editTemplate').live('click', function () {
+            var templateId = $(this).attr('templateId');
+            var vUrl = '/DataLocker/EditTemplate?id=' + templateId;
+            window.location.href = vUrl;
+
+        });
+
+        $('.copyTemplate').live('click', function () {
+            $('#idHiddenFileTemplateSelected').val($(this).attr('templateId'));
+            DatalockerTemplateVm.content = '';
+
+            var url = '@Url.Action("LoadViewCloneTemplate", "DataLocker")';
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function (html) {
+                    DatalockerTemplateVm.isShowPopupCloneTemplate = true;
+                    DatalockerTemplateVm.content = html;
+                });
+        });
+
+        $('.viewTemplate').live('click', function () {
+            var templateId = $(this).attr('templateId');
+            var vUrl = '/DataLocker/ViewTemplate?templateId=' + templateId;
+            window.location.href = vUrl;
+
+        });
+
+        $('.publishTemplate').live('click', function () {
+            var templateId = $(this).attr('templateId');
+            displayPublishDistrictDialog(templateId);
+        });
+
+        function displayPublishDistrictDialog(templateId) {
+            // TODO: display publish district dialog
+            var worker = $('<div />');
+
+            worker
+                .addClass("dialog")
+                .attr("id", "AssignParentForm")
+                .appendTo("body")
+                .load('@Url.Action("LoadListOrShareDistrict")/?templateId=' + templateId, function() {
+                    worker.dialog({
+                        title: $(this).attr("Publish to @LabelHelper.DistrictLabel"),
+                        close: function() {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                            refreshTemplateList();
+                        },
+                        modal: false,
+                        width: 750,
+                        resizable: false,
+                        position: ['top', 100]
+                    });
+                });
+            showModalDialogBG();
+        }
+
+        function refreshTemplateList() {
+            ui.templateListDataTable.fnDraw();
+        }
+
+        function showModalDialogBG() {
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+        }
+
+        function copyTemplate()
+        {
+            var vTemplateName = encodeURIComponent ( $('#inputCopyTemplateName').val()) ;
+            var vTemplateId = $('#idHiddenFileTemplateSelected').val();
+            if (vTemplateName.trim() == '') {
+                $('#error-messages').html('<li> Please enter template name. </li>');
+                $('#error-messages').show();
+                $('#success-message').hide();
+                return;
+            }
+            ShowBlock($('#idTopNavigation'), "Clone Template");
+            $.get('@Url.Action("CopyTemplate", "DataLocker")', {id: vTemplateId, templateName: vTemplateName.trim() }, function (response) {
+                if (response.Success == true) {
+                    $('#success-message').show();
+                    $('#error-messages').hide();
+                    //go to the virtual test page
+                    var vUrl = '/DataLocker/EditTemplate?id=' + response.templateID;
+                    window.location.href = vUrl;
+                } else {
+                    $('#error-messages').html('<li> ' + response.ErrorMessage + ' </li>');
+                    $('#error-messages').show();
+                    $('#success-message').hide();
+                }
+                $('#idTopNavigation').unblock();
+            });
+        }
+
+        function cancelCopyTemplate()
+        {
+            DatalockerTemplateVm.isShowPopupCloneTemplate = false;
+            $('#idTopNavigation').unblock();
+        }
+    </script>
+
+}

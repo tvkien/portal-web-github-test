@@ -1,0 +1,157 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.ManageTestViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+<fieldset>
+    <legend>Create Test Bank</legend>
+    <div class="columns">
+        @if (Model.IsPublisher)
+        {
+            <p>
+                <label>State:</label>
+                <select id="selectState" class="full-width"></select>
+            </p>
+        }
+        <p>
+            <label>@LabelHelper.TestGrade</label>
+            <select id="selectGrade" class="full-width"></select>
+        </p>
+        <p>
+            <label>@LabelHelper.Subject</label>
+            <select id="selectSubject" class="full-width"></select>
+        </p>
+        <p>
+            <label>Bank Name</label>
+            <input type="text" id="testBankName" class="full-width"/>
+        </p>
+        <p>
+            <button type="button" id="btnCreateTestBank">Create</button>
+            <input id="hdfStateId" type="hidden" value="@Model.StateId" />
+        </p>
+    </div>
+</fieldset>
+
+<script type="text/javascript">
+    $(function () {
+        @if (Model.IsPublisher)
+        {
+            <text>
+                populateSate();
+            </text>
+        }
+        else
+        {
+            <text>
+                PopularGrade();
+            </text>
+        }
+    });
+
+    function populateSate() {
+        $('#selectState').empty();
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            addDefaultOptionDefaultValue($('#selectState'), 'State', 0);
+            addSelectListItems($('#selectState'), states, 'Select State');
+        });
+    }
+
+    function PopularGrade() {
+        $('#selectGrade').empty();
+        var vStateId = $('#hdfStateId').val();
+        if (vStateId < 0) {
+            vStateId = $('#selectState').val();
+        }
+        $.get('@Url.Action("GetGradesByStateId", "PopulateTest")', { stateId: vStateId }, function (grades) {
+            addDefaultOptionDefaultValue($('#selectGrade'), '@LabelHelper.TestGrade', 0);
+            addSelectListItems($('#selectGrade'), grades, 'Select @LabelHelper.TestGrade');
+        });
+    }
+
+    function populateSubject() {
+        $('#selectSubject').empty();
+        var vStateId = $('#hdfStateId').val();
+        if (vStateId < 0) {
+            vStateId = $('#selectState').val();
+        }
+        var vGradeId = $('#selectGrade').val();
+        $.get('@Url.Action("GetSubjectByStateIdAndGradeId", "PopulateTest")', { stateId: vStateId, gradeId: vGradeId }, function (subjects) {
+            addDefaultOptionDefaultValue($('#selectSubject'), '@LabelHelper.Subject', 0);
+            addSelectListItems($('#selectSubject'), subjects, 'Select @LabelHelper.Subject');
+        });
+    }
+
+    $('#selectState').change(function () {
+        $('#selectGrade').empty();
+        $('#selectSubject').empty();
+        if ($('#selectState').val() != '-1') {
+            PopularGrade();
+        }
+    });
+
+    $('#selectGrade').change(function () {
+        $('#selectSubject').empty();
+        if ($('#selectGrade').val() != '-1') {
+            populateSubject();
+        }
+    });
+    
+    $('#btnCreateTestBank').click(function () {
+        if ('@Model.IsPublisher' == 'True') {
+            if ($('#selectState').val() == null || $('#selectState').val() <= 0 || $('#selectState').val() == 'select') {
+                showError('Please select a State');
+                return;
+            }
+        }
+        //Check Grade 
+        if ($('#selectGrade').val() == null || $('#selectGrade').val() <= 0 || $('#selectGrade').val() == 'select') {
+            showError('Please select a @LabelHelper.TestGrade');
+            return;
+        }
+        if ($('#selectSubject').val() == null || $('#selectSubject').val() <= 0 || $('#selectSubject').val() == 'select') {
+            showError('Please select a @LabelHelper.Subject');
+            return;
+        }
+
+        if ($('#testBankName').val() == null || $('#testBankName').val().length == 0) {
+            showError('Please input Bank Name');
+            return;
+        }
+
+
+
+        $('#btnCreateTestBank').disableBt();
+        $('#CreatedTestBankId').val(0);
+        $.ajax({
+            url: '@Url.Action("CreateTestBank","CreateTest")',
+            type: 'POST',
+            data: {
+                subjectId: $('#selectSubject').val(),
+                testBankName: $('#testBankName').val() == null ? 0 : $('#testBankName').val()
+            },
+            success: function (response) {
+                if (response.Success) {
+                    $('#CreatedTestBankId').val(response.BankId);
+                    $('#error-messages').hide();
+                    $('#create-bank-success-message').show();
+                    //Reload test bank
+                    ui.dataTableTestBank.fnDraw();
+                    $('#btnCreateTest').enableBt();
+                    setTimeout(function () {
+                        $('#create-bank-success-message').hide();
+                    }, 3000);
+                    
+                    $('#btnCreateTest').removeAttr('disabled');
+                }
+                else {
+                    addErrorMessages(response);
+                    $('#create-bank-success-message').hide();
+                    $('#btnCreateTestBank').enableBt();
+                }
+                
+                $('#btnCreateTestBank').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+                $('#btnCreateTestBank').enableBt();
+            }
+        });
+    });
+</script>

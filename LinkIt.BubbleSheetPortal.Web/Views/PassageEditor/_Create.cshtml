@@ -1,0 +1,388 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.PassageCreateViewModel
+@{
+    ViewBag.Title = "Create Passage";
+}
+
+<style>
+    #questionType {
+        display: inline-block;
+        float: right;
+        margin-top: -41px;
+        background: none;
+        border: none;
+        margin-right: 167px;
+    }
+
+    #audioQuestion {
+        border: none;
+        box-shadow: 0 0 0;
+    }
+
+    .addAudio {
+        height: 30px;
+        width: 70px;
+        line-height: 30px;
+    }
+    .bntCreate {
+        margin-right: 10px;
+    }
+
+    .bubbleSheetSelector select {
+        max-width: 305px;
+    }
+</style>
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form">
+                <div id="divPassageCreate" class="bubbleSheetSelector" style="margin-top: 0px">
+                    <h1>Add New Passage</h1>
+                    <ul style="display: none" id="error-messages" class="message error"></ul>
+                    <ul style="display: none" id="success-message-create" class="message success">
+                        <li>Passage successfully created.</li>
+                    </ul>
+                    @using (Html.BeginForm("Create", "PassageEditor", FormMethod.Get, new { id = "createPassageForm", @class = "form" }))
+                    {
+                        <p style="height: 5px">
+                            <div id="notification"></div>
+                        </p>
+                        <fieldset>
+                            <div class="columns">
+                                <div class="colx2-left">
+                                    <p>
+                                        <label>Name</label>
+                                        <input id="txtName"  type="text" name="Name" style="width: 290px" />
+                                    </p>
+                                    <p>
+                                        <label>@LabelHelper.GradeLabel</label>
+                                        <select id="selectPassageGradeCreate" name="GradeId" data-bind='options: PassageGrades, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select @LabelHelper.GradeLabel", value: PassageGradeId' style="width: 305px"></select>
+                                    </p>
+                                    <p>
+                                        <label>@LabelHelper.Subject</label>
+                                        <select id="selectPassageSubjectCreate" name="Subject" data-bind='options: PassageSubjects, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Passage Subject", value: PassageSubjectText' style="width: 305px"></select>
+                                    </p>
+                                </div>
+                                <div class="colx2-right">
+                                    <p>
+                                        <label>Text Type</label>
+                                        <select id="selectTextTypeCreate" name="TextTypeId" data-bind='options: TextTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Type", value: TextTypeId' style="width: 305px"></select>
+                                    </p>
+                                    <p>
+                                        <label>Text Sub Type</label>
+                                        <select id="selectTextSubTypeCreate" name="TextSubTypeId" data-bind='options: TextSubTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Sub Type", value: TextSubTypeId' style="width: 305px"></select>
+                                    </p>
+                                    <p>
+                                        <label>Flesch Kincaid</label>
+                                        <select id="selectFleschKincaidIdsCreate" name="FleschKincaidId" data-bind='options: FleschKincaidIds, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Flesch Kincaid", value: FleschKincaidId' style="width: 305px"></select>
+                                    </p>
+                                </div>
+                            </div>
+                        </fieldset>
+
+
+                        <div class="divBotButton">
+                            <button id="btnCancel" type="button" class="grey float-right" onclick="backToPassageListCreate()">Cancel</button>
+                            <button id="btnSubmit" type="button" class="float-right bntCreate" onclick="submitCreatePassage()">Create</button>
+                        </div>
+                        <div class="clear"></div>
+                        <input type="hidden" id="SubjectText" name="SubjectText"/>
+                    }
+
+
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <script type="text/javascript">
+    function submitCreatePassage() {
+        var vName = $('#txtName').val();
+        if (vName.length > 50) {
+            loadAlertMessage();
+        } else {
+            CreatePassage();
+        }
+    }
+
+
+    function CreatePassage() {
+        $('#btnSubmit').disableBt();
+        $('#success-message-create').hide();
+        $('#SubjectText').val($("#selectPassageSubjectCreate option:selected").text());
+        if ($('#SubjectText').val() === 'Select Passage Subject') {
+            $('#SubjectText').val('');
+        }
+        $.ajax({
+            url: '@Url.Action("Create", "PassageEditor")',
+            type: 'POST',
+            data: $('#createPassageForm').serialize(),
+            success: function (response) {
+                if (response.Success == true) {
+                    //$('#error-messages').hide();
+                    //$('#success-message').show();
+                    if ('@Model.FromPassageEditor' == 'True') {
+                        window.location.href = '@Url.Action("Edit", "PassageEditor")/' + response.qtiRefObjectId + '?alreadyCreated=true';
+                    }
+                    if ('@Model.FromItemSetEditor' == 'True') {
+                        $('.ui-widget-overlay').last().remove(); //will be remove when table display completelly
+                        $('#createPassageDialog').parent().dialog("close");
+                        $('#createPassageDialog').remove();
+                        showPassageEditPopup(response.qtiRefObjectId, 'fromItemSetEditor');
+                    }
+                    if ('@Model.FromItemEditor' == 'True') {
+                        $('.ui-widget-overlay').last().remove(); //will be remove when table display completelly
+                        $('#createPassageDialog').parent().dialog("close");
+                        $('#createPassageDialog').remove();
+
+                        showPassageEditPopup(response.qtiRefObjectId, 'fromItemEditor');
+                    }
+
+                }
+                else {
+                    addErrorMessages(response);
+                    $('#error-messages-create').addClass('no-margin');
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+
+    }
+
+
+    function KeyValuePair(data) {
+        var self = this;
+        self.Text = ko.observable(data.Name);
+        self.Value = ko.observable(data.Id);
+    }
+
+    var vmPassageCreate;
+    var viewModelPassageCreate = function () {
+        var self = this;
+
+        //Grade
+        self.PassageGradeId = ko.observable('');
+        self.PassageGrades = ko.observableArray([]);
+        self.DisplayPassageGradesCreate = ko.computed(function () {
+            var url = '@Url.Action("GetAvailableGrades")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageGrades(mappedObjects);
+            });
+        });
+
+
+        //Subject
+        self.PassageSubjectText = ko.observable('');
+        self.PassageSubjects = ko.observableArray([]);
+
+        self.DisplayPassageSubjects = ko.computed(function () {
+            var url = '@Url.Action("GetQtiPassageSubjects", "Passage")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageSubjects(mappedObjects);
+            });
+        });
+
+        //TextType
+        self.TextTypeId = ko.observable('');
+        self.TextTypes = ko.observableArray([]);
+
+        self.DisplayTextType = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PTextType", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.TextTypes(mappedObjects);
+            });
+        });
+
+        //TextSubType
+        self.TextSubTypeId = ko.observable('');
+        self.TextSubTypes = ko.observableArray([]);
+
+        self.DisplayTextSubType = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PTextSubType", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.TextSubTypes(mappedObjects);
+            });
+        });
+
+        //FleschKincaid
+        self.FleschKincaidId = ko.observable('');
+        self.FleschKincaidIds = ko.observableArray([]);
+
+
+        self.DisplayFleschKincaid = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PFleschKincaid", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.FleschKincaidIds(mappedObjects);
+            });
+        });
+
+    };
+
+    $(function () {
+        vmPassageCreate = new viewModelPassageCreate();
+        ko.cleanNode(document.getElementById("divPassageCreate"));
+        ko.applyBindings(vmPassageCreate, document.getElementById("divPassageCreate"));
+
+        bindEventsCreate();
+    });
+
+    function bindEventsCreate() {
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function (e) {
+
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+
+        });
+    }
+    function backToPassageListCreate() {
+        if ('@Model.FromPassageEditor' == 'True') {
+            var url = '@Url.Action("Index", "PassageEditor")';
+            window.location.replace(url);
+        } else {
+            //close this dialog and display the already created passage in the filter
+            $('.ui-widget-overlay').last().remove();
+            $('#createPassageDialog').parent().dialog("close");
+            $('#createPassageDialog').remove();
+
+        }
+    }
+    function showPassageEditPopup(id, from) {
+
+        if (from == null) {
+            from = '';
+        }
+
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassagePopUpDialogCSS")
+            .attr("id", "editPassageDialog")
+            .appendTo("body")
+            .load('@Url.Action("LoadEditPassageForm","PassageEditor")?id=' + id + '&firstTime=true&from=' + from + '&qtiItemGroupId=@Model.QtiItemGroupId', function () {
+                worker.dialog({
+                    open: function () {
+                        //get the index of the main (filter) popup
+                        var filterZindex = parseInt($('#addPassageDialog').parent().css('z-index'));
+                        if (from == 'fromItemEditor') {
+                            filterZindex = parseInt($('#PopupAddReference').parent().css('z-index'));
+                            $('#PopupAddReference').prev('.ui-widget-header').css('top', '40px');
+                        }
+
+                        //set z-index for the second overlay
+                        $('.ui-widget-overlay').last().css('z-index', filterZindex + 1);
+                        $('.ui-widget-overlay').last().css('height', '2000px');
+                        //then set the z-index for the second popup
+                        $('#editPassageDialog').parent().css('z-index', filterZindex + 2);
+
+                        $('#tips').html('');
+                        $('.ui-widget-header').css('top', '70px');
+                        $('h1').css('line-height', '19.8px');
+                        $('.cke_editor_passageContent_dialog').remove();//clear dialog of image upload ,video upload
+                    },
+                    title: $(this).attr("Standard"),
+                    close: function () {
+                        SetReloadFilterPasssage(from);//defined in _Edit.cshtml
+
+                        $('.ui-widget-overlay').last().remove();//will be remove when table display completelly
+                        $(this).remove();
+                        $('#tips').html('');
+                    },
+                    modal: false,
+                    width: 984,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+
+    function loadAlertMessage()
+    {
+        var url = '@Url.Action("LoadAlertPassageName", "PassageEditor")';
+        $.ajax(
+            {
+                 url: url, cache: false
+            })
+            .done(function (html) {
+                $("#divPassageCreate").append('<div id="PopupAlertPassageName" class="dialog"></div>');
+                $("#PopupAlertPassageName").append(html);
+                $('#PopupAlertPassageName').dialog({
+                    title: "",
+                    open: function () {
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupAlertPassageName').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    $(function() {
+        $("#createPassageForm").submit(function(e) {
+            e.preventDefault();
+            return;
+        });
+    });
+    
+    function cancelAlertPassage() {
+        $(".dialog").dialog("close");
+        $("body .my-overlay").remove();
+    }
+</script>

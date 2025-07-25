@@ -1,0 +1,382 @@
+@using System
+@using System.Linq
+@using System.Web.Security
+@using LinkIt.BubbleSheetPortal.Models.SGO
+@using LinkIt.BubbleSheetPortal.Web.Helpers.SGO
+@using StringExtensions = LinkIt.BubbleSheetPortal.Common.StringExtensions
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGO.SGOScoringPlanTargetViewModel
+<div style="line-height: 1.6">
+    @if (!Model.HavePostAssessment && Model.SgoType != 2)
+    {
+        <div style="color: red;">You have not added any post-assessment data point. In order to create a scoring plan, please choose a post-assessment on the Data Points page.</div>
+    }
+
+    <b>Select which type of quantifiable target you plan to use:</b><br />
+    <div style="padding-left: 20px;">
+        <input id="idQuantifiableType1" type="radio" name="quantifiableType" value="1" @if (Model.TargetScoreType == 1) { <text>
+               checked="checked"
+               </text> } @(Model.HavePostAssessment && (!Model.IsCustomTextScoreTypePostAssessment) ? "" : "disabled='disabled'")>
+
+        <label for="idQuantifiableType1">
+            #% of students will achieve a score of x on post assessment
+        </label>
+        <br />
+        <input id="idQuantifiableType2" type="radio" name="quantifiableType" value="2"
+               @if (Model.TargetScoreType == 2) { <text>
+               checked="checked"
+               </text> } @(Model.HavePostAssessment && (!Model.IsCustomTextScoreTypePostAssessment) ? "" : "disabled='disabled'")>
+
+        <label for="idQuantifiableType2">
+            Based on the pre-assessment, #% of students will improve by x on post assessment
+        </label>
+        <br />
+        @{
+            var invisibleStyle = "";
+            if (Model.TargetScoreType != 2 || Model.IsCustomTextScoreTypePostAssessment)
+            {
+                invisibleStyle = "display: none;";
+            }
+        }
+        <div id="divPreAssessmentDataPoint" style="padding-left: 17px; @invisibleStyle">
+            <label>Pre-Assessment DataPoint</label>
+            @Html.DropDownList("selectTestPreAssessment", Model.PreAssessmentSelectListItems)
+            <br />
+        </div>
+        <input id="idQuantifiableType3" type="radio" name="quantifiableType" value="3"
+               @if (Model.TargetScoreType == 3) { <text>
+               checked="checked"
+               </text> } @(Model.HavePostAssessment && (!Model.IsCustomTextScoreTypePostAssessment) ? "" : "disabled='disabled'")>
+
+        <label for="idQuantifiableType3">
+            #% of students will achieve x out of y on post assessment
+        </label>
+        <div id="divPostAssessmentToBeCreated" style="display: none">
+            @if (Model.HavePostAssessmentToBeCreated)
+            {
+                <label>Total Points Possible</label>
+                <input id="idScorePostAssessmentToBeCreated" maxlength="3" style="width: 55px;" onkeypress=" IsNumeric(event); " value="@Model.ToBeCreatedTotalPointPossible" />
+            }
+        </div>
+
+        <br />
+        <input id="idQuantifiableType4" type="radio" name="quantifiableType" value="4"
+               @if (Model.TargetScoreType == 4 || Model.IsCustomTextScoreTypePostAssessment) { <text>
+               checked="checked"
+               </text> }>
+        <label for="idQuantifiableType4">
+            Manual scoring method
+        </label>
+        <br />
+        @{
+            invisibleStyle = "";
+            if (Model.TargetScoreType != 4 || Model.SgoType == (int)SGOTypeEnum.UnstructuredData)
+            {
+                invisibleStyle = "display: none;";
+            }
+        }
+        <div id="divCustomPreAssessmentDataPoint" style="padding-left: 17px; @invisibleStyle">
+            <label>This SGO compares the post-assessment to:</label>
+            <div class="block-text-name">
+                @Html.DropDownList("selectTestPreAssessmentCustom", Model.PreAssessmentCustomSelectListItems)
+                <div class="box-select">
+                    <span class="overlay"></span>
+                </div>
+            </div>
+
+            <br />
+        </div>
+    </div>
+</div>
+<br />
+@if (Model.SgoType != (int)SGOTypeEnum.UnstructuredData)
+{
+    <fieldset class="grey-bg qtiItemSelector">
+        <div class="columns">
+            <table id="dataTableEstablishStudentGroups" class="datatable table table-sgo table-sgo-student no-margin" style="width: 833px;">
+                <thead>
+                    <tr class="table-sgo-head">
+                        <td></td>
+                        <td>Setup your Student Target Scores</td>
+                        @foreach (var item in Model.SgoAttainmentGoals)
+                        {
+                            <td>Setup @item.Name SGO Attainment Goal</td>
+                        }
+                    </tr>
+                    <tr class="table-sgo-head">
+                        <td></td>
+                        <td>
+                            <button class="btn-sgo-small" id="btnSetTarget">Set Targets</button>
+                        </td>
+                        @foreach (var item in Model.SgoAttainmentGoals)
+                        {
+                            <td>
+                                <button class="btn-sgo-small" name="btnSetAttainment" data="@item.SGOAttainmentGoalId">@item.Name</button>
+                            </td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="col">
+                            Preparedness Group
+                        </th>
+                        <th scope="col">
+                            Student Target Score
+                            (Minimum Expectation)
+                        </th>
+                        @foreach (var item in Model.SgoAttainmentGoals)
+                        {
+                            <th scope="col">
+                                @item.Name (@item.Order) (%)
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var sgoGroup in Model.SgoGroups)
+                    {
+                        var color = ColorHelper.GetColorHexList(Model.SgoGroups.Count, true)[Model.SgoGroups.IndexOf(sgoGroup)];
+                        <tr>
+                            <td style="background-color: @color">
+                                @sgoGroup.Order - @Html.Raw(sgoGroup.Name)
+                            </td>
+                            <td>
+                                @if (Model.TargetScoreType == 4)
+                                {
+                                    <b>@sgoGroup.TargetScoreCustom</b>
+                                    if (string.IsNullOrEmpty(sgoGroup.TargetScoreCustom) && Model.SgoGroups.IndexOf(sgoGroup) == 0)
+                                    {
+                                        <input type="hidden" id="targetScoreCustomIsEmpty" value="true" />
+                                    }
+                                }
+                                else if (sgoGroup.TargetScore.HasValue)
+                                {
+                                    <b>&ge; @string.Format("{0:0.###}", sgoGroup.TargetScore)</b>
+                                }
+                                <b id="idTargetScoreInfor-@sgoGroup.SGOGroupID"></b>
+                            </td>
+                            @foreach (var sgoAttainmentGoal in Model.SgoAttainmentGoals)
+                            {
+                                <td>
+                                    @{
+                                        var sgoAttainmentGroup = Model.SgoAttainmentGroups.FirstOrDefault(x => x.SGOGroupId == sgoGroup.SGOGroupID && x.SGOAttainmentGoalId == sgoAttainmentGoal.SGOAttainmentGoalId);
+                                    }
+
+                                    @if (sgoAttainmentGroup != null)
+                                    {
+                                        <span>@StringExtensions.ParseSgoComparisonTypeToHtmlCharacter(sgoAttainmentGoal.ComparisonType) @sgoAttainmentGroup.GoalValue (@Math.Ceiling((1.0 * sgoAttainmentGroup.GoalValue.GetValueOrDefault() * sgoGroup.StudentNumberInGroup) / 100)/@sgoGroup.StudentNumberInGroup)</span>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
+    <input type="hidden" value="@Model.PostAssessmentLinkitTotalPointPossible" id="idPointPossiblePostAssessmentLinkit" />
+}
+else
+{
+    <div class="columns sgo-columns">
+        <div>
+            <textarea id="rationaleUnstructured" style="width: 99%; height: 100px;">@Model.RationaleUnstructured</textarea>
+        </div>
+    </div>
+
+    <fieldset class="grey-bg qtiItemSelector">
+
+        <div class="columns">
+            <table id="tableUnstructuredScoringData" class="datatable table table-sgo table-sgo-student no-margin" style="width: 833px;">
+                <thead>
+                    <tr>
+                        <th scope="col">
+                            Goal
+                        </th>
+                        @foreach (var item in Model.SgoAttainmentGoals)
+                        {
+                            <th scope="col">
+                                @item.Name
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < 4; i++)
+                    {
+                        if (i < Model.SgoGroups.Count)
+                        {
+                            var sgoGroup = Model.SgoGroups[i];
+                            <tr>
+                                <td>
+                                    <input name="targetScoreCustom" data-row="@i" type="text" value="@sgoGroup.TargetScoreCustom" style="width: 90%" />
+                                    <input type="hidden" name="sgoGroupId" data-row="@i" value="@sgoGroup.SGOGroupID" />
+                                </td>
+                                @foreach (var sgoAttainmentGoal in Model.SgoAttainmentGoals)
+                                {
+                                    <td>
+                                        @{
+                                            var sgoAttainmentGroup = Model.SgoAttainmentGroups.FirstOrDefault(x => x.SGOGroupId == sgoGroup.SGOGroupID && x.SGOAttainmentGoalId == sgoAttainmentGoal.SGOAttainmentGoalId);
+                                        }
+
+                                        @if (sgoAttainmentGroup != null)
+                                        {
+                                            <input name="goalValueCustom" data-row="@i" attaintment-group-id="@sgoAttainmentGroup.SGOAttainmentGroupId" attaintment-goal-id="@sgoAttainmentGoal.SGOAttainmentGoalId" type="text" value="@sgoAttainmentGroup.GoalValueCustom" style="width: 90%" />
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td>
+                                    <input name="targetScoreCustom" data-row="@i" type="text" style="width: 90%" />
+                                    <input type="hidden" name="sgoGroupId" data-row="@i" value="0" />
+                                </td>
+                                @foreach (var sgoAttainmentGoal in Model.SgoAttainmentGoals)
+                                {
+                                    <td>
+                                        <input name="goalValueCustom" data-row="@i" attaintment-group-id="0" attaintment-goal-id="@sgoAttainmentGoal.SGOAttainmentGoalId" type="text" style="width: 90%" />
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
+
+    <button id="btnAttach" type="button">Attachment</button>
+    <input type="hidden" id="txtHiddenAttachUrl" value="@Model.AttachUnstructuredUrl" />
+    <div id="divAttachResultInfo"
+         @if (string.IsNullOrEmpty(Model.AttachUnstructuredUrl)) { <text>
+         style="display: none; visibility: hidden;"
+         </text>  } else { <text>
+         style="display: inline-block;"
+         </text>  }>
+        <span class="attachment-item" id="spanAttachFileName" downloadUrl="@Model.AttachUnstructuredDownloadUrl">
+            @if (Model != null && !string.IsNullOrEmpty(Model.AttachUnstructuredUrl))
+            {
+                @Model.AttachUnstructuredUrl.Substring(@Model.AttachUnstructuredUrl.IndexOf('_') + 1)
+            }
+        </span>
+        <a class="attachment-item with-tip" id="removeAttachment" onclick="removeAttach()" title="Remove Attachment">
+            <img src="/Content/themes/Constellation/images/icons/fugue/icon-red.png">
+        </a>
+    </div>
+    <br />
+}
+
+
+<script>
+    $('input:radio[name="quantifiableType"]').change(function () {
+        $("#divPreAssessmentDataPoint").hide();
+        $('#divPostAssessmentToBeCreated').hide();
+        $("#divCustomPreAssessmentDataPoint").hide();
+        if ($(this).is(':checked') && $(this).val() == '2') {
+            $('#divPreAssessmentDataPoint').show();
+        } else if ($(this).is(':checked') && $(this).val() == '3' && '@Model.HavePostAssessmentToBeCreated' == 'True') {
+            $('#divPostAssessmentToBeCreated').show();
+        } else if ($(this).is(':checked') && $(this).val() == '4') {
+            $('#divCustomPreAssessmentDataPoint').show();
+        }
+    });
+
+    function IsNumeric(event) {
+        var key = event.which;
+        if (!(key > 47 && key < 58) && key != 8)
+            event.preventDefault();
+    }
+
+    $(function () {
+        var vTargetScoreType = '@Model.TargetScoreType';
+        if (vTargetScoreType == '2' && '@Model.IsCustomTextScoreTypePostAssessment' == 'False') {
+            $('#divPreAssessmentDataPoint').show();
+        } else if (vTargetScoreType == '3'  && '@Model.HavePostAssessmentToBeCreated' == 'True') {
+            $('#divPostAssessmentToBeCreated').show();
+        }
+
+        if (vReload == 1) {
+            $('#idQuantifiableType' + vOptionSelected).attr("checked", true);
+            if (vOptionSelected == '2') {
+                $('#selectTestPreAssessment').val(vDefaultValue);
+                $('#divPreAssessmentDataPoint').show();
+            } else if (vOptionSelected == '3' && '@Model.HavePostAssessmentToBeCreated' == 'True') {
+                $('#idScorePostAssessmentToBeCreated').val(vDefaultValue);
+                $('#divPostAssessmentToBeCreated').show();
+            }
+        }
+
+        if ($("#idQuantifiableType3").is(":checked") && '@Model.HavePostAssessment' === 'True') {
+            if ($('#idScorePostAssessmentToBeCreated').length > 0) {
+                $('b[id^="idTargetScoreInfor-"]').html('/' + $('#idScorePostAssessmentToBeCreated').val());
+            } else {
+                if ($('#idPointPossiblePostAssessmentLinkit').val() != '')
+                    $('b[id^="idTargetScoreInfor-"]').html('/' + $('#idPointPossiblePostAssessmentLinkit').val());
+                else
+                    $('b[id^="idTargetScoreInfor-"]').html('');
+            }
+        }
+
+        registerUploadAttachment();
+    });
+
+    function registerUploadAttachment() {
+
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+
+        if (window.FormData !== undefined) {
+            $('#btnAttach').uploadifive({
+                'uploadScript': '@Url.Action("UploadAttachment")',
+                'overrideEvents': ['onDialogClose'],
+                'formData': { AUTHID: auth },
+                'buttonText': 'Attachment',
+                'fileObjName': 'postedFile',
+                'buttonClass': 'btn-sgo-upload btn-sgo-upload-inline',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 120,
+                'height': 26,
+                'auto': true,
+                'onUpload': function (file) {
+                    ShowBlock($('#idTopNavigation'), 'Upload Attachment');
+                },
+                'onUploadComplete': function (file, response) {
+                    var result = $.parseJSON(response);
+
+                    if (!result.Success == true) {
+                        var msg = '<div class="text-left">' + result.ErrorMessage + '</div>';
+                        popupAlertMessage('alert', msg, 310, 500);
+                    } else {
+                        $('#spanAttachFileName').text(result.FileName.substring(result.FileName.indexOf('_') + 1));
+                        $('#spanAttachFileName').attr('downloadUrl', result.downloadUrl);
+
+                        $('#txtHiddenAttachUrl').val(result.FileName);
+                        $('#divAttachResultInfo').show();
+                        $('#divAttachResultInfo').css('visibility', 'visible');
+                        $('#divAttachResultInfo').css('display', 'inline-block');
+                    }
+                    $('#idTopNavigation').unblock();
+                },
+                'onError': function (errorType, file) {
+                    alert('The error was: ' + errorType);
+                }
+            });
+        }
+
+        var downloadElement = $('#spanAttachFileName');
+        downloadElement.unbind('click');
+        downloadElement.click(function () {
+            var element = $(this);
+            var url = element.attr('downloadUrl');
+            window.open(url, 'Download');
+        });
+    }
+
+    $('#selectTestPreAssessmentCustom').click(function () {
+        if ($('#selectTestPreAssessmentCustom option').length <= 1) {
+            CustomAlert('Please add Pre-Assessment datapoint(s) at Data Points step.', true);
+        }
+    });
+</script>

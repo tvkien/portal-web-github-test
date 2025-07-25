@@ -1,0 +1,717 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.SendResultViewModel
+<style>
+    .block-controls {
+        display: none;
+    }
+
+    .float-right {
+        display: none;
+    }
+
+    label[for=chkAllMessage] {
+        padding-left: 5px;
+        color: #fff !important;
+        font-weight: bold !important;
+    }
+
+    .compose {
+        margin-right: 0px;
+    }
+</style>
+
+@Html.Partial("_SendMessageResult", Model)
+
+<div id="messageNotification"></div>
+<input type="hidden" id="isReloadInbox" value="0"/>
+<div class="no-margin last-child inbox">
+    <p class="group_compose_search">
+        <button id="compose" class="compose" type="button">Compose</button>
+        <button id="deleteMessage" type="button">Delete</button>
+        <label>
+            Search:
+            <input id="txtSearchValue" type="text">
+        </label>
+    </p>
+    <p class="search_inbox">
+        <span class="checkbox_delete">
+            <input type="checkbox" id="chkAllMessage" style="margin-left: 2px" />
+            <label for="chkAllMessage">Select all</label>
+        </span>
+        <span>Acknow.</span>
+        <span>Replies</span>
+    </p>
+
+    <table id="dataTable" class="datatable table no-margin" cellspacing="0px" width="722px">
+        <thead>
+            <tr>
+                <th scope="col" class="black-cell"><span class="loading"></span></th>
+                <th scope="col" class="black-cell"><span class="loading"></span></th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Sender
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Rec
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Subject
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Ack
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Rep
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    CDTS
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    CDT
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    IsRead
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    StudentId
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    CDTFS
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    MNIT
+                </th>
+
+            </tr>
+        </thead>
+        <tbody style="cursor: pointer"></tbody>
+    </table>
+</div>
+<style>
+    #dataTable thead {
+        visibility: hidden;
+    }
+
+    .form label, .form .label {
+        display: inline;
+    }    
+</style>
+<script type="text/javascript">
+    var anOpen = [];
+    var oTable;
+
+    $(function () {
+        InitDataTable();
+
+        if ('@ViewBag.ReplyMessageResult' == 'True') {
+            if ('@ViewBag.ReplyMessageType' == '2')
+                LinkIt.success('#messageNotification', 'Reply message successfully.');
+            else
+                LinkIt.success('#messageNotification', 'Acknowledge was sent.');
+        } else if ('@ViewBag.DeleteMessageResult' == 'False') {
+            LinkIt.error('#messageNotification', 'An error has occured. Please try again.');
+        }                
+    });
+
+    function InitDataTable() {
+        var userId = '@ViewBag.UserId';
+        var openIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/details_open.png")';
+
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            "fnStateLoadParams": function (oSettings, oData) {
+                if('@ViewBag.SaveStateMessageRef' == '') {
+                    oData.iStart = 0;
+                }
+            },
+            sAjaxSource: getAjaxSource(userId, null),
+            bAutoWidth: true,
+            oLanguage: { "sEmptyTable": "Inbox is empty." },
+            aLengthMenu: [[10, 25, 50], [10, 25, 50]],
+            iDisplayLength: 10,
+            aaSorting: [[7, "desc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'MessageId', bSearchable: false, bSortable: false, sClass: 'center', sWidth: '10px' },
+                { sType: 'integer', sName: 'MessageId', bSearchable: false, bSortable: false, sWidth: '45px' },
+                { sType: 'string', sName: 'Sender', bSearchable: true, bSortable: false, sWidth: '140px' },
+                { sType: 'string', sName: 'Recipients', bSearchable: true, bSortable: false, sWidth: '10px' },
+                { sType: 'string', sName: 'BriefInfo', bSearchable: true, bSortable: false, sWidth: '420px' },
+                { sType: 'string', sName: 'Acknow', bSearchable: true, bSortable: false, sWidth: '38px' },
+                { sType: 'string', sName: 'Replies', bSearchable: true, bSortable: false, sWidth: '38px' },
+                { sType: 'string', sName: 'CreatedDateTimeString', bSearchable: true, bSortable: false, sWidth: '100px' },
+                { sType: 'string', sName: 'CreatedDateTime', bSearchable: true, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'MessageNoUnread', bSearchable: true, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'StudentId', bSearchable: true, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'CreatedDateTimeFullString', bSearchable: true, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'MessageNoInThread', bSearchable: true, bSortable: false, bVisible: false }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(displayShowDetail(aData[12], aData[1]));
+                $('td:eq(1)', nRow).html(setCheckBox(aData[1] + ';' + aData[10]));
+                $('td:eq(3)', nRow).html(displayRecipients(aData[3]));
+                if (aData[9] > 0)
+                    $(nRow).addClass('unread');
+                if (aData[1] == '@ViewBag.SaveStateMessageId')
+                    $(nRow).addClass('message-active');
+                $('td:eq(2),td:eq(3),td:eq(4),td:eq(5),td:eq(6),td:eq(7)', nRow).unbind('click').bind('click', function () {
+                    $(nRow).removeClass('unread');
+                    if (aData[10] != '0')
+                        location.href = '/MailBox/ViewMessage/?messageId=' + aData[1] + "&studentId=" + aData[10];
+                    else
+                        location.href = '/MailBox/ViewMessage/?messageId=' + aData[1];
+                });
+                $('td:eq(7)', nRow).bind({
+                    mouseenter: function () {
+                        displayTooltip($(this), aData[11]);
+                    },
+                    mouseleave: function () {
+                        ;//do nothing here
+                    }
+                });
+
+            }, fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+                SetUnreadMessage(); // This funtion is located at _LayoutParentConnect.cshtml
+                $('#chkAllMessage').removeAttr('checked');
+                expandSaveStateMessage();
+            }
+        };
+
+        oTable = $("#dataTable").data("options", options);
+        //oTable = $("#dataTable").dataTable(options);
+        oTable = $("#dataTable").dataTable({ "bRetrieve": false });
+    }
+
+    function displayTooltip(e, tooltip) {
+        $(e).attr('title', tooltip);
+    }
+
+    function displayShowDetail(messagenoInThread, messageId) {
+        var openIcon;
+        var openIconString;
+
+        if (messagenoInThread > 0) {
+            openIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/details_open.png")';
+            openIconString = '<img class="control with-tip" id="image_' + messageId + '" src="' + openIcon + '"' + ' title="Detail">';
+        } else {
+            openIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/details_open_grey.png")';
+            openIconString = '<img class="with-tip" src="' + openIcon + '"' + ' title="No Responder">';
+        }
+
+        return openIconString;
+    }
+
+    function expandSaveStateMessage() {
+        if ('@ViewBag.SaveStateMessageId' != '@ViewBag.SaveStateMessageRef')
+            $('#image_' + '@ViewBag.SaveStateMessageRef').click();
+    }
+
+    function setCheckBox(messageId) {
+        var checkboxString = '<input type="checkbox" name="chkMessage" value="' + messageId + '" />';
+        return checkboxString;
+    }
+
+    function getAjaxSource(userId, searchValue) {
+        if (searchValue == null || searchValue.trim() == '') {
+            return '@Url.Action("GetInboxMessageForStaff")/?userId=' + userId;
+        } else {
+            return '@Url.Action("GetInboxMessageForStaff")/?userId=' + userId + '&searchValue=' + encodeURIComponent(searchValue);
+        }
+    }
+
+    function displayRecipients(data) {
+        var element = '';
+
+        if (data != null && data != '') {
+            var title = '<p style="text-align:left;">' + data.split('|').join('<br />') + '</p>';
+            element = '<img class="with-tip" src="' + '@Url.Content("~/Content/images/student-icon.png")' + '"' + ' title=\'' + title + '\' width="24" height="24">';
+        }
+
+        return element;
+    }
+
+    $('#dataTable img.control').live('click', function () {
+        var openIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/details_open.png")';
+        var closeIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/details_close.png")';
+
+        var nTr = this.parentNode.parentNode;
+        var i = $.inArray(nTr, anOpen);
+
+        if (i === -1) {
+            $(this).attr('src', closeIcon);
+            if ($(this).data('tip')) {
+                $(this).updateTipContent('Closed');
+            }else {
+                $(this).attr('title', 'Closed');
+            }
+
+            var oData = oTable.fnGetData(nTr);
+            var messageId = oData[0];
+
+            var div = '<div id="subMessageList_' + messageId + '" style="min-height: 50px"/>';
+            oTable.fnOpen(nTr, div, 'details sublistDetails');
+            anOpen.push(nTr);            
+
+            $('#subMessageList_' + messageId)
+                .load('@Url.Action("ShowSubMessageList", "MailBox")/?messageId=' + messageId, function (response) {
+                    
+            });
+        }
+        else {            
+            $(this).attr('src', openIcon);
+            $(this).updateTipContent('Detail');
+            oTable.fnClose(nTr);
+            anOpen.splice(i, 1);
+        }
+
+        $('#image_3').attr('title','d');
+    });
+
+    $(document).ready(function () {
+        setInterval('RefreshInbox()', 300000);
+    });
+
+    function autoRefresh() {
+        location.reload();
+    }
+
+    $("#txtSearchValue").keypress(function (e) {
+        if (e.which == 13) {
+            RefreshInbox();
+        }
+    });
+
+    function RefreshInbox() {
+        var searchValue = $('#txtSearchValue').val();
+        var userId = '@ViewBag.UserId';
+        ui.dataTable.fnSettings().sAjaxSource = getAjaxSource(userId, searchValue.trim());
+        //ui.dataTable.fnDraw();
+        ui.dataTable.fnStandingRedraw();
+    }
+
+    $("#compose").click(function () {
+        location.href = '@Url.Action("Index", "Compose")';
+    });
+
+
+
+        $('#chkAllMessage').live("click", function () {
+            if (this.checked) {
+                $('INPUT[name="chkMessage"][type=checkbox]').attr('checked', 'checked');
+            }
+            else {
+                $('INPUT[name="chkMessage"][type=checkbox]').removeAttr('checked');
+            }
+        });
+
+        $('INPUT[name="chkMessage"][type=checkbox]').live("click", function () {
+
+            // Update CheckAll checkbox status
+            var checkboxes = $('INPUT[name="chkMessage"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllMessage').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllMessage').attr('checked', 'checked');
+            }
+            
+            // Update sub thread checkboxs status
+            if ($(this).attr('checked') == 'checked') {
+                $('INPUT[name="chkMessage"][type=checkbox][class="' + $(this).attr('value').split(';')[0] + '"]').attr('checked', 'checked');
+            }else {
+                $('INPUT[name="chkMessage"][type=checkbox][class="' + $(this).attr('value').split(';')[0] + '"]').removeAttr('checked');
+            }
+            
+            // Update main thread checkbox status
+            if ($(this).attr('checked') != 'checked') {
+                for (var k = 0; k < checkboxes.length; k++) {
+                    if ((checkboxes[k]).value == $(this).attr('class') + ';0') {
+                        (checkboxes[k]).checked = false;
+                    }
+                }
+            }
+        });
+
+        function getSelectedMessageIds() {
+            var messageIds = '';
+            $('INPUT[name="chkMessage"][type=checkbox]:checked').each(function (i, e) {
+                messageIds += $(e).val() + ',';
+            });
+            return messageIds.substr(0, messageIds.length - 1);
+        }
+        
+        function hasSubMessageInDeleteMainList() {
+            var result = false;
+            $('INPUT[name="chkMessage"][type=checkbox]:checked').each(function (i, e) {
+
+                // Just check main message records (studentId = 0)
+                if (e.value.split(';')[1] == 0) {
+                    var nTr = e.parentNode.parentNode;
+                    var oData = oTable.fnGetData(nTr);
+
+                    if (oData[10] == 0 // StudentId == 0 ==> Main message
+                        && oData[12] > 0 // MessageNoInThread > 0 ==> Main message has undeleted messages
+                    )
+                        result = true;
+                }
+            });
+            
+            return result;
+        }
+
+        $("#deleteMessage").click(function (e) {
+            e.preventDefault();
+
+            var selectedMessageIds = getSelectedMessageIds();
+
+            if (selectedMessageIds == '') {
+                alertMessage('Please select a message to delete.');
+                return;
+            }
+            
+            if(hasSubMessageInDeleteMainList()) {
+                confirmMessage("Replies and/or acknowledgements associated with this conversation exist. Are you sure you want to delete?");
+            }else {
+                confirmMessage("Do you really want to delete these messages?");
+            }
+        });
+
+        function deleteMessages() {
+            ShowBlock($('#dataTable'), "Loading");
+
+            var selectedMessageIds = getSelectedMessageIds();
+
+            $.ajax({
+                url: '@Url.Action("DeleteMessage", "MailBox")',
+            type: 'POST',
+            data: { messageIds: selectedMessageIds },
+            success: function (response) {
+                $('#dataTable').unblock();
+                if (response.Success == true) {
+                    LinkIt.success('#messageNotification', 'Messages are deleted');
+                } else {
+                    LinkIt.error('#messageNotification', 'An error has occured. Please try again.');
+                }
+
+                RefreshInbox();
+            },
+            failure: function (response) {
+                alert(response);
+                RefreshInbox();
+            }
+        });
+    }
+
+    function confirmMessage(message) {
+        var yesButton = '<button style="width:63px;" onclick="yesClick();">Yes</button>';
+        var noBotton = '<button style="width:63px;" onclick="noClick();">No</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + yesButton + '&nbsp;&nbsp;' + noBotton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "confirmDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $('.ui-widget-overlay').remove(); $(this).remove(); },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+
+    function alertMessage(message) {
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $('.ui-widget-overlay').remove(); $(this).remove(); },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+
+    function closeAlert() {
+        $('#alertDialog').dialog('close');
+    }
+
+    function noClick() {
+        $('#confirmDialog').dialog('close');
+    }
+
+    function yesClick() {
+        $('#confirmDialog').dialog('close');
+        deleteMessages();
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+</script>
+
+
+
+
+<style type="text/css">
+    .ui-tabs-nav li:hover {
+        background: #029CDC !important;
+    }
+
+    .positionAdd {
+        position: relative;
+        right: -6px;
+        top: 26px;
+    }
+
+    .ui-dialog .block-content {
+        z-index: 0;
+    }
+
+    .ui-dialog .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        /*top: 100px !important;*/
+        height: auto !important;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    #studentContent {
+        position: relative;
+    }
+
+    .sublistDetails {
+        background-color: #F7F7F7 !important;
+        padding: 0px !important;
+    }
+
+        .sublistDetails .message,
+        .sublistDetails .block-footer,
+        .sublistDetails .dataTable thead {
+            display: none;
+        }
+
+        .sublistDetails .no-margin {
+            margin: 0px;
+            padding: 0px;
+        }
+
+        .table tbody tr.even td {
+            background: none repeat scroll 0 0 #F2F2F2;
+        }
+        .table tbody tr.odd td {
+            background: none repeat scroll 0 0 #E6E6E6;
+        }
+        .table tbody tr:hover td {
+            background-color: #80CEEE;
+        }
+
+        .sublistDetails .table tbody tr td {
+            background-color: #FEFFF3;
+            border-left: 0px none #333;
+         
+        }
+
+        .sublistDetails .table tbody tr.even td {
+            background-color: #FEFFEB;
+        }
+
+        .sublistDetailsOdd .table tbody tr td {
+            background-color: #e6e6e6;
+            border-left: 0px none #FAFAFA !important;
+        }
+
+        .sublistDetailsOdd .table tbody tr.even td {
+            background-color: #e6e6e6;
+        }
+
+        .sublistDetails .table tbody tr:hover td {
+            background-color: #80CEEE;
+        }
+
+        .sublistDetails .table tbody tr td:nth-child(1) {
+            width: 20px;
+        }
+
+            .sublistDetails .table tbody tr td:nth-child(1) input[type="checkbox"] {
+                margin-left: 40px;
+            }
+
+        .sublistDetails .table tbody tr td:nth-child(2) {
+            width: 27px;
+        }
+
+        .sublistDetails .table tbody tr td:nth-child(3) {
+			width: 99px;
+        }
+
+        .sublistDetails .table tbody tr td:nth-child(4) {
+            text-align: left;
+            width: 27px;
+        }
+		.sublistDetails .table tbody tr td:nth-child(5) {
+
+        }
+		.sublistDetails .table tbody tr td:nth-child(6) {
+            width: 33px;
+        }
+		.sublistDetails .table tbody tr td:nth-child(7) {
+            width: 34px;
+        }
+		.sublistDetails .table tbody tr td:nth-child(8) {
+            width: 71px;
+        }
+        .chrome .sublistDetails .table tbody tr td:nth-child(7) {
+            width: 33px;
+        }
+        .chrome .sublistDetails .table tbody tr td:nth-child(8) {
+            width: 72px;
+        }
+
+        .ie9 .sublistDetails .table tbody tr td.class_0 {
+            width: 20px;
+        }
+
+        .ie9 .sublistDetails .table tbody tr td.class_1 {
+            width: 27px;
+        }
+
+        .ie9 .sublistDetails .table tbody tr td.class_2 {
+			width: 98px;
+        }
+
+        .ie9 .sublistDetails .table tbody tr td.class_3 {
+            text-align: left;
+            width: 28px;
+        }
+		.ie9 .sublistDetails .table tbody tr td.class_4 {
+
+        }
+		.ie9 .sublistDetails .table tbody tr td.class_5 {
+            width: 34px;
+        }
+		.ie9 .sublistDetails .table tbody tr td.class_6 {
+            width: 34px;
+        }
+		.ie9 .sublistDetails .table tbody tr td.class_7 {
+            width: 72px;
+        }
+
+    .search_inbox .checkbox_delete {
+        padding-left: 43px;
+        width: 478px;
+    }
+    
+    
+</style>

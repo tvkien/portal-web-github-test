@@ -1,0 +1,422 @@
+﻿@using System.Linq
+@using System.Text
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SATReport.SATReportMasterViewModel
+<div>
+    @{
+        //var sections = Model.SectionTagViewModels.Take(4).ToList();
+        var sections = Model.SectionTagViewModels.ToList();
+        var tableCssClass = Model.ShowTableBorder ? "datatable table utility-table datatable-border" : "datatable table utility-table";
+    }
+    @for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
+    {
+        var sectionTag = sections[sectionIndex];
+
+        <div class="boxtitle">
+            <span>@sectionTag.SectionName</span>
+        </div>
+
+        foreach (var tagCategory in sectionTag.TagCategoryReportViewModels)
+        {
+            if (string.IsNullOrEmpty(tagCategory.TagCategoryName))
+            {
+                continue;
+            }
+            if (tagCategory.IsTechniqueCategory && tagCategory.IsShowTechnicalCategory)
+            {
+                <table class="@tableCssClass">
+                    <thead>
+                        <tr>
+                            <th class="utility" width="254px">
+                                @tagCategory.TagCategoryName
+                            </th>
+                            <th class="utility" width="60px">Incorrect</th>
+                            <th class="utility" width="60px">Blank</th>
+                            <th class="utility">Incorrectly Answered</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                        {
+                            <tr>
+                                <td class="utility">
+                                    @singleTag.TagName
+                                </td>
+                                <td class="utility" style="text-align: right;">
+                                    @singleTag.IncorrectAnswer
+                                </td>
+                                <td class="utility" style="text-align: right;">
+                                    @singleTag.BlankAnswer
+                                </td>
+                                <td class="utility">
+                                    @*@string.Join(", ", singleTag.ListAnswerInTag.Where(x => x.PointsEarned != x.PointsPossible && x.WasAnswered).Select(x => x.QuestionOrder.ToString()))*@
+                                    @{
+                                        var listSection = singleTag.ListAnswerInTag.Select(x => new { x.SectionID, x.SectionName }).OrderBy(x => x.SectionName).Distinct().ToList();
+                                        List<string> content = new List<string>();
+                                        for (int index = 0; index < listSection.Count; index++)
+                                        {
+                                            var sectionId = listSection[index].SectionID;
+                                            //var sectionName = singleTag.ListAnswerInTag.First(x => x.SectionID == sectionId).SectionName;
+                                            var sectionName = "Section " + singleTag.ListAnswerInTag.First(x => x.SectionID == sectionId).SectionOrder;
+                                            var incorrectAnswerNumber = string.Join(", ", singleTag
+                                                .ListAnswerInTag.Where(x => (x.PointsEarned != x.PointsPossible && x.WasAnswered) && x.SectionID == sectionId)
+                                                .Select(x => x.QuestionOrder.ToString()));
+                                            var info = string.Format("{0}: {1}", sectionName, incorrectAnswerNumber.Trim());
+                                            if (string.IsNullOrEmpty(incorrectAnswerNumber.Trim()) == false)
+                                            {
+                                                content.Add(info);
+                                            }
+                                        }<text>@string.Join("; ", content)</text>
+                                    }
+                                </td>
+
+
+
+
+                            </tr>
+                                        }
+                    </tbody>
+                </table>
+                                        }
+                                        else if (Model.TagTableUseAlternativeStyle)
+                                        {
+                                            <table class="@tableCssClass">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="utility" width="254px">
+                                                            @tagCategory.TagCategoryName
+                                                        </th>
+                                                        <th class="utility" width="60px">Total</th>
+                                                        <th class="utility" width="60px">Correct</th>
+                                                        <th class="utility" width="60px">Incorrect</th>
+                                                        <th class="utility" width="60px">Blank</th>
+                                                        <th class="utility">Incorrectly Answered or Skipped</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                                                    {
+                                                        <tr>
+                                                            <td class="utility">
+                                                                @singleTag.TagName
+                                                            </td>
+                                                            <td class="utility" style="text-align: right;">
+                                                                @singleTag.TotalAnswer
+                                                            </td>
+                                                            <td class="utility" style="text-align: right;">
+                                                                @singleTag.CorrectAnswer
+                                                            </td>
+                                                            <td class="utility" style="text-align: right;">
+                                                                @singleTag.IncorrectAnswer
+                                                            </td>
+                                                            <td class="utility" style="text-align: right;">
+                                                                @singleTag.BlankAnswer
+                                                            </td>
+                                                            <td class="utility">
+                                                                @{
+                                                                    var listSection = singleTag.ListAnswerInTag.Select(x => new { x.SectionID, x.SectionName }).OrderBy(x => x.SectionName).Distinct().ToList();
+                                                                    List<string> content = new List<string>();
+                                                                    for (int index = 0; index < listSection.Count; index++)
+                                                                    {
+                                                                        var sectionId = listSection[index].SectionID;
+                                                                        //var sectionName = singleTag.ListAnswerInTag.First(x => x.SectionID == sectionId).SectionName;
+                                                                        var sectionName = "Section " + singleTag.ListAnswerInTag.First(x => x.SectionID == sectionId).SectionOrder;
+                                                                        var incorrectAnswerNumber = string.Join(", ", singleTag
+                                                                            .ListAnswerInTag.Where(x => ((x.PointsEarned != x.PointsPossible && x.WasAnswered) || !x.WasAnswered) && x.SectionID == sectionId)
+                                                                            .Select(x => x.QuestionOrder.ToString()));
+                                                                        var info = string.Format("{0}: {1}", sectionName, incorrectAnswerNumber.Trim());
+                                                                        if (string.IsNullOrEmpty(incorrectAnswerNumber.Trim()) == false)
+                                                                        {
+                                                                            content.Add(info);
+                                                                        }
+                                                                    }<text>@string.Join("; ", content)</text>
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                                    }
+                                                </tbody>
+                                            </table>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (!tagCategory.IsTechniqueCategory)
+                                                                        {
+                                                                            <table class="@tableCssClass">
+                                                                                <thead>
+                                                                                    <tr>
+                                                                                        <th class="utility" width="417px">
+                                                                                            @tagCategory.TagCategoryName
+                                                                                        </th>
+                                                                                        <th class="utility" width="60px">Total</th>
+                                                                                        <th class="utility" width="60px">Correct</th>
+                                                                                        <th class="utility" width="60px">Incorrect</th>
+                                                                                        <th class="utility" width="60px">Blank</th>
+                                                                                        <th class="utility" width="60px">Percent</th>
+                                                                                        <th class="utility" width="115px">Historical Avg %</th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                                                                                    {
+                                                                                        string boldClass = "";
+                                                                                        if (Model.BoldZeroPercentScore && singleTag.Percent == 0)
+                                                                                        {
+                                                                                            boldClass = "style=\"font-weight: bold;\"";
+                                                                                        }
+                                                                                        <tr @Html.Raw(boldClass)>
+                                                                                            <td class="utility">
+                                                                                                @singleTag.TagName
+                                                                                            </td>
+                                                                                            <td class="utility" style="text-align: right;">
+                                                                                                @singleTag.TotalAnswer
+                                                                                            </td>
+                                                                                            <td class="utility" style="text-align: right;">
+                                                                                                @singleTag.CorrectAnswer
+                                                                                            </td>
+                                                                                            <td class="utility" style="text-align: right;">
+                                                                                                @singleTag.IncorrectAnswer
+                                                                                            </td>
+                                                                                            <td class="utility" style="text-align: right;">
+                                                                                                @singleTag.BlankAnswer
+                                                                                            </td>
+                                                                                            <td class="utility" style="text-align: right;">
+                                                                                                @string.Format("{0}%", singleTag.Percent)
+                                                                                            </td>
+                                                                                            <td class="utility" style="text-align: right;">
+                                                                                                @string.Format("{0}%", singleTag.HistoricalAverage)
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    }
+                                                                                </tbody>
+                                                                            </table>
+                                                                            }
+                                                                        }
+                                                                    }
+
+                                                                    var listSectionsID = sectionTag.AnswerSectionViewModels.Where(x => x.SectionID != Model.EssaySectionId).Select(x => x.SectionID).Distinct().ToList();
+                                                                    int counter = 0;
+                                                                    foreach (var sectionId in listSectionsID)
+                                                                    {
+                                                                        //render answers
+                                                                        const int answerColumnNumber = 25;
+                                                                        const int textEntryColumnNumber = 10;
+                                                                        int index = 1;
+                                                                        var listAnswer = sectionTag.AnswerSectionViewModels.Where(x => x.SectionID == sectionId).ToList();
+                                                                        if (listAnswer.Any() == false)
+                                                                        {
+                                                                            continue;
+                                                                        }
+                                                                        var listMCQuestions = listAnswer.Where(x => x.QTISchemaID != 9).ToList();
+                                                                        var listSPRQuestions = listAnswer.Where(x => x.QTISchemaID == 9).ToList();
+                                                                        var strWidth = "style=margin-bottom:0";
+
+                                                                        <text>
+                                                                            <div>
+                                                                                @listAnswer[0].SectionName
+                                                                            </div>
+                                                                        </text>
+
+                                                                        while (listMCQuestions.Any())
+                                                                        {
+                                                                            if (listMCQuestions.Count < answerColumnNumber)
+                                                                            {
+                                                                                var tableWidth = (36 * listMCQuestions.Count) + listMCQuestions.Count + 77;
+                                                                                strWidth = string.Format("style=width:{0}px;margin-bottom:0", tableWidth);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                var tableWidth = (36 * answerColumnNumber) + answerColumnNumber + 77;
+                                                                                strWidth = string.Format("style=width:{0}px;margin-bottom:0", tableWidth);
+                                                                            }
+                                                                            <table class='datatable table qa'
+                                                                                   @{ <text> @strWidth </text>  }>
+                                                                                <thead>
+                                                                                    <tr>
+                                                                                        <th class="utility" style="width: 76px">Q#</th>
+                                                                                        @for (int i = 0; i < answerColumnNumber; i++)
+                                                                                        {
+                                                                                            if (i < listMCQuestions.Count)
+                                                                                            {
+                                                                                                <th class="utility" style="width: 36px">@string.Format("{0}", listMCQuestions[i].QuestionOrder)</th>
+                                                                                            }
+                                                                                        }
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    <tr class="question-detail-answer">
+                                                                                        <td>Ans</td>
+                                                                                        @for (int i = 0; i < answerColumnNumber; i++)
+                                                                                        {
+                                                                                            if (i < listMCQuestions.Count)
+                                                                                            {
+                                                                                                <td>@Html.Raw(listMCQuestions[i].CorrectAnswer)</td>
+                                                                                            }
+                                                                                        }
+                                                                                    </tr>
+                                                                                    <tr>
+                                                                                        <td>Mark</td>
+                                                                                        @for (int i = 0; i < answerColumnNumber; i++)
+                                                                                        {
+                                                                                            if (i < listMCQuestions.Count)
+                                                                                            {
+                                                                                                <td>
+                                                                                                    @if (listMCQuestions[i].IsCorrected)
+                                                                                                    {
+                                                                                                        @:+
+                                            }
+                                                                                                    else
+                                                                                                    {
+                                                                                                        if (listMCQuestions[i].IsBlank)
+                                                                                                        {
+                                                                                                            @:-
+                                                }
+                                                                                                        else
+                                                                                                        {
+                                                                                                            if (listMCQuestions[i].AnswerLetter.Length > 4)
+                                                                                                            {
+                                                                                                                <text>@listMCQuestions[i].AnswerLetter.Substring(0, 4)</text>
+                                                                                                            }
+                                                                                                            else
+                                                                                                            {
+                                                                                                                @listMCQuestions[i].AnswerLetter
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                </td>
+                                                                                            }
+                                                                                        }
+
+                                                                                        @if (answerColumnNumber < listMCQuestions.Count)
+                                                                                        {
+                                                                                            listMCQuestions.RemoveRange(0, answerColumnNumber);
+                                                                                            index = answerColumnNumber + index;
+                                                                                        }
+                                                                                        else
+                                                                                        {
+                                                                                            listMCQuestions.RemoveRange(0, listMCQuestions.Count);
+                                                                                        }
+
+
+                                                                                    </tr>
+                                                                                </tbody>
+                                                                            </table>
+    }
+
+    while (listSPRQuestions.Any())
+    {
+        if (listSPRQuestions.Count < textEntryColumnNumber)
+        {
+            var tableWidth = (91 * listSPRQuestions.Count) + (listSPRQuestions.Count) + 77;
+            strWidth = string.Format("style=width:{0}px", tableWidth);
+        }
+        else
+        {
+            var tableWidth = (91 * textEntryColumnNumber) + (textEntryColumnNumber) + 77;
+            strWidth = string.Format("style=width:{0}px", tableWidth);
+        }
+        <table style="margin-bottom: 0px;" class='datatable table qa' @{ <text> @strWidth </text>  }>
+            <thead>
+                <tr>
+                    <th class="utility" style="width: 76px">Q#</th>
+                    @for (int i = 0; i < textEntryColumnNumber; i++)
+                    {
+                        if (i < listSPRQuestions.Count)
+                        {
+                            <th class="utility" style="width: 91px">@string.Format("{0}", listSPRQuestions[i].QuestionOrder)</th>
+                        }
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="question-detail-answer">
+                    <td>Ans</td>
+                    @for (int i = 0; i < textEntryColumnNumber; i++)
+                    {
+                        if (i < listSPRQuestions.Count)
+                        {
+                            <td>@Html.Raw(listSPRQuestions[i].CorrectAnswer)</td>
+                        }
+                    }
+                </tr>
+                <tr>
+                    <td>Mark</td>
+                    @for (int i = 0; i < textEntryColumnNumber; i++)
+                    {
+                        if (i < listSPRQuestions.Count)
+                        {
+                            <td>
+                                @if (listSPRQuestions[i].IsCorrected)
+                                {
+                                    @:+
+                                            }
+                                else
+                                {
+                                    if (listSPRQuestions[i].IsBlank)
+                                    {
+                                        @:-
+                                                }
+                                    else
+                                    {
+                                        if (listSPRQuestions[i].AnswerLetter.Length > 4)
+                                        {
+                                            <text>@listSPRQuestions[i].AnswerLetter.Substring(0, 4)</text>
+                                        }
+                                        else
+                                        {
+                                            @listSPRQuestions[i].AnswerLetter
+                                        }
+                                    }
+                                }
+                            </td>
+                        }
+                    }
+
+                    @if (textEntryColumnNumber < listSPRQuestions.Count)
+                    {
+                        listSPRQuestions.RemoveRange(0, textEntryColumnNumber);
+                        index = textEntryColumnNumber + index;
+                    }
+                    else
+                    {
+                        listSPRQuestions.RemoveRange(0, listSPRQuestions.Count);
+                    }
+
+
+                </tr>
+            </tbody>
+        </table>
+    }
+
+
+
+
+    counter++;
+    if (counter < listSectionsID.Count)
+    {
+        <text><div class="clear-25"></div></text>
+        }
+    }
+
+    @*
+        if (sectionTag.AnswerSectionViewModels.Any(x => x.SectionID == Model.EssaySectionId) && Model.ReportContentOption == Util.ACTSATReportContentOption_ScoreAndEssay)
+        {
+            //wirting
+            foreach (var essayFile in Model.BubbleSheetFileSubViewModels)
+            {
+                if (essayFile.PageType == Util.BubbleSheetFileEssayPageType)
+                {
+                    <img src="@essayFile.ImageUrl" width="960" />
+                }
+            }
+        }
+    *@
+
+    <div class="clear-25"></div>
+
+        @*always break on first section*@
+    if (sectionIndex == 0)
+    {
+        <text><div class="page-breaker"></div></text>
+        }
+    }
+</div>

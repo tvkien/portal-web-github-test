@@ -1,0 +1,164 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.QtiBankPublishToSchoolViewModel
+<article class="container_12" style="margin-top: 2px; width: 700px;">
+    <section class="grid_9">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Publish to School</h1>
+                @using (Html.BeginForm("PublishToSchool", "ItemLibraryManagement", FormMethod.Post, new { id = "publishToSchoolForm", @class = "form" }))
+                {
+                    <ul style="display: none" id="error-messages" class="message error"></ul>
+                    <ul style="display: none" id="success-message" class="message success">
+                        <li>The bank has been published to the School.</li>
+                    </ul>
+
+                    <div class="columns">
+                        <fieldset>
+                            <legend>Choose School</legend>
+                            <div class="columns">
+                                <div class="colx2-left">
+                                    @if (ViewBag.IsPublisher || ViewBag.IsNetworkAdmin)
+                                    {
+                                        <p>
+                                            <label>State</label>
+                                            @Html.DropDownListFor(x => x.StateId, Model.AvailableStates, new {id = "selectStateOnPopup", @class = "full-width"})
+                                        </p>
+                                    }
+                                    <p>
+                                        <label>School</label>
+                                        @Html.DropDownListFor(x => x.SchoolId, Model.AvailableSchools, new { id = "selectSchoolOnPopup", @class = "full-width" })
+                                    </p>
+                                </div>
+                                <div class="colx2-right">
+                                    @if (ViewBag.IsPublisher || ViewBag.IsNetworkAdmin)
+                                    {
+                                        <p>
+                                            <label>@LabelHelper.DistrictLabel</label>
+                                            @Html.DropDownListFor(x => x.DistrictId, Model.AvailableDistricts, new {id = "selectDistrictOnPopup", @class = "full-width"})
+                                        </p>
+                                    }
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div style="text-align: right">
+                        <button id="btnCancel" type="button" onclick="displayListSchoolView()" class="grey">Cancel</button>
+                        <button id="btnSubmit" type="submit" name="Save">Publish</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        InitData();
+        $('#selectStateOnPopup').change(function () {
+            if ($(this).val() != 'select') {
+                populateDistrictsOnPopup();
+            }
+            else {
+                $('#selectDistrictOnPopup').empty();
+            }
+        });
+        $('#selectDistrictOnPopup').change(function () {
+            if ($(this).val() != 'select') {
+                populateSchoolsOnPopup();
+            }
+            else {
+                $('#selectSchoolOnPopup').empty();
+            }
+        });
+    });
+
+    function InitData() {
+        if ('@ViewBag.IsPublisher' == 'True' || '@ViewBag.IsNetworkAdmin' === 'True') {
+            populateStatesOnPopup();
+        } else {
+            populateSchoolsOnPopup();
+        }
+    }
+
+    function populateStatesOnPopup() {
+        var stateSelect = $('#selectStateOnPopup');
+        stateSelect.empty();
+        if ('@ViewBag.IsPublisher' === 'True') {
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function(response) {
+                addDefaultOption(stateSelect, "State");
+                addSelectListItems(stateSelect, response);
+            });
+        }
+        if ('@ViewBag.IsNetworkAdmin' === 'True') {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (response) {
+                addDefaultOption(stateSelect, "State");
+                addSelectListItems(stateSelect, response);
+            });
+        }
+    }
+
+    function populateDistrictsOnPopup() {
+        var districtSelect = $('#selectDistrictOnPopup');
+        districtSelect.empty();
+
+        var selectedStateId = $('#selectStateOnPopup').val();
+        $.get('@Url.Action("GetUnPublishedDistrictsByState")', { stateId: selectedStateId }, function (response) {
+            addDefaultOption(districtSelect, "@LabelHelper.DistrictLabel");
+            addSelectListItems(districtSelect, response);
+        });
+    }
+    
+    function populateSchoolsOnPopup() {
+        var schoolSelect = $('#selectSchoolOnPopup');
+        schoolSelect.empty();
+        
+        var selectedDistrictId = '0';
+        if ($('#selectDistrictOnPopup').length > 0) {
+            if ($('#selectDistrictOnPopup').val() != 'select') {
+                selectedDistrictId = $('#selectDistrictOnPopup').val();
+            }
+        } else {
+            selectedDistrictId = '@ViewBag.DistrictId';
+        }
+
+        $.get('@Url.Action("GetUnPublishedSchoolsByDistrict")', { districtId: selectedDistrictId }, function (response) {
+            addDefaultOption(schoolSelect, "School");
+            addSelectListItems(schoolSelect, response);
+        });
+    }
+    
+    $('#publishToSchoolForm').submit(function (event) {
+        event.preventDefault();
+        $('#btnSubmit').disableBt();
+        $('#success-message').hide();
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function (response) {
+                if (response.Success != false) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                    //clearInputFields();
+                    setTimeout(function () { displayListSchoolView(); }, 2000);
+                } else {
+                    addErrorMessages(response);
+                    $('#error-messages').addClass('no-margin');
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });    
+
+    function clearInputFields() {
+        $('.full-width').val('');
+    }
+
+    function displayListSchoolView() {
+        $('#shareSchoolDiv').hide();
+        $('#listSchoolDiv').show();
+        ui.dataTablePublishedSchool.fnDraw();
+    }
+</script>

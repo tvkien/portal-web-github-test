@@ -1,0 +1,163 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.GenericSheets.AssignGenericSheetMultiPageViewModel
+
+@{
+    Layout = null;
+    var firstModel = Model.ListAssignGenericSheetViewModels[0];
+    var bubbleSheetFileIdList = string.Join(",", Model.ListAssignGenericSheetViewModels.Select(x => x.BubbleSheetFileId).ToList());
+}
+
+
+<div class="block-border" id="blockAssignStudent">
+    <div class="block-content form">
+        <p class="title-large">Assign and Grade</p>
+        <ul style="display: none" id="error-messages" class="message error mb-3"></ul>
+        <div>
+            <p class="title-medium">Details</p>
+            @*@Html.HiddenFor(x => x.BubbleSheetFileId)*@
+            @foreach (var singleModel in Model.ListAssignGenericSheetViewModels)
+            {
+                <input type="hidden" class="bubbleSheetFileIdHid" value="@singleModel.BubbleSheetFileId.ToString()" />
+            }
+            <div class="d-flex">
+                <div class="me-4 wrapper-img">
+                    @if (string.IsNullOrEmpty(firstModel.ImageUrl))
+                    {
+
+                        <img src="@Url.Content("~/Content/images/noimage.png")" width="128" height="170" />
+
+                    }
+                    else if (Model.ListAssignGenericSheetViewModels.Count == 1)
+                    {
+                        <a href="@firstModel.ImageUrl" target="_new">
+                            <img src="@firstModel.ImageUrl" width="128" height="170" />
+                        </a>
+                    }
+                    else
+                    {
+                        <div id="divImage">
+                            <img src="@firstModel.ImageUrl" width="128" height="170" />
+                        </div>
+                    }
+                </div>
+                <div class="studentDetails">
+                    <p class="mb-3"><b>File Name:</b> @firstModel.FileName</p>
+                    <p class="mb-3">
+                        <input type="checkbox" name="IsAllStudentsChecked" id="chkShowAllStudents" value="true" />&nbsp;
+                        <label for="chkShowAllStudents">Show All Students</label>
+                    </p>
+                    <p class="mb-3" id="remainingStudentsList"><label>Student:</label> @Html.DropDownList("SelectedRemainingStudentsId", firstModel.RemainingStudents, "Select Student")</p>
+                    <p class="mb-3" id="allStudentsList" style="display: none"><label>Student:</label> @Html.DropDownList("SelectedAllStudentsId", firstModel.AllStudents, "Select Student")</p>
+                </div>
+            </div>
+            <div class="text-end mt-4">
+                <button id="btnCancelStudentAssignment" class="btn-text p-0 me-3" type="button">Cancel</button>
+                <button id="btnSubmitGenericSheetAssignment" class="btn-red" type="button">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div style="position: static; z-index: 1002; display:none" id="divListImage">
+    <div class="block-border" style="position: static; z-index: 1002">
+        <div class="block-content form bubbleSheetSelector" style="z-index: 1002;">
+            <table>
+                <tbody>
+
+                    @if (Model.ListAssignGenericSheetViewModels.Count > 0)
+                    {
+                        var tmp = (Model.ListAssignGenericSheetViewModels.Count / 3) + 1;
+                        for (int i = 0; i < tmp; i++)
+                        {
+                            <tr>
+                                @for (int j = 0; j < 3; j++)
+                                {
+                                    int index = (i * 3) + j;
+                                    if (Model.ListAssignGenericSheetViewModels.Count > index
+                                        && Model.ListAssignGenericSheetViewModels[index] != null)
+                                    {
+                                        <td>
+                                            <a href="@Model.ListAssignGenericSheetViewModels[index].ImageUrl" target="_new">
+                                                <img src="@Model.ListAssignGenericSheetViewModels[index].ImageUrl" width="128px" height="170px" />
+                                            </a>
+                                        </td>
+                                    }
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    $(function() {
+        $("#divImage").click(function () {
+            $("<div></div>")
+                .html($("#divListImage").html())
+                .addClass("dialog")
+                .attr("id", "messageDialog")
+                .appendTo("body")
+                .dialog({
+                    close: function () { $(this).remove(); },
+                    modal: true,
+                    width: 500,
+                    maxheight: 400,
+                    resizable: false
+                });
+        });
+
+        $("#btnSubmitGenericSheetAssignment").click(function() {
+            ShowBlock($("#mainContainer"), "Loading");
+            var bubbleSheetFileIdList = [];
+            $(".bubbleSheetFileIdHid").each(function(index, item) {
+                bubbleSheetFileIdList.push($(item).val());
+            });
+            //var data = { bubbleSheetFileIdList: bubbleSheetFileIdList }
+            var studentID;
+            var studentName;
+            if ($("#chkShowAllStudents").is(":checked")) {
+                studentID = $("#SelectedAllStudentsId").val();
+                studentName = $("#SelectedAllStudentsId option:selected").text();
+            } else {
+                studentID = $("#SelectedRemainingStudentsId").val();
+                studentName = $("#SelectedRemainingStudentsId option:selected").text();
+            }
+            if (studentID == "") {
+                alert("Please select student");
+                $("#mainContainer").unblock();
+                return;
+            }
+            var data = { bubbleSheetFileIdList: bubbleSheetFileIdList, studentID: studentID };
+            $.ajax({
+                type: 'POST',
+                dataType: 'json',
+                url: '@Url.Action("SubmitGenericSheetAssignmentMultipage")',
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                async: true,
+                success: function (response) {
+                    //console.debug(response);
+                    $(".bubbleSheetFileIdHid").each(function (index, item) {
+
+                        $('.chkSelectPage[bubbleSheetFileId="' + $(item).val() + '"]').parent().html(studentName);
+                    });
+
+                    $('#assignStudentContainer').html('');
+                    $('.chkSelectPage').each(function (index, item) {
+                        var self = $(item);
+                        self.removeAttr("disabled");
+                    });
+                    $('#btnSubmit').attr('disabled', true);
+                    $("#mainContainer").unblock();
+                },
+                error: function (response) {
+                    console.debug(response);
+                    alert('An error has occured. Please refresh the page and try again.');
+                    $("#mainContainer").unblock();
+                }
+            });
+        });
+    });
+</script>

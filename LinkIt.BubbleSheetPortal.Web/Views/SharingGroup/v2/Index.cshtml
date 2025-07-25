@@ -1,0 +1,781 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SharingGroup.SharingGroupViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Common
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Sharing Groups");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCustomBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCKEditorUtilsBundle()
+
+<link rel="stylesheet" href="/Scripts/Qtip/jquery.qtip.css">
+<script src="@Url.Content("~/Scripts/tipped/tipped.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Qtip/jquery.qtip.js")" type="text/javascript"></script>
+
+<style>
+    .ui-widget-content {
+        background: transparent;
+        border: none;
+    }
+
+        .ui-widget-content .ui-dialog-titlebar-close {
+            right: 5px;
+            top: 5px;
+            z-index: 10;
+        }
+
+    #manageSharingGroups .add-user-group {
+        cursor: pointer;
+    }
+
+    #manageSharingGroups .disabled {
+        pointer-events: none;
+    }
+
+    #portal-v2-containter .tblSharingGroupArea .no-margin.last-child {
+        margin: 0;
+    }
+
+    #portal-v2-containter .tblSharingGroupArea i {
+        cursor: pointer;
+    }
+
+    #portal-v2-containter .tblSharingGroupArea .fa-pen {
+        color: var(--grey);
+    }
+
+    #portal-v2-containter .tblSharingGroupArea .last-child .block-pagination {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    #portal-v2-containter .tblSharingGroupArea table.datatable {
+        min-height: 70px;
+    }
+
+    #portal-v2-containter .last-child table .icon.fa-pencil {
+        cursor: pointer;
+        margin-right: 8px;
+    }
+
+    #portal-v2-containter .last-child table .icon {
+        display: inline-block;
+        margin-left: 0 !important;
+    }
+
+    #portal-v2-containter table thead tr th:first-child,
+    #portal-v2-containter table tbody td:first-child:not(:empty) {
+        width: 80px !important;
+    }
+
+    .col-action span {
+        float: none !important;
+    }
+
+    #portal-v2-containter .ui-dialog .block-content {
+        padding: 1.5rem !important;
+    }
+
+    #portal-v2-containter .center-first-column tbody tr td:first-child {
+        text-align: center !important;
+    }
+
+    .nav-pills .nav-link {
+        padding: 12px 16px;
+        font-weight: 700;
+        font-size: 1rem;
+        border-radius: 0;
+        color: var(--lightBlue);
+        background-color: var(--grey3);
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .nav-item:not(:last-child) .nav-link {
+        border-right: 1px solid var(--lightBlue) !important;
+    }
+
+    .nav-item.is-active .nav-link {
+        cursor: default !important;
+        pointer-events: none !important;
+    }
+
+    .nav-item.is-active .nav-link {
+        color: var(--white) !important;
+        background-color: var(--red) !important;
+        border-color: var(--red) !important;
+    }
+
+    #manageSharingGroups .nav-link {
+        line-height: 1.25;
+    }
+
+    .qtip-students {
+        z-index: 99 !important;
+    }
+
+    #confirmRemoveSharingGroupDialog .main-content {
+        overflow-wrap: anywhere !important;
+    }
+
+    #confirmPublishOrUnpublishSharingGroupDialog .main-content {
+        overflow-wrap: anywhere !important;
+    }
+</style>
+<link href="/Content/css/dialog.css" rel="stylesheet" type="text/css">
+
+@if (Model.IsPublisher || Model.IsNetworkAdmin)
+{
+    <text>
+        <article class="container_12" style="padding-bottom:0px">
+            <section class="grid_12">
+                <div id="selectFilters">
+                    <div class="block-border" id="selectFilters">
+                        <div class="block-content form d-flex flex-row g-3">
+                            @Html.Partial("v2/_FilterSharingGroup")
+                            <div class="col-4 u-text-right align-self-end">
+                                <button id="clearFilter" class="btn-blue" type="button">Clear Filter</button>
+                                <button id="filterSheets" class="btn-red ms-3" type="button" disabled>Apply Filters</button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </article>
+    </text>
+}
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="manageSharingGroups">
+            <div class="block-content form">
+                <div class="d-flex flex-row justify-content-between">
+                    <h1>
+                        Sharing Groups
+                    </h1>
+                    <button id="addSharingGroupBtn" disabled class="btn-plus-icon btn-text" style="margin-bottom: auto">
+                        Create Sharing Group
+                    </button>
+                </div>
+                <ul class="nav nav-pills mb-4">
+                    <li :class="tabActive === 1 ? 'is-active nav-item' : 'nav-item' ">
+                        <a class="nav-link with-tip" title="Default Options" v-on:click="onSelectTab(1)">My Groups</a>
+                    </li>
+                    <li :class="tabActive === 2 ? 'is-active nav-item' : 'nav-item'">
+                        <a class="nav-link with-tip" title="Category Options" v-on:click="onSelectTab(2)">Other Groups</a>
+                    </li>
+                </ul>
+                <div class="formListSharingGroupShowStatus float-left">
+                    <div class="d-flex flex-column justify-content-between">
+                        <div style="display: flex;" class="form-check form-switch flex-row align-items-center mt-3 mb-3 ps-0 float-left js-change-inactive-sharing-group ">
+                            <label class="form-check-label mb-0 deactivated-title" for="btnShowInactiveStudent">Show Inactive Sharing Group:</label>
+                            <span class="ms-1 me-3" id="showInactiveSharingGroupText">Off</span>
+                            <div id="btnActiveTestClassAssignment">
+                                <input class="form-check-input" type="checkbox" name="btnShowInactiveSharingGroup" id="btnShowInactiveSharingGroup">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="divNotifications"></div>
+                <ul style="display: none" id="error-messages-classList" class="message error"></ul>
+                <div class="tblSharingGroupArea" style="display: block; ">
+                    <div class="">
+                        <table id="tblSharingGroup" class="datatable table center-first-column no-margin" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width: 20%">Actions</th>
+                                    <th scope="col" style="width: 45%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Name
+                                    </th>
+                                    <th scope="col" style="width: 15%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Owner
+                                    </th>
+                                    <th scope="col" style="width: 17%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Users in the Group
+                                    </th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<script src="@BundleHelper.Version("~/Scripts/SharingGroup/App.js")"></script>
+
+<script type="text/javascript">
+    var showInactiveSharingGroup = false;
+    var showGroupCreatedByOther = false;
+    _historyData = {};
+    $(document).ready(function () {
+        if ('@Model.TabActive' == '2') {
+            vueModel.tabActive = 2;
+            _historyData.showCreatedByOther = true;
+            showGroupCreatedByOther = true;
+        } else {
+            _historyData.showCreatedByOther = false;
+            showGroupCreatedByOther = false;
+        }
+        if ('@Model.ShowInactiveSharingGroup' == 'True') {
+            showInactiveSharingGroup = true;
+            if (_historyData) {
+                _historyData.showInactive = showInactiveSharingGroup;
+            }
+            $("#showInactiveSharingGroupText").html("On");
+            $('#btnShowInactiveSharingGroup').prop('checked', true);
+            $('#btnShowInactiveSharingGroup').addClass('input-checked-v2');
+        }
+        bindDataToSharingGroupsTable();
+        $('#filterSheets').click(function () {
+            saveFilterInLocalStorage();
+            var distictID = $('#selectDistrict').val();
+            if (distictID == undefined || distictID == 0 || distictID == '') {
+                distictID = '@Model.DistrictID';
+            }
+            selectedDistrictID = distictID;
+            $('#addSharingGroupBtn').prop('disabled', false)
+            $('#viewModuleAccessSumaryBtn').prop('disabled', false)
+            $('#tblSharingGroup').dataTable().fnDraw();
+        });
+
+        $("#clearFilter").on("click", function () {
+            removeFilterInLocalStorage();
+            $("#selectState").val(-1);
+            $('#selectDistrict').empty();
+            disableButtons();
+        });
+
+        $('.editUserSharingGroup').live('click', function () {
+            var sharingGroupID = $(this).attr('SharingGroupID');
+            var distictID = $('#selectDistrict').val();
+            if (distictID == undefined || distictID == 0 || distictID == '') {
+                distictID = '@Model.DistrictID';
+            }
+            var url = '@Url.Action("EditUserInSharingGroup", "SharingGroup")?sharingGroupID=' + sharingGroupID + "&districtId=" + distictID + '&showInactiveSharingGroup=' + showInactiveSharingGroup + '&tabActive=' + vueModel.tabActive;
+            window.location.href = url;
+        });
+
+        $('.publishSharingGroup').live('click', function () {
+            var sharingGroupID = $(this).attr('sharinggroupid');
+            var isPublished = $(this).attr('ispublished');
+            var sharingGroupName = $(this).attr('sharinggroupname');
+            var publishedName = isPublished == "true" ? 'unpublish' : 'publish';
+            confirmMessageV2(
+                {
+                    message: `Are you sure you want to ${publishedName} ${sharingGroupName}?`,
+                    cbYesBtnFuncName: 'confirmPublishOrUnpublishSharingGroup(' + sharingGroupID + ', ' + isPublished + ')',
+                    cbCancelBtnFuncName: "cancelDialog('#confirmPublishOrUnpublishSharingGroupDialog')"
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'confirmPublishOrUnpublishSharingGroupDialog'
+                        }
+                    }
+                }
+            )
+        });
+
+        $('.removeSharingGroup').live('click', function () {
+            var sharingGroupID = $(this).attr('sharinggroupid');
+            var sharingGroupName = $(this).attr('sharinggroupname');
+            confirmMessageV2(
+                {
+                    message: `Are you sure you want to delete ${sharingGroupName}?`,
+                    cbYesBtnFuncName: 'confirmRemoveSharingGroup(' + sharingGroupID +')',
+                    cbCancelBtnFuncName: "cancelDialog('#confirmRemoveSharingGroupDialog')"
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'confirmRemoveSharingGroupDialog'
+                        }
+                    }
+                }
+            )
+        });
+
+        $('#addSharingGroupBtn').on('click', function () {
+            ShowBlock($('#manageSharingGroups'), "Loading");
+            var url = '@Url.Action("Add")?districtId=' + selectedDistrictID;
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function (html) {
+                    $('#manageSharingGroups').unblock();
+                    $("#manageSharingGroups").append('<div id="popupAddSharingGroup" class="dialog"></div>');
+                    $("#popupAddSharingGroup").append(html);
+                    $('#popupAddSharingGroup').dialog({
+                        title: "",
+                        open: function () {
+                            $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: #000000;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        },
+                        beforeclose: function () {
+                            return true;
+                        },
+                        close: function () {
+                            $('#tblSharingGroup').dataTable().fnDraw();
+                            $('#popupAddSharingGroup').remove();
+                            $("body .my-overlay").remove();
+                        },
+                        modal: false,
+                        width: 500,
+                        resizable: false
+                    });
+
+                });
+            $(".close").unbind("click");
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+        });
+
+        $('.editSharingGroup').live('click', function () {
+            ShowBlock($('#manageSharingGroups'), "Loading");
+            var sharingGroupId = $(this).attr('SharingGroupID');
+            var url = '@Url.Action("Edit")?sharingGroupId=' + sharingGroupId + "&districtId=" + selectedDistrictID;
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function (html) {
+                    $('#manageSharingGroups').unblock();
+                    $("#manageSharingGroups").append('<div id="popupEditSharingGroup" class="dialog"></div>');
+                    $("#popupEditSharingGroup").append(html);
+                    $('#popupEditSharingGroup').dialog({
+                        title: "",
+                        open: function () {
+                            $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: #000000;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        },
+                        beforeclose: function () {
+                            return true;
+                        },
+                        close: function () {
+                            $('#tblSharingGroup').dataTable().fnDraw();
+                            $('#popupEditSharingGroup').remove();
+                            $("body .my-overlay").remove();
+                        },
+                        modal: false,
+                        width: 500,
+                        resizable: false
+                    });
+
+                });
+            $(".close").unbind("click");
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+        });
+
+        $("#btnShowInactiveSharingGroup").on('change', function (e) {
+            e.preventDefault();
+            showInactiveSharingGroup = !showInactiveSharingGroup;
+            if (_historyData) {
+                _historyData.showInactive = showInactiveSharingGroup;
+            }
+            $("#showInactiveSharingGroupText").html(showInactiveSharingGroup ? "On" : "Off");
+            if ($('#filterSheets').attr('disabled') != 'disabled') {
+                var dataTable = $('#tblSharingGroup').dataTable();
+                dataTable.fnDraw();
+            }
+        });
+        $("#btnShowGroupCreatedByOthers").on('change', function (e) {
+            e.preventDefault();
+            showGroupCreatedByOther = !showGroupCreatedByOther;
+            if (_historyData) {
+                _historyData.showCreatedByOther = showGroupCreatedByOther;
+            }
+            $("#showGroupCreatedByOtherText").html(showGroupCreatedByOther ? "On" : "Off");
+            if ($('#filterSheets').attr('disabled') != 'disabled') {
+                var dataTable = $('#tblSharingGroup').dataTable();
+                dataTable.fnDraw();
+            }
+        });
+
+        $('.cloneSharingGroup').live('click', function () {
+            ShowBlock($('#manageSharingGroups'), "Loading");
+            var sharingGroupId = $(this).attr('SharingGroupID');
+            var url = '@Url.Action("Clone")?sharingGroupId=' + sharingGroupId;
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function (html) {
+                    $('#manageSharingGroups').unblock();
+                    $("#manageSharingGroups").append('<div id="popupCloneSharingGroup" class="dialog"></div>');
+                    $("#popupCloneSharingGroup").append(html);
+                    $('#popupCloneSharingGroup').dialog({
+                        title: "",
+                        open: function () {
+                            $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: #000000;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        },
+                        beforeclose: function () {
+                            return true;
+                        },
+                        close: function () {
+                            $('#tblSharingGroup').dataTable().fnDraw();
+                            $('#popupCloneSharingGroup').remove();
+                            $("body .my-overlay").remove();
+                        },
+                        modal: false,
+                        width: 500,
+                        resizable: false
+                    });
+
+                });
+            $(".close").unbind("click");
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+        });
+    });
+
+    @if (Model.IsPublisher || Model.IsNetworkAdmin)
+    {
+        <text>
+        selectedDistrictID = getDefaultDistrictID(-1);
+        if (selectedDistrictID > 0) {
+            $('#addSharingGroupBtn').prop('disabled', false)
+        }
+        </text>
+    }
+    else
+    {
+        <text>
+        selectedDistrictID = getDefaultDistrictID(@Model.DistrictID);
+        $('#addSharingGroupBtn').prop('disabled', false)
+        </text>
+    }
+
+    function closedAddSharingGroupBtn() {
+        $("#dialogSharingUserGroup").dialog("close")
+    }
+
+    function submitAddGroup() {
+        $("#btnAddSharingGroupSubmit").click()
+    }
+
+    function bindDataToSharingGroupsTable() {
+        var options = {
+            bServerSide: true,
+            sServerMethod: "GET",
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetSharingGroups", "SharingGroup")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "DistrictID", value: selectedDistrictID },
+                    { name: "ShowInactiveSharingGroup", value: _historyData.showInactive },
+                    { name: "ShowCreatedByOtherSharingGroup", value: _historyData.showCreatedByOther }
+                );
+            },
+            iDisplayLength: 10,
+            aoColumns: [
+                { mData: 'SharingGroupID', sName: 'SharingGroupID', bSearchable: false, bSortable: false, sClass: 'col-action' },
+                { mData: 'Name', sName: 'Name', bSearchable: true, bSortable: true },
+                { mData: 'OwnerName', sName: 'OwnerName', bSearchable: true, bSortable: true },
+                { mData: 'Active', sName: 'Users in the group', bSearchable: false, bSortable: false }
+            ],
+            aaSorting: [[1, "asc"]],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#tblSharingGroup'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#tblSharingGroup').unblock();
+                getNumberOfUserQtip('.js-tooltip-students');
+                $('.with-tip').tip();
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData["SharingGroupID"], aData["Name"], aData["Active"], aData["DistrictID"], aData["IsPublished"], aData["CreatedBy"]));
+                if (aData['Name'] != null) {
+                    $('td:eq(1)', nRow).html('<div style="overflow-wrap: anywhere; ">' + aData['Name'] + '</div>');
+                }
+                var editIcon = '<span class="icon fa-solid fa-pencil icon-grey"></span>';
+                var editUserSharingGroupIconStr = '<span class="editUserSharingGroup" SharingGroupID="' + aData["SharingGroupID"] + '">' + editIcon + '</span>';
+                var numberOfUserIcon = '<span class="js-tooltip-students" SharingGroupID="' + aData["SharingGroupID"] + '" StrUserGroupName="' + aData["StrUserGroupName"] + '"><span class="icon icon-24 icon-students"></span></span>';
+                if ('@Model.IsSchoolAdminOrTeacher' == 'True' && aData["CreatedBy"] != @Model.CurrentUserId) {
+                    $('td:eq(3)', nRow).html(numberOfUserIcon);
+
+                } else {
+                    $('td:eq(3)', nRow).html(editUserSharingGroupIconStr + numberOfUserIcon);
+                }
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('tblSharingGroup_filter')
+                $("#tblSharingGroup_wrapper .data-table-action").prepend($("#viewModuleAccessSumaryBtn"));
+                $("#viewModuleAccessSumaryBtn").show();
+                var elDeactivate = $('.formListSharingGroupShowStatus');
+                $('.block-custom-header').prepend(elDeactivate);
+            }
+        };
+
+        $('#tblSharingGroup').data('options', options);
+    }
+
+    function confirmPublishOrUnpublishSharingGroup(sharingGroupID, isPublished) {
+        ShowBlock($('#manageSharingGroups'), "Waiting");
+        $.post('@Url.Action("PublishOrUnpublishSharingGroup", "SharingGroup")', { sharingGroupID: sharingGroupID, isPublished: isPublished }, function (response) {
+            if (response && response.Success == true) {
+                $('#tblSharingGroup').dataTable().fnDraw();
+                $('#manageSharingGroups').unblock();
+            }
+            else if (response && response.Success == false) {
+                addErrorMessages(response.message);
+                $('#manageSharingGroups').unblock();
+            }
+            cancelDialog('#confirmPublishOrUnpublishSharingGroupDialog')
+        });
+    }
+
+    function confirmRemoveSharingGroup(sharingGroupID) {
+        ShowBlock($('#manageSharingGroups'), "Waiting");
+        $.post('@Url.Action("DeleteSharingGroup", "SharingGroup")', { sharingGroupID: sharingGroupID, districtId: selectedDistrictID }, function (response) {
+            if (response && response.Success == true) {
+                $('#tblSharingGroup').dataTable().fnDraw();
+                $('#manageSharingGroups').unblock();
+            }
+            else if (response && response.Success == false) {
+                addErrorMessages(response.message);
+                $('#manageSharingGroups').unblock();
+            }
+            cancelDialog('#confirmRemoveSharingGroupDialog')
+        });
+    }
+
+    function disableButtons() {
+        $('#filterSheets').attr('disabled', true);
+    }
+
+    function setIconVisibility(sharingGroupID, sharingGroupName, active, districtID, isPublished, createdBy) {
+        var iconString = "<div style='display: inline-flex; margin: -.7rem !important; '>";
+        var editIcon = '<span class="custom-icon fa-solid fa-pencil icon-grey"></span>';
+        var editString = '<a style="padding-top: 1px;" href="javascript:void(0)" title="Edit'
+            + '" class="editSharingGroup with-tip me-2 mb-2 d-inline-block" SharingGroupID="' + sharingGroupID + '">' + editIcon + '</a>';
+
+        var cloneIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/icon-copy-v2.svg")';
+        var cloneString = '<a href="javascript:void(0)" title="Clone'
+            + '" class="cloneSharingGroup with-tip me-2 mb-2 d-inline-block" SharingGroupID="' + sharingGroupID
+            + '" districtID="' + districtID + '">' + '<img src="' + cloneIcon + '" width="14"></a>';
+
+        var publishIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/arrow-up-to-line.svg")';
+        var textPublish = 'Publish';
+        if (isPublished) {
+            publishIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/arrow-down-to-line.svg")';
+            textPublish = 'Unpublish'
+        }
+        var publishString = '<a href="javascript:void(0)" title="' + textPublish
+            + '" class="publishSharingGroup with-tip me-2 mb-2 d-inline-block" SharingGroupID="' + sharingGroupID
+            + '" SharingGroupName="' + sharingGroupName
+            + '" IsPublished="' + isPublished + '">' + '<img src="' + publishIcon + '" height="16"></a>';
+
+        var deleteIcon = '<span class="custom-icon fa-solid fa-trash icon-grey"></span>';
+        var deleteString = '<a style="padding-top: 1px;" title="Delete'
+            + '" SharingGroupID="' + sharingGroupID + '" SharingGroupName="' + sharingGroupName
+            + '" class="removeSharingGroup cursor-pointer with-tip me-2 mb-2 d-inline-block">' + deleteIcon + '</a>';
+        var actionIcon = '';
+        var actionString = '';
+        if (active == true) {
+            actionIcon = '<span class="custom-icon fa-solid fa-circle-minus icon-red"></span>';
+            actionString = '<a style="padding-top: 1px;" href="javascript:void(0);" class="with-tip d-inline-block" title="Deactivate" onclick="deactivateSharingGroup(event,' + sharingGroupID + ')">' + actionIcon + '</a>';
+        } else {
+            actionIcon = '<span class="custom-icon fa-solid fa-circle-plus icon-green"></span>';
+            actionString = '<a style="padding-top: 1px;" href="javascript:void(0);" class="with-tip d-inline-block" title="Activate" onclick="activateSharingGroup(event,' + sharingGroupID + ')">' + actionIcon + '</a>';
+        }
+        if ('@Model.IsSchoolAdminOrTeacher' == 'True' && createdBy != @Model.CurrentUserId) {
+            iconString += cloneString ;
+
+        } else {
+            iconString += editString + cloneString + publishString + deleteString + actionString;
+
+        }
+        return iconString += '</div>';
+    }
+
+    function saveFilterInLocalStorage() {
+        var selectedStateId = $('#selectState').val();
+        var selectedDistrictId = $('#selectDistrict').val();
+        var filter = {
+            stateID: selectedStateId,
+            districtID: selectedDistrictId
+        };
+        localStorage.setItem("UserGroupFilter", JSON.stringify(filter));
+    }
+
+    function getDefaultDistrictID(defValue) {
+        if (defValue > 0) return defValue;
+
+        var districtID = defValue;
+        var filter = localStorage.getItem("UserGroupFilter");
+        if (filter) {
+            districtID = JSON.parse(filter).districtID ?? defValue;
+        }
+
+        return districtID;
+    }
+
+    function getNumberOfUserQtip(el) {
+        var $el = $(el);
+        $el.qtip({
+            content: {
+                text: function (event, api) {
+                    var html = '';
+                    var strUserGroupName = $(this).attr('StrUserGroupName');
+                    if (strUserGroupName != '' && strUserGroupName != 'null') {
+                        var arrGroupName = strUserGroupName.split('$').filter(function (i) { return i.length > 0 });
+                        html += arrGroupName.length + ' Users <br/>';
+                        $.each(arrGroupName, function (index, value) {
+                            html += "<span class='icon icon-16 icon-student icon-student-offset'></span> " + value + '<br/>';
+                        });
+                        api.set('content.text', html);
+                    }
+                    else {
+                        html += 0 + ' Users <br/>';
+                        api.set('content.text', html);
+                    }
+                    return html;
+                }
+            },
+            hide: {
+                fixed: true,
+                delay: 300
+            },
+            style: {
+                classes: 'qtip-students qtip-bootstrap qtip-shadow'
+            },
+            position: {
+                at: 'center right',
+                my: 'left center',
+                adjust: {
+                    method: 'none shift'
+                }
+            }
+        });
+    }
+
+    function activateSharingGroup(event, sharingGroupID) {
+        event.preventDefault();
+        var confirmMessage = "Do you want to activate this sharing group?";
+        var params = { sharingGroupID, cbYesBtnFuncName: 'confirmActiveSharingGroup(' + sharingGroupID + ')', cbCancelBtnFuncName: "cancelDialog('#customDialogMessageV2')" }
+        showCustomDialogV2(confirmMessage, params)
+    }
+
+    function deactivateSharingGroup(event, sharingGroupID) {
+        event.preventDefault();
+        var confirmMessage = "Do you want to deactivate this sharing group?";
+        var params = { sharingGroupID, cbYesBtnFuncName: 'confirmDeactiveSharingGroup(' + sharingGroupID + ')', cbCancelBtnFuncName: "cancelDialog('#customDialogMessageV2')" }
+        showCustomDialogV2(confirmMessage, params)
+    }
+
+    function confirmActiveSharingGroup(sharingGroupID) {
+        ShowBlock($('#manageSharingGroups'), 'Loading');
+        $.post('@Url.Action("ChangeStatusSharingGroup")', { sharingGroupID: sharingGroupID }, function(response) {
+            $('#manageSharingGroups').unblock();
+            if (response.Success == true) {
+                //LinkIt.success('#divNotifications', 'Sharing group is activated');
+                $('#tblSharingGroup').dataTable().fnDraw();
+            } else {
+                alert('An error has occured. Please try again.');
+            }
+            cancelDialog('#customDialogMessageV2');
+        });
+    }
+
+    function confirmDeactiveSharingGroup(sharingGroupID) {
+        ShowBlock($('#manageSharingGroups'), 'Loading');
+        $.post('@Url.Action("ChangeStatusSharingGroup")', { sharingGroupID: sharingGroupID }, function (response) {
+            $('#manageSharingGroups').unblock();
+            if (response.Success == true) {
+                //LinkIt.success('#divNotifications', 'Sharing group is deactivated');
+                $('#tblSharingGroup').dataTable().fnDraw();
+            } else {
+                var vMessage = 'An error has occured. Please try again.';
+                showCustomDialogV2(vMessage, { cbYesBtnFuncName: "cancelDialog('#customDialogMessageV2')" })
+            }
+            cancelDialog('#customDialogMessageV2');
+        });
+    }
+
+    function showCustomDialogV2(message, params) {
+        var confirmParams = { message, cbYesBtnFuncName: params.cbYesBtnFuncName };
+        if (params.cbCancelBtnFuncName) {
+            confirmParams.cbCancelBtnFuncName = params.cbCancelBtnFuncName;
+        }
+        if (params.cbCloseBtnFuncName) {
+            confirmParams.cbCloseBtnFuncName = params.cbCloseBtnFuncName;
+        }
+        confirmMessageV2(
+            confirmParams,
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'customDialogMessageV2'
+                    }
+                }
+            }
+        )
+    }
+
+    function cancelDialog(el) {
+        $(el).dialog("close");
+    }
+
+    var vueModel = new Vue({
+        el: '#manageSharingGroups',
+        data: {
+            tabActive: 1
+        },
+        watch: {
+            immediate: true,
+            handler() {
+            }
+        },
+        computed: {
+        },
+        methods: {
+            onSelectTab: function (tab) {
+                this.tabActive = tab;
+                showGroupCreatedByOther = !showGroupCreatedByOther;
+                if (_historyData) {
+                    _historyData.showCreatedByOther = showGroupCreatedByOther;
+                }
+                if ($('#filterSheets').attr('disabled') != 'disabled') {
+                    $('#tblSharingGroup').dataTable().fnDraw();
+                }
+            },
+        }
+    });
+
+</script>

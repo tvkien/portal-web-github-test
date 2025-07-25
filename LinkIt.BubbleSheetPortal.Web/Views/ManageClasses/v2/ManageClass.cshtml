@@ -1,0 +1,696 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SchoolAndClassViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Manage Classes");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleDataLockerTemplateBundle()
+<link href="@BundleHelper.Version("~/Content/css/v2/manage-class.css")" rel="stylesheet" type="text/css" />
+
+<style type="text/css">
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    #portal-v2-containter #CustomAlertDialog .block-content > div {
+        text-align: left !important;
+    }
+    #roster-message {
+        max-width: max-content !important;
+    }
+</style>
+
+<article class="container_12">
+    @if (Model.RoleId == 2)
+    {
+        @Html.Hidden(Model.UserId.ToString(), "selectTeacher")
+    }
+    else
+    {
+        <section class="grid_12">
+            <ul class="message warning" id="roster-message" style="display: none">
+                <li>Caution: If online changes are made to student, class, or teacher information, scheduled nightly student and staff roster uploads will override this data or cause data exceptions when differences exist.</li>
+            </ul>
+            <div class="block-content mb-4">
+                <div id="adminContent" class="form">
+                    <h1 class="page-title mb-4">Filter Classes</h1>
+                    <div class="schoolClassManagermentSelector">
+                        <div class="mb-4">
+                            <div class="row g-3 mb-4">
+                                @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                                {
+                                    <div class="col-3 block-content-dropdown-marquee">
+                                        <label>State</label>
+                                        <div class=" block-text-name w-100">
+                                            <select id="selectState"></select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                                {
+                                    <div class="col-3 block-content-dropdown-marquee">
+                                        <label>@LabelHelper.DistrictLabel</label>
+
+                                        <div class="block-text-name w-100">
+                                            <select id="selectDistrict"></select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                <div class="col-3 block-content-dropdown-marquee">
+                                    <label>School</label>
+                                    <div class="block-text-name w-100">
+                                        <select id="selectSchool"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-3 block-content-dropdown-marquee">
+                                    <label>Teacher</label>
+                                    <div class="block-text-name w-100">
+                                        <select id="selectTeacher"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-3 block-content-dropdown-marquee" id="id-dropdown-subject" style="display: none; ">
+                                    <label>Subject</label>
+                                    <div class="block-text-name w-100">
+                                        <select id="selectSubject"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <label>Class</label>
+                                    <div class="block-text-name w-100">
+                                        <input type="text" id="inputClassName" class="w-100" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button id="clearFilter" class="btn-blue d-block me-3" type="button">Clear Filter</button>
+                        <button id="filterSheets" class="btn-red d-block " type="button" disabled>Apply Filters</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+
+    <div id="detailDiv">
+        @Html.Partial("~/Views/ManageClasses/v2/_ListClassesByTeacherAndSchool.cshtml")
+    </div>
+</article>
+<script>
+    function reloadGridTeacherContent() {
+        //keepSessionFilter();
+        //loadHistoryData();
+        var dataTable = $('#dataTable').dataTable();
+        var settings = dataTable.fnSettings();
+        settings.oLanguage["sEmptyTable"] = "Your search returned no results. Try changing your selection and click on 'Apply Filters'";
+        dataTable.fnDraw();
+    }
+
+    var ClassManager = (function () {
+        // #region Constants
+        var selectedDistrictId = '@Model.DefaultDistrictId';
+        var selectedSchoolId = '@Model.CurrentSelectedSchoolId';
+        var selectedTeacherId = '@Model.CurrentSelectedTeacherId';
+
+        var roleId = '@Model.RoleId';
+        var userId = '@Model.UserId';
+
+        var jqSelectedState;
+        var jqSelectedDistrict;
+        var jqDetailDiv;
+        var jqSelectSchool;
+        var jqSelectTeacher;
+        var jqInputClassName;
+        var jqApplyFilters;
+
+        var ajaxCallCount = 0;
+
+        function initViewForGuest() { throw new Error(pattern.exec(arguments.callee.toString())[1] + " Not implemented"); };
+
+        function init() {
+            cacheElements();
+            initView(roleId);
+            bindEvents();
+        }
+
+        function bindEvents() {
+            $('.dataadmin').addClass('current');
+            $('#dtaManageClasses').addClass('current');
+
+            jqApplyFilters.unbind("click");
+
+            jqApplyFilters.click(function () {
+                keepLocalStorage();
+                checkSchoolExistsScheduledRosterUpdates();
+                reloadGridTeacherContent();
+            });
+
+            jqClearFilters.click(function () {
+                if ($("#selectState option ").length == 1) {
+                    $('#selectState').trigger("change");
+                }
+                var listRoles1 = ["5", "27"]; //Publisher/Network Admin
+
+                if (listRoles1.includes(roleId)) {
+                    $("#selectSchool").empty();
+                } else {
+                    $("#selectSchool").val("select");
+                }
+
+                $("#selectState").val("-1");
+                $("#selectDistrict, #selectTeacher, #selectSubject").empty();
+                $("#inputClassName").val('');
+
+                jqApplyFilters.attr("disabled", "disabled");
+            });
+        }
+
+        function cacheElements() {
+            jqDetailDiv = $('#detailDiv');
+            jqSelectSchool = $('#selectSchool');
+            jqSelectTeacher = $('#selectTeacher');
+            jqInputClassName = $('#inputClassName');
+            jqApplyFilters = $('#filterSheets');
+            jqClearFilters = $('#clearFilter');
+            jqSelectedState = $("#selectState");
+            jqSelectedDistrict = $("#selectDistrict");
+        }
+
+        function initView(role) {
+            //innitDropdownListDistrict(selectedDistrictID, true);
+            registerDdlSchoolChange();
+            switch (role) {
+            case '5':
+            // publisher
+            case '3':
+            // district admin
+            case '27':
+            // network admin
+            case '8':
+                // school admin
+                initDropdownListSchool(selectedDistrictId, selectedSchoolId);
+                initDropdownListTeacher(selectedDistrictId, selectedSchoolId, selectedTeacherId);
+                break;
+            case '2':
+                // teacher
+                //initViewForTeacher();
+                break;
+            default:
+                initViewForGuest();
+                break;
+            }
+            loadDropdownListSubject(selectedDistrictId);
+        }
+
+        function initDropdownListSchool(selectedDistrictId, selectedSchoolId) {
+            if (!selectedDistrictId || selectedDistrictId == 'select') {
+                return;
+            }
+
+            var url = roleId == '8' || roleId == '2' ? '@Url.Action("GetSchoolsByUser")' : '@Url.Action("GetSchools", "Admin")';
+            if ('@Model.IsPublisher' == 'True' || '@Model.IsNetworkAdmin' == 'True') {
+                //Publisher and NetworkAdmin can select district
+                //get district from dropdown list (Publisher and NetworkAdmin)
+                selectedDistrictId = $('#selectDistrict').val();
+                if (selectedDistrictId == 'select' || selectedDistrictId <= 0) {
+                    selectedDistrictId = 0;
+                }
+                if (selectedDistrictId == 0) {
+                    return;
+                }
+            }
+            $.ajax({
+                url: url,
+                data: { districtId: selectedDistrictId, userId: userId },
+                dataType: 'json',
+                async: false,
+                success: function (schools) {
+                    addDefaultOption(jqSelectSchool, "School");
+                    addSelectListWithDefaultValue(jqSelectSchool, schools, selectedSchoolId);
+                    jqSelectSchool.change();
+                },
+                beforeSend: function () {
+                    //showAdminContentLoading();
+                },
+                complete: function () {
+                    if (retainedData != null) {
+                        jqSelectSchool.val(retainedData.schoolID);
+                        initDropdownListTeacher(selectedDistrictId, retainedData.schoolID, null, true);
+                        if ($('#selectSchool').val() && $('#selectSchool').val() != 'select') {
+                            $('#filterSheets').removeAttr("disabled");
+                        }
+                    }
+                    //hideAdminContentLoading();
+                }
+            });
+        }
+
+        function initDropdownListTeacher(selectedDistrictId, selectedSchoolId, selectedTeacherId) {
+            if (!selectedDistrictId || selectedDistrictId == 'select') {
+                return;
+            }
+
+            if (!selectedSchoolId || selectedSchoolId == 'select' || selectedSchoolId == '0') {
+                return;
+            }
+            jqSelectTeacher.empty();
+            $.ajax({
+              url: '@Url.Action("GetTeachersInSchool")',
+              data: { schoolId: selectedSchoolId },
+              dataType: 'json',
+              async: false,
+              success: function (teachers) {
+                   addDefaultOption(jqSelectTeacher, "Teacher");
+                   addSelectListWithDefaultValue(jqSelectTeacher, teachers, selectedTeacherId, function (item) {
+                       return item.DisplayName;
+                   });
+               },
+               beforeSend: function () {
+                   //showAdminContentLoading();
+               },
+               complete: function () {
+                   if (retainedData != null) {
+                       jqSelectTeacher.val(retainedData.teacherID)
+                   }
+                   //hideAdminContentLoading();
+			   }
+			});
+        };
+
+        function checkSchoolExistsScheduledRosterUpdates() {
+            var selectedValue = $('#selectSchool').val();
+            if (selectedValue != 'select' && selectedValue !== null && selectedValue !== 'undefined' && selectedValue != '') {
+                $.get('@Url.Action("DoesSchoolHaveScheduledRosterUpdates")', { schoolId: selectedValue }, function (response) {
+                    if (response) {
+                        $('#roster-message').show();
+                    } else {
+                        $('#roster-message').hide();
+                    }
+                });
+            } else {
+                $('#roster-message').hide();
+            }
+        }
+
+        function registerDdlSchoolChange() {
+            jqSelectSchool.unbind("change");
+            jqSelectSchool.change(function () {
+                if ($("#selectSchool").val() !== 'select') {
+                    $("#filterSheets").enableBt();
+                } else {
+                    var historyData = JSON.parse(localStorage.getItem('FilterData'));
+                    if (!historyData) {
+                        $("#filterSheets").disableBt();
+                    }
+                }
+                var selectedValue = $(this).val();
+
+                if (roleId != '2') {
+                    $('#selectTeacher').empty();
+                    initDropdownListTeacher(selectedDistrictId, selectedValue, null, true);
+                } else {
+                    $('#selectTeacher').change();
+                }
+                if (selectedValue == 'select') {
+                    $('#roster-message').hide();
+                    return;
+                }
+            });
+        }
+
+        return {
+            init: init
+        };
+    })();
+
+    $(document).on('submit', '[data-ajax-form]', function (e) {
+        e.preventDefault();
+        var self = $(e.target);
+        var formId = self.attr('id');
+
+        self.ajaxSubmit({
+            success: ajaxHandler[formId]
+        });
+
+        // !!! Important !!!
+        // always return false to prevent standard browser submit and page navigation
+        return false;
+    });
+
+    var ajaxHandler = (function () {
+        function addTeacherToClassForm(resp, statusText, xhr, form) {
+            if (resp == true) {
+                LinkIt.success('#manageClassNotificationContainer', 'Teacher sucessfully added to class.');
+                $('#assignTeacherDialog').dialog('close');
+            } else {
+                CustomAlert(resp.ErrorList.map(function (e, i) { return e.ErrorMessage; }).join(', '), true);
+            }
+        };
+
+        return {
+            addTeacherToClassForm: addTeacherToClassForm
+        };
+    })();
+</script>
+
+<script type="text/javascript">
+    // #region Fields
+    var retainedData = null;
+    var hasConfigClassMeta = false;
+    _historyData = {};
+    _CURRENT_PAGE_NAME = "Manage Class";
+
+    $(function () {
+        $('#selectState, #selectSchool, #selectDistrict, #selectTeacher, #selectSubject').marquee();
+        ClearSessionsManageSchool();
+        $('.dataadmin').addClass('current');
+        $('#dtaManageClasses').addClass('current');
+        var isNewSession = '@ViewBag.IsNewSession';
+        var isLoadHistory = JSON.parse(localStorage.getItem('loadHistory'));
+        if (isLoadHistory) {
+            isNewSession = 'false';
+            localStorage.setItem('loadHistory', false);
+        }
+        if (isNewSession == 'True') {
+            localStorage.setItem('FilterData', null);
+        } else {
+            retainedData = getFilterData();
+            if (retainedData != null) {
+                $("#inputClassName").val(retainedData.className);
+                $('#selectSubject option').each(function () {
+                    if ($(this).text() === retainedData.subjectKey) {
+                        $('#selectSubject').val($(this).val());
+                    }
+                });
+                $('#filterSheets').attr("disabled", "disabled");
+            }
+        }
+        if ('@Model.IsPublisher' == 'True' || '@Model.IsNetworkAdmin' == 'True') {
+            if ('@Model.IsPublisher' == 'True') {
+                loadStateForPublisher();
+            }
+            if ('@Model.IsNetworkAdmin' == 'True') {
+                loadStateForNetworkAdmin();
+            }
+        }
+        else {
+            ClassManager.init();
+        }
+    });
+
+    $("#selectState").die("change");
+    $('#selectState').change(function () {
+        $('#selectDistrict, #selectSchool, #selectTeacher, #selectSubject').empty();
+
+        var selectedState = $('#selectState').val();
+        if (selectedState == '-1' || selectedState == null || selectedState == '' || selectedState == 'select' || selectedState <= 0) {
+            $("#filterSheets").disableBt();
+            $('#id-dropdown-subject').hide();
+        }
+        else {
+            if ('@Model.IsPublisher' === 'True') {
+                loadDistrictOfStateForPublisher();
+            }
+            if ('@Model.IsNetworkAdmin' === 'True') {
+                loadDistrictOfStateForNetworkAdmin();
+            }
+        }
+    });
+
+    $("#selectDistrict").die("change");
+    $('#selectDistrict').change(function () {
+        $('#selectSchool, #selectTeacher, #selectSubject').empty();
+        var districtId = $('#selectDistrict').val();
+        if (districtId == null || districtId == '' || districtId == 'select' || districtId <= 0) {
+            $("#filterSheets").disableBt();
+            $('#id-dropdown-subject').hide();
+        } else {
+            loadDropdownListSchool('@Model.CurrentSelectedSchoolId');
+            if (retainedData != null && retainedData.schoolID !== 'select') {
+                $('#selectSchool').val(retainedData.schoolID);
+            }
+            loadDropdownListSubject(districtId);
+        }
+    });
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        addDefaultOption(selectList, defaultValue);
+        addSelectListItems(selectList, results);
+        fillFilterData(selectList);
+    }
+
+    function fillFilterData(selectList) {
+        if (retainedData == null)
+            return;
+
+        if (selectList.attr("id") == "selectState" && retainedData.stateID > 0) {
+            selectList.val(retainedData.stateID);
+        }
+
+        if (selectList.attr("id") == "selectDistrict" && retainedData.districtID > 0) {
+            selectList.val(retainedData.districtID);
+            selectList.trigger("change");
+        }
+    }
+
+    function getFilterData() {
+        var data = localStorage.getItem("FilterData");
+        if (data === undefined)
+            return null;
+
+        //localStorage.removeItem('FilterData');
+
+        return JSON.parse(data);
+    }
+
+    function loadStateForPublisher() {
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            AddSelectListItems($('#selectState'), states, 'State');
+            if(states.length === 1) {
+                $('#selectState').trigger("change");
+            }
+            //set default state as selected state
+            if ($('#selectState').val() != 'select') {
+                loadDistrictOfStateForPublisher();
+            }
+        });
+    }
+    function loadDistrictOfStateForPublisher() {
+        if ($('#selectState').val() != 'select') {
+            $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: $('#selectState').val() }, function (districts) {
+                AddSelectListItems($('#selectDistrict'), districts, '@LabelHelper.DistrictLabel');
+                if (districts.length === 1) {
+                    $('#selectDistrict').trigger('change');
+                }
+                ClassManager.init();
+            });
+        }
+    }
+
+    function loadStateForNetworkAdmin() {
+        $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function(states) {
+            AddSelectListItems($('#selectState'), states, 'State');
+            //set default state as selected state
+             if(states.length === 1) {
+                 $('#selectState').trigger("change");
+            }
+            //set default state as selected state
+            if ($('#selectState').val() != 'select') {
+                loadDistrictOfStateForNetworkAdmin();
+            }
+        });
+    }
+
+    function loadDistrictOfStateForNetworkAdmin() {
+        if ($('#selectState').val() != 'select') {
+            $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: $('#selectState').val() }, function(districts) {
+                AddSelectListItems($('#selectDistrict'), districts, '@LabelHelper.DistrictLabel');
+                if (_historyData.selectedDistrictId > 0) {
+                    $("#selectSchool").val(_historyData.selectedDistrictId);
+                }
+                ClassManager.init();
+            });
+        }
+    }
+
+    function keepLocalStorage() {
+        var selectedSchoolId = '@Model.CurrentSelectedSchoolId';
+        var selectedDistrictId = '@Model.DefaultDistrictId';
+        var selectedTeacherId = '@Model.CurrentSelectedTeacherId';
+        var roleId = '@Model.RoleId';
+        var userId = '@Model.UserId';
+
+        var schoolID = $("#selectSchool").val() != 'select' ? $("#selectSchool").val() : '';
+        if (roleId == '2') {
+            schoolID = selectedSchoolId;
+            districtID = selectedDistrictId;
+            teacherID = selectedTeacherId;
+        }
+        var data = {
+            stateID: $("#selectState").val() != 'select' && $("#selectState").val() ? $("#selectState").val() : '',
+            districtID: $("#selectDistrict").val() != 'select' && $("#selectDistrict").val() ? $("#selectDistrict").val() : '',
+            schoolID: schoolID,
+            teacherID: $("#selectTeacher").val() != 'select' && $("#selectTeacher").val() ? $("#selectTeacher").val() : '',
+            subjectKey: $('#selectSubject').val() != 'select' && $('#selectSubject').val() != 'No Results Found' && $('#selectSubject').val() ? $('#selectSubject option:selected').text() : '',
+            className: $('#inputClassName').val() ? $('#inputClassName').val() : '',
+            searchKey: $("#dataTable_filter input[type='text']").val() ? $("#dataTable_filter input[type='text']").val() : '',
+            pageSize: $('#classes-by-teacher-and-school #dataTable_length select').val() > 0 ? $('#classes-by-teacher-and-school #dataTable_length select').val() : 10,
+            isFirstLoad: false
+        };
+        if (schoolID) {
+            localStorage.setItem("FilterData", JSON.stringify(data));
+        }
+    }
+
+    function loadDropdownListSchool(selectedSchoolId) {
+        var selectedDistrictId = 0;
+        var roleId = '@Model.RoleId';
+        var userId = '@Model.UserId';
+
+        var url = roleId == '8' || roleId == '2' ? '@Url.Action("GetSchoolsByUser")' : '@Url.Action("GetSchools", "Admin")';
+        if ('@Model.IsPublisher' == 'True' || '@Model.IsNetworkAdmin' == 'True') {
+            //Publisher and NetworkAdmin can select district
+            //get district from dropdown list (Publisher and NetworkAdmin)
+
+            selectedDistrictId = $('#selectDistrict').val();
+            if (selectedDistrictId == 'select' || selectedDistrictId <= 0) {
+                selectedDistrictId = 0;
+            }
+            if (selectedDistrictId == 0) {
+                return;
+            }
+        }
+
+        $.ajax({
+            url: url,
+            data: { districtId: selectedDistrictId, userId: userId },
+            dataType: 'json',
+            async: false,
+            success: function (schools) {
+                addDefaultOption($('#selectSchool'), "School");
+                addSelectListWithDefaultValue($('#selectSchool'), schools, selectedSchoolId);
+                $('#selectSchool').change();
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+            }
+        });
+    }
+
+    function loadDropdownListSubject(districtId) {
+        if (!districtId || districtId == 'select' || $("#selectDistrict").val() == 'select' || $("#selectDistrict").val() == '') {
+            $('#id-dropdown-subject').hide();
+            return;
+        }
+        $('#selectSubject').empty();
+        $.ajax({
+            url: '@Url.Action("GetMetaDataForDropdown")',
+            data: { districtId: districtId },
+            dataType: 'json',
+            async: false,
+            success: function (subjects) {
+                if (subjects && subjects.length > 0) {
+                    hasConfigClassMeta = true;
+                    addDefaultOption($('#selectSubject'), "Subject");
+                    addSelectListItems($('#selectSubject'), subjects);
+                    $('#selectSubject').change();
+                    $('#id-dropdown-subject').show();
+                }
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+                if (retainedData != null && retainedData.subjectKey != null) {
+                    $('#selectSubject option').each(function () {
+                        if ($(this).text() === retainedData.subjectKey) {
+                            $('#selectSubject').val($(this).val());
+                            $('#selectSubject').change();
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    function refreshTable(tableId) {
+        var table = $(tableId).dataTable();
+        table.fnStandingRedraw();
+        $('.with-tip').tip().hideTip();
+    }
+    // #endregion Functions
+</script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        breadcrumbDetailPage('.dataadmin', '#dtaManageClasses');
+    })
+</script>

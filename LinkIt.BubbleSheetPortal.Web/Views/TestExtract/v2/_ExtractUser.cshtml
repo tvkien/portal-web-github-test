@@ -1,0 +1,344 @@
+
+<div class="block-border mt-4" id="divExtractUserArea">
+    <div class="block-content form">
+        <table id="dataTableUser" class="datatable table no-margin" width="100%">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 13px">
+                        <input type="checkbox" id="chkAllUser" />
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                        User Name
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                        First Name
+                    </th>
+                    <th scope="col" style="min-width: 100px;">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                        Last Name
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                        School
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                        User Created
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                        User Modified
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <div class="btn-wrapper d-none">
+            <button id="btnUserSubmitSelected" type="button" class="btn-blue me-3"
+                    onclick="SubmitSelectedUser(null);" disabled="disabled">
+                Create Extracts
+            </button>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="hdfAllUserIds" />
+<input type="hidden" id="hdfTrackUserIdSelected" />
+
+<script type="text/javascript">    
+    function LoadListExtractUser( ) {
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetExtractUser", "TestExtract")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "districtId", value: GetDistrictID() },                    
+                    { name: "ListSchoolIDs", value: BuildListSchoolSelected() },
+                    { name: "StrStartDate", value: $('#selectFromDateUser').val() },
+                    { name: "StrEndDate", value: $('#selectToDateUser').val() }
+                );
+            },
+            bAutoWidth: true,
+            iDisplayLength: 50,
+            aLengthMenu: [50, 100, 500, 1000],
+            aaSorting: [[1, "asc"]],
+            oLanguage: { "sEmptyTable": "Match Not Found" },
+            aoColumns: [
+                { sType: 'int', sName: 'UserId', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'UserName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'FirstName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'LastName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'SchoolName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'CreatedDate', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'ModifiedDate', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'SchoolId', bSearchable: false, bSortable: false, bVisible: false}
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBoxUser(aData[0], aData[7]));
+                if (aData[5] != null) {
+                    $('td:eq(5)', nRow).html(displayDateWithFormat(aData[5],true));
+                } else {
+                    $('td:eq(5)', nRow).html('');
+                }
+                if (aData[6] != null) {
+                    $('td:eq(6)', nRow).html(displayDateWithFormat(aData[6],true));
+                } else {
+                    $('td:eq(6)', nRow).html('');
+                }
+                
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                $('#filterSheetsUser').attr("disabled", "disabled");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#filterSheetsUser').removeAttr('disabled');
+                $('#divExtractUserArea').unblock();
+                $('.with-tip').tip();
+                $('.with-tip').tip();
+                typeof InitUserIds == 'function' && InitUserIds();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTableUser_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                if (elSearchInput.length) {
+                    elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+                }
+
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTableUser_filter').addClass('data-search');
+
+                moveBtnExtract('divExtractUserArea');
+            }
+        };
+
+        function setCheckBoxUser(userId, schoolId) {
+            var checkboxString = '<input type="checkbox" name="chkUser" value="' + userId + '" schoolId="' + schoolId + '" />';
+            if (CheckSelectedUser(userId, schoolId)) {
+                checkboxString = '<input type="checkbox" name="chkUser" value="' + userId + '" checked="checked" schoolId="' + schoolId + '" />';
+            }
+            return checkboxString;
+        }
+
+        $("#dataTableUser").data("options", options);
+        initializeDataTable($("#dataTableUser"));
+    }
+
+    $('#chkAllUser').live("click", function (e) {
+        if (this.checked) {
+            //alert('Check All: ' + $('#hdfAllUserIds').val());
+            $('#hdfTrackUserIdSelected').val($('#hdfAllUserIds').val());
+            $('INPUT[name="chkUser"][type=checkbox]').attr('checked', 'checked');
+            lstSchoolIds = BuildListSchoolSelected();            
+        }
+        else {
+            //alert('Uncheck All');
+            $('#hdfTrackUserIdSelected').val('');
+            $('INPUT[name="chkUser"][type=checkbox]').removeAttr('checked');
+            lstSchoolIds = '';
+        }
+        portalV2SkinCheckBox();
+        setDisabledButtonsUser();
+    });
+
+    function setDisabledButtonsUser( ) {
+        if (!CheckSelectTemplatesUser()) {
+            $('#btnUserSubmitSelected').attr('disabled', 'disabled');
+            return;
+        }
+        var vListIds = $('#hdfTrackUserIdSelected').val();
+        if (vListIds.length == 0) {
+            $('#btnUserSubmitSelected').attr('disabled', 'disabled');
+        } else {
+            $('#btnUserSubmitSelected').removeAttr('disabled');
+        }
+    }
+
+    $('INPUT[name="chkUser"][type=checkbox]').live("click", function (e) {
+        //alert($(this).val());
+        var vListIds;
+        if (this.checked) {
+            TrackingUserSelected($(this).val(), $(this).attr('schoolId'));
+            if ($('INPUT[name="chkUser"][type=checkbox]').length == $('INPUT[name="chkUser"][type=checkbox]:checked').length) {
+                $('#chkAllUser').attr('checked', 'checked');
+            }
+        }
+        else {
+            RemoveTrackingUserId($(this).val(), $(this).attr('schoolId'));
+            $('#chkAllUser').removeAttr('checked');
+            portalV2SkinCheckBox();
+        }
+        setDisabledButtonsUser();
+    });
+
+    function GetUserSelected() {
+        var userIds = '';
+        $('INPUT[name="chkUser"][type=checkbox]:checked').each(function (i, e) {
+            userIds += $(e).val() + ',';
+            lstSchoolIds += $(e).attr('schoolId') + ',';
+        });
+        return userIds.substr(0, userIds.length - 1);
+    }
+
+    function SubmitSelectedUser(e) {
+        var listTemplatesExport = '';
+        
+        $(".userTemplateItem[isSelected=yes]").each(function () {
+            listTemplatesExport += ($(this).attr('templateid')) + ';';
+        });
+        var timezoneOffset = new Date().getTimezoneOffset();
+        var vListUser = $('#hdfTrackUserIdSelected').val();
+        if (vListUser.startsWith(';')) {
+            vListUser = vListUser.substring(1);
+        }
+        var type = GetTypeExtract();
+        if (vListUser.length > 0) {
+            ShowBlock($('#divExtractUserArea'), 'Exporting');
+            $.ajax({
+                type: "Post",
+                url: '@Url.Action("AddExtractionToQueue", "TestExtract")',
+                data: { district: GetDistrictID(), lstIds: vListUser, lstTemplates: listTemplatesExport, timezoneOffset: timezoneOffset, type: type, lstSchoolIds: lstSchoolIds }
+            })
+        .done(function (response) {
+            $('#divExtractUserArea').unblock();
+            if (response.success == true) {
+                LoadPopupConfirm();
+            } else {
+                alert('Please select user.');
+            }        
+            
+            //alert("Link Download: " + urlDownload);
+        });
+    }
+}
+
+function LoadPopupConfirm() {    
+    dialog = $("#popupConfirm111")
+        .dialog({
+            title: $(this).attr("data-dialog-title"),
+            close: function () {
+                //$(this).remove();
+            },
+            modal: true,
+            width: 440,
+            resizable: false,
+            hideOnClose: true
+        })
+        .load(this.href, function () { });
+}
+
+function TrackingUserSelected(userId, schoolId) {
+    var userFormat = `_${userId}-${schoolId}_`;
+    var listUserIdSelected = $('#hdfTrackUserIdSelected').val();
+    if (listUserIdSelected.indexOf(userFormat) <= 0) {
+        listUserIdSelected += ';' + userFormat;
+        $('#hdfTrackUserIdSelected').val(listUserIdSelected);
+    }
+
+    if (lstSchoolIds.indexOf(schoolId) <= 0) {
+        lstSchoolIds += ';' + schoolId;
+    }
+}
+
+function RemoveTrackingUserId(userId, schoolId) {
+    var userFormat = `_${userId}-${schoolId}_`;
+    var listUserIdSelected = $('#hdfTrackUserIdSelected').val();
+    if (listUserIdSelected.indexOf(userFormat) > 0) {
+        userFormat = ';' + userFormat;
+        $('#hdfTrackUserIdSelected').val(listUserIdSelected.replace(userFormat, ''));
+    }
+    var schoolIds = '';
+    $('INPUT[name="chkUser"][type=checkbox]:checked').each(function (i, e) {
+        var scId = $(e).attr('schoolId');
+        if (schoolIds.indexOf(scId) <= 0) {
+            schoolIds += ';' + scId;
+        }
+    });
+
+    lstSchoolIds = schoolIds;
+}
+
+function CheckSelectedUser(userId, schoolId) {
+    var userFormat = `_${userId}-${schoolId}_`;
+    var listUserIdSelected = $('#hdfTrackUserIdSelected').val();
+    if (listUserIdSelected.indexOf(userFormat) > 0) {
+        return true;
+    }
+    return false;
+}
+</script>
+
+<style type="text/css">
+    #dataTableUser_wrapper .block-footer {
+        display: none;
+    }
+
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: var(--dark) !important;
+    }
+
+    .ui-datepicker .ui-datepicker-header {
+        top: 0px;
+    }
+
+    .ui-datepicker .ui-datepicker-prev span,
+    .ui-datepicker .ui-datepicker-next span {
+        background-image: url("/Content/themes/base/images/ui-icons_222222_256x240.png");
+    }
+
+    .ui-datepicker .ui-icon {
+        width: 16px;
+        height: 16px;
+    }
+</style>

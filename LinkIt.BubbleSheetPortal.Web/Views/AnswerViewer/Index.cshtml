@@ -1,0 +1,150 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.Models.AnswerViewerModel
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Answer Viewer Popup</title>
+
+    @BundleHelper.StyleAnswerViewerBundle()
+
+    @Html.Partial("_Favicons")
+    <script src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+    @{
+        var script = HelperExtensions.GetGoogleAnalyticsTrackingScript();
+
+        if (script.Contains("<script"))
+        {
+            @Html.Raw(script);
+        }
+        else
+        {
+            <script type="text/javascript">
+                @Html.Raw(script);
+            </script>
+        }
+    }
+</head>
+<body>
+    <div id="app" class="app" v-bind:class="{ 'is-overflow': isLoadingQuestion }">
+        <div class="app-loading" v-if="isLoadingQuestion">
+            <h2 class="app-loading-title">Loading question</h2>
+            <span class="app-loading-circle"></span>
+            <span class="app-loading-circle"></span>
+            <span class="app-loading-circle"></span>
+        </div>
+        <div class="app-container" v-if="msgError">
+            <div class="app-content">
+                <div class="app-xml">
+                    <span v-text="msgError"></span>
+                </div>
+            </div>
+        </div>
+        <div class="app-container" v-else>
+            <div class="app-header" v-if="isGuidanceRationale || question.PassageList.length > 0">
+                <div class="app-nav">
+                    <div class="app-navbar">
+                        <div class="app-menu" v-if="isGuidanceRationale">
+                            <span class="app-menu-title">Guidance</span>
+                            <ul class="app-dropdown">
+                                <li v-if="question.GuidanceRationale.rationale">
+                                    <div class="app-dropdown-item">
+                                        <input type="checkbox" id="ShowTeacherRationale" />
+                                        <label for="ShowTeacherRationale">Show Teacher Rationale</label>
+                                    </div>
+                                </li>
+                                <li v-if="question.GuidanceRationale.guidance">
+                                    <div class="app-dropdown-item">
+                                        <input type="checkbox" id="ShowStudentGuidance" />
+                                        <label for="ShowStudentGuidance">Show Student Guidance</label>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="app-menu" v-if="question.PassageList.length > 0">
+                            <span class="app-menu-title">Reference</span>
+                            <ul class="app-dropdown">
+                                <li v-for="passage in question.PassageList">
+                                    <a href="#"
+                                       class="app-dropdown-item"
+                                       v-on:click.prevent="showPassage(passage)"
+                                       v-bind:class="{ 'is-active': passage.IsActive }">
+                                        <span v-text="passage.Title"></span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="app-menu" v-if="question.QuestionGroupCommon.length > 0">
+                            <a href="#"
+                                class="app-menu-title question-group"
+                                v-on:click.prevent="showQuestionGroup()"
+                                <span >Question Group</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="app-content" v-bind:class="{ 'is-header': isGuidanceRationale || question.PassageList.length > 0 }">
+                <div class="app-passages" v-if="question.QuestionGroupCommon.length > 0">
+                    <div class="app-passage" v-if="questionGroup.IsShow">
+                        <div class="app-passage-header">
+                            <h4 >Question Group</h4>
+                            <span class="app-passage-close" v-on:click="hideQuestionGroup()">x</span>
+                        </div>
+                        <div class="app-passage-content" v-html="question.QuestionGroupCommon"></div>
+                    </div>
+                </div>
+                <div class="app-passages" v-if="question.PassageList.length > 0">
+                    <div class="app-passage" v-for="passage in question.PassageList" v-if="passage.IsShow">
+                        <div class="app-passage-header">
+                            <h4 v-text="passage.Title"></h4>
+                            <span class="app-passage-close" v-on:click="hidePassage(passage)">x</span>
+                        </div>
+                        <div class="app-passage-content" v-html="passage.Data"></div>
+                    </div>
+                </div>
+                <div class="app-passage-loading" v-if="isLoadingPassage">
+                    <p>Loading passage</p>
+                </div>
+                <div class="app-xml" v-html="question.XmlContent"></div>
+                <div class="app-badge"
+                    v-bind:class="{ 'app-badge-full': badge.IsFullCredit }"
+                    v-show="!question.IsInformationalOnly">
+                    <div class="app-badge-header">
+                        <span class="app-badge-icon" v-bind:class="badge.Icon"></span>
+                        <h3 class="app-badge-title" v-text="badge.Title"></h3>
+                    </div>
+                    <div class="app-badge-content" v-if="question.XmlContentCorrect !== ''">
+                        <div class="app-xml" v-html="question.XmlContentCorrect"></div>
+                    </div>
+                </div>
+            </div>
+            @Html.Partial("_GlossaryModal")
+        </div>
+    </div>
+    <script type="text/javascript">
+        var answerviewerParams = {
+            virtualQuestionID: '@Model.VirtualQuestionID',
+            testResultID: '@Model.TestResultID'
+        };
+        var questionGroup = '@Html.Raw(ViewBag.QuestionGroupCommon)';
+
+        var s3Config = '@Model.S3Config';
+    </script>
+
+    @BundleHelper.ScriptAnswerViewerBundle()
+<script>
+    $(function() {
+        MathJax.Hub.Queue(['Typeset', MathJax.Hub ])
+    });
+</script>
+
+</body>
+</html>

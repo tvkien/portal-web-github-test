@@ -1,0 +1,978 @@
+@using LinkIt.BubbleSheetPortal.Models.AuthorizeItemLib
+@using LinkIt.BubbleSheetPortal.Common.DataFileUpload
+@using LinkIt.BubbleSheetPortal.Models
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.TestdesignAssessmentItemHTML, "Import Items From Library",true);
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptKnockout30Bundle()
+
+<script src="@Url.Content("~/FeLibs/jquery-coolfieldset/js/jquery.coolfieldset.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/QtiItem/qtiitemV2.js")" type="text/javascript"></script>
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleItemsFromLibraryBundle()
+
+<script type="text/ecmascript">
+    if ($.browser.msie && parseInt($.browser.version, 10) == 9) {
+        $("body").addClass("ie9");
+    }
+</script>
+
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor_utils.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor_mkV2.js")"></script>
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script type="text/javascript" src="@Url.Content("~/Scripts/qtiItemLoadMedia.js")"></script>
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptItembankItemsFromLibraryBundle()
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleItemsFromLibraryBundleV2()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptItembankItemsFromLibraryBundle2()
+<link href="@BundleHelper.Version("~/Content/css/v2/items-from-library-v2.css")" rel="stylesheet" />
+
+<style type="text/css">
+    .ui-widget-header {
+        top: 37px !important;
+    }
+
+    tr.even.row_selected td {
+        background-color: var(--blue7) !important;
+    }
+
+    tr.odd.row_selected td {
+        background-color: var(--blue7) !important;
+    }
+
+    .lblKeySearchCriteria {
+        display: inline !important;
+        font-size: 11px !important;
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        /*padding-left: 10px;*/
+    }
+
+    .lblValueSearchCriteria {
+        display: inline !important;
+        font-size: 11px !important;
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        color: black !important;
+        font-style: italic !important;
+    }
+
+    #fsNonNWEACriteria p {
+        margin-top: 0px !important;
+        margin-bottom: 2px !important;
+        padding-left: 10px;
+    }
+
+    #fsNWEACriteria p {
+        margin-top: 0px !important;
+        margin-bottom: 2px !important;
+        padding-left: 10px;
+    }
+
+    .lblSessionCriteria {
+        margin-bottom: 5px;
+        margin-top: 5px;
+    }
+
+    .passage-found-item-link {
+        text-decoration: underline;
+        color: var(--bs-blue);
+    }
+
+    #tips div {
+        padding: 0 !important;
+    }
+
+        #tips div p {
+            padding: 5px 8px;
+            margin-bottom: 0;
+        }
+
+    #btnEditPassageDetail {
+        display: none !important;
+        cursor: default;
+        pointer-events: none;
+    }
+
+    #btnCloseUserClickPassageDetail {
+        border: 2px solid var(--red) !important;
+        color: var(--white);
+        background-color: var(--red) !important;
+        padding: 11px 32px !important;
+    }
+
+        #btnCloseUserClickPassageDetail:hover {
+            background-color: var(--red2) !important;
+            border-color: var(--red2) !important;
+            color: var(--red3) !important;
+        }
+    .textBox-height {
+        height: 40px !important;
+    }
+</style>
+<script>
+    var firstLoad = true;
+    var firstLoadListItemsFromLibrary = true;
+    var firstLoadListItemsFromLibraryNew = true;
+</script>
+<script type='text/javascript' src='@BundleHelper.Version("~/Scripts/jquery.dataTables.rowReorderingV2.js")'></script>
+<script type='text/javascript' src='@BundleHelper.Version("~/Scripts/qtiItemLoadMedia.js")'></script>
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<div style="display: none;">ItemBank\ItemsFromLibrary</div>
+<input type="hidden" id="hdGroupName" value="@ViewBag.QtiGroupName" />
+<input type="hidden" id="isInitItemBankData" value="false" />
+<input type="hidden" id="isSearched" value="false" />
+<article class="container_12 ItemsFromLibraryV2">
+    <div class="block-border form" id="divItemFromLibrary">
+        <div id="ItemFromLibraryFilterID" class="bubbleSheetSelector">
+            <div class="block-section-custom mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h3 class="h3 mb-0">Filter Item From Library</h3>
+                    <a href="@Url.Action("Index", "QTIItem", new { qtiItemGroupID = ViewBag.QIItemGroupID })" class="btn btn-link pe-0 btnCancelQtiItem"><i class="fa-solid fa-arrow-left me-2"></i>Back to Item Set</a>
+                </div>
+
+                <div class="d-flex align-items-center mb-4 itemLibraryFilter">
+                    <div class="itemLibraryFilter-result">
+                        <div class="form-check form-check-inline mb-0 form-check-none-bg ps-0">
+                            <input id="radioPersonalItemLibrary" type="checkbox" name="ItemLibrarySelection" checked="checked" />
+                            <label class="form-check-label text-bold" for="radioPersonalItemLibrary">Personal Item Library</label>
+                        </div>
+                        @{
+                            var XliFunctionAccess = (XliFunctionAccess)ViewBag.XliFunctionAccess;
+                        }
+                        @if (XliFunctionAccess.DistrictLibraryAccessible)
+                        {
+                            <div class="form-check form-check-inline mb-0 form-check-none-bg">
+                                <input id="radioDistrictItemLibrary" type="checkbox" name="ItemLibrarySelection" />
+                                <label class="form-check-label text-bold" for="radioDistrictItemLibrary">@LabelHelper.DistrictLabel Item Library</label>
+                            </div>
+                        }
+                        @if (XliFunctionAccess.CerticaLibraryAccessible || XliFunctionAccess.ProgressLibraryAccessible)
+                        {
+                            <div class="form-check form-check-inline mb-0 form-check-none-bg">
+                                <input id="radioNWEAItemLibrary" type="checkbox" name="ItemLibrarySelection" />
+                                <label class="form-check-label text-bold" for="radioNWEAItemLibrary">Third-Party Libraries </label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0 form-check-none-bg">
+                                <select id="selectSource" style="min-width: 150px; display: none"></select>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="block-section-custom">
+                <div class="itemLibraryTab mb-4">
+                    <ul class="itemLibraryTab-list nav-v2 nav nav-pills mb-4">
+                        <li class="nav-item itemLibraryTab-list-item active" data-tab="tab-item-criteria-new">
+                            <a href="javascript:void(0)" class="nav-link">Standard/Item Criteria</a>
+                        </li>
+                        <li class="nav-item itemLibraryTab-list-item" data-tab="tab-passage-criteria">
+                            <a href="javascript:void(0)" class="nav-link">Passage Criteria</a>
+                        </li>
+                    </ul>
+                    <div class="itemLibraryTab-content">
+                        @Html.Partial("v2/_ItemFromLibraryFilterNew")
+                        <div id="tab-passage-criteria" class="itemLibraryTab-pane">
+                            <div class="qtiItemSelector p-0" id="divPassageCriteria">
+                                <div class="row g-3">
+                                    <div class="col-2 mb-3" id="lblPassageName">
+                                        <label>Name</label>
+                                        <input type="text" id="txtRefObjectTitle" class="full-width" />
+                                        <div class="block-text-name w-100">
+                                            <select id="selectPassageTitle" class="full-width">
+                                                <option value="">All</option>
+                                            </select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-2 mb-3" id="lblPassageNumberFilter">
+                                        <label>Passage Number</label>
+                                        <select id="selectPassageNumber" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectPassageGradeLabel">
+                                        <label>@LabelHelper.TestGrade</label>
+                                        <select id="selectPassageGrade" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                        <select id="selectPassageGradeNew" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectPassageSubjectLabel">
+                                        <label>@LabelHelper.Subject</label>
+                                        <select id="selectPassageSubject" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                        <div class="block-text-name w-100">
+                                            <select id="selectPassageSubjectNew" class="full-width">
+                                                <option value="">All</option>
+                                            </select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-2 mb-3" id="lblWordCountFilter">
+                                        <label>Word Count</label>
+                                        <select id="selectWordCount" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-2 mb-3" id="selectTextTypeLabel">
+                                        <label>Text Type</label>
+                                        <div class="block-text-name w-100">
+                                            <select id="selectTextType" class="full-width">
+                                                <option value="">All</option>
+                                            </select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectPassageTypeLabel">
+                                        <label>Passage Type</label>
+                                        <select id="selectPassageType" class="full-width"></select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectPassageGenreLabel">
+                                        <label>Genre </label>
+                                        <select id="selectPassageGenre" class="full-width"></select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectTextSubTypeLabel">
+                                        <label>Text Sub Type</label>
+                                        <div class="block-text-name w-100">
+                                            <select id="selectTextSubType" class="full-width">
+                                                <option value="">All</option>
+                                            </select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectFleschKincaidIdsLabel">
+                                        <label>Flesch Kincaid</label>
+                                        <select id="selectFleschKincaidIds" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectQTI3pPassageLanguageLabel">
+                                        <label>Language</label>
+                                        <select id="selectQTI3pPassageLanguage" class="full-width">
+                                            <option value="">All</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectQTI3pPassageLabelLexileMin">
+                                        <label>Lexile Min</label>                                        
+                                        <input id="selectQTI3pPassageLexileMin" type="text" class="full-width" maxlength="10">
+                                    </div>
+                                    <div class="col-2 mb-3" id="selectQTI3pPassageLabelLexileMax">
+                                        <label>Lexile Max</label>
+                                        <input id="selectQTI3pPassageLexileMax" type="text" class="full-width" maxlength="10"/>
+                                    </div>
+                                  
+                                </div>
+                                <div class="row g-3">
+                                    <div style="text-align: right;">
+                                        <button id="clearFilterPassage" class="btn btn-link ms-0" type="button">Reset <i class="fa-solid fa-arrow-rotate-right ms-1"></i></button>
+                                        <button id="searchByPassage" type="submit" class="btn-red ms-0">Search by Passage</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Filter Result -->
+                <div id="divResult" class="row g-3">
+                    <div id="qti3pItemResult" class="col-6">
+                        @Html.Partial("v2/_ListItemsFromLibrary")
+                    </div>
+                    <div id="qti3pItemUploadResult" class="col-6">
+                    </div>
+                    <div id="qtiItemResult" class="col-6">
+                        @Html.Partial("v2/_ListItemsFromLibraryNew")
+                    </div>
+                    <div id="divListItem" class="col-6">
+                        @Html.Partial("v2/_ListItem")
+                    </div>
+                    <div id="passageResult" class="col-12">
+                        @Html.Partial("v2/_ListItemsPassageNew")
+                    </div>
+                    <div id="passage3pResult" class="col-12">
+                        @Html.Partial("v2/_ListItemsPassage")
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="divTempContent"></div>
+</article>
+<input type="hidden" id="hiddenQIItemGroupID" value="@ViewBag.QIItemGroupID" />
+
+<style type="text/css">
+    .coolfieldset, .coolfieldset.expanded {
+        border: 1px solid #aaa;
+    }
+
+        .coolfieldset.collapsed {
+            border: 0;
+            border-top: 1px solid #aaa;
+        }
+
+        .coolfieldset legend {
+            padding-left: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .coolfieldset legend, .coolfieldset.expanded legend {
+            background: transparent url(/Content/themes/base/images/expanded.gif) no-repeat center left;
+            background-size: 10px 10px;
+        }
+
+        .coolfieldset.collapsed legend {
+            background: transparent url(/Content/themes/base/images/collapsed.gif) no-repeat center left;
+            background-size: 10px 10px;
+        }
+</style>
+@Html.Partial("v2/_ImportItemFromLibraryScript")
+<script type="text/javascript">
+
+    $(document).ready(function () {        
+        breadcrumbDetailPage('.write', '#assesmenItemRewrite')
+
+
+        loadPassageCriteriaStaticData();
+        loadItemCriteriaStaticData();
+        InItDatatableQti3pItemPassage();
+        InitDataTableQtiItemPassage();
+        $("#selectDistrictCategory").change();
+        removeInputCheckV2();
+
+        $(".itemLibraryTab-list-item").on("click", function () {
+            marqueeInput();
+        })
+
+
+        function InitDatatableNWEA() {          
+            var options1 = {
+                bServerSide: true,
+                bDestroy: true,
+                bFilter: false,
+                sAjaxSource: getAjaxSource1(true),
+                fnServerParams: function (aoData) {
+                    var item = null;
+                    for (var i = 0; i < aoData.length; i++) {
+                        item = aoData[i];
+                        if (item.name == 'sSearch') {
+                            do {
+                                item.value = item.value.replace('""', '"');
+                            } while (item.value.indexOf('""') >= 0)
+
+                            if (item.value == '"') {
+                                item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                            } else {
+                                item.value = encodeURIComponent(item.value);
+                            }
+                            break;
+                        }
+                    }
+
+                },
+                bStateSave: false,
+                bAutoWidth: false,
+                iDisplayLength: 100,
+                aaSorting: [[0, "asc"]],
+                aoColumns: [
+                    { sType: 'integer', sName: 'QTI3pItemID', bSearchable: false, bSortable: false, sWidth: "50px", sClass: 'col-action'},
+                    { sType: 'string', sName: 'Name', bSearchable: false, bSortable: false,},
+                    { sType: 'string', sName: 'ToolTip', bSearchable: false, bSortable: false, bVisible: false },
+                    { sType: 'int', sName: 'MaxItemTooltipLength', bSearchable: false, bSortable: false, bVisible: false },
+                    { sType: 'string', sName: 'From3pUpload', bSearchable: false, bSortable: false, bVisible: false }
+
+                ],
+                fnRowCallback: function (nRow, aData) {
+                    $('td:eq(0)', nRow).html(setCheckBoxItem(aData[0]));
+                    if (aData[4] == 'True' || aData[4] == 'true') {
+                        $('td:eq(1)', nRow).html(parseXmlContentQtiItem(aData[1]));
+                        $('td:eq(1)', nRow).attr("onclick", 'showEditQtiItemPopupUpload(' + aData[0] + ',1)');
+                    } else {
+                        $('td:eq(1)', nRow).html(parseXmlContent1(aData[1]));
+                        $('td:eq(1)', nRow).attr("onclick", 'showEditQti3pItemPopup(' + aData[0] + ',1)');
+                    }
+
+                    $('td:eq(1)', nRow).addClass('with-tip');
+                    $('td:eq(1)', nRow).bind({
+                        mouseenter: function () {
+                            displayItemTooltip($(this), aData[2], aData[3]);
+                        },
+                        mouseleave: function () {
+                            $(this).removeClass('with-tip');
+                            $('#tips div:last-child').html('');
+                        }
+                    });
+                    $('td:eq(1)', nRow).addClass('cursor-pointer');
+                    $('td:eq(1)', nRow).attr("onclick", 'showEditQti3pItemPopup(' + aData[0] + ',1)');
+                    addWordBreakToTableCellItem($('td:eq(1)', nRow), 35, aData[1]);
+                    $('#showPassagesForFoundItem').prop('disabled', false);
+                },
+                fnPreDrawCallback: function () {
+                    ShowBlock($('#dataTable1'), 'Loading');
+                    return true;
+                },
+                fnDrawCallback: function () {
+                    firstLoadListItemsFromLibrary = false;
+                    LoadImages('#dataTable1');
+                    $('.with-tip').tip();
+                    $('#dataTable1').unblock();
+                    formatTableForAddingVertialScrollBar('dataTable1', 'scrollItemDataTable1', 'noscrollItemDataTable1', 'scrollItemDataTable1IE9', 'noscrollItemDataTable1IE9');
+                },
+                fnInitComplete: function () {
+                    var tableEl = $('#dataTable1')[0];
+                    var wrapper = document.createElement('div');
+                    wrapper.classList.add('table-wrapper-scroll');
+                    tableEl.parentNode.insertBefore(wrapper, tableEl);
+                    wrapper.appendChild(tableEl);
+                }
+            };
+            $("#dataTable1").data("options", options1);
+            $("#dataTable1").dataTable();
+        };
+
+        $('input[name="ItemLibrarySelection"]').click(function () {          
+            var isNWEAItemTab = false;
+            $('#showPassagesForFoundItem').prop('disabled', true);
+            if (!firstLoad) {
+                $('#isSearched').val(!firstLoad);
+            }
+            if ($(this).attr('id') == 'radioPersonalItemLibrary' || $(this).attr('id') == 'radioDistrictItemLibrary') {
+                $('#radioNWEAItemLibrary').removeAttr('checked', 'checked');
+                if ($(this).is(':checked')) {
+                    firstLoadListItemsFromLibraryNew = true;
+                    if (!firstLoad) {
+                        ReloadItem2();
+                    }
+                    $('#searchByPassage').prop('disabled', false);
+                }
+            }
+            if ($(this).attr('id') == 'radioNWEAItemLibrary') {
+                isNWEAItemTab = true;
+                $('#radioPersonalItemLibrary').removeAttr('checked', 'checked');
+                $('#radioDistrictItemLibrary').removeAttr('checked', 'checked');
+                if ($(this).is(':checked')) {
+                    showNWEAItemLibraryFilter();
+                    $('#selectSource').show();
+                    if ($('#selectSource').val() == 'select') {
+                        $('#searchByPassage').prop('disabled', true);
+                    } else if ($('#selectSource').val() == 1) {
+                        $("#selectSource").trigger("change");
+                    }
+                    InitDataQti3pSource();
+                    InitDatatableNWEA();
+                }
+                firstLoadListItemsFromLibrary = false;
+            }
+            updateFilterUI();
+            setDisabledFillterButton(isNWEAItemTab);
+            $('#idKeyword').val('');
+            $("select").not('#selectSource').not('.block-pagination select').prop('selectedIndex', 0);
+            //personal and district item library
+            $('#txtKeyword').val('');
+            $('#txtStandard').val('');
+            $('#txtTopic').val('');
+            $('#txtSkill').val('');
+            $('#txtOther').val('');
+            $('#txtDistrictTag').val('');
+            $('#dvStandardTreeView').html('<span>Please use the filters to search</span>');
+            $('#txtRefObjectTitle').val('');
+            $("#txtDescription").val('');
+            $("#txtItemTitle").val('');
+            $("#txt3pDescription").val('');
+            $("#txt3pItemTitle").val('');
+            $(".txtKeyword").val('');
+            getCriteriaSchema();
+            ShowItemGridViewByActiveTab();
+            clearMarqueeInput();
+        });
+
+        updateFilterUI();
+
+        function removeInputCheckV2() {
+            $('.itemLibraryFilter input[type="checkbox"]').change(function () {
+                if ($('.itemLibraryFilter input[type="checkbox"]').hasClass('input-checked-v2')) {
+                    $('.itemLibraryFilter input[type="checkbox"]').removeClass('input-checked-v2');
+                }
+            })
+        }
+    });
+
+    $("#setFilter").die("click");
+    $("#setFilter").click(function () {
+        firstLoadListItemsFromLibraryNew = false;
+        $('#showPassagesForFoundItem').prop('disabled', true);
+        $('#isSearched').val(true);
+        showItemFilterResult(true);
+        showPassageResult(false);
+        if (!$('#radioNWEAItemLibrary').is(':checked')) {
+            ReloadItem2();//
+        }
+    });
+
+    $("#clearFilter").click(function () {
+        $('#idKeyword').val('');
+        $("select").not('#selectSource').not('.block-pagination select').prop('selectedIndex', 0);
+        //personal and district item library
+        $('#txtKeyword').val('');
+        $('#txtStandard').val('');
+        $('#txtTopic').val('');
+        $('#txtSkill').val('');
+        $('#txtOther').val('');
+        $('#txtDistrictTag').val('');
+        $('#dvStandardTreeView').html('<span>Please use the filters to search</span>');
+        $('#txtRefObjectTitle').val('');
+        //clearStandardFilter();
+        setDisableFilterNWEA();
+    });
+
+    $("#clearFilterPassage").click(function () {
+        $("#tab-passage-criteria select").prop('selectedIndex', 0);
+        $('#txtRefObjectTitle').val('');
+        $('#selectQTI3pPassageLexileMin').val('');
+        $('#selectQTI3pPassageLexileMax').val('');
+
+        clearMarqueeInput();
+    });
+
+    function showNWEAItemLibraryFilter() {
+        $('#divStandardContainer').parent().show();
+        $('#divStandardContainerNew').parent().hide();
+        $('#divItemCriteria').parent().show();
+        $('#divItemCriteriaNew').parent().hide();
+
+        $('#qti3pItemResult').show();
+        $('#qtiItemResult').hide();
+        $("#setFilterNWEA").show();
+        $("#setFilter").hide();
+
+        $('#selectPassageGrade').show();
+        $('#selectPassageGradeNew').hide();
+
+        $('#selectPassageSubject').show();
+        $('#selectPassageSubjectNew').hide();
+
+        if (!$('#qti3pItemResult').html() || $('#qti3pItemResult').html().trim().length == 0) {
+            var url = '@Url.Action("LoadListItemsFromLibraryNew", "ItemBank")';
+            $.get(url,
+                function (data) {
+                    $('#qti3pItemResult').html(data);
+                });
+        } else {
+            ReloadItem1ForEmpty();
+        }
+
+        $("#fsNonNWEACriteria").hide();
+        $("#fsNWEACriteria").show();
+
+        //load standart for filter
+        $('#divStandardContainerNew').html('');
+        $.ajax({
+            url: '@Url.Action("LoadStandardFilter","ItemBank")',
+            cache: false
+        })
+        .done(function (html) {
+            $('#divStandardContainer').html(html);
+
+            //Always show for Third-Party Libraries tab
+            ToggleStandardCriteria();
+        });
+
+        $('#lblPassageNumberFilter').show();
+        $('#selectPassageNumber').val('');
+        $('#selectPassageNumber').show();
+        $('#txtRefObjectTitle').val('');
+
+        $('#lblWordCountFilter').show();
+        $('#selectWordCount').show();
+        $('#selectWordCount').val(0);
+        $('#selectPassageTitle').show();
+        $('#txtRefObjectTitle').hide();
+
+    }
+
+    function ShowItemGridViewByActiveTab(){
+        var activeTab = $('.itemLibraryTab').find('.itemLibraryTab-list-item.active').data('tab');
+
+        if(activeTab == 'tab-item-criteria-new'){
+            showItemFilterResult(true);
+            showPassageResult(false);
+        }
+
+        if(activeTab == 'tab-passage-criteria'){
+            showItemFilterResult(false);
+            showPassageResult(true);
+        }
+    }
+
+    function marqueeInput() {
+        if ($('#selectTextTypeLabel .overlay.animation-text').length == 0) {
+            $('#selectTextType').marquee();
+        }
+
+        if ($('#selectTextSubTypeLabel .overlay.animation-text').length == 0) {
+            $('#selectTextSubType').marquee();
+        }
+
+        if ($('#selectPassageSubjectLabel .overlay.animation-text').length == 0) {
+            $('#selectPassageSubjectNew').marquee();
+        }
+
+        if ($('#lblPassageName .overlay.animation-text').length == 0) {
+            $('#selectPassageTitle').marquee();
+        }
+    }
+</script>
+
+<script>
+    $('#fsNWEACriteria').coolfieldset();
+    $('#fsNonNWEACriteria').coolfieldset();
+    var viewModelItemLibrary;
+
+    $(function () {
+        viewModelItemLibrary = new CreateItemFromLibraryViewModel();
+        ko.applyBindings(viewModelItemLibrary, document.getElementById('divItemFromLibrary'));
+
+        bindEvents();
+        $('#fsNWEACriteria').coolfieldset({ collapsed: true });
+        $('#fsNonNWEACriteria').coolfieldset({ collapsed: true });
+    });
+
+    function bindEvents() {
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function (e) {
+
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+
+        });
+
+    }
+    var isShowQtiItem = false;
+    function showEditQtiItem(qtiItemId, showPassage) {
+        $.ajax({
+            url: '@Url.Action("CheckQtiItemExists", "ItemBank")',
+            data: { qtiItemId: qtiItemId },
+            type: 'get',
+            cache: false
+        }).done(function (response) {
+            if (response.Exists == 'False') {
+                alert(response.errorMessage);
+                return;
+            } else {
+
+                if (isShowQtiItem == true) return;
+                isShowQtiItem = true;
+
+                if (showPassage == null) {
+                    showPassage = 0;
+                }
+                //Show popup
+                var worker = $('<div />');
+                worker
+                    .addClass("dialog EditQtiItemPopUpDialogCSS")
+                    .attr("id", "editQtiItemDialog")
+                    .appendTo("body")
+                    .load('@Url.Action("ShowEditQtiItemItem")\?qtiItemId=' + qtiItemId + '&showPassage=' + showPassage, function() {
+                        worker.dialog({
+                            title: $(this).attr("Standard"),
+                            open: function() {
+                                //a new overlay will be generated when opening an dialog
+                                //set zindex of new overlay to make it cover Filter Item From Library Popup
+                                var z_index = $("#editQtiItemDialog").parent().css('z-index');
+                                $('.ui-widget-overlay:first').css('z-index', parseInt(z_index) + 1);
+                                $("#editQtiItemDialog").parent().css('z-index', parseInt(z_index) + 2);
+                                $("#editQtiItemDialog").prev().css('top', '30px');
+                                $('.ui-widget-overlay:first').height(2000);
+                                try {
+                                    if ($("#qtiItemDataTablePopup").length > 1) {
+                                        $("#qtiItemDataTablePopup").unblock();
+                                    }
+
+                                } catch (e) {
+
+                                }
+                                AdjustQtiItemDetail(); //declared in _QtiItemDetail.cshtml
+                                var qtiItemHTML = $('#divQtiItemDetail').html();
+                                qtiItemHTML = qtiItemHTML.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+                                $('#divQtiItemDetail').html(qtiItemHTML);
+                                $('#divQtiItemDetail').find('video').trigger('play');
+                                // Load content in file qtiItemLoadMedia.js
+                                loadContentImageHotSpot('#divQtiItemDetail');
+                                loadContentDragAndDrop('#divQtiItemDetail');
+                                loadContentNumberLineHotspot('#divQtiItemDetail');
+                                loadContentGlossary('#divQtiItemDetail', '#glossaryMessage');
+                            },
+                            close: function() {
+                                $('.ui-widget-overlay:first').remove();
+                                $(this).remove();
+                                $('#tips').html('');
+                                isShowQtiItem = false;
+
+                                // Stop text to speech
+                                if (!!responsiveVoice) {
+                                    responsiveVoice.cancel();
+                                }
+                            },
+                            modal: false,
+                            width: 640,
+                            resizable: false,
+                            position: {
+                                my: "center",
+                                at: "center",
+                                of: window
+                            }
+                        });
+                    });
+                showModalDialogBG();
+            }
+        }).error(function(request) {
+        });
+
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results == null) {
+            return;
+        }
+        if (results.length == 0) {
+            return;
+        }
+
+        selectList.empty();
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+
+        $.each(results, function(i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+
+    var binding = false;
+
+    function reloadItemBanks() {
+        $('#selectItemsBankId').empty();
+
+        if (itemBanksPersonalData == null) {
+            binding = true;
+            var url = '';
+            if ($('#radioPersonalItemLibrary').is(':checked') && $('#radioDistrictItemLibrary').is(':checked')) {
+                url = '@Url.Action("GetItemBanksPersonalAndDistrict", "ItemBank")';
+            } else {
+                if ($('#radioPersonalItemLibrary').is(':checked')) {
+                    url = '@Url.Action("GetItemBanksPersonal", "ItemBank")';
+                }
+                if ($('#radioDistrictItemLibrary').is(':checked')) {
+                    url = '@Url.Action("GetItemDistrict", "ItemBank")';
+                }
+            }
+
+            if (url.length > 0 && binding == true) {
+                $('#selectItemsBankId').empty();
+                binding = false;
+                $.get(url, function (data) {
+                    AddSelectListItems($('#selectItemsBankId'), data, 'All');
+
+                });
+            }
+        } else {
+            AddSelectListItems($('#selectItemsBankId'), itemBanksPersonalData, 'All');
+            itemBanksPersonalData = null;//clear after first use
+        }
+    }
+</script>
+
+<script type="text/javascript">
+
+    var itemBanksPersonalData = null;
+    function getItemBanksPersonal() {
+        var url = '@Url.Action("GetItemBanksPersonal", "ItemBank")';
+        $.ajax({
+            url: url,
+            type: 'get',
+            cache: false,
+            data: {}
+        }).done(function (data) {
+            itemBanksPersonalData = data;
+        });
+    }
+
+    function LoadImages(containerSelector) {
+        $(containerSelector).find("img").each(function () {
+            var image = $(this);
+            var imageUrl = image.attr("src");
+            if (IsNullOrEmpty(imageUrl)) {
+                imageUrl = image.attr("source");
+            }
+
+            if (IsNullOrEmpty(imageUrl)) imageUrl = '@Url.Content("~/Content/images/emptybg.png")';
+
+            var testItemMediaPath = $('#hidTestItemMediaPath').val();
+            var isLoadImage = imageUrl.indexOf(testItemMediaPath) != -1;
+
+            if (isLoadImage) imageUrl = imageUrl.replace(testItemMediaPath, '');
+
+            if (imageUrl.charAt(0) == '/') imageUrl = imageUrl.substring(1);
+
+            image.attr("source", '');
+            image.attr("src", imageUrl);
+            if (imageUrl.toLowerCase().indexOf("http") == 0) return;
+            if (((imageUrl && imageUrl.toLowerCase().indexOf("itemset") >= 0) || isLoadImage)
+                && imageUrl.toLowerCase().indexOf("getviewreferenceimg") < 0) {
+                imageUrl = '/TestAssignmentRegrader/GetViewReferenceImg?imgPath=' + imageUrl;
+                imageUrl = imageUrl + "&timestamp=" + new Date().getTime();
+                image.attr("src", imageUrl);
+            }
+        });
+
+        ResizeImagesBaseOnPercent('#qtiItemDataTable');
+    }
+
+    function IsNullOrEmpty(value) {
+        return typeof (value) === "undefined" || value == null || $.trim(value) == '';
+    }
+</script>
+<script type="text/javascript" src="/Scripts/TestDesign/TestDesign.js"></script>
+<!-- Search by Passage -->
+<script>
+
+    $("#searchByPassage").die("click");
+    $("#searchByPassage").click(function () {        
+        firstLoadListItemsFromLibrary = false;
+        firstLoadListItemsFromLibraryNew = false;
+        $('#isSearched').val(true);
+        if (isCheckedNWEAItemLibrary()) {
+            ReloadPassageItem3p();//defined in _ListItemsPassage.cshtml
+        }
+        else {
+            $('#dataTablePassageItem').removeAttr('style');
+            ReloadPassageItem();//defined in _ListItemsPassageNew.cshtml
+        }
+        showItemFilterResult(false);
+        showPassageResult(true);
+        $('#dataTablePassageItem3p').removeAttr('width');
+    });
+
+    $("#showPassagesForFoundItem").die("click");
+    $("#showPassagesForFoundItem").click(function () {
+        $('#isSearched').val(true);
+        firstLoadListItemsFromLibrary = false;
+        firstLoadListItemsFromLibraryNew = false;
+
+        if (isCheckedNWEAItemLibrary()) {
+            $('#dataTablePassageItem3p').removeAttr('width');
+            reloadPassageForFoundItem(false)
+        }
+        else {
+            $('#dataTablePassageItem').removeAttr('style');
+            reloadPassageForFoundItem(true)
+        }
+
+        $('li[data-tab="tab-passage-criteria"]').click();
+        $("#clearFilterPassage").click();
+        showItemFilterResult(false);
+        showPassageResult(true);
+    });
+
+    $("#selectSource").change(function () {
+        firstLoadListItemsFromLibrary = true;
+        setDisableFilterNWEA();
+        if (isSearchedItem()) {
+            updateFilterUI();;
+        }
+        if (PopulateSate != undefined) {
+            ShowBlock($('#divStateStandards'), 'Loading');
+            PopulateSate();//populate state standard on filter
+        }
+        if ($(this).val() == 1) // 1 = Navigate
+        {
+            $('#divItemCriteria label#selectItemTypeLabel').show();
+            $('#divItemCriteria select#selectItemType').show();
+            $("#lblItemType").text('All');
+        }
+        else {
+            $('#divItemCriteria label#selectItemTypeLabel').hide();
+            $('#divItemCriteria select#selectItemType').hide();
+        }
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            $('#divListItem').show();
+            $('#qti3pItemResult').show();
+            $('#qtiItemResult').hide();
+        }
+
+        ShowItemGridViewByActiveTab();
+        marqueeInput();
+        clearMarqueeInput();
+        if ($('#selectTextSubType').val() != -1) {
+            $('#selectTextSubType').val('')
+        }
+    });
+</script>
+
+<script>
+
+    function load3pItem() {
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            if (!is3pUpload()) {
+                $('#qti3pItemResult').show();
+                $('#qtiItemResult').hide();
+                $('#qti3pItemUploadResult').hide();
+                if (ReloadItem1 != undefined) {
+                    ReloadItem1(true);//defined in _ListItemsFromLibrary.cshtml
+                }
+            } else { //load 3p from upload (Progress, Certica,..)
+                $('#qti3pItemResult').hide();
+                $('#qtiItemResult').hide();
+                $('#qti3pItemUploadResult').show();
+                if ($('#qti3pItemUploadResult').html().trim().length == 0) {
+                    var url = '@Url.Action("LoadListItemsFromLibraryUpload", "ItemBank")';
+                    $.get(url,
+                        function (data) {
+                            $('#qti3pItemUploadResult').html(data);
+                        });
+                } else {
+                    ReloadItemUpload();//defined in _ListItemsFromLibraryUpload.cshtml
+                }
+
+            }
+
+        }
+    }
+</script>

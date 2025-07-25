@@ -1,0 +1,140 @@
+<style type="text/css">
+    .divUploadConversionTablePopup {
+        z-index: 1004;
+        padding: 24px !important;
+    }
+
+    .btn-wrapper {
+        background: var(--navyColor);
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        margin: -24px;
+        margin-top: 24px;
+    }
+
+    .block-content h1 {
+        padding: 0;
+        margin-bottom: 24px;
+    }
+</style>
+
+<section>
+    <div class="block-border">
+        <div class="block-content divUploadConversionTablePopup" id="divUploadConversionTablePopupContent">
+            <div class="form">
+                <h1 class="title-large">Upload Conversion Table</h1>
+                <ul style="display: none" id="upload-error-messages" class="message error"></ul>
+                <ul style="display: none" id="upload-success-message" class="message success">
+                    <li>The file successfully uploaded.</li>
+                </ul>
+                <div class="form-body">
+                    <p>Please choose a file to upload with the conversion table data.</p>
+                    <div class="wrapper-btn-upload mt-2">
+                        <input id="file_upload" name="file_upload" type="file" />
+                    </div>
+                </div>
+                <div class="btn-wrapper">
+                    <button class="btn-cancel" onclick="cancel()">Cancel</button>
+                    <button class="btn-red" onclick="showUploadConversionWarning()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    function cancel() {
+        $(".dialog").dialog("close");
+    }
+
+    function addErrorMessage(msg) {
+        var error = $('#upload-error-messages');
+        error.empty();
+        error.append('<li>' + msg + '</li>');
+        error.show();
+    }
+
+    function showUploadConversionWarning() {
+        if ($('#file_upload').length == 0 || $('#file_upload')[0].files.length == 0) return;
+
+        $('#upload-error-messages').hide();
+        $('#upload-success-message').hide();
+
+        var allowedExtensions = /(\.xls|\.xlsx|\.csv)$/i;
+        var files = $('#file_upload')[0].files;
+
+        for (var i = 0; i != files.length; i++) {
+            if (!allowedExtensions.exec(files[i].name)) {
+                addErrorMessage('File type is not allowed. Please upload an Excel file (.xls, .xlsx) or a CSV file (.csv).');
+                return;
+            }
+        }
+
+        if ('@ViewBag.HasColumns' === 'True') {
+            DatalockerTemplateVm.isShowUploadConversionWarning = true;
+            $('#divUploadConversionTablePopupContent').hide();
+        }
+        else {
+            uploadFile();
+        }
+    }
+
+    function hideUploadConversionWarning() {
+        DatalockerTemplateVm.isShowUploadConversionWarning = false;
+        $('#divUploadConversionTablePopupContent').show();
+    }
+
+    function uploadFile(isReplace = false) {
+        hideUploadConversionWarning();
+
+        var files = $('#file_upload')[0].files;
+        var formData = new FormData();
+
+        for (var i = 0; i != files.length; i++) {
+            formData.append("files", files[i]);
+        }
+
+        ShowBlock($('#divUploadConversionTablePopupContent'), "Upload Conversion");
+
+        var url = '@Url.Action("UploadConversionTable")?virtualTestCustomScoreId=' + @ViewBag.VirtualTestCustomScoreId + '&virtualTestCustomSubScoreId=' + @ViewBag.VirtualTestCustomSubScoreId + '&isReplace=' + isReplace;
+
+        $.ajax(
+            {
+                url: url,
+                data: formData,
+                processData: false,
+                contentType: false,
+                type: "POST",
+                success: function (data) {
+                    $('#divUploadConversionTablePopupContent').unblock();
+
+                    if (data.template.Custom1_ConversionSetId > 0) {
+                        $('#upload-success-message').show();
+
+                        if (@ViewBag.VirtualTestCustomSubScoreId > 0) {
+                            showReplaceConversionTableBtnForSubScore(@ViewBag.VirtualTestCustomSubScoreId);
+                            $("#dataTableOverallScore_@(ViewBag.VirtualTestCustomSubScoreId)").dataTable().fnDraw(false);
+                        } else {
+                            showReplaceConversionTableBtn();
+                            $('#dataTableOverallScore').dataTable().fnDraw(false);
+                        }
+
+                        setTimeout(function () {
+                            $(".dialog").dialog("close");
+                        }, 2000);
+                    } else if (data.errorMessage) {
+                        addErrorMessage(data.errorMessage);
+                    } else {
+                        addErrorMessage('The file upload failed.');
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    $('#divUploadConversionTablePopupContent').unblock();
+                    addErrorMessage('The file upload failed.');
+                }
+            }
+        );
+    }
+</script>

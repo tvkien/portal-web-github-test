@@ -1,0 +1,141 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGO.SGOReportMasterViewModel
+<script src="https://code.jquery.com/jquery-1.11.3.js"></script>
+<script type="text/javascript" language="javascript">
+    function decode(input) {
+        var decoded = $('<div/>').html(input).text();
+        return decoded;
+    }
+
+    function parseAuditTrail(infoElementData, preferenceDataElementData, sourceOfData, actionType, firstName, lastName, details) {
+
+        var infoElement = $(decode(infoElementData));
+        var preferenceDataElement = $(decode(preferenceDataElementData));
+        var description = '';
+        if (sourceOfData == 'SGOAuditTrail' && (actionType == 1)) {
+            var studentNamesInGroup = '';
+            infoElement.find('studentid').each(function () {
+                var studentElement = $(this);
+                var studentId = studentElement.text();
+                if (studentElement.text().indexOf(';') > 0) {
+                    studentId = studentElement.text().split(';')[0];
+                }
+
+                preferenceDataElement.find('student[id="' + studentId + '"]').each(function () {
+                    var studentName = $(this).attr('firstname') + ' ' + $(this).attr('lastname');
+                    if (studentNamesInGroup.indexOf(studentName) == -1) {
+                        if (studentNamesInGroup != '') studentNamesInGroup += ', ';
+                        studentNamesInGroup += '<b>' + studentName + '</b>';
+                    }
+                });
+            });
+
+            if (studentNamesInGroup != '') {
+                description += '<div>Add students ' + studentNamesInGroup + '.</div>';
+            }
+        } else if (sourceOfData == 'SGOAuditTrail' && (actionType == 2)) {
+            infoElement.find('group').each(function () {
+                var groupElement = $(this);
+
+                var groupName = '';
+                preferenceDataElement.find('group[id="' + groupElement.attr('id') + '"]').each(function () {
+                    groupName = $(this).attr('name');
+                });
+
+                var studentNamesInGroup = '';
+                groupElement.find('studentid').each(function () {
+                    var studentElement = $(this);
+                    preferenceDataElement.find('student[id="' + studentElement.text() + '"]').each(function () {
+                        var studentName = $(this).attr('firstname') + ' ' + $(this).attr('lastname');
+                        if (studentNamesInGroup.indexOf(studentName) == -1) {
+                            if (studentNamesInGroup != '') studentNamesInGroup += ', ';
+                            studentNamesInGroup += '<b>' + studentName + '</b>';
+                        }
+                    });
+                });
+                if (studentNamesInGroup != '') {
+                    if (actionType == 2) {
+                        description += '<div>Moved student ' + studentNamesInGroup + ' from <b>' + groupName + '</b> to <b>Excluded</b>.</div>';
+                    } else if (actionType == 1) {
+                        description += '<div>Added student ' + studentNamesInGroup + ' to <b>' + groupName + '</b>.</div>';
+                    }
+                }
+            });
+
+        } else if (sourceOfData == 'SGOAuditTrail' && actionType == 3) {
+            infoElement.find('datapointid').each(function () {
+                preferenceDataElement.find('datapoint[id="' + $(this).text() + '"]').each(function () {
+                    var name = $(this).attr('name');
+                    if (description.indexOf(name) == -1) {
+                        if (description != '') description += ',';
+                        description += '<b>' + name + '</b>';
+                    }
+                });
+            });
+            if (description != '') description = firstName + ' ' + lastName + ' added an attachment to ' + description + ' data point.';
+        } else if (sourceOfData === 'SGOMilestones') {
+            description = details + '.';
+        }
+        return description;
+    }
+</script>
+
+<div class="sgoPrintBreakNewPage"></div>
+<table class="table table-guidance">
+    <tr>
+        <td class="u-size-185">
+            <strong>Audit Trail</strong>
+        </td>
+    </tr>
+</table>
+<table class="table table-sgo-info u-text-center">
+    <thead>
+        <tr>
+            <td class="u-size-40">
+                <strong>
+                    #
+                </strong>
+            </td>
+            <td>
+                <strong>
+                    Date
+                </strong>
+            </td>
+            <td>
+                <strong>
+                    Action By
+                </strong>
+            </td>
+            <td>
+                <strong>
+                    Changes
+                </strong>
+            </td>
+        </tr>
+    </thead>
+    <tbody>
+
+        @for (int index = 0; index < Model.ListAuditTrail.Count; index++)
+        {
+            var auditTrail = Model.ListAuditTrail[index];
+            <tr>
+                <td>@(index + 1)</td>
+                <td>@auditTrail.CreatedDateStr</td>
+                <td>@string.Format("{0} {1}", auditTrail.FirstName, auditTrail.LastName)</td>
+                <td>
+                    <script>
+                        document.write(parseAuditTrail('@auditTrail.Details', '@auditTrail.ReferenceData', '@auditTrail.SourceOfData', '@auditTrail.ActionType', '@auditTrail.FirstName', '@auditTrail.LastName', '@auditTrail.Details'))
+                    </script>
+                </td>
+            </tr>
+        }
+        @if (!Model.ListAuditTrail.Any())
+        {
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+        }
+    </tbody>
+</table>

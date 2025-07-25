@@ -1,0 +1,359 @@
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Reporting, "DownloadSpecializedReport");
+}
+
+@using LinkIt.BubbleSheetPortal.Common
+@using LinkIt.BubbleSheetPortal.Models
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.DownloadSpecializedReportViewModel
+<script src="@Url.Content("~/Scripts/moment.min.js")" type="text/javascript"></script>
+@*<link href="@Url.Content("~/Content/css/sgohome.css")" rel="stylesheet" type="text/css" />*@
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleSGOHomeBundle()
+
+<article class="container_12">
+    <section class="grid_12">
+        <div id="ACTPageContent" class="block-border">
+            <div class="block-content form bubbleSheetSelector">
+                <h1>
+                    Specialized Report Filter
+                </h1>
+                <fieldset id="dateRangeContent" class="grey-bg">
+                    <input type="hidden" id="enableDateRange" value="false" />
+                    <input type="hidden" id="VirtualTestIdsForAllTest" value="false" />
+                    <legend id="dateRangeContentLegend">Select Report Generated Date</legend>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <label>From Date</label>
+                                <span class="sgo-datetime" style="display: inline-block">
+                                    <input name="resultDateFrom" style="font-size: 1.083em; padding: 0.385em; width: 235px;" readonly="readonly" id="resultDateFrom" />
+                                    <span class="icon-sgo-calendar"></span>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="colx2-right">
+                            <p>
+                                <label>To Date</label>
+                                <span class="sgo-datetime" style="display: inline-block">
+                                    <input name="resultDateTo" style="font-size: 1.083em; padding: 0.385em; width: 235px;" readonly="readonly" id="resultDateTo" />
+                                    <span class="icon-sgo-calendar"></span>
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </fieldset>
+                @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                {
+                    <fieldset id="publisherContent" class="grey-bg">
+                        <legend>Select State/@LabelHelper.DistrictLabel</legend>
+                        <div class="columns">
+                            <div class="colx2-left">
+                                <p>
+                                    <label>State</label>
+                                    <select id="selectState"></select>
+                                </p>
+                            </div>
+                            <div class="colx2-right">
+                                <p>
+                                    <label>@LabelHelper.DistrictLabel</label>
+                                    <select id="selectDistrict"></select>
+                                </p>
+                            </div>
+                        </div>
+                    </fieldset>
+                }
+            </div>
+        </div>
+    </section>
+</article>
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="divStudent">
+            <input type="hidden" id="isJobCompleted" value="false" />
+            <div class="block-content form">
+                <h1>
+                    Download Report
+                </h1>
+                <div id="divNotifications"></div>
+                <div class="clear-25">
+                </div>
+                <div class="no-margin last-child">
+                    <table id="dataTable" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                @*<th scope="col" class="black-cell"><span class="loading"></span></th>*@
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Id
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Created date
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Status
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Download
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Created date string
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Percent Completed
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Total Item
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody style="cursor: pointer">
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+@section scripts{
+    <script>
+        var oaTable;
+        var startLoadingSpecializedReportJobId;
+
+        $(function () {
+            InitLoadSpecializedReportDownload();
+            startLoadingSpecializedReportJob();
+
+        @if (Model.IsPublisher)
+        {
+            <text>
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                populateStates(states);
+            });
+            </text>
+        }
+        else if (Model.IsNetworkAdmin)
+        {
+            <text>
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                populateStates(states);
+            });
+        </text>
+        }
+
+            // Show menu
+            $('.stats').addClass('current');
+        });
+
+        function populateStates(states) {
+            addDefaultOption($('#selectState'), "State");
+            addSelectListItems($('#selectState'), states);
+        }
+
+        $('#selectState').change(function () {
+            $('#selectDistrict').empty();
+
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+        });
+
+        function populateDistricts() {
+            $('#selectDistrict').empty();
+            var stateValue = $('#selectState').val();
+            if (stateValue != 'select') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+            addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+            addSelectListItems($('#selectDistrict'), districts);
+        });
+    }
+}
+
+$('input[name="resultDateFrom"]').datepicker({
+    dateFormat: jqueryDatePickerFormat(),
+    beforeShow: function (input, inst) {
+        $('#ui-datepicker-div').addClass('datepicker-sgo');
+    }
+}).datepicker('setDate', '@Model.ResultDateFrom.DisplayDateWithFormat()');
+
+$('input[name="resultDateTo"]').datepicker({
+    dateFormat: jqueryDatePickerFormat(),
+    beforeShow: function (input, inst) {
+        $('#ui-datepicker-div').addClass('datepicker-sgo');
+    }
+}).datepicker('setDate', '@Model.ResultDateTo.DisplayDateWithFormat()');
+
+    function startLoadingSpecializedReportJob() {
+        stopLoadingSpecializedReportJob();
+        startLoadingSpecializedReportJobId = setInterval(function () {
+            oaTable.fnDraw();
+        }, 5000);
+    }
+
+    function stopLoadingSpecializedReportJob() {
+        clearInterval(startLoadingSpecializedReportJobId);
+    }
+
+    function InitLoadSpecializedReportDownload() {
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            sAjaxSource: getAjaxSource(),
+            fnServerParams: function (aoData) {
+            },
+            bAutoWidth: false,
+            iDisplayLength: 50,
+            aLengthMenu: [50, 100, 500, 1000],
+            aaSorting: [[1, "desc"]],
+            oLanguage: { "sEmptyTable": "Match Not Found" },
+            aoColumns: [
+                { sType: 'int', sName: 'SpecializedReportJobId', bSearchable: false, bSortable: false, sWidth: '60px', bVisible: false },
+                { sType: 'string', sName: 'CreatedDate', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Status', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'DownloadUrl', bSearchable: true, bSortable: true, sWidth: '160px' },
+                { sType: 'string', sName: 'CreatedDateString', bSearchable: true, bSortable: true, bVisible: false },
+                { sType: 'string', sName: 'PercentCompleted', bSearchable: true, bSortable: true, bVisible: false },
+                { sType: 'string', sName: 'TotalItem', bSearchable: true, bSortable: true, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html('<span class="toLocalTime">' + aData[4] + '</span>');
+                $('td:eq(1)', nRow).html(setStatus(aData[2], aData[5], aData[6]));
+                $('td:eq(2)', nRow).html(setDownload(aData[2], aData[3]));
+                if (aData[2] == '0') {
+                    $('#isJobCompleted').val('false');
+                }
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), 'Loading');
+                $('#isJobCompleted').val('true');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+
+                setTimeout(function () {
+                    if ($('#isJobCompleted').val() == 'true') {
+                        stopLoadingSpecializedReportJob();
+                    }
+
+                    if ($('#btnSubmit')) {
+                        $('#btnSubmit').enable();
+                    }
+
+                    if ($('#btnSubmit')) {
+                        $('#btnSubmit').enable();
+                    }
+                }, 1000);
+
+                ReplaceLocalTime();
+            }
+        }
+
+        $("#dataTable").data("options", options);
+        oaTable = initializeDataTable($("#dataTable"));
+    }
+
+    $('#resultDateFrom').change(function () {
+        refreshList();
+    });
+
+    $('#resultDateTo').change(function () {
+        refreshList();
+    });
+
+    $('#selectDistrict').change(function () {
+        refreshList();
+    });
+
+    function refreshList() {
+        var oTable = $("#dataTable").dataTable();
+        oTable.fnSettings().sAjaxSource = getAjaxSource();
+        oTable.fnDraw();
+    }
+
+    function getAjaxSource() {
+        return '@Url.Action("SearchSpecializedReportDownload", "PopulateReporting")/?resultDateFrom=' + $('#resultDateFrom').val() + '&resultDateTo=' + $('#resultDateTo').val() + '&stateId=' + $('#selectState').val() + '&districtId=' + $('#selectDistrict').val();
+    }
+
+    function ReplaceLocalTime() {
+        //Set Local Time
+        $('.toLocalTime').each(function () {
+            var element = $(this);
+            var currentValue = element.text().trim();
+
+            var localTimeUtc = moment.utc(currentValue).toDate();
+
+            element.html(displayDateWithFormat(localTimeUtc.valueOf(), true));
+        });
+    }
+
+    function convertUTCDateToLocalDate(datetime) {
+        var date = new Date(datetime);
+        var newDate = new Date(date.getTime());
+
+        var offset = date.getTimezoneOffset() / 60;
+        var hours = date.getHours();
+
+        newDate.setHours(hours - offset);
+
+        return newDate.toLocaleDateString() + ' ' + newDate.toLocaleTimeString();
+    }
+
+
+    function setStatus(status, percentCompleted, totalItem) {
+        if (status != '1') {
+            return 'Generated ' + percentCompleted + '% of ' + totalItem;
+        }
+
+        return 'Completed';
+    }
+
+    function setDownload(status, downloadUrl) {
+        var downloadString = "";
+        if (status == '0') {
+            downloadString = '<p class="float-left" id="url">Generating...</p><img id="loading" class="float-right" alt="loading" src="@Url.Content("/Content/images/loadinfo.net.gif")" style="width: 16px;"/>';
+        } else if (downloadUrl){
+            downloadString = '<a target="_new" href="' + downloadUrl + '">Click to download</a>';
+        } else {
+            downloadString = '<p data-toggle="tooltip" title="The report could not be generated because the students selected do not have essays.">Could not be generated</p>';
+        }
+
+        return downloadString;
+    }
+    </script>
+
+}

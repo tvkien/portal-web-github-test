@@ -1,0 +1,168 @@
+<div class="modal-component-content" id="divSelectSection">
+    <div class="modal-passage-body p-4 form">
+        <ul style="display: none" id="add-error-messages" class="message error my-3"></ul>
+        <ul style="display: none" id="add-success-message" class="message success my-3">
+            <li>Items successfully added to the section.</li>
+        </ul>
+        <div>
+            @if (ViewBag.HasMoreThanOneSection)
+            {
+                <p>
+                    <label>Select the section to add the items to</label>
+                    <select id="selectSectionAdd" class="full-width"></select>
+                </p>
+            }
+            @if (ViewBag.HasQuestionGroups)
+            {
+                <p>
+                    <label>Select the group to add the items to</label>
+                    <select id="selectGroupAdd" class="full-width"></select>
+                </p>
+            }
+            <p class="d-flex align-items-center">
+                <input style="margin-right: 10px !important" type="checkbox" id="chkCloneOriginalQtiItems" name="chkCloneOriginalQtiItems" value="" />
+                Clone original items
+            </p>
+            @if (ViewBag.CountRubricBasedQuestion)
+            {
+                <div class="warning-message">
+                    <i>
+                        Items with rubric-based scoring methods cannot be imported directly into a test. Please clone the item(s) in order to import.
+                    </i>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="modal-component-footer buttonAction">
+        <div slot="footer">
+            <button type="button" onclick="SelectSectionDialogCancel()">Cancel</button>
+            <button type="button" id="btnAddQtiItemToSection" onclick="addQtiItemToSection()">Add</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    #add-success-message li:before {
+        margin-left: 0 !important;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-SelectSectionDialog"] .ui-dialog-titlebar {
+        display: none;
+    }
+</style>
+
+<script type="text/javascript">
+    $(function() {
+
+        //Init section
+        if ('@ViewBag.HasMoreThanOneSection' == 'True') {
+            $.get('@Url.Action("GetSections")?virtualTestId=@ViewBag.VirtualTestId', function(states) {
+                AddSelectListItems($('#selectSectionAdd'), states, 'Select Section');
+            });
+            $('#selectSectionAdd').change(function (){
+                $('#selectGroupAdd').empty();
+                var vSectionId = $('#selectSectionAdd').val();
+                if (@ViewBag.VirtualTestId > 0 && '@ViewBag.HasQuestionGroups' === 'True' && vSectionId > 0 ) {
+                    $.get('@Url.Action("GetQuestionGroupByVirtualtest", "VirtualTest")?virtualTestId=@ViewBag.VirtualTestId&sectionId=' + vSectionId, function(lstQuestionGroup) {
+                        addDefaultOption($('#selectGroupAdd'), "Question Group");
+                        addSelectListItems($('#selectGroupAdd'), lstQuestionGroup);
+                    });
+                }
+            });
+        }
+        if (@ViewBag.VirtualTestId > 0 && '@ViewBag.HasQuestionGroups' === 'True' && '@ViewBag.HasMoreThanOneSection' === 'False') {
+            $('#selectGroupAdd').empty();
+            $.get('@Url.Action("GetQuestionGroupByVirtualtest", "VirtualTest")?virtualTestId=@ViewBag.VirtualTestId', function(lstQuestionGroup) {
+                addDefaultOption($('#selectGroupAdd'), "Question Group");
+                addSelectListItems($('#selectGroupAdd'), lstQuestionGroup);
+            });
+        }
+        $("#chkCloneOriginalQtiItems").on('change', function () {
+            if ($(this).attr('checked')) {
+                $('.warning-message').hide();
+            } else {
+                $('.warning-message').show();
+            }
+        });
+    });
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+    function SelectSectionDialogCancel() {
+        //remove the last only
+        $(".dialog").last().dialog("close");
+    }
+
+    function addQtiItemToSection() {
+        var selectedItemId = getSelectedItemsNew(); //defined in _ListItemsFromLibraryNew.cshtml
+        if ('@ViewBag.OnPopup'.length > 0) {
+            selectedItemId = getSelectedItemsOnePassageNew();//defined in _ListItemsPassageNew.cshtml
+        }
+        //get section
+        var virtualSectionId = 0;
+        if ('@ViewBag.HasMoreThanOneSection' == 'True') {
+            virtualSectionId = $('#selectSectionAdd').val();
+        } else {
+            //assign the only one sectionid
+            virtualSectionId = @ViewBag.UniqueVirtualSectionId;
+        }
+
+        //if (virtualSectionId == null || virtualSectionId == 'select' || virtualSectionId <= 0) { //Now allow virtualSectionId = 0 for the Default Section
+        if (virtualSectionId == null || virtualSectionId == 'select' || virtualSectionId < 0) {
+            return;
+        }
+        //get group question
+        var questionGroupId = 0;
+        if ('@ViewBag.HasQuestionGroups' == 'True') {
+            questionGroupId = $('#selectGroupAdd').val();
+        }
+        var isCloned = $('#chkCloneOriginalQtiItems').is(':checked');
+
+        ShowBlock($("#SelectSectionDialog"), "Adding");
+        $('#btnAddQtiItemToSection').attr('disabled','disabled');
+        $('#btnAddItemsToTest').attr('disabled', 'disabled');
+
+        $.post('@Url.Action("AddQtiItemsToVirtualSection")', { virtualTestId: '@ViewBag.VirtualTestId', qtiItemIdString: selectedItemId, virtualSectionId: virtualSectionId, isCloned: isCloned, questionGroupId: questionGroupId }, function(response) {
+            $("#SelectSectionDialog").unblock();
+            if (response.Success == 'Success') {
+                $('#chkAllItemNew').removeAttr('checked').removeClass('input-checked-v2');
+                $('INPUT[name="chkItemNew"][type=checkbox]:checked').attr('checked', false);
+                //Reload virtual section
+                //LoadSectionItemsToTablePopup(virtualSectionId); //define in _SectionItem.cshtml
+                $('#add-success-message').show();
+
+                setTimeout(function() {
+                    //Close dialog
+                    $(".dialog").last().dialog("close");
+                }, 3000);
+
+                if ('@ViewBag.OnPopup'.length > 0) {
+                    uncheckAllSelectedqQtiItemsOnePassageNew();//defined in _ListItemsOnePassageNew.cshtml
+                }
+
+                if ('@ViewBag.OnPopup'.length > 0) {
+                    var dataTable = $('#virtualSectionPopup-' + virtualSectionId).dataTable(); //In _SectionItem.cshtml
+                    dataTable.fnDraw();
+                } else {
+                    var dataTable = $('#virtualSection-' + virtualSectionId).dataTable(); //In _SectionItem.cshtml
+                    dataTable.fnDraw();
+                }
+
+            } else {
+                var elErrorMsg = $('div#divSelectSection.modal-component-content').find('#add-error-messages');
+                elErrorMsg.show();
+                elErrorMsg.html('<li>' + response.errorMessage + '</li>');
+            }
+        });
+    }
+</script>

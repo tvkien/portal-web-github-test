@@ -1,0 +1,433 @@
+<style type="text/css">
+    #dataTableVirtualTest td {
+        /*word-break: break-all;*/
+        word-wrap: break-word;
+    }
+</style>
+<!-- Style for scrollbar-->
+<style>
+    /*********** Default css ***********/
+
+    .dataTableVirtualTestStyle tr td {
+        padding-left: 0px;
+        padding-right: 0px;
+    }
+
+    .dataTableVirtualTestStyle {
+        width: 277px !important;
+        height: 392px !important;
+    }
+
+        .dataTableVirtualTestStyle td img {
+            padding-left: 3px;
+            padding-right: 3px;
+        }
+
+        .dataTableVirtualTestStyle thead,
+        .dataTableVirtualTestStyle tbody {
+            display: block;
+        }
+
+        .dataTableVirtualTestStyle tbody {
+            height: 362px;
+            overflow: auto;
+            overflow-x: hidden;
+        }
+
+            .dataTableVirtualTestStyle tbody td {
+                /*word-break: break-all;*/
+                word-wrap: break-word;
+            }
+            /* Padding content inside div */
+            .dataTableVirtualTestStyle tbody tr td div {
+                padding-left: 3px !important;
+                padding-right: 3px !important;
+            }
+
+            .dataTableVirtualTestStyle tbody td:nth-of-type(1) div {
+                width: 256px;
+            }
+
+        .dataTableVirtualTestStyle thead th:nth-of-type(1) {
+            width: 257px !important;
+        }
+    /*********** Has scroll bar ***********/
+    .scrolldataTableVirtualTestStyle tbody td:nth-of-type(1) div {
+        width: 256px;
+    }
+    /*********** No scroll bar ***********/
+    .noscrolldataTableVirtualTestStyle tbody td:nth-of-type(1) div {
+        width: 271px;
+    }
+</style>
+<style>
+    /*IE9*/
+    #dataTableVirtualTest tbody tr {
+        height: 100% !important; /* Fix for IE9 */
+    }
+
+    .scrolldataTableVirtualTestStyleIE9, .noscrolldataTableVirtualTestStyleIE9 {
+        height: auto !important;
+    }
+
+    #divdataTableVirtualTest {
+        margin-top: -20px !important;
+    }
+</style>
+<article class="container_12" style="width: 100%">
+    <section class="grid_12" style="width: 93%">
+        <div class="block-border" style="width: 100%">
+            <div class="block-content form" id="divOnTopSet">
+                <h1>
+                    Forms
+                    <a href="javascript:void(0)" class="CreateNewVirtualTest">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        ADD FORM
+                    </a>
+                    <div class="clearfix"></div>
+                </h1>
+                <p style="height: 5px"></p>
+                <div class="no-margin last-child u-m-t-35">
+                    <table id="dataTableVirtualTest" class="datatable table no-margin dataTableVirtualTestStyle">
+                        <thead>
+                            <tr>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Name
+                                </th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody style="cursor: pointer"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<script type="text/javascript">
+
+    var oTableVirtualTest;
+
+    $(function () {
+        $('#dataTableVirtualTest tbody').click(function (event) {
+            $(oTableVirtualTest.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+            if (event.target.tagName.toUpperCase() == 'TD' && event.target.id != null && event.target.id.length > 0) {
+                $(event.target.parentNode).addClass('row_selected');
+
+                //Load VirtualTestProperties
+                $('#divVirtualTestProperties').show();
+                ShowBlock($('#divVirtualTestProperties'),'Loading')
+                $('#divVirtualTestProperties').load('@Url.Action("LoadPropertiesVirtualTest","DataLockerEntryForm")?virtualTestId=' + event.target.id, function () {
+                    //TODO: Load finish
+                    $('#divTestBankProperties').html('');
+                    $('#divVirtualTestProperties').focus();
+                    registerEventEditDescriptionClick();
+                    $('#divVirtualTestProperties').unblock();
+                });
+            }
+            //now there is always a div inside td
+            //event.target is now div not td
+            if (event.target.parentNode.tagName.toUpperCase() == 'TD' && event.target.parentNode.id != null && event.target.parentNode.id.length > 0) {
+                $(event.target.parentNode.parentNode).addClass('row_selected');
+                //Load VirtualTestProperties
+                $('#divVirtualTestProperties').show();
+                ShowBlock($('#divVirtualTestProperties'), 'Loading')
+                $('#divVirtualTestProperties').load('@Url.Action("LoadPropertiesVirtualTest", "DataLockerEntryForm")?virtualTestId=' + event.target.parentNode.id, function () {
+                    //TODO: Load finish
+                    $('#divTestBankProperties').html('');
+                    $('#divVirtualTestProperties').focus();
+                    registerEventEditDescriptionClick();
+                    $('#divVirtualTestProperties').unblock();
+                });
+            }
+        });
+
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            //bFilter: false,
+            bStateSave: false,
+            sAjaxSource: getAjaxSourceVirtualTest(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURI(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            //bLengthChange: false,
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true},
+               { sType: 'integer', sName: 'VirtualTestId', bSearchable: false, bSortable: true, sWidth: "0px", bVisible: false, }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                //$('td:eq(0)', nRow).html(setIconVisibilityVirtualTest(aData[0], aData[1]));
+                $('td:eq(0)', nRow).attr('id', aData[1]);
+                addWordBreakToTableCell($('td:eq(0)', nRow), 15, aData[0]);
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableVirtualTest'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableVirtualTest').unblock();
+                $('#divVirtualTestProperties').empty();
+                $('.with-tip').tip();
+
+                formatTableForAddingVertialScrollBar('dataTableVirtualTest', 'scrolldataTableVirtualTestStyle', 'noscrolldataTableVirtualTestStyle',
+                    'scrolldataTableVirtualTestStyleIE9', 'noscrolldataTableVirtualTestStyleIE9');
+
+                if ($("input[name='inputTestType']:checked").val() == 'selectTestBank') {
+                    $('#btnCreateTest').disableBt();
+                }
+            },
+            oLanguage: {
+                "sEmptyTable": "There are no forms in this bank."
+            }
+        };
+
+        $("#dataTableVirtualTest").data("options", options);
+        oTableVirtualTest = $('#dataTableVirtualTest').dataTable();
+
+        function getAjaxSourceVirtualTest() {
+            return '@Url.Action("LoadVirtualTests")?bankId=0'; //default
+        }
+    });
+
+    function setIconVisibilityVirtualTest(virtualTestId) {
+        var openVirtualTestIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/folder-open-document-text.png")';
+        var openVirtualTestString = '<a href="javascript:void(0)" onclick="ViewVirtualTest(this);" title="Open Virtual Test" virtualTestId="' + virtualTestId + '" class="with-tip viewQtiItem"><img src="' + openVirtualTestIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+         return openVirtualTestString;
+    }
+    function ViewVirtualTest(control) {
+        var virtualTestId = $(control).attr('virtualTestId');
+        var url = '@Url.Action("Index","VirtualTest")?virtualTestId=' + virtualTestId;//+ '&virtualTestName=' + virtualTestName;//no transfer virtualName, error when virtualName contains special characters such as ' &# <a>
+        window.location.href = url;
+    }
+
+    $('.CreateNewVirtualTest').live('click', function () {
+        $('#error-messages').hide();
+        $('#success-message').hide();
+        var vSelectedTestBankId = $('#SelectedTestBankId').val();
+        if (vSelectedTestBankId == '0') {
+            alert("Please select a test bank!");
+            return;
+        }
+        var url = '@Url.Action("LoadCreateVirtualTest", "DataLockerEntryForm")';
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="PopupCreateVirtualTest" class="dialog"></div>');
+                $("#PopupCreateVirtualTest").append(html);
+                $('#PopupCreateVirtualTest').dialog({
+                    title: "",
+                    open: function () {
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#dataTableVirtualTest').dataTable().fnDraw(false);
+                        $('#PopupCreateVirtualTest').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    });
+
+    function createVirtualTest() {
+
+        var vTemplateId = $('#selectTemplate').val();
+        if (vTemplateId == null || vTemplateId === 'select' || vTemplateId <= 0) {
+            $('#error-messages').html('<li> Please select Template. </li>');
+            $('#error-messages').show();
+            $('#success-message').hide();
+            return;
+        }
+        if ($('#categoryListCreateForm').val() === '') {
+            $('#error-messages').html('<li> Please select the category name. </li>');
+            $('#error-messages').show();
+            $('#success-message').hide();
+            return;
+        }
+        if (!comboTree1._selectedItem) {
+            $('#error-messages').html('<li> Please select the category name. </li>');
+            $('#error-messages').show();
+            $('#success-message').hide();
+            return;
+        }
+        var vdatasetCategoryID = comboTree1._selectedItem.id;
+        if (!vdatasetCategoryID) {
+            $('#error-messages').html('<li> Please select the category name. </li>');
+            $('#error-messages').show();
+            $('#success-message').hide();
+            return;
+        }
+
+        var vbankId = $('#SelectedTestBankId').val();
+        var vVirtualTestName = $('#inputVirtualTestName').val();
+        if (vVirtualTestName.trim() === '') {
+            $('#error-messages').html('<li> Please enter the test name. </li>');
+            $('#error-messages').show();
+            $('#success-message').hide();
+            return;
+        }
+        ShowBlock($('#dvCreateVirtualTest'), "Create Test");
+        $.post('@Url.Action("CreateVirtualTest", "DataLockerEntryForm")', { bankId: vbankId, strTestName: vVirtualTestName, templateId: vTemplateId, datasetCategoryID : vdatasetCategoryID }
+            , function (response) {
+            if (response.success === true) {
+                $('#success-message').show();
+                $('#error-messages').hide();
+                @*//go to the virtual test page
+                var url = '@Url.Action("Index","VirtualTest")?virtualTestId=' + response.virtualTestId;
+                window.location.href = url;*@
+
+                setTimeout(function () {
+                    $(".dialog").dialog("close");
+                }, 2000);
+            } else {
+                $('#error-messages').html('<li> ' + response.Error + ' </li>');
+                $('#error-messages').show();
+                $('#success-message').hide();
+            }
+            $('#dvCreateVirtualTest').unblock();
+        });
+    }
+
+    function cancelCreateVirtualTest() {
+        $(".dialog").dialog("close");
+    }
+
+    function SaveTestProperty(vTestId) {
+        var vbankId = $('#SelectedTestBankId').val();
+        var vTestName = $('#TestName').val();
+
+        vTestName = encodeURIComponent(htmlEncode(vTestName));
+        if (vTestName.trim() == '') {
+            $('#update-error-messages').show();
+            $('#update-error-messages').html('<li>Please enter the test name.</li>');
+            return;
+        }
+        if ($('#categoryList').val() === '') {
+            $('#update-error-messages').html('<li> Please select the category name. </li>');
+            $('#update-error-messages').show();
+            return;
+        }
+        if (!comboTreeX._selectedItem) {
+            $('#update-error-messages').html('<li> Please select the category name. </li>');
+            $('#update-error-messages').show();
+            return;
+        }
+        var datasetCategoryID = comboTreeX._selectedItem.id;
+        if (!datasetCategoryID) {
+            $('#update-error-messages').html('<li> Please select the category name. </li>');
+            $('#update-error-messages').show();
+            return;
+        }
+
+        if (vTestName.trim() != '' && datasetCategoryID) {
+            $('#update-error-messages').hide();
+            $.post('@Url.Action("UpdateTest", "DataLockerEntryForm")', { bankId: vbankId, testId: vTestId, testName: vTestName, dataSetCategoryId: datasetCategoryID }, function (response) {
+                if (response.success == true) {
+                    $('#dataTableVirtualTest').dataTable().fnDraw(false);
+                } else {
+                    $('#update-error-messages').show();
+                    $('#update-error-messages').html('<li>' + response.Error + '</li>');
+                }
+            });
+        }
+    }
+
+    function popUpConfirmDeleteVirtualTest(vVirtualTestId) {
+        var vTestName = $('#TestName').val();
+        vTestName = encodeURIComponent(htmlEncode(vTestName));
+        var url = '@Url.Action("LoadConfirmDeleteVirtualTest", "DataLockerEntryForm")';
+        $.ajax(
+            {
+                url: url,
+                cache: false,
+                data: { virtualTestId: vVirtualTestId, strTestName: vTestName }
+            })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="PopupConfirmDeleteVirtualTest" class="dialog"></div>');
+                $("#PopupConfirmDeleteVirtualTest").append(html);
+                $('#PopupConfirmDeleteVirtualTest').dialog({
+                    title: "",
+                    open: function () {
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupConfirmDeleteVirtualTest').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    function DeleteVirtualTestByID(virtualTestId) {
+        $.post('@Url.Action("DeleteVirtualTest", "DataLockerEntryForm")', { virtualTestId: virtualTestId }, function (response) {
+
+            $('#dataTableVirtualTest').dataTable().fnDraw(false);
+            $(".dialog").dialog("close");
+            if (response.success) {
+                //CustomAlert('Delete successful.');
+                $('#divVirtualTestProperties').html('');
+                $('#divVirtualTestProperties').hide();
+            } else {
+                CustomAlert('There was some error: ' + response.errorMessage,true);
+            }
+
+        });
+    }
+</script>

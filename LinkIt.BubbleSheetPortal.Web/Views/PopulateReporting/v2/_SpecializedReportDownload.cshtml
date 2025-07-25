@@ -1,0 +1,219 @@
+<style>
+
+    .progressIndicator {
+        border: 5px solid var(--red);
+        border-radius: 50%;
+        border-top: 5px solid var(--white);
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        -webkit-animation: spin 2s linear infinite;
+        animation: spin 2s linear infinite;
+    }
+
+</style>
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="divStudent">
+            <input type="hidden" id="isJobCompleted" value="false"/>
+            <div class="block-content form">
+                <p class="title-large mb-0 float-left" style="margin-top:7px">Download Report</p>                
+                <div id="divNotifications"></div>
+                <div class="no-margin last-child">
+                    <table id="dataTable" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Id
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Created date
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Status
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Download
+                                </th>                                
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Created date string
+                                </th>    
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Percent Completed
+                                </th>    
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Total Item
+                                </th>    
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+
+<script>
+    var oaTable;
+    var startLoadingSpecializedReportJobId;
+
+    $(function() {
+        InitLoadSpecializedReportDownload();
+        startLoadingSpecializedReportJob();
+    });
+
+    function startLoadingSpecializedReportJob() {        
+        stopLoadingSpecializedReportJob();
+        startLoadingSpecializedReportJobId = setInterval(function() {
+            oaTable.fnDraw();
+        }, 5000);
+    }
+
+    function stopLoadingSpecializedReportJob() {
+        clearInterval(startLoadingSpecializedReportJobId);
+    }
+    
+    function InitLoadSpecializedReportDownload() {
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetSpecializedReportDownload", "PopulateReporting")',
+            fnServerParams: function (aoData) {                
+            },
+            bAutoWidth: false,
+            iDisplayLength: 50,
+            aLengthMenu: [50, 100, 500, 1000],
+            aaSorting: [[1, "desc"]],
+            oLanguage: { "sEmptyTable": "Match Not Found" },
+            aoColumns: [
+                { sType: 'int', sName: 'SpecializedReportJobId', bSearchable: false, bSortable: false, sWidth: '60px', bVisible: false },
+                { sType: 'string', sName: 'CreatedDate', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Status', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'DownloadUrl', bSearchable: true, bSortable: true, sWidth: '160px' },
+                { sType: 'string', sName: 'CreatedDateString', bSearchable: true, bSortable: true, bVisible: false },
+                { sType: 'string', sName: 'PercentCompleted', bSearchable: true, bSortable: true, bVisible: false },
+                { sType: 'string', sName: 'TotalItem', bSearchable: true, bSortable: true, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html('<span class="toLocalTime">' + aData[4] + '</span>');
+                $('td:eq(1)', nRow).html(setStatus(aData[2], aData[5], aData[6]));
+                $('td:eq(2)', nRow).html(setDownload(aData[2], aData[3]));
+                if (aData[2] == '0') {
+                    $('#isJobCompleted').val('false');
+                }
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                //ShowBlock($('#dataTable'), 'Loading');
+                $('#isJobCompleted').val('true');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+
+                setTimeout(function() {
+                    if ($('#isJobCompleted').val() == 'true') {
+                        stopLoadingSpecializedReportJob();
+                    }
+
+                    if ($('#btnSubmit')) {
+                        $('#btnSubmit').enable();
+                    }
+                        
+                    if ($('#btnSubmitSAT')) {
+                        $('#btnSubmitSAT').enable();
+                    }
+                }, 1000);
+
+                ReplaceLocalTime();
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('dataTable_filter');
+            }
+        }
+
+        $("#dataTable").data("options", options);
+        oaTable = initializeDataTable($("#dataTable"));
+    }
+
+    function ReplaceLocalTime() {
+        //Set Local Time
+        $('.toLocalTime').each(function () {
+            var element = $(this);
+            var currentValue = element.text().trim();
+
+            var localTimeUtc = moment.utc(currentValue).toDate();
+
+            element.html(displayDateWithFormat(localTimeUtc.valueOf(), true));
+        });
+    }
+
+    function convertUTCDateToLocalDate(datetime) {
+        var date = new Date(datetime);
+        var newDate = new Date(date.getTime());
+
+        var offset = date.getTimezoneOffset() / 60;
+        var hours = date.getHours();
+
+        newDate.setHours(hours - offset);
+
+        return newDate.toLocaleDateString() + ' ' + newDate.toLocaleTimeString();
+    }
+
+    function setStatus(status, percentCompleted, totalItem) {
+        if (status != '1') {
+            return 'Generated ' + percentCompleted + '% of ' + totalItem;
+        }
+
+        return 'Completed';
+    }
+
+    function setDownload(status, downloadUrl) {
+        var downloadString = "";
+        if (status == '0') {
+            downloadString = '<div class="d-flex"><span id="url">Generating...</span><div class="progressIndicator"></div></div>';
+        } else if (downloadUrl){
+            downloadString = '<a target="_new" href="' + downloadUrl + '">Click to download</a>';
+        } else {
+            downloadString = '<p data-toggle="tooltip" title="The report could not be generated because the students selected do not have essays.">Could not be generated</p>';
+        }
+
+        return downloadString;
+    }
+</script>

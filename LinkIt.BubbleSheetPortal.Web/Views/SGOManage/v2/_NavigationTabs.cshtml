@@ -1,0 +1,521 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+
+<link href="@BundleHelper.Version("~/Content/css/v2/sgo-navigations.css")" rel="stylesheet" />
+
+<section class="grid_12 mb-4">
+    <div class="block-border form">
+        <div class="block-content form">
+            <p class="title-large mb-3">@ViewBag.SGOName - @ViewBag.OwnerLastName</p>
+            <ul class="sgo-nav p-0 m-0">
+                <li class="sgo-nav-item">
+                    <a id="idSgoNavigationStep1" class="sgo-nav-link">
+                        <div class="me-2">
+                            <input type="checkbox" class="sgo-checkbox" readonly checked="checked" disabled/>
+                        </div>
+                        <span>
+                            SGO Home
+                        </span>
+                    </a>
+                </li>
+                <li class="sgo-nav-item">
+                    <a id="idSgoNavigationStep2" class="sgo-nav-link">
+                        <div class="me-2">
+                            <input type="checkbox" class="sgo-checkbox" readonly disabled/>
+                        </div>
+                        <span>
+                            Student Population
+                        </span>
+                    </a>
+                </li>
+                <li class="sgo-nav-item">
+                    <a id="idSgoNavigationStep3" class="sgo-nav-link">
+                        <div class="me-2">
+                            <input type="checkbox" class="sgo-checkbox" readonly disabled />
+                        </div>
+                        <span>
+                            Data Points
+                        </span>
+                    </a>
+                </li>
+                <li class="sgo-nav-item">
+                    <a id="idSgoNavigationStep4" class="sgo-nav-link">
+                        <div class="me-2">
+                            <input type="checkbox" class="sgo-checkbox" readonly disabled />
+                        </div>
+                        <span>
+                            Preparedness Groups
+                        </span>
+                    </a>
+                </li>
+                <li class="sgo-nav-item">
+                    <a id="idSgoNavigationStep5" class="sgo-nav-link">
+                        <div class="me-2">
+                            <input type="checkbox" class="sgo-checkbox" readonly disabled />
+                        </div>
+                        <span>
+                            Scoring Plan
+                        </span>
+                    </a>
+                </li>
+                <li class="sgo-nav-item">
+                    @*disabled*@
+                    <a id="idSgoNavigationStep6" class="sgo-nav-link">
+                        <div class="me-2">
+                            <input type="checkbox" class="sgo-checkbox" readonly disabled />
+                        </div>
+                        <span>
+                            Admin Review
+                        </span>
+                    </a>
+                </li>
+                <li class="sgo-nav-item">
+                    @*disabled*@
+                    <a id="idSgoNavigationStep7" class="sgo-nav-link">
+                        <div class="me-2">
+                            <input type="checkbox" class="sgo-checkbox" readonly disabled />
+                        </div>
+                        <span>
+                            Progress <br />Monitor &amp; Score
+                        </span>
+                    </a>
+                </li>
+                <li class="sgo-nav-item last">
+                    @*disabled*@
+                    <a id="idSgoNavigationStep8" class="sgo-nav-link ">
+                        <div class="me-2">
+                            <input type="checkbox" class="sgo-checkbox" readonly disabled />
+                        </div>
+                        <span>
+                            Final Signoff
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</section>
+<input type="hidden" id="idhdfNavigationSGOID" value="@ViewBag.NavigationSGOID" />
+<input type="hidden" id="idhdfSGOCurrentStep" value="0" />
+<script>
+    $(function () {
+        $('.sgo-checkbox[type="checkbox"][readonly]').click(function () {
+            return false;
+        });
+    });
+
+    function initNavigationTabs(activeStep) {
+        $('#idhdfSGOCurrentStep').val(activeStep);
+        var isLoked = false;
+        var sgoId = $('#idhdfNavigationSGOID').val();
+        $.get('@Url.Action("ListStepBySGOId", "SGOManage")', { sgoid: sgoId }, function (response) {
+            var listStep = response.data;
+            if (listStep.length > 0) {
+                var trackPreviousStep = 0;
+                $.each(listStep, function (key, value) {
+                    var $v = $('#idSgoNavigationStep' + value.Step);
+                    //1.) Check Completed
+                    if (isLoked) {
+                        $v.addClass('disabled');
+                    }
+                    if (value.StatusCompleted > 0 && isLoked == false) {
+                        $v.find('.sgo-checkbox').prop('checked', true);
+                    } else {
+                        isLoked = true;
+                    }
+                    //2.)
+                    if (activeStep == value.Step) {
+                        $v.addClass('active');
+                        $v.parent().addClass('active');
+                        $(`#idSgoNavigationStep${activeStep - 1}`).addClass('prevActive');
+                    } else {
+                        var vUrl = '';
+                        switch (value.Step) {
+                            case 1:
+                                vUrl = "/SGOManage/Index";
+                                break;
+                            case 2:
+                                vUrl = "/SGOManage/StudentPopulation/" + sgoId;
+                                break;
+                            case 3:
+                                vUrl = "/SGOSelectDataPoint/Index?sgoId=" + sgoId;
+                                break;
+                            case 4:
+                                vUrl = "/SGOManage/EstablishStudentGroups/" + sgoId;
+                                break;
+                            case 5:
+                                vUrl = "/SGOScoringPlanTarget/Index?sgoId=" + sgoId;
+                                break;
+                            case 6:
+                                vUrl = "/SGOManage/AdminReview/" + sgoId;
+                                break;
+                            case 7:
+                                vUrl = "/SGOProgressMonitor/Index?sgoId=" + sgoId;
+                                break;
+                            case 8:
+                                vUrl = "/SGOManage/FinalSignOff/" + sgoId;
+                                break;
+                        }
+                        //console.log('Step: ' + value.Step + ' - Status: ' + value.StatusCompleted + ' - Previous: ' + trackPreviousStep);
+                        if (value.StatusCompleted > 0) {
+                            $v.attr('href', vUrl);
+                        } else {
+                            //This Step not completed. we detect before step.
+                            if (value.Step > 1 && trackPreviousStep > 0) {
+                                $v.attr('href', vUrl);
+                            } else {
+                                $v.addClass('disabled');
+                            }
+                        }
+                    }
+
+                    // Disable Student Population, Data Points, Preparedness Groups when this sgo is unstructured data sgo
+                    if (response.sgoType == 2 && (value.Step == 2 || value.Step == 3 || value.Step == 4)) {
+                        $v.addClass('disabled');
+                    }
+
+                    trackPreviousStep = value.StatusCompleted;
+                });
+            }
+        });
+    }
+
+    /**
+     * Get JSON Data Student Populate
+     */
+    function GetJSONDataStudentPopulation() {
+        var data = {};
+        var genderArr = [];
+        var raceArr = [];
+        var programArr = [];
+        var termsArr = [];
+        var classesArr = [];
+        var studentArr = [];
+
+        // State status of student populate
+        data.state = $('#selectState').val();
+        // @LabelHelper.DistrictLabel status of student populate
+        data.district = $('#selectDistrict').val();
+
+        // Gender, race, program status of student populate
+        $('#idFilterProgramRaceGender input[type="checkbox"]').each(function(ind, input) {
+            var $input = $(input);
+            var inputId = $input.attr('id');
+            var inputChecked = $input.is(':checked');
+            var inputHtml = '';
+
+            inputHtml = inputId + '-' + inputChecked;
+
+            if ($input.parents('#idPopulateGender').length) {
+                genderArr.push(inputHtml);
+            } else if ($input.parents('#idPopulateRace').length) {
+                raceArr.push(inputHtml);
+            } else if ($input.parents('#idPopulateProgram').length) {
+                programArr.push(inputHtml);
+            }
+        });
+
+        data.gender = genderArr;
+        data.race = raceArr;
+        data.program = programArr;
+
+        // Terms and class status of student population
+        $('#dataTableSelectTermClasses table tr').each(function(ind, tr) {
+            var $tr = $(tr);
+
+            if ($tr.attr('choose') === '1') {
+                var trId = $tr.attr('id');
+
+                if ($tr.parents('#tbTerms').length) {
+                    termsArr.push(trId);
+                } else if ($tr.parents('#tbClasses').length) {
+                    classesArr.push(trId);
+                }
+            }
+        });
+
+        data.terms = termsArr;
+        data.classes = classesArr;
+
+        // Select student status of student population
+        $('#studentContent .student-item').each(function(ind, stu) {
+            var $stu = $(stu);
+            var stuSelected = $stu.attr('isselected');
+
+            if (stuSelected === 'yes') {
+                var stuClasses = $stu.attr('classid');
+                var stuId = $stu.attr('studentid');
+
+                studentArr.push(stuClasses + '-' + stuId);
+            }
+        });
+
+        data.students = studentArr;
+
+        return data;
+    }
+
+    /**
+     * Get JSON Data Preparedness Groups
+     */
+    function GetJSONDataEstablishStudentGroups() {
+        var data = {};
+        var scoreArr = [];
+        var studentArr = [];
+
+        $('#dataTableEstablishStudentGroups thead select').each(function(ind, select) {
+            var $select = $(select);
+            var selectdpId = $select.attr('dpid');
+            var selectValue = $select.val();
+
+            scoreArr.push(selectdpId + '-' + selectValue);
+        });
+
+        data.scores = scoreArr;
+
+        $('#dataTableEstablishStudentGroups tbody input[type="checkbox"]').each(function(ind, input) {
+            var $input = $(input);
+            var inputStudentId = $input.attr('studentid');
+            var inputGroupId = $input.attr('groupid');
+            var inputOldGroupId = $input.attr('oldgroupid');
+            var inputChecked = $input.is(':checked');
+
+            studentArr.push(inputStudentId + '-' + inputGroupId + '-' + inputOldGroupId + '-' + inputChecked);
+        });
+
+        data.students = studentArr;
+
+        return data;
+    }
+
+    /**
+     * Get JSON Data Select Data Point
+     */
+    function GetJSONDataSelectDataPoint() {
+        var data = {};
+
+        var dataPointArr = [];
+
+        $('div[name="dataPoint"]').each(function (index, item) {
+            var dataPoint = $(this).attr('dataPoint');
+            dataPointArr.push(GetJSONDataOfOneDataPoint(dataPoint));
+        });
+
+        data.dataPointArr = dataPointArr.sort(function(a, b) { return parseInt(a.dataPoint) - parseInt(b.dataPoint); });
+        return data;
+    }
+
+    function RefreshJSONDataSelectDataPoint(dataPoint, onSaving) {
+
+        var remainingAjaxRequest = parseInt($('input[name="txtRemainingAjaxRequest"][dataPoint="' + dataPoint + '"]').val());
+
+        // After fisrt load page remainingAjaxRequest = 0
+        if (remainingAjaxRequest > 0 || onSaving) {
+
+            if (!onSaving) {
+                remainingAjaxRequest--;
+                $('input[name="txtRemainingAjaxRequest"][dataPoint="' + dataPoint + '"]').val(remainingAjaxRequest);
+            }
+
+            var data = window.oldJSONData;
+
+            var isDataPointExisted = false;
+            $(data.dataPointArr).each(function (index) {
+                if (this.dataPoint == dataPoint) {
+                    data.dataPointArr[index] = GetJSONDataOfOneDataPoint(dataPoint);
+                    //console.log(JSON.stringify(data.dataPointArr[index]));
+                    isDataPointExisted = true;
+                    return;
+                }
+            });
+
+            // push dataPoint data in case it's not existed and it's already save
+            if (!isDataPointExisted && $('input[name="sgoDataPointId"][dataPoint="' + dataPoint + '"]').val() !== '0') {
+                data.dataPointArr.push(GetJSONDataOfOneDataPoint(dataPoint));
+            }
+
+            data.dataPointArr = data.dataPointArr.sort(function (a, b) { return parseInt(a.dataPoint) - parseInt(b.dataPoint); });
+            window.oldJSONData = data;
+        }
+    }
+
+    function RemoveJSONDataSelectDataPoint(dataPoint) {
+        var data = window.oldJSONData;
+
+        $(data.dataPointArr).each(function(index) {
+            if (this.dataPoint == dataPoint) {
+                data.dataPointArr.splice(index, 1);
+            }
+        });
+
+        data.dataPointArr = data.dataPointArr.sort(function (a, b) { return parseInt(a.dataPoint) - parseInt(b.dataPoint); });
+        window.oldJSONData = data;
+    }
+
+    function GetJSONDataOfOneDataPoint(dataPoint) {
+        var dataPointData = {};
+        dataPointData.dataPoint = dataPoint;
+
+        dataPointData.selectArr = [];
+        $('div[name="dataPoint"][dataPoint="' + dataPoint + '"] select').each(function () {
+            dataPointData.selectArr.push($(this).val());
+        });
+
+        dataPointData.textAreatArr = [];
+        $('div[name="dataPoint"][dataPoint="' + dataPoint + '"] textarea[name="rationaleInstruction"]').each(function () {
+            dataPointData.textAreatArr.push($(this).val());
+        });
+
+        dataPointData.spanArr = [];
+        $('div[name="dataPoint"][dataPoint="' + dataPoint + '"] span[name="spanAttachResultFileName"]').each(function () {
+            dataPointData.spanArr.push($(this).text());
+        });
+
+        dataPointData.checkboxArr = [];
+        $('div[name="dataPoint"][dataPoint="' + dataPoint + '"] input[type="checkbox"]').each(function () {
+            var $this = $(this);
+            var inputData = $this.attr('id') + '-' + $this.val() + '-' + $this.is(':checked');
+            dataPointData.checkboxArr.push(inputData);
+        });
+
+        dataPointData.inputArr = [];
+        $('div[name="dataPoint"][dataPoint="' + dataPoint + '"] input').not('[type="hidden"]').each(function () {
+            dataPointData.inputArr.push($(this).val());
+        });
+
+        dataPointData.studentDataPointData = {}
+        if ($('div[name="studentsList"][datapoint="' + dataPoint + '"]').length > 0) {
+            var studentDataPoints = [];
+            $.each($('div[name="studentsList"][datapoint="' + dataPoint + '"]').handsontable('getSourceData'), function (i, item) {
+                studentDataPoints.push({
+                    SgoStudentId: item[0],
+                    StudentId: item[1],
+                    ClassId: item[2],
+                    StudentName: item[3],
+                    Code: item[4],
+                    ScoreRaw: (item[5] == null) ? "" : item[5]
+                });
+            });
+
+            dataPointData.studentDataPointData = studentDataPoints;
+        }
+
+        return dataPointData;
+    }
+
+    /**
+     * Get JSON Data Scoring Plan
+     */
+    function GetJSONDataScoringPlanTarget() {
+        var data = {};
+
+        $('#divTargetScore input[type="radio"]').each(function(ind, radio) {
+            var $radio = $(radio);
+
+            if ($radio.is(':checked')) {
+                data.types = $radio.attr('value');
+            }
+        });
+
+        return data;
+    }
+
+    /**
+     * Save And Redirect Page
+     */
+    function SaveAndRedirectPage() {
+        $('.popup-alert-controls button[id^="btn-"]').attr('disabled', 'disabled');
+        $('div[id*="popup-alert-"]').dialog('destroy').remove();
+
+        // Redirect params
+        var param = window.paramsDirectPageSGO;
+
+        if (param === undefined) {
+            return;
+        }
+        var vStep = $('#idhdfSGOCurrentStep').val();
+        supportNavigationSaveAndRedirect(param);
+    }
+
+    /**
+     * Redirect Page
+     */
+    function RedirectPage() {
+        $('.popup-alert-controls button[id^="btn-"]').attr('disabled', 'disabled');
+        var vUrl = window.paramsDirectPageSGO;
+        //console.log('Invalid URL');
+        if (vUrl === undefined) {
+            $('div[id*="popup-alert-"]').dialog('destroy').remove();
+            return;
+        }
+
+        window.location.href = window.paramsDirectPageSGO;
+    }
+
+    (function($) {
+        'use strict';
+
+        $('.sgo-nav .sgo-nav-link').on('click', function() {
+            var $self = $(this);
+            // Data form when page load done
+            var oldJSONData = window.oldJSONData;
+            // Data form after change tab
+            var newJSONData;
+            // Status form
+            var isDataChanged = false;
+            // Current tab id
+            var navId = $('.sgo-nav .sgo-nav-link.active').attr('id');
+            // Parameter to redirect new page
+            var params = '';
+
+            params = $self.attr('href');
+            window.paramsDirectPageSGO = params;
+
+
+
+            if (navId === 'idSgoNavigationStep2') {
+                newJSONData = GetJSONDataStudentPopulation();
+            } else if (navId === 'idSgoNavigationStep3') {
+                newJSONData = GetJSONDataSelectDataPoint();
+            } else if (navId === 'idSgoNavigationStep4') {
+                newJSONData = GetJSONDataEstablishStudentGroups();
+            } else if (navId === 'idSgoNavigationStep5') {
+                newJSONData = GetJSONDataScoringPlanTarget();
+            }
+
+
+            if (JSON.stringify(oldJSONData) !== JSON.stringify(newJSONData)) {
+                isDataChanged = true;
+            }
+
+            if (isDataChanged) {
+                customConfirm('Do you want to save changes before moving to the next screen?', {
+                    minWidth: '500px',
+                    buttons: [
+                        {
+                            label: 'Cancel',
+                            color: 'grey',
+                            style: "background: none;"
+                        },
+                        {
+                            label: 'No',
+                            color: 'grey',
+                            style: "background: none;",
+                            callback: function () {
+                                RedirectPage();
+                            }
+                        },
+                        {
+                            label: 'Yes',
+                            color: 'red',
+                            callback: function () {
+                                SaveAndRedirectPage();
+                            }
+                        }
+                    ]
+                })
+                return false;
+            }
+        });
+
+    }(jQuery));
+</script>

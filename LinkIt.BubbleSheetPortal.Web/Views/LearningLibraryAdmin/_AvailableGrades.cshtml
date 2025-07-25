@@ -1,0 +1,195 @@
+﻿<section>   
+<div class="block-border">
+    <div class="block-content form">
+        <h1>Assign @LabelHelper.TestGrades For Lesson
+        </h1>
+       
+            @if(ViewBag.LessonId > 0)
+            {
+                <text>
+                     <p style="height: 25px">
+                    Assign @LabelHelper.TestGrades for lesson: @ViewBag.LessonName
+                         </p>
+                </text>
+            }
+        
+        <p style="height: 5px">
+            <div id="gradeNotInLessonNotifications"></div>
+        </p>
+        <p style="height: 15px"></p>
+        <div class="no-margin last-child" >
+            <table id="dataTableAvailableGrades" class="datatable table no-margin" width="100%" >
+                <thead>
+                    <tr>
+                        <th scope="col">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            @LabelHelper.TestGrade
+                        </th>
+                        <th scope="col">Select/Not Select</th>
+                        <th scope="col" style="display:none"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            <button id="btnCloseUserClick" type="button" style="margin-top: 5px;margin-bottom: 5px;" data-dialog="close">Close</button>
+        </div>
+    </div>
+</div>
+    </section> 
+<script type="text/javascript">
+    $(function () {
+        //alert('ggggg1:' + $("#AssignedGradeIdString").val());
+        
+        var optionsStudentNotInClass = {
+                bServerSide: true,
+                sAjaxSource: '@Url.Action("GetAvailabelGrades")',
+				fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox 
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+                bAutoWidth: false,
+                iDisplayLength: 10,
+                aaSorting: [[2, "asc"]],
+                aoColumns: [
+                    { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true },
+                    { sType: 'integer', sName: 'Id', bSearchable: false, bSortable: false, sWidth: '140px' },
+                    { sType: 'integer', sName: 'Order', bSearchable: false, bSortable: false,bVisible:false }
+                ],
+                fnRowCallback: function (nRow, aData) {
+                    $('td:eq(1)', nRow).html(SetIconSelect(aData[1]));
+                    return nRow;
+                },
+                fnPreDrawCallback: function () {
+                    ShowBlock($('#dataTableAvailableGrades'), "Loading");
+                    return true;
+                },
+                fnDrawCallback: function () {
+                    $('#dataTableAvailableGrades').unblock();
+                    $('.with-tip').tip();
+                    $('#dataTableAvailableGrades_wrapper .block - controls').css('marginTop', '100px');
+                    
+                }
+        };
+        
+        $("#dataTableAvailableGrades").data("options", optionsStudentNotInClass);
+        initializeDataTable($("#dataTableAvailableGrades"));
+        
+        $('.control-next').css('margin-right', '0px');
+        
+        function bindEvents() {
+            $('button[data-dialog="close"]').die('click');
+            $(document).on('click', 'button[data-dialog="close"]', function (e) {
+                
+                var self = $(e.target);
+                self.closest('.dialog').dialog('close');
+                
+            });
+
+        }
+
+        @*$('#dataTableAvailableGrades').on('click', '.assignGrade', function () {
+            if (confirm("Do you want to assign this grade to this lesson?")) {
+                var self = $(this);
+
+                var gradeId = self.attr('gradeId');
+                var data = self.closest('.dialog');
+
+                self.hide();
+
+                $.post('@Url.Action("AssignGradeToLesson")', { lessonId: @ViewBag.LessonId, gradeId: gradeId }, function (response) {
+                    if (response.Success == 'success') {
+                        ui.dataTableAvailableGrades.fnDraw();
+                        //$.publish('manageClass/studentAssigned', data); //_Q_
+                        LinkIt.success('#gradeNotInLessonNotifications', 'Grade Assigned');
+                        //re display the assigned grade list
+                        ui.dataTableAssignedGradeList.fnDraw();// there's already a data table name dataTableAssignedGradeList (Edit -> _AssignedGradeList)
+                    } else {
+                        alert(response.errorMessage);
+                    }
+                });
+            }
+        });*@
+        
+        bindEvents();
+    });
+    
+
+    function SetIconSelect(gradeId) {
+        var gradeIdList = $("#AssignedGradeIdString").val();
+        if(gradeIdList==null) {
+            gradeIdList = '';
+        }
+        
+        var result = '';
+        var unlockString = '';
+        var lockString = '';
+        var unlockIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/lock_70.png")';
+        var lockIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/Unlock_70.png")';
+        var lockDisplayed = 'none';
+        var unlockDisplayed = 'none';
+            
+        if(gradeIdList.indexOf(',-'+ gradeId + '-')>=0) {
+            lockDisplayed = 'inline';
+        } else {
+            unlockDisplayed = 'inline';
+        }
+        
+        unlockString = '<div id="div_unlock_' + gradeId + '" class="actionIcon"  style="display:' + unlockDisplayed + '"><img src ="' + unlockIcon + '" onclick="assignGrade(' + gradeId + ')" style="margin-right: 4px; margin-top: -5px;" class="with-tip" title="Assign @LabelHelper.TestGrade"></div>';
+        lockString = '<div id="div_lock_' + gradeId + '" class="actionIcon" style="display:' + lockDisplayed + '"><img src ="' + lockIcon + '" onclick="removeGrade(' + gradeId + ')" style="margin-right: 4px; margin-top: -5px;" class="with-tip" title="Remove Grade"></div>';
+        
+        result = unlockString + lockString;
+        return result;
+    }
+        
+
+
+    function assignGrade(gradeId) {
+        var gradeIdList = $("#AssignedGradeIdString").val();//AssignedGradeIdString is declared in AddResource.cshtml 
+        if(gradeIdList==null) {
+            gradeIdList = '';
+        }
+        gradeIdList = gradeIdList + ',-' + gradeId +'-';
+        $("#AssignedGradeIdString").val(gradeIdList);
+        //change the icon for assigned grade
+
+        $("#div_unlock_" + gradeId).hide();
+        $("#div_lock_" + gradeId).show();
+        //call display assignGrade on AddResource.cshtml
+        PopulateAssignedGrades(gradeIdList);
+
+    }
+    function removeGrade(gradeId) {
+        var gradeIdList = $("#AssignedGradeIdString").val();
+        if(gradeIdList==null) {
+            gradeIdList = '';
+        }
+        gradeIdList = gradeIdList.replace(',-' + gradeId,'-');
+        $("#AssignedGradeIdString").val(gradeIdList);
+        //change the icon for assigned grade
+        $("#div_unlock_" + gradeId).show();
+        $("#div_lock_" + gradeId).hide();
+        PopulateAssignedGrades(gradeIdList);
+    }
+
+
+</script>

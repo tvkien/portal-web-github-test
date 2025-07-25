@@ -1,0 +1,274 @@
+@{
+    ViewBag.Title = "Review Test Assignments";
+}
+@{
+    var teacherSelected = ViewBag.IsTeacher != null && ViewBag.IsTeacher == true ? "selected" : string.Empty;
+    var adminSelected = string.IsNullOrEmpty(teacherSelected) ? "selected" : string.Empty;
+}
+<style type="text/css">
+    html {
+        overflow-x: auto;
+    }
+
+    .plButton {
+        text-align: center;
+        position: relative;
+        top: 47px;
+    }
+
+    #btnOk {
+        width: 79px;
+        margin-right: 10px;
+    }
+</style>
+<script src="@Url.Content("~/Scripts/Utils/Utils.js")"></script>
+<script src="@Url.Content("~/Scripts/TestDesign/testSchedule.js")"></script>
+<script src="@Url.Content("~/Scripts/TestPreferences/testPreferences.js")"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_utils.js"></script>
+<link href="@Url.Content("~/Content/css/test-schedule.css")" rel="stylesheet" />
+<script type="text/javascript">
+    var IsShowUserCurrentDictrictStudentPortal = convertToBoolean('@ViewBag.IsShowUserCurrentDictrictStudentPortal');
+    var showActiveClassTestAssignment = true;
+    var showPendingReviewClassTestAssignment = false;
+    var showStudentView = false;
+    var selectedClassAssignmentID = null;
+    var showActiveStudentTestAssignment = true;
+    var showPendingReviewStudentTestAssignment = false;
+    var IsSingleAssignmentCodes=@ViewBag.IsSingleAssignmentCodes;
+    var IsShowUserCurrentDictrictStudentPortal = convertToBoolean('@ViewBag.IsShowUserCurrentDictrictStudentPortal');
+
+    var testSchedule = new testSchedule('@ViewBag.DateFormat');
+</script>
+
+<script type="text/javascript">
+    var currentFilterParams = undefined;
+
+    $(function () {
+
+        $('#filterSheets').click(function () {
+            if ($('#hdAssignmentCodes')) {
+                $('#hdAssignmentCodes').val('');
+            }
+
+            _historyData.isFormLoad = false;
+            keepSession();
+            loadHistoryData();
+
+            SetupFilters();
+        });
+
+        $('#btnActiveTestClassAssignment').click(function () {
+            showActiveClassTestAssignment = !showActiveClassTestAssignment;
+            keepSession();
+            loadHistoryData();
+            SetupFilters();
+
+        });
+
+        $('#btnExportTestAssignment').click(function () {
+            ExportTestAssignments();
+        });
+
+        $('#btnExportStudentSessions').click(function () {
+            ExportStudentSessions();
+        });
+
+        $('#btnClassPendingReview').click(function () {
+            showPendingReviewClassTestAssignment = !showPendingReviewClassTestAssignment;
+            SetupFilters();
+        });
+
+        // Go to Student View
+        $('#btnClassView').click(function () {
+            showStudentView = true;
+
+            btnActiveTestStudentAssignmentClick();
+            btnStudentPendingReviewClick();
+
+            showActiveStudentTestAssignment = showActiveClassTestAssignment;
+            showPendingReviewStudentTestAssignment = showPendingReviewClassTestAssignment;
+
+            SetupFilters();
+        });
+
+
+        // Go to Class View
+        $('#btnStudentView').click(function () {
+            selectedClassAssignmentID = null;
+            showStudentView = false;
+
+            showActiveClassTestAssignment = showActiveStudentTestAssignment;
+            showPendingReviewClassTestAssignment = showPendingReviewStudentTestAssignment;
+
+            SetupFilters();
+        });
+
+        $('#clearFilter').click(function () {
+            $('.columns').find('input:text').val('');
+
+            if ('@ViewBag.IsPublisher' == 'True' || '@ViewBag.IsNetworkAdmin' == 'True') {
+                $("#selectState").val(-1);
+                $('#selectDistrict').empty();
+                $('#selectSchool').empty();
+            }
+            else {
+                $('#selectSchool').val(-1);
+            }
+
+            if ('@ViewBag.IsTeacher' != null && '@ViewBag.IsTeacher'  == 'True') {
+                $('#dateTime').val(180)
+            }
+            else {
+                $('#dateTime').val(30)
+            }
+
+            sessionStorage.removeItem("KEEP_SESSION");
+            ResetSessionStorage();
+        });
+
+    });
+
+    function btnActiveTestStudentAssignmentClick() {
+        $('#btnActiveTestStudentAssignment').unbind('click');
+        $('#btnActiveTestStudentAssignment').click(function () {
+            showActiveStudentTestAssignment = !showActiveStudentTestAssignment;
+            SetupFilters();
+        });
+    }
+
+    function btnStudentPendingReviewClick() {
+        $('#btnStudentPendingReview').unbind('click');
+        $('#btnStudentPendingReview').click(function () {
+            showPendingReviewStudentTestAssignment = !showPendingReviewStudentTestAssignment;
+            SetupFilters();
+        });
+    }
+
+    function getFilterDatas() {
+        return {
+            stateID: $("#selectState").val(),
+            districtID: $("#selectDistrict").val(),
+            grade: $("#selectGrade").val(),
+            subject: $("#selectSubject").val(),
+            bank: $("#selectBank").val(),
+            schoolID: $("#selectSchool").val(),
+            class: $("#selectClass").val(),
+            teacher: $("#selectTeacher").val(),
+            student: $("#selectStudent").val(),
+            test: $("#selectTest").val(),
+            timeFrame: $("#dateTime").val(),
+            testCode: $("#selectTestCode").val(),
+            showInactive: showActiveClassTestAssignment,
+            searchText: $("#classDataTable_filter input").val(),
+            isFormLoad: isFormLoad,
+            pageSize: $('#classDataTable_length select').val(),
+            assignmentCodes: $("#hdAssignmentCodes").val(),
+            teacherPageLoad: teacherReviewerPageLoad
+        };
+    }
+    function SetupFilters() {
+        currentFilterParams = getFilterDatas();
+        $("#spanClassActive").html(showActiveClassTestAssignment ? "off" : "on");
+        $("#spanClassPendingReview").html(showPendingReviewClassTestAssignment ? "on" : "off");
+        $("#spanStudentActive").html(showActiveStudentTestAssignment ? "off" : "on");
+        $("#spanStudentPendingReview").html(showPendingReviewStudentTestAssignment ? "on" : "off");
+
+        $('#btnActiveTestClassAssignment').attr("class", showActiveClassTestAssignment ? "off" : "on");
+        $('#btnClassPendingReview').attr("class", showPendingReviewClassTestAssignment ? "on" : "off");
+        $('#btnActiveTestStudentAssignment').attr("class", showActiveStudentTestAssignment ? "off" : "on");
+        $('#btnStudentPendingReview').attr("class", showPendingReviewStudentTestAssignment ? "on" : "off");
+
+        if (showStudentView) {
+            $('#divClassTestAssignments').hide();
+            $('#divStudentTestAssignments').show();
+            SetupFiltersStudent();
+        } else {
+            $('#divStudentTestAssignments').hide();
+            $('#divClassTestAssignments').show();
+            SetupFiltersClass();
+        }
+    }
+
+    function FilterColumn(searchTerm, columnIndex, settings) {
+        settings.aoPreSearchCols[columnIndex].sSearch = searchTerm.trim();
+        settings.aoPreSearchCols[columnIndex].bRegex = false;
+        settings.aoPreSearchCols[columnIndex].bSmart = true;
+    }
+
+    function fnResetAllFilters(oSettings) {
+        for (var iCol = 0; iCol < oSettings.aoPreSearchCols.length; iCol++) {
+            oSettings.aoPreSearchCols[iCol].sSearch = '';
+        }
+    }
+
+    function GetFormattedDate(date) {
+        var mm = date.getMonth() + 1;
+        var dd = date.getDate();
+        if (mm < 10) mm = "0" + mm;
+        if (dd < 10) dd = "0" + dd;
+        return date.getFullYear() + "/" + mm + "/" + dd;
+    }
+
+    function alertMessageSetting(message) {
+        var oldzIndex = $('#divContentEditTestSettingSecond').parent('.ui-dialog').css('z-index');
+        $('#divContentEditTestSettingSecond').parent('.ui-dialog').css({ 'z-index': '1005' });
+        var overlayHeight = $('.my-overlayy').height();
+        //set the height for overlay
+        $('.my-overlay').height(2000);
+
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $('.ui-widget-overlay:last').remove();
+                    $('#divContentEditTestSettingSecond').parent('.ui-dialog').css({ 'z-index': oldzIndex });//recover the old value
+                    $('.my-overlay').height(overlayHeight);
+                    $(this).remove();
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+
+    function closeAlert() {
+        $('#alertDialog').dialog('close');
+    }
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+</script>
+
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border u-m-b-15" id="selectFilters">
+            <div id="divFilterTestAssignments" class="block-content form bubbleSheetSelector">
+                <h1>Filter Test Assignments</h1>
+                @Html.Partial("_FilterTestAssignments")
+                <div class="u-text-right">
+                    <button id="clearFilter" class="grey" type="button">Clear Filter</button>
+                    <button id="filterSheets" class="u-m-l-10" type="button">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+        @Html.Partial("_ClassTestAssignments")
+        @Html.Partial("_StudentTestAssignments")
+        @Html.Partial("_Print")
+    </section>
+</article>
+<input id="hdfUrlTestTaker" type="hidden" value="@ViewBag.TestTakerUrl" />

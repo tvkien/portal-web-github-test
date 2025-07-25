@@ -1,0 +1,222 @@
+@{
+    ViewBag.Title = "TestResultRemover";
+}
+<div id="removeTestResults">
+
+    <article class="container_12">
+        <section class="grid_12">
+            <div class="block-border" id="stDistrict">
+                <div class="block-content form" style="padding-bottom: 14px;">
+                    <h1>Filter Tests</h1>
+                    <div>
+                        <div style="float: right; visibility:hidden">
+                            <p style="margin-top: -30px; float: right; margin-bottom: -10px;">
+                                @Html.ActionLink("Instructions", "LoadTestRemoverInstruction", "Admin", null, new { @class = "openDialog PopupHelp", data_dialog_id = "popupInstructionDialog", data_dialog_title = "" })
+                            </p>
+                        </div>
+                        <div style="width: 100%;">
+                            <ul style="display: none; margin-bottom: 10px;" id="error-messages" class="message error">
+                                <li></li>
+                            </ul>
+                            <ul style="display: none; margin-bottom: 10px;" id="success-message" class="message success">
+                                <li></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="columns">
+                        <div id="divContentFilterForm" class="columns" style="margin-bottom: 0.667em;">
+                        </div>
+                        <div class="u-text-right">
+                            <button id="clearFilter" v-on:click="onClearFilter" class="grey" type="button">Clear Filter</button>
+                            <button id="filterSheets" v-on:click="onFilterTestResults" class="u-m-l-10" type="button" disabled>Apply Filters</button>
+                        </div>                      
+                    </div>
+                </div>
+            </div>
+        </section>
+    </article>
+    <div class="clear">
+    </div>
+    <div id="divTestResultDisplay">
+    </div>
+</div>
+    <style>
+        .btnTestResult {
+            float: right;
+            display: inline-block;
+            border: 1px solid;
+            border-color: #50a3c8 #297cb4 #083f6f;
+            background: #0c5fa5 url(../../Content/themes/Constellation/images/old-browsers-bg/button-element-bg.png) repeat-x left top;
+            -webkit-background-size: 100% 100%;
+            -moz-background-size: 100% 100%;
+            -o-background-size: 100% 100%;
+            background-size: 100% 100%;
+            background: -moz-linear-gradient(top, white, #72c6e4 4%, #0c5fa5);
+            background: -webkit-gradient(linear, left top, left bottom, from(white), to(#0c5fa5), color-stop(0.03, #72c6e4));
+            -moz-border-radius: 0.333em;
+            -webkit-border-radius: 0.333em;
+            -webkit-background-clip: padding-box;
+            border-radius: 0.333em;
+            color: white;
+            -moz-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+            -webkit-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+            -moz-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+            -webkit-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+            font-size: 1.167em;
+            padding: 0.286em 1em 0.357em;
+            line-height: 1.429em;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+            .btnTestResult:hover {
+                border-color: #1eafdc #1193d5 #035592;
+                background: #057fdb url(../../Content/themes/Constellation/images/old-browsers-bg/button-element-hover-bg.png) repeat-x left top;
+                background: -moz-linear-gradient(top, white, #2bcef3 4%, #057fdb);
+                background: -webkit-gradient(linear, left top, left bottom, from(white), to(#057fdb), color-stop(0.03, #2bcef3));
+            }
+
+            .btnTestResult:active {
+                border-color: #5b848b #b2def1 #b2def1 #68a6ba;
+                background: #3dbfed url(../../Content/themes/Constellation/images/old-browsers-bg/button-element-active-bg.png) repeat-x top;
+                background: -moz-linear-gradient(top, #89e7f9, #3dbfed);
+                background: -webkit-gradient(linear, left top, left bottom, from(#89e7f9), to(#3dbfed));
+                -moz-box-shadow: none;
+                -webkit-box-shadow: none;
+                box-shadow: none;
+            }
+
+        a.PopupHelp {
+            background: url(../../Content/themes/Constellation/images/icons/help-icon_1.png) no-repeat top left;
+            display: block;
+            width: 25px;
+            height: 25px;
+            text-indent: -99999px; /* hides the link text */
+        }
+
+        .ui-dialog {
+            background: transparent;
+            border: 0;
+            top: 100px !important;
+        }
+    </style>
+    <script>
+    var districtLable = "@LabelHelper.DistrictLabel";
+    </script>
+    <script type="text/javascript">
+    $(function () {
+        $.ajax({
+            url: '/RemoveTestResults/LoadTestFilter',
+            cache: false
+        }).done(function (html) {
+            $("#divContentFilterForm").html(html);
+        });
+        LoadPopuConfirm();
+        $('#divShowHideButton').hide();
+
+        $('#btnOk').live('click', function () {
+            var lstTestResultIDs = $(this).attr("ListTestResultIDs");
+            //alert("Click Ok button: " + lstTestResultIDs);
+            ProcessTestResult(lstTestResultIDs);
+            $(".dialog").dialog("close");
+        });
+        $('#btnCancel').live('click', function () {
+            //alert("Click Cancel button");
+            $(".dialog").dialog("close");
+        });
+
+        $('#btnOkRemoveArtifact').live('click', function () {
+            var lstTestResultIDs = $(this).attr("ListTestResultIDs");
+            //alert("Click Ok button: " + lstTestResultIDs);
+            ProcessRemoveResultArtifacts(lstTestResultIDs);
+            $(".dialog").dialog("close");
+        });
+    });
+
+    $('#btnPreview').click(function () {
+        LoadTestResultToView();
+    });
+
+    $('#btnClearAll').click(function () {
+        ClearAll();
+    });
+
+    function ProcessTestResult(testresultIds) {
+        var total = testresultIds.toString().split(',');
+        appRemoveTestResults.onClearFilter();
+        appRemoveTestResults.initData();
+        $.post('@Url.Action("DeleteTestResultAndSubItems", "Admin")', { testresultIds: testresultIds }, function (response) {
+            $('#divTestResult').hide();
+            if (response.Success == true) {
+                $('#success-message').html('<li style="text-transform:none;font-size:100%"> Test Results Removed: ' + total.length + ' </li>');
+                $('#success-message').show();
+            } else {
+                console.log(response.Message);
+                $('#error-messages').html('<li style="text-transform:none;font-size:100%"> Test results have NOT been removed. Please email <a href="mailto:technology@linkit.com">technology@linkit.com</a> for assistance. </li>');
+                $('#error-messages').show();
+            }
+            $('#stDistrict').unblock();
+        });
+    }
+
+    function ProcessRemoveResultArtifacts(testresultIds) {
+        var total = testresultIds.toString().split(',');
+        appRemoveTestResults.onClearFilter();
+        appRemoveTestResults.initData();
+        $.post('@Url.Action("DeleteTestResultArtifacts", "Admin")', { testresultIds: testresultIds }, function (response) {
+            $('#divTestResult').hide();
+            if (response.Success == true) {
+                $('#success-message').html('<li style="text-transform:none;font-size:100%"> Test Result Artifacts Removed: ' + total.length + ' </li>');
+                $('#success-message').show();
+            } else {
+                console.log(response.Message);
+                $('#error-messages').html('<li style="text-transform:none;font-size:100%"> Test result artifacts have NOT been removed. Please email <a href="mailto:technology@linkit.com">technology@linkit.com</a> for assistance. </li>');
+                $('#error-messages').show();
+            }
+            $('#stDistrict').unblock();
+            $('#filterSheets').trigger('click');
+        });
+    }
+
+    function LoadTestResultToView() {
+        
+        GetTestResultByConditional();
+    }
+
+    function LoadPopuConfirm() {
+        $(".openDialog").live("click", function (e) {
+            e.preventDefault();
+            var hbody = $("body").height() - 109;
+            $("<div></div>")
+                .addClass("dialog")
+                .attr("id", $(this)
+                    .attr("data-dialog-id"))
+                .appendTo("body")
+                .dialog({
+                    title: $(this).attr("data-dialog-title"),
+                    close: function () { $(this).remove(); },
+                    modal: true,
+                    width: 400,
+                    resizable: false
+                })
+                .load(this.href, function () { });
+            $(".ui-dialog").css({ "height": hbody });
+            $(".ui-dialog .ui-dialog-content").css("width", "398px");
+        });
+    }
+    function CurrentPageShowHideReviewButton(flag) {
+        if (flag > 0) {
+            $("#divShowHideButton").show();
+        } else {
+            $("#divShowHideButton").hide();
+            $("#divTestResultDisplay").html('');
+        }
+    }
+    function HideResultContent() {
+        $("#divTestResultDisplay").html('');
+        $('#btnSubmitSelected').attr("disabled", "disabled");
+    }
+    </script>
+

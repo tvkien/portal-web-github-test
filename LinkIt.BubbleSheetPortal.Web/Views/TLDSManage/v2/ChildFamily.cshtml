@@ -1,0 +1,804 @@
+@using LinkIt.BubbleSheetPortal.Models.Enum
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TDLS.TDLSProfileViewModel
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.ReportItemTLDSManager, "TLDS Sections 2 & 3",true);
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleTDLSChildFamilyBundleV2()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptTDLSChildFamilyBundle()
+<style>
+    input[type="file"] {
+        cursor: pointer;
+    }
+
+    .block-content #tableArtifactFolder {
+        margin: 10px 0 0;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        /*top: 100px !important;*/
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .content-header p {
+        margin-bottom: 8px;
+    }
+
+        .content-header p.header {
+            margin-top: 24px;
+        }
+
+    .file_upload_child_form, .file_upload_family_form {
+        background-image: url('/Content/images/icons/upload-icon.svg') !important;
+    }
+
+    .development-outcome-list {
+        padding-left: 0;
+    }
+
+    .file-upload-form {
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+    }
+
+    .ui-dialog[aria-labelledby^="ui-dialog-title-CustomConfirmDialog_"] {
+        width: 460px !important;
+    }
+</style>
+
+<article class="container_12" id="idTopNavigation">
+    @Html.Partial("v2/_NavigationTabs", Model)
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form" id="divOnTop">
+                <h3 class="h3 mb-3">Sections 2 &amp; 3 Child &amp; Family</h3>
+                @if (Model.SaveSuccessful)
+                {
+                    <ul id="success-messages" class="message success mb-3">
+                        <li> Successfully saved</li>
+                    </ul>
+                }
+
+                <ul id="error-messages" class="message error mb-3" style="display:none"></ul>
+                <div class="content-header mb-3">
+                    <h5 class="h5 mb-3">Section 2</h5>
+                    <p>
+                        Section 2 is intended to capture the child's feelings and perspectives as they approach the transition to school.
+                    </p>
+                    <p>It should be completed with the child by an adult they know and feel comfortable with. Educators should discuss this section with the child's family to determine who will assist the child to complete this section.</p>
+                    <p>The child may elect to draw, write or offer responses to the prompts below.</p>
+                    <h5 class="h5 mb-3">Section 3</h5>
+                    <p>
+                        Section 3 is intended to capture the child's family's perspective of their child's learning and development. It is to be completed by the child's family.
+                    </p>
+                    <p>
+                        There are two methods for completing Section 2 & 3:
+                    </p>
+                    <ul style="list-style-type:decimal;">
+                        <li class="mb-1">Select <b>Create New Link</b> to allow the child's family to complete either or both sections online; or</li>
+                        <li>Select <b>Download PDF form</b> to download and print a draft TLDS and template for manual completion and upload.</li>
+                    </ul>
+                    <p>If the family chooses to complete the TLDS via a PDF form, the early childhood service will need to upload these documents to the TLDS prior to submission.</p>
+                </div>
+                @using (Html.BeginForm("ChildFamily", "TLDSManage", FormMethod.Post, new { id = "ChildFamilyForm", @class = "form" }))
+                {
+                    @Html.HiddenFor(m => m.ProfileId)
+
+                    <div class="fieldset-same">
+                        <h5 class="h5 mb-3">Create Links for Section 2 &amp; 3</h5>
+                        <div class="content-header">
+                            <p>Click on <b>Create New Link</b> below to generate a unique online link to the child's TLDS. Multiple unique links can be generated if multiple submissions are required.</p>
+                            <p>This link can be copied and emailed to the child's family for completion of section 2 and 3 online.</p>
+                            <p>The link will expire in 14 days and can be refreshed by the early childhood service if necessary by selecting the refresh icon in this section.</p>
+                            <p><i>Please note: the link will provide view only access to all information that has been input into the current TLDS.</i></p>
+                        </div>
+                        <div id="divChildUploadForm">
+                            <span class="relative">
+                                <button class="btn-blue" id="btnCreateNewLink" name="btnCreateNewLink" title="Create New Link">Create New Link</button>
+                            </span>
+                            <div id="divLoadCreateNewLink"></div>
+                        </div>
+                    </div>
+                    <div class="fieldset-same">
+                        <h5 class="h5 mb-3">Download PDF for Section 2 & 3</h5>
+                        <div class="content-header">
+                            <p>A PDF version of Section 2 and 3 can be provided to the child's family if they request to complete it manually.</p>
+                            <p>Use the <b>Download PDF form</b> button below to generate a draft PDF TLDS and template.</p>
+                            <p>This can be shared with a parent/guardian for manual completion of Section 2 and 3.</p>
+                            <p><i>Please note: you will be required to upload these documents when they have been completed.</i></p>
+
+                        </div>
+                        <div>
+                            <span class="relative">
+                                <button class="btn-blue" id="btnDownloadPDFForm" type="button">Download PDF form</button>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="fieldset-same">
+                        <h5 class="h5 mb-3">Upload Section 2 &amp; 3</h5>
+                        <div class="content-header">
+                            <p>If Section 2 and/or 3 have been completed manually, use the upload function below to attach a scanned copy of the file.</p>
+                            <p>If uploading multiple files - please upload these in the order that they should appear in the final TLDS.</p>
+                        </div>
+                        <div class="tlds-upload-2" id="tlds-upload-2"></div>
+                        <div class="clearfix file-upload-form" id="divChildUploadForm">
+                            <p class="relative">
+                                <input id="file_upload_child_form" name="file_upload" type="file" title="Upload Child form" style="cursor:pointer" />
+                            </p>
+                            <p style="color: #c00000; display:none" id="messageNoUploadDoc">No document has been uploaded</p>
+                        </div>
+                    </div>
+
+                    <p class="tlds-instruction">The below check boxes must be completed to allow you to continue to the next page</p>
+
+                    if (Model.IsFormSection2Submitted)
+                    {
+                        <div class="fieldset-same">
+                            <ul class="development-outcome-list">
+                                <li>
+                                    <input type="checkbox" id="ca-1" class="showContinue" disabled="disabled" name="checkBoxSection2" checked="checked" />
+                                    <label for="ca-1"><b>'Section 2: The child'</b> has been completed online by the child and included</label>
+                                    <input type="hidden" id="Section2CheckedCompleted" name="Section2CheckedCompleted" />
+                                </li>
+                                <li>
+                                    <input type="checkbox" id="ckbIsFamilyDidNotCompleteSection2" disabled="disabled" class="cb-section-2 showContinue" name="checkBoxSection2" />
+                                    <label for="ckbIsFamilyDidNotCompleteSection2"><b>'Section 2: The child'</b> has not been included</label>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="fieldset-same">
+                            <ul class="development-outcome-list">
+                                <li>
+                                    <input type="checkbox" id="ca-1" class="required-file-upload showContinue" name="checkBoxSection2" />
+                                    <label for="ca-1"><b>'Section 2: The child'</b> has been completed by the child and uploaded</label>
+                                    <input type="hidden" id="Section2CheckedCompleted" name="Section2CheckedCompleted" />
+                                </li>
+                                <li>
+                                    <input type="checkbox" id="ckbIsFamilyDidNotCompleteSection2" class="cb-section-2 showContinue" name="checkBoxSection2" @Html.Raw(Model.IsFamilyDidNotCompleteSection2 == "Yes" ? "checked" : "") />
+                                    <label for="ckbIsFamilyDidNotCompleteSection2"><b>'Section 2: The child'</b> has not been completed</label>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+                    if (Model.IsFormSection3Submitted)
+                    {
+                        <div class="fieldset-same">
+                            <ul class="development-outcome-list">
+                                <li>
+                                    <input type="checkbox" id="ca-2" name="checkBoxSection3" checked="checked" disabled="disabled" class="cb-section-3 showContinue" />
+                                    <label for="ca-2"><b>'Section 3: The family'</b> has been completed online by the child's parent/guardian and included</label>
+                                    <input type="hidden" id="Section3CheckedCompleted" name="Section3CheckedCompleted" />
+                                </li>
+                                <li>
+                                    <input type="checkbox" id="ckbIsFamilyDidNotCompleteSection3" disabled="disabled" class="cb-section-3 showContinue" name="checkBoxSection3" />
+                                    <label for="ckbIsFamilyDidNotCompleteSection3"> The family did not complete and return <b>'Section 3 - The family'</b></label>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="fieldset-same">
+                            <ul class="development-outcome-list">
+                                <li>
+                                    <input type="checkbox" id="ca-2" name="checkBoxSection3" class="cb-section-3 required-file-upload showContinue" />
+                                    <label for="ca-2"><b>'Section 3: The family'</b> has been completed by the child's parent/guardian and uploaded</label>
+                                    <input type="hidden" id="Section3CheckedCompleted" name="Section3CheckedCompleted" />
+                                </li>
+                                <li>
+                                    <input type="checkbox" id="ckbIsFamilyDidNotCompleteSection3" class="cb-section-3 showContinue" name="checkBoxSection3" @Html.Raw(Model.IsFamilyDidNotCompleteSection3 == "Yes" ? "checked" : "") />
+                                    <label for="ckbIsFamilyDidNotCompleteSection3"> The family did not complete and return <b>'Section 3 - The family'</b></label>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+
+                    <div class="fieldset-same">
+                        <b>Did the family indicate if the child was Aboriginal and/or Torres Strait Islander?</b>
+                        <ul class="development-outcome-list is-child u-m-b-0">
+                            <li>
+                                <input type="checkbox" value="Yes" name="ca-4" class="ca-4" id="ca-4-1" @Html.Raw(Model.HasTheFamilyIndicatedAboriginal == "Yes" ? "checked='checked'" : " ") />
+                                <label for="ca-4-1">Yes, the child is Aboriginal and/or Torres Strait Islander</label>
+                            </li>
+                            <li>
+                                <input type="checkbox" value="No" name="ca-4" class="ca-4" id="ca-4-2" @Html.Raw(Model.HasTheFamilyIndicatedAboriginal == "No" ? "checked='checked'" : " ") />
+                                <label for="ca-4-2">No, the child is not Aboriginal and/or Torres Strait Islander</label>
+                            </li>
+                            <li>
+                                <input type="checkbox" value="Unknown" name="ca-4" class="ca-4" id="ca-4-3" @Html.Raw(Model.HasTheFamilyIndicatedAboriginal == "Unknown" ? "checked='checked'" : "") />
+                                <label for="ca-4-3">Aboriginal Status was not reported by family</label>
+                            </li>
+                        </ul>
+                    </div>
+
+
+                    <div class="text-end">
+                        <input type="hidden" id="IsContinue" name="isContinue" value="false" />
+                        <button id="btnContinue" type="button" class="ms-3 @(Model.AccessRight == AccessRightEnum.Update ? "btn-blue" : "btn-red")" @if (!Model.Step7IsEnable) { <text> disabled</text>}>Continue</button>
+
+                        @if (Model.AccessRight == AccessRightEnum.Update)
+                        {
+                            <button id="btnSaveAndContinue" class="ms-3 btn-blue" type="button">Save And Continue</button>
+                            <button id="btnSave" class="ms-3 btn-red" type="button">Save</button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+</article>
+
+@section scripts {
+    <script>
+    var isAccessRight = '@Model.AccessRight' == '@AccessRightEnum.Create' || '@Model.AccessRight' == '@AccessRightEnum.Update';
+
+    function initUploadedDocument() {
+        var $tldsUpload2 = $('#tlds-upload-2');
+        var divName = document.createElement('div');
+
+        @foreach(var uploadedDocument in Model.TLDSUploadedDocuments)
+        {
+
+            <text>
+
+                $(divName).html('@uploadedDocument.S3Url');
+                var S3Url = $(divName).text();
+                $(divName).remove();
+                var uploadedItem = {
+                    UploadedDocumentId: '@uploadedDocument.UploadedDocumentId',
+                    OriginalFileName: '@uploadedDocument.OriginalFileName',
+                    S3FileName: '@uploadedDocument.S3FileName',
+                    fileNameUrl: S3Url
+                }
+            var div = buildItemUploadFile(uploadedItem);
+            $tldsUpload2.append(div);
+            </text>
+        }
+    }
+
+    $('#btnContinue').click(function () {
+        var upcommingSchoolSubmitUrl = '@Url.Action("UpcomingSchoolSubmit", "TLDSManage")/?profileId=@Model.ProfileId';
+
+        if (isAccessRight) {
+            var formData = getChildFamilyFormSerializeString();
+            if (formData != childFamilyFormSerializeString) {
+                CustomConfirm({
+                    message: 'Would you like to save changes before moving continue?',
+                    customClass: 'new-style-popup',
+                    yes: function () {
+                        $("#btnSaveAndContinue").trigger("click");
+                    },
+                    no: function () {
+                        //continue
+                        location.href = upcommingSchoolSubmitUrl;
+                    }
+                });
+            } else {
+                location.href = upcommingSchoolSubmitUrl;
+            }
+        } else {
+            location.href = upcommingSchoolSubmitUrl;
+        }
+    });
+
+    function checkFormDataValid() {
+        //check require
+        let isRequired = false;
+        if ($('.tlds-upload-item').length == 0) {
+            const requiredCheck = $('.required-file-upload');
+            for (var i = 0; i < requiredCheck.length; i++) {
+                if ($(requiredCheck[i]).is(':checked')) {
+                    isRequired = true;
+                }
+            }
+        }
+
+        if (isRequired) {
+            $("#error-messages").empty();
+            $("#error-messages").append("<li>You have not uploaded a document.</li>");
+            $("#error-messages").show();
+            $("html, body").scrollTop(0);
+            return false;
+        }
+        return true;
+    }
+
+    $('#btnSaveAndContinue').click(function () {
+        if (!checkFormDataValid()) {
+            return;
+        }
+
+        $('#Section2CheckedCompleted').val($("#ca-1").is(':checked'));
+        $('#Section3CheckedCompleted').val($("#ca-2").is(':checked'));
+        $('#IsContinue').val('true');
+        $('#ChildFamilyForm').submit();
+    });
+    $('#btnSave').click(function () {
+        if (!checkFormDataValid()) {
+            return;
+        }
+        $('#Section2CheckedCompleted').val($("#ca-1").is(':checked'));
+        $('#Section3CheckedCompleted').val($("#ca-2").is(':checked'));
+
+        var aboriginalValue = $('input[type=radio][name=Aboriginal]:checked').val();
+        $('#AboriginalValue').val(aboriginalValue);
+        $('#IsContinue').val('false');
+        $('#ChildFamilyForm').submit();
+    });
+
+    $('#btnDownloadPDFForm').click(function() {
+        tldsPrintBlankFormConfirm();
+    });
+
+    var childFamilyFormSerializeString = '';
+    $(function () {
+        breadcrumbDetailPage('.stats', '#rpTLDSManager');
+
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+        var validFile = true;
+        var countFileUpload = 0;
+
+
+            $('#file_upload_child_form').uploadifive({
+                'uploadScript': '@Url.Action("UploadChildForm")',
+                'overrideEvents': ['onDialogClose'],
+                'formData': { profileId: @Model.ProfileId },
+                'buttonText': ' ',
+                'fileObjName': 'postedFile',
+                'multi': true,
+                'removeCompleted': true,
+                'width': 32,
+                'height': 32,
+                'auto': true,
+                'fileSizeLimit': '20MB',
+                'fileType': ['application\/pdf'],
+                'buttonClass': 'file_upload_child_form',
+                'onInit': function () {
+                    $("#uploadifive-file_upload_child_form-queue").hide();
+                    $('#uploadifive-file_upload_child_form').click(function () {
+                        validFile = true;
+                    });
+                },
+                'onUpload': function (file) {
+                    var $tldsUpload2 = $('#tlds-upload-2');
+                    $("#uploadifive-file_upload_child_form-queue").hide();
+                    $('#error-messages').hide();
+                    $('#error-messages').empty();
+                    if (validFile == true) {
+                        ShowBlock($('#divOnTop'), 'Uploading');
+                    }
+
+                    countFileUpload = file + $tldsUpload2.find('div').length;
+                },
+                'onUploadComplete': function (file, data) {
+                    var $errorMessages = $('#error-messages');
+                    var $tldsUpload2 = $('#tlds-upload-2');
+
+                    $("#uploadifive-file_upload_child_form-queue").hide();
+                    var result = $.parseJSON(data);
+                    if (result == undefined) {
+                        CustomAlert('An error has occured.  Please try again');
+                    }
+                    if (result.Success == true) {
+                        $errorMessages.hide();
+                        var div = buildItemUploadFile(result);
+                        $tldsUpload2.append(div);
+                        $(div).find('.with-tip').tip();
+
+                        if ($tldsUpload2.find('div').length >= countFileUpload) {
+                            $('#divOnTop').unblock();
+                            countFileUpload = 0;
+                        }
+
+                        displayUploadMessage();
+                    }
+                    else {
+                        $('#divOnTop').unblock();
+                        $errorMessages.show();
+                        $errorMessages.html('<li>' + result.message + '</li>');
+                        CustomAlert(result.message);
+                        $('#file_upload_child_form').uploadifive('cancel', $('.uploadifive-queue-item').first().data('file'));
+                    }
+                },
+                'onError': function (errorType, file) {
+                    $("#uploadifive-file_upload_child_form-queue").hide();
+                    $('#divChildUploadForm').unblock();
+                    validFile = false;
+                    if (errorType == 'FORBIDDEN_FILE_TYPE') {
+                        CustomAlert('The file you are trying to upload is not a .pdf file. Please try again', true);
+                    } else if (errorType == 'FILE_SIZE_LIMIT_EXCEEDED') {
+                        CustomAlert('The upload file should not be more than 20 MB in size. Press OK to close the message window.', true);
+                    } else {
+                        CustomAlert('The file ' + file.name + ' returned an error and was not added to the queue.', true);
+                    }
+                },
+                'onCancel': function (file) {
+                    $('#divChildUploadForm').unblock();
+                    $("#uploadifive-file_upload_child_form-queue").hide();
+                }
+            });
+
+
+        if ('@Model.Section2CheckedCompleted'.toLowerCase() == 'true') {
+            $("#ca-1").prop('checked', true);
+        }
+        if ('@Model.Section3CheckedCompleted'.toLowerCase() == 'true') {
+            $("#ca-2").prop('checked', true);
+        }
+        if ('@Model.AboriginalValue'.toLowerCase() == 'true') {
+            $("#ab-1").prop('checked', true);
+        }else if ('@Model.AboriginalValue'.toLowerCase() == 'false') {
+            $("#ab-2").prop('checked', true);
+        } else {
+            $("#ab-3").prop('checked', true);
+        }
+
+        childFamilyFormSerializeString = getChildFamilyFormSerializeString();
+
+        if (!isAccessRight) {
+            // Disable all controls
+            tldsDisableInputControls();
+        }
+
+        initUploadedDocument();
+
+    });
+
+    function buildItemUploadFile(uploadResult) {
+        var div = document.createElement('div');
+        var spanFilename = document.createElement('a');
+        var spanClose = document.createElement('span');
+        var hiddenUploadedDocumentId = document.createElement('input');
+        var hiddenOriginalFileName = document.createElement('input');
+        var hiddenS3FileName = document.createElement('input');
+
+        spanFilename.className = 'tlds-upload-item-filename';
+        spanFilename.setAttribute('href', uploadResult.fileNameUrl);
+        spanFilename.setAttribute('target', '_blank');
+        spanFilename.innerHTML = uploadResult.S3FileName;
+
+        spanClose.className = 'fa-solid fa-circle-xmark icon-red icon-sgo-delete with-tip';
+        spanClose.setAttribute('title', 'Delete');
+
+        hiddenUploadedDocumentId.setAttribute('type', 'hidden');
+        hiddenUploadedDocumentId.setAttribute('name', 'UploadedDocumentId');
+        hiddenUploadedDocumentId.setAttribute('value', uploadResult.UploadedDocumentId == undefined ? '0' : uploadResult.UploadedDocumentId);
+
+        hiddenOriginalFileName.setAttribute('type', 'hidden');
+        hiddenOriginalFileName.setAttribute('name', 'OriginalFileName');
+        hiddenOriginalFileName.setAttribute('value', uploadResult.OriginalFileName);
+
+        hiddenS3FileName.setAttribute('type', 'hidden');
+        hiddenS3FileName.setAttribute('name', 'S3FileName');
+        hiddenS3FileName.setAttribute('value', uploadResult.S3FileName);
+
+        div.className = 'tlds-upload-item';
+        div.appendChild(hiddenUploadedDocumentId);
+        div.appendChild(hiddenOriginalFileName);
+        div.appendChild(hiddenS3FileName);
+        div.appendChild(spanFilename);
+        div.appendChild(spanClose);
+
+        $(spanClose).on('click', removeItemUploadFile);
+        return div;
+    }
+
+    function removeItemUploadFile () {
+        var $spanClose = $(this);
+        $spanClose.hideTip();
+        $spanClose.parent().remove();
+        displayUploadMessage();
+
+    }
+
+    function getChildFamilyFormSerializeString() {
+        $('#Section2CheckedCompleted').val($("#ca-1").is(':checked'));
+        $('#Section3CheckedCompleted').val($("#ca-2").is(':checked'));
+
+        var aboriginalValue = $('input[type=radio][name=Aboriginal]:checked').val();
+        $('#AboriginalValue').val(aboriginalValue);
+
+        var formData = $("#ChildFamilyForm").serialize();
+        return formData;
+    }
+
+    $("#ChildFamilyForm").submit(function (event) {
+        event.preventDefault();
+        $('#Section2CheckedCompleted').val($("#ca-1").is(':checked'));
+        $('#Section3CheckedCompleted').val($("#ca-2").is(':checked'));
+        var aboriginalValue = $('input[type=radio][name=Aboriginal]:checked').val();
+        $('#AboriginalValue').val(aboriginalValue);
+        ShowBlock($('#divOnTop'), 'Saving');
+        $.ajax({
+            type: "POST",
+            url: '@Url.Action("ChildFamily", "TLDSManage")',
+            data: {
+                profileId: $('input[name="ProfileId"]').val(),
+                Section2CheckedCompleted: $("#ca-1").is(':checked'),
+                Section3CheckedCompleted: $("#ca-2").is(':checked'),
+                AboriginalValue: aboriginalValue,
+                HasTheFamilyIndicatedAboriginal: $('input[name=ca-4]:checked').val(),
+                IsFamilyDidNotCompleteSection2: $('#ckbIsFamilyDidNotCompleteSection2').is(':checked') == true ? "Yes" : "No",
+                IsFamilyDidNotCompleteSection3: $('#ckbIsFamilyDidNotCompleteSection3').is(':checked') == true ? "Yes" : "No",
+                TLDSUploadedDocumentData: JSON.stringify(createUploadedDocumentList())
+            },
+        })
+            .done(function (response) {
+
+                $('#divOnTop').unblock();
+
+                if (response.result == true) {
+                    if ($('#IsContinue').val() == 'true') {
+                        location.href = '@Url.Action("UpcomingSchoolSubmit", "TLDSManage")/?profileId=@Model.ProfileId';
+                    } else {
+                        $('#tlds-upload-2').html('');
+                        $.each(response.uploadedDocuments, function (index, item) {
+                            item.fileNameUrl = item.S3Url;
+                            $('#tlds-upload-2').append(buildItemUploadFile(item));
+                        });
+
+                        isSaved = true;
+                        isSection3Checked = ($("#ca-2").is(':checked') || $('#ckbIsFamilyDidNotCompleteSection3').is(':checked')) && ($("#ca-1").is(':checked') || $('#ckbIsFamilyDidNotCompleteSection2').is(':checked'));
+                        displayContinueButton();
+                    }
+
+                    childFamilyFormSerializeString = getChildFamilyFormSerializeString();
+                }
+            });
+    });
+
+    function createUploadedDocumentList() {
+        var uploadedDocuments = [];
+        var $documentDivs = $('#tlds-upload-2').find('div');
+
+        $.each($documentDivs, function (index, item) {
+            var div = document.createElement('div');
+            $(div).html($(item).find('input[name=S3FileName]').val());
+            var nameFile = $(div).text();
+            $(div).html($(item).find('input[name=OriginalFileName]').val());
+            var name = $(div).text();
+            $(div).remove();
+            uploadedDocuments.push({
+                UploadedDocumentId: $(item).find('input[name=UploadedDocumentId]').val(),
+                OriginalFileName: name,
+                S3FileName: nameFile
+            });
+        });
+
+        return uploadedDocuments;
+    }
+    function tldsPrintBlankFormConfirm() {
+
+        var url = '@Url.Action("LoadPrintBlankFormConfirm", "TLDSManage")?profileId=@Model.ProfileId';
+        $.ajax({ url: url, cache: false })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="idPopupTLDSPrintConfirm" class="dialog"></div>');
+                $("#idPopupTLDSPrintConfirm").append(html);
+                $('#idPopupTLDSPrintConfirm').dialog({
+                    title: "",
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        return true;
+                    },
+                    close: function () {
+                        $('#idPopupTLDSPrintConfirm').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 360,
+                    resizable: false
+                });
+            });
+    }
+    function printPDFBlankForm() {
+        ShowBlock($('#idTopNavigation'), "Generating Draft PDF form");
+
+        $('#idPopupTLDSPrintConfirm').parent().hide();
+
+        var data = {
+            profileId: @Model.ProfileId,
+            TimezoneOffset: new Date().getTimezoneOffset()
+        };
+
+        $.ajax({
+            url: '@Url.Action("GeneratePDFBlankForm", "TLDSReport")',
+            traditional: true,
+            type: 'POST',
+            data: data,
+            success: function (response) {
+
+                getTLDSBlankPFDFormS3File(response.fileName);
+            },
+            failure: function (response) {
+                CustomAlert(response);
+            },
+            timeout: 300000
+        });
+
+    }
+    function getTLDSBlankPFDFormS3File(checkUrl) {
+
+        $.ajax({
+            url: '@Url.Action("GetTLDSReportS3File", "TLDSReport")',
+            type: 'POST',
+            data: { fileName: checkUrl,profileId:@Model.ProfileId },
+            success: function (response) {
+                if (response.Result != true) {
+                    setTimeout(function () {
+                        getTLDSBlankPFDFormS3File(checkUrl);//try again
+                    }, 3000);
+                } else {
+                    $('#idPopupTLDSPrintConfirm').parent().show();
+                    $('#idTopNavigation').unblock();
+
+                    $('#idlinkSGOFilePrint').attr('href', response.Url);
+                    $('#idlinkSGOFilePrint').show();
+                    $('#divTLDSPrintConfirm').unblock();
+                    $('#idbtnSGOSavePDFFile').prop('disabled', true);
+                }
+            }
+        });
+    }
+    function closeTLDSPrintPopup() {
+        $("#idPopupTLDSPrintConfirm").dialog("close");
+        $('#idTopNavigation').unblock();
+    }
+
+
+    $(document).ready(function () {
+        $(function () {
+            $('#ca-2').on('change', function (e) {
+                if ($('#ca-2').is(':checked') && $('#ckbIsFamilyDidNotCompleteSection3').is(':checked')) {
+                    $('#ckbIsFamilyDidNotCompleteSection3').prop('checked', false).removeClass('input-checked-v2');;
+                }
+            });
+
+            $('#ckbIsFamilyDidNotCompleteSection3').on('change', function (e) {
+                if ($('#ca-2').is(':checked') && $('#ckbIsFamilyDidNotCompleteSection3').is(':checked')) {
+                    $('#ca-2').prop('checked', false).removeClass('input-checked-v2');;
+                }
+            });
+
+            $('#ca-1').on('change', function (e) {
+                if ($('#ca-1').is(':checked') && $('#ckbIsFamilyDidNotCompleteSection2').is(':checked')) {
+                    $('#ckbIsFamilyDidNotCompleteSection2').prop('checked', false).removeClass('input-checked-v2');
+                }
+            });
+
+            $('#ckbIsFamilyDidNotCompleteSection2').on('change', function (e) {
+                if ($('#ca-1').is(':checked') && $('#ckbIsFamilyDidNotCompleteSection2').is(':checked')) {
+                    $('#ca-1').prop('checked', false).removeClass('input-checked-v2');
+                }
+            });
+
+            $('.ca-4').on('change', function (e) {
+                if ($(this).is(':checked')) {
+                    $('.ca-4').prop('checked', false).removeClass('input-checked-v2');
+                    $(this).prop('checked', true);
+                } else {
+                    if ($('.ca-4:checked').length == 0) {
+                        $(this).prop('checked', true);
+                    }
+                }
+            });
+
+            $(".showContinue").on('change', function (e) {
+                displayUploadMessage();
+                displaySaveButton();
+            });
+
+            $('.required-file-upload').on('change', function (e) {
+                displayUploadMessage();
+            });
+        });
+        displaySaveButton();
+        displayUploadMessage();
+    });
+
+    function displayUploadMessage() {
+        let isRequired = false;
+        if ($('.tlds-upload-item').length == 0) {
+            const requiredCheck = $('.required-file-upload');
+            for (var i = 0; i < requiredCheck.length; i++) {
+                if ($(requiredCheck[i]).is(':checked')) {
+                    isRequired = true;
+                }
+            }
+        }
+
+        if (isRequired) {
+            $('#messageNoUploadDoc').show();
+        } else {
+            $('#messageNoUploadDoc').hide();
+        }
+
+        $("#error-messages").hide();
+        displayContinueButton();
+    }
+
+    function displaySaveButton() {
+        let displayContinueItems = $('.showContinue');
+        let isContinue = 0;
+
+        for (var i = 0; i < displayContinueItems.length; i++) {
+            if ($(displayContinueItems[i]).is(':checked')) {
+                isContinue += 1;
+            }
+        }
+
+        isSection3Checked = isContinue === 2;
+
+        $("#btnSaveAndContinue").prop('disabled', !isSection3Checked);
+        displayContinueButton();
+    }
+
+    var isSaved = ('@Model.Step7IsEnable') === 'True';
+    var isSection3Checked = ('@Model.Section3CheckedCompleted'=== 'True' || '@Model.IsFamilyDidNotCompleteSection3' === 'Yes') && ('@Model.Section2CheckedCompleted' === 'True' || '@Model.IsFamilyDidNotCompleteSection2' === 'Yes');
+
+    function displayContinueButton() {
+        let isShow = false;
+
+        if ((isSaved && isSection3Checked) || !isAccessRight) isShow = true;
+
+        if (isShow) {
+            $("#idSgoNavigationStep7").removeClass("disabled");
+        } else {
+            $("#idSgoNavigationStep7").addClass("disabled");
+        }
+
+        $('#btnContinue').prop('disabled', !isShow);
+
+    }
+    LoadNewLink();
+
+    $("#btnCreateNewLink").click(function (event) {
+        event.preventDefault();
+        ShowBlock($('#divOnTop'), 'Create New Link');
+        var url = '@Url.Action("CreateNewLinkV2", "TLDSDigitalSection23")?profileId=@Model.ProfileId';
+        $.ajax({ url: url, cache: false })
+            .done(function (html) {
+                $("#divLoadCreateNewLink").html(html);
+                $('#divOnTop').unblock();
+            });
+    });
+
+    function LoadNewLink() {
+        ShowBlock($('#divLoadCreateNewLink'), 'Loading');
+        var url = '@Url.Action("LoadTLDSProfileLinkByProfileIdV2", "TLDSDigitalSection23")?profileId=@Model.ProfileId';
+        $.ajax({ url: url, cache: false })
+            .done(function (html) {
+                $("#divLoadCreateNewLink").html(html);
+                $('#divLoadCreateNewLink').unblock();
+            });
+    }
+    </script>
+}

@@ -1,0 +1,155 @@
+@model LinkIt.BubbleSheetPortal.Models.SGO.VirtualTestCustomScore
+
+<style>
+    #divSubscoreSection,
+    #divSubscoreSection * {
+        z-index: auto !important;
+    }
+</style>
+
+<div class="mb-3 d-flex justify-content-between">
+    <span class="title-large">Subscore</span>
+    @if (!Model.HasAssociatedTestResult && !Model.HasAssociatedAutoSave)
+    {
+        <a href="javascript:void(0)" id="linkAddSubscore" class="btn btn-link text-end d-block">
+            Add Subscore
+            <i class="fa-solid fa-plus ms-2"></i>
+        </a>
+    }
+</div>
+
+<div id="divSubscoreSection"></div>
+
+<script src="@Url.Content("~/Scripts/drag-arrange.js")"></script>
+<script>
+    $(function() {
+        loadExistingSubsores();
+        registerHandlerEventSubscore();
+        registerDragEndCallback();
+
+    });
+    var newSubscorePanelIsShown = false;
+    $('#linkAddSubscore').live("click", function () {
+        //load ui
+        if (newSubscorePanelIsShown == false) {
+            newSubscorePanelIsShown = true;
+            loadNewSubscorePanel();
+        }
+
+    });
+    function loadNewSubscorePanel() {
+        var data = {
+            templateId: @Model.VirtualTestCustomScoreId
+        };
+        ShowBlock($('#divSubscoreSection'), 'Loading');
+        $.ajax({
+            type: "POST",
+            url: '@Url.Action("LoadAddSubscore")?templateId=@Model.VirtualTestCustomScoreId',
+            data: data
+            })
+            .done(function(response) {
+                $('#divSubscoreSection').append('<div class="newSubscoreContainer">'+ response + '</div>');
+                newSubscorePanelIsShown = true;
+                $('#divSubscoreSection').unblock();
+            });
+    }
+    function loadExistingSubsores() {
+
+        @foreach (var subscoreId in Model.SubscoreIdList)
+        {<text>
+        ShowBlock($('#divSubscoreSection'), 'Loading');
+        $('#divSubscoreSection').append('<div id="divSubscoreSection_@(subscoreId)' +'" class="draggable-element subscore mt-3" subscoreid="@(subscoreId)" ></div>');
+        appendSubsore(@Model.VirtualTestCustomScoreId,@subscoreId);
+        </text>
+
+        }
+    }
+
+    function appendSubsore(templateId, id, alreadyAdded) {
+        var data = {
+            HasAssociatedTestResult:'@Model.HasAssociatedTestResult',
+            hasAssociatedAutoSave:'@Model.HasAssociatedAutoSave',
+            VirtualTestCustomScoreId: @Model.VirtualTestCustomScoreId,
+            virtualTestCustomSubScoreID:id
+        };
+        $.ajax({
+            type: "POST",
+            url: '@Url.Action("LoadEditSubscore")',
+            data: data
+        })
+        .done(function(response) {
+            $('#divSubscoreSection_'+id).append('<div>'+ response + '</div>');
+            $('#divSubscoreSection').unblock();
+            if (alreadyAdded != undefined) {
+                //no collapse the already added subscore
+                $('#editsubscorefs_' + id).find('div').show();
+                $('#editsubscorefs_' + id).removeClass("collapsed");
+                $('#editsubscorefs_' + id).addClass("expanded");
+                //register drag end event handler for the new
+                registerDragEndCallback();
+
+            }
+
+        });
+    }
+
+    function registerHandlerEventSubscore() {
+        registerHandlerEvent('DataLocker_EditTemplate_AddSubscoreSucess', function (e) {
+            //user has created a new subscore
+            newSubscorePanelIsShown = false;
+            var subscoreId = e.detail;
+            ShowBlock($('#divSubscoreSection'), 'Loading');
+            $('.newSubscoreContainer').remove();//remove the add new subscore section
+            $('#divSubscoreSection').append('<div id="divSubscoreSection_' +subscoreId +'" class="draggable-element alreadynew-' + subscoreId + ' subscore mt-3" subscoreid="' + subscoreId + '" ></div>');
+            appendSubsore(@Model.VirtualTestCustomScoreId, subscoreId,true);
+        });
+        //catch event when a subscore has been deleted
+        registerHandlerEvent('DataLocker_EditSubscore_DeleteSubscoreSucess', function (e) {
+            //reload the subscore list when a subscore has been deleted
+            var subscoreId = e.detail;
+            $('#divEditSubscore_'+ subscoreId).remove();
+        });
+    }
+
+    function getSubscoreIDListInOrder() {
+        var subscoreIdList = '';
+        $('.subscore').each(function( index, element ) {
+            if (element.style.visibility !== 'hidden') {
+                subscoreIdList += $(element).attr('subscoreid') + ',';
+            }
+        });
+        return subscoreIdList;
+    }
+    function updateSubscoreSequence() {
+        var subscoreIdList = getSubscoreIDListInOrder();
+
+        var url = '@Url.Action("UpdateSubscoreSequence")';
+        var data = {
+            subscoreIdListString: subscoreIdList
+        };
+        ShowBlock($('#divSubscoreSection'), 'Updating Subscore sequence');
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data
+        })
+        .done(function (response) {
+            $('#divSubscoreSection').unblock();
+
+        });
+
+    }
+    function registerDragEndCallback() {
+        $('.draggable-element').each(function(idx, ele) {
+            $(ele).arrangeable('destroy');
+        })
+        var drag_drop_options = {
+            dragSelector: '.js-arrangeable',
+            dragEndCallback:function() {
+                //call ajax to update the sequence of the sub score
+                updateSubscoreSequence();
+            }
+        }
+        $('.draggable-element').arrangeable(drag_drop_options);
+    }
+</script>

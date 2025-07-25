@@ -1,0 +1,594 @@
+@using Amazon.IdentityManagement.Model
+@using LinkIt.BubbleSheetPortal.Models
+@using LinkIt.BubbleSheetPortal.Web.Constant
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.AddEditStudentViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Common
+
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Add New Student");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<style>
+    .require-icon {
+        position: relative;
+        top: -1px;
+        left: 3px;
+    }
+
+    #confirmMessDialog .block-content.form {
+        padding: 1.5em !important;
+    }
+    .relative .clearn-date {
+        position: absolute;
+        top: 0;
+        right: 11px;
+        color: #717171;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .shared-secret-field input {
+        border-right: 0 !important;
+    }
+
+    .shared-secret-field .icon-refresh {
+        border: 2px solid var(--selectBorder);
+        padding: 0.65rem !important;
+        display: flex;
+        align-items: center;
+        border-left: 0;
+        cursor: pointer;
+    }
+</style>
+
+<article class="container_12" id="add-metadata-student">
+    <section id="block-content" class="block-24" style="width: calc(70% - 1em)">
+
+        @if (Model == null)
+        {
+            <div class="block-content form">
+                <h2 class="header">An error has occurred, please try again.</h2>
+            </div>
+        }
+        else
+        {
+            using (Html.BeginForm("AddNewStudent", "ManageClasses", FormMethod.Post, new { id = "addStudentForm", @class = "form" }))
+            {
+                @Html.AntiForgeryToken()
+                <div class="block-content form">
+                    <h1>Add New Student</h1>
+                    <ul style="display: none" id="error-messages" class="message error no-margin mb-4"></ul>
+                    <div>
+                        <h2 class="header">Select Admin School</h2>
+                        <div class="row g-3">
+                            @if ((Model.FromManageStudent && Model.FilterDistrictId == 0) || Model.ParentUserId > 0)
+                            {
+                                if (Model.CurrentUserRoleId == (int)Permissions.Publisher || Model.CurrentUserRoleId == (int)Permissions.NetworkAdmin)
+                                {
+                                    <div class="col-4">
+                                        <div class="mb-3 block-content-dropdown-marquee" style="width: 100%">
+                                            <label>State</label>
+                                            <div class="block-text-name" style="width: 100%">
+                                                <select id="selectState" class="full-width"></select>
+                                                <div class="box-select">
+                                                    <span class="overlay"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="mb-3 block-content-dropdown-marquee" style="width: 100%">
+                                            <label>@LabelHelper.DistrictLabel</label>
+                                            <div class="block-text-name" style="width: 100%">
+                                                <select id="selectDistrict" class="full-width"></select>
+                                                <div class="box-select">
+                                                    <span class="overlay"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            <div class="col-4">
+                                <div class="mb-3 block-content-dropdown-marquee" style="width: 100%">
+                                    <div class="d-flex flex-row align-items-center">
+                                        <label>AdminSchool</label>
+                                        <span class="u-c-red require-icon">*</span>
+                                    </div>
+                                    <div class="block-text-name" style="width: 100%">
+                                        <select id="selectSchool" name="adminSchoolId" class="full-width"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 block-content form">
+                    <h2 class="header">Student Details</h2>
+                    @Html.HiddenFor(m => m.StudentId)
+                    @Html.HiddenFor(m => m.DistrictId)
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="d-flex flex-row align-items-center">
+                                <label>First Name</label>
+                                <span class="u-c-red require-icon">*</span>
+                            </div>
+                            <span class="relative">
+                                @Html.TextBoxFor(m => m.FirstName, new { @class = "full-width first-focus" })
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <label>
+                                Middle Name
+                            </label>
+                            <span class="relative">
+                                @Html.TextBoxFor(m => m.MiddleName, new { @class = "full-width" })
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex flex-row align-items-center">
+                                <label>Last Name</label>
+                                <span class="u-c-red require-icon">*</span>
+                            </div>
+                            <span class="relative">
+                                @Html.TextBoxFor(m => m.LastName, new { @class = "full-width" })
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex flex-row align-items-center">
+                                <label>Gender</label>
+                                <span class="u-c-red require-icon">*</span>
+                            </div>
+
+                            <span class="relative">
+                                @Html.DropDownListFor(m => m.GenderId, Model.Genders, "Select Gender", new { id = "selectGender", @class = "full-width" })
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <label>
+                                Email
+                            </label>
+                            <span class="relative">
+                                @Html.TextBoxFor(m => m.Email, new { @class = "full-width" })
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <label>
+                                @LabelHelper.StudentGrade
+                            </label>
+                            <span class="relative">
+                                @Html.DropDownListFor(m => m.GradeId, Model.Grades, "Select " + @LabelHelper.StudentGrade, new { id = "selectGrade", @class = "full-width" })
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <label>
+                                @LabelHelper.StudentRace
+                            </label>
+                            <span class="relative">
+                                @{
+                                    string raceLabel = string.Format("{0} {1}", "Select", LocalizeHelper.Localized(@LinkIt.BubbleSheetPortal.Web.Constant.LocalizeResource.StudentRace));
+                                }
+                                @Html.DropDownListFor(m => m.RaceId, Model.Races, raceLabel, new { @id = "selectRace", @class = "full-width" })
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex flex-row align-items-center">
+                                <label>
+                                    Student Local ID
+                                </label>
+                                <span class="u-c-red require-icon">*</span>
+                            </div>
+                            <span class="relative">
+                                @Html.TextBoxFor(m => m.StudentLocalId, new { @class = "full-width" })
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <label>
+                                Student @LabelHelper.StudentStateID
+                            </label>
+                            <span class="relative">
+                                @Html.TextBoxFor(m => m.StudentStateId, new { @class = "full-width" })
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 block-content form">
+                    <h2 class="header">Account Info</h2>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label>
+                                Password
+                            </label>
+                            <span class="relative">
+                                @Html.PasswordFor(m => m.Password, new { maxlength = 49, @class = "full-width" })
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <label>
+                                Confirm Password
+                            </label>
+                            <span class="relative">
+                                @Html.PasswordFor(m => m.ConfirmPassword, new { @class = "full-width" })
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="fields.length" class="mt-4 block-content form">
+                    <div v-if="fields.length > 0">
+                        <h2 class="header">Other Student Data</h2>
+                        <div class="row g-3">
+                            <div class="col-6" v-for="field in fields">
+                                <label v-text="field.Label"></label>
+                                <span class="relative">
+                                    <input name="{{ field.Type }}" type="text" class="full-width" v-model="field.Value" :data-view-column="field.IsCalculatedField" :disabled="field.IsCalculatedField" />
+                                    <input v-if="(field.Type == 'Date')" type="hidden" value="" name="{{ field.Type }}" />
+                                    <span v-on:click="clearnDate(field)" :data-view-column="field.IsCalculatedField" class="clearn-date" v-if="(field.Type == 'Date')">x</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    @if (Model.FromManageStudent || Model.ParentUserId > 0)
+                    {
+                        <div class="mt-4 block-content form">
+                            @Html.Partial("v2/_AddNewStudentAssignClass", Model)
+                        </div>
+                    }
+                </div>
+
+                <div class="mt-4 block-content form">
+                    <div class="d-flex flex-row justify-content-end">
+                        <button id="btnCancel" type="button" class="btn-blue">Cancel</button>
+                        <button id="btnSubmit" type="submit" name="Save" class="btn-red ms-3">Submit</button>
+                    </div>
+                </div>
+                <input type="hidden" name="FromManageStudent" value="@Model.FromManageStudent.ToString()" />
+                <input type="hidden" name="ParentUserId" value="@Model.ParentUserId" />
+                <input type="hidden" id="FilterDistrictId" name="FilterDistrictId" value="@Model.FilterDistrictId" />
+                <input type="hidden" id="ClassIdString" name="ClassIdString" />
+                <input type="hidden" id="StudentMetaDatas" name="StudentMetaDatas" />
+            }
+        }
+    </section>
+</article>
+
+@section scripts {
+    <script type="text/javascript">
+        _CURRENT_PAGE_NAME = "AddStudent";
+        var metadataStudentModel = new Vue({
+            el: '#add-metadata-student',
+            data: {
+                fields: []
+            },
+            watch: {
+                fields: function () {
+                    $('input[name="Date"]').attr("readonly", "readonly");
+                    $('input[name="Date"]').datepicker({
+                        changeMonth: true,
+                        changeYear: true,
+                        yearRange: 'c-100:c+100',
+                        dateFormat: jqueryDatePickerFormat()
+                    });
+                    var dateInputs = $('input[name="Date"]');
+                    for (var i = 0; i < dateInputs.length; i++) {
+                        if ($(dateInputs[i]).val() !== '' && $(dateInputs[i]).val() !== 'undefined') {
+                            try {
+                                var dateValue = new Date($(dateInputs[i]).val());
+                                $(dateInputs[i]).datepicker('setDate', dateValue);
+                            } catch (e) {
+                                // ignore invalid data
+                            }
+                        }
+                    }
+                }
+            },
+            methods: {
+                clearnDate: function (obj) {
+                    var item = this.fields.find(function (field) {
+                        return field.Name === obj.Name;
+                    })
+                    item.Value = '';
+                }
+            }
+        });
+
+        function loadStudenMeta(districtId) {
+            $.get('@Url.Action("GetListStudentMetaData", "ManageClasses")',{studentId:0,districtId:districtId},
+                function (response) {
+                    metadataStudentModel.fields = htmlDecode(response.data) || [];
+                    metadataStudentModel.fields.map(function (meta) {
+                        if (meta.Type === 'Date' && (meta.Value === null || meta.Value === '')) {
+                            meta.Value = moment().format('YYYY-MM-DD');
+                        }
+                    });
+                });
+        }
+    </script>
+    <script type="text/javascript">
+        $(function() {
+            $('.dataadmin').addClass('current');
+            if ('@Model.FromManageStudent' == 'True') {
+                $('#studentManagement').addClass('current');
+            } else {
+                $('#dtaManageClasses').addClass('current');
+            }
+            //initDropdownListSchool();
+
+            $('#addStudentForm').submit(function (event) {
+                event.preventDefault();
+                
+                if ($("#add-new-student-assign-class").length && isOpenAssignClass) {
+                    return;
+                }
+                if ('@Model.FromManageStudent' == 'True' || @Model.ParentUserId > 0) {
+                    if (classIdString == null || classIdString.length == 0) {
+                        showConfirmMess('Please assign one or more classes for student before saving.');
+                        return;
+                    }
+                    $('#ClassIdString').val(classIdString);
+                }
+                $('#btnSubmit').disableBt();
+                var dataConvertTemp = metadataStudentModel.fields.map(function (meta) { return { name: meta.Name, value: meta.Value, label: meta.Label, type: meta.Type, viewColumn: meta.ViewColumn, isCalculatedField: meta.IsCalculatedField } });
+                var studentMetaDatas = JSON.stringify(dataConvertTemp);
+                $('#StudentMetaDatas').val(studentMetaDatas);
+                $.ajax({
+                    url: $(this).target,
+                    type: 'POST',
+                    data: $(this).serialize(),
+                    success: function (response) {
+                        if (response.Success == true) {
+                            $('#error-messages').hide();
+                            $('#btnSubmit').enableBt();
+                            if (response.studentId != '') {
+                                location.href = '@Url.Action("EditStudent")?id='
+                                    + response.studentId + '&fromManageStudent=@Model.FromManageStudent'
+                                    + (@Model.ParentUserId >0 ?'&returnUrl=/ManageParent/Edit?parentUserId=@Model.ParentUserId' : '');
+                            }
+                        } else {
+                            addErrorMessages(response);
+                            $("html, body").animate({ scrollTop: 0 }, 200);
+                        }
+                        $('#btnSubmit').enableBt();
+                    },
+                    failure: function(response) {
+                        alert(response);
+                    }
+                });
+            });
+
+            $('#addStudentForm').on('click', '#btnCancel', function () {
+                if ('@Model.ParentUserId' > 0){
+                    window.location.href = '/ManageParent/Edit?parentUserId='+@Model.ParentUserId;
+                    return;
+                }
+                if ('@Model.FromManageStudent' == 'True') {
+                    window.location.href = '@Url.Action("Index","StudentLookup")';
+                    return;
+                }
+                var classId = '@HttpContext.Current.Session["AddNewStudentToClassId"]';
+                var url = classId == '' ? '@Url.Action("ManageClass", "ManageClasses")' : '@Url.Action("ManageStudents", "ManageClasses", new { id = HttpContext.Current.Session["AddNewStudentToClassId"] })';
+                //alert(classId);
+                //alert('@System.Web.HttpContext.Current.Session["EditStudentSource"]');
+                if (classId == '' || classId=='0') {
+                    var x = '@System.Web.HttpContext.Current.Session["EditStudentSource"]';
+                    if (x != null) {
+                        if (x.length > 0) {
+                            url = '@System.Web.HttpContext.Current.Session["EditStudentSource"]' == '@LinkIt.BubbleSheetPortal.Web.Helpers.EditStudentSource.FromManageSchools' ? '@Url.Action("ManageSchoolAndClass", "ManageClasses")' : '@Url.Action("ManageClass", "ManageClasses")';
+                        }
+                    }
+                }
+                window.location.href = url;
+            });
+            if ('@Model.FromManageStudent' == 'True') {
+                breadcrumbDetailPage('.dataadmin', '#studentManagement');
+            } else {
+                breadcrumbDetailPage('.dataadmin', '#dtaManageClasses');
+            }
+
+            $('#selectState').marquee();
+            $('#selectDistrict').marquee();
+            $('#selectSchool').marquee();
+        });
+
+        function initDropdownListSchool(selectedDistrictId) {
+            var currentUserRoleId = '@Model.CurrentUserRoleId';
+            var currentUserId = '@Model.CurrentUserId';
+            var selectedDistrictId = selectedDistrictId;//'@Model.DistrictId';
+            var selectedSchoolId = '@Model.AdminSchoolId';
+
+            if (!selectedDistrictId || selectedDistrictId == 'select') {
+                return;
+            }
+
+            var url = currentUserRoleId == '8' || currentUserRoleId == '2' ? '@Url.Action("GetSchoolsByUser")' : '@Url.Action("GetSchools", "Admin")';
+
+            $.ajax({
+                url: url,
+                data: { districtId: selectedDistrictId, userId: currentUserId },
+                dataType: 'json',
+                async: false,
+                success: function(schools) {
+                    addDefaultOption($('#selectSchool'), "School");
+                    if (selectedSchoolId != null)
+                        addSelectListWithDefaultValue($('#selectSchool'), schools, selectedSchoolId);
+                },
+                beforeSend: function() {
+                },
+                complete: function() {
+                }
+            });
+        }
+    </script>
+    <script>
+        function AddSelectListItems(selectList, results, defaultValue) {
+            if (results.length == 0) {
+                return;
+            }
+            selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+            $.each(results, function (i, value) {
+                selectList
+                    .append($("<option></option>")
+                        .attr("value", value.Id)
+                        .text(value.Name));
+            });
+
+        }
+        function loadStateForPublisher() {
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                AddSelectListItems($('#selectState'), states, 'Select State');
+
+                //set default state as selected state
+                if ($('#selectState').val() != 'select') {
+                    loadDistrictOfStateForPublisher();
+                }
+            });
+        }
+        function loadDistrictOfStateForPublisher() {
+            if ($('#selectState').val() != 'select') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: $('#selectState').val() }, function (districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                    if (@Model.FilterDistrictId > 0) {
+                        $('#selectDistrict').val(@Model.FilterDistrictId);
+                    }
+                });
+            }
+        }
+        function loadStateForNetworkAdmin() {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                AddSelectListItems($('#selectState'), states, 'Select State');
+                //set default state as selected state
+                loadDistrictOfStateForNetworkAdmin();
+            });
+        }
+
+        function loadDistrictOfStateForNetworkAdmin() {
+            if ($('#selectState').val() != 'select') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: $('#selectState').val() }, function (districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                    if (@Model.FilterDistrictId > 0) {
+                        $('#selectDistrict').val(@Model.FilterDistrictId);
+                    }
+                });
+            }
+        }
+        $("#selectState").die("change");
+        $('#selectState').change(function () {
+            $('#selectDistrict').empty();
+            if ($('#selectState').val() != 'select') {
+                $('#selectDistrict').empty();
+                var stateValue = $('#selectState').val();
+                if (stateValue != 'select') {
+                    if ('@Model.CurrentUserRoleId' == '@((int) Permissions.Publisher)') {
+                        loadDistrictOfStateForPublisher();
+                    }
+                    if ('@Model.CurrentUserRoleId' == '@((int)Permissions.NetworkAdmin)') {
+                        loadDistrictOfStateForNetworkAdmin();
+                    }
+                }
+            }
+        });
+        $("#selectDistrict").die("change");
+        $("#selectDistrict").change(function () {
+            $('#selectSchool').empty();
+            var districtId = $('#selectDistrict').val();
+            if (districtId < 0 || districtId == 'select') {
+                districtId = 0;
+            }
+            $('#FilterDistrictId').val(districtId);
+            initDropdownListSchool(districtId);
+
+            //TODO:
+            loadStudenMeta(districtId);
+        });
+        $(function () {
+            if (('@Model.FromManageStudent' == 'True' && @Model.FilterDistrictId==0) || @Model.ParentUserId > 0) {
+                if ('@Model.CurrentUserRoleId' == '@((int) Permissions.Publisher)') {
+                    loadStateForPublisher();
+                }
+                else if ('@Model.CurrentUserRoleId' == '@((int)Permissions.NetworkAdmin)') {
+                    loadStateForNetworkAdmin();
+                } else {
+                    initDropdownListSchool('@Model.DistrictId');
+                    loadStudenMeta('@Model.DistrictId');
+                }
+
+            }
+            else {
+                initDropdownListSchool('@Model.DistrictId');
+                loadStudenMeta('@Model.DistrictId');
+            }
+        });
+
+
+        function htmlEncode(lists) {
+            if (lists)
+                return  lists.map(function(list) {
+                    var $div = $('<div/>');
+                    list.value = $div.text(list.value).html();
+                    return list;
+                });
+            return lists;
+        }
+
+        function htmlDecode(lists) {
+            if (lists) {
+                return lists.map(function (list) {
+                    var $div = $('<div/>');
+                    list.Value = $div.html(list.Value || '').text();
+                    return list;
+                });
+            }
+            return lists;
+        }
+        function htmlEncodeItem(item) {
+            var $div = $('<div/>');
+            return $div.text(item).html();
+        }
+
+        unescapeHtmlDropdownList($('#selectRace'));
+
+        function confirmYes() {
+            $('#confirmMessDialog').dialog("close")
+        }
+        function showConfirmMess(msg) {
+            confirmMessageV2(
+                {
+                    message: msg,
+                    cbYesBtnFuncName: 'confirmYes()',
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'confirmMessDialog'
+                        }
+                    }
+                }
+            )
+        }
+    </script>
+}

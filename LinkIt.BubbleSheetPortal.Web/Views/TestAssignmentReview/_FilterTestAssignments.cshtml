@@ -1,0 +1,279 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+<fieldset>
+    <div class="columns">
+        <div class="colx2-left">
+            @if ((ViewBag.IsPublisher != null && ViewBag.IsPublisher)
+                || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+            {
+                <div class="mb-3">
+                    <label>State</label>
+                    <select id="selectState" class="full-width"></select>
+                </div>
+            }
+            <p>
+                <label>@LabelHelper.TestGrade</label>
+                <input type="text" id="selectGrade" class="full-width" />
+            </p>
+            <p>
+                <label>Bank</label>
+                <input type="text" id="selectBank" class="full-width" />
+            </p>
+            <p>
+                <label>Class</label>
+                <input type="text" id="selectClass" class="full-width" />
+            </p>
+            <p>
+                <label>Student</label>
+                <input type="text" id="selectStudent" class="full-width" />
+            </p>
+            <p>
+                <label>Timeframe</label>
+                <select id="dateTime" class="full-width">
+                    <option value="14">2 weeks</option>
+                    @if (ViewBag.IsTeacher != null && ViewBag.IsTeacher)
+                    {
+                        <option value="30">1 month</option>
+                        <option value="60">2 months</option>
+                        <option value="90">3 months</option>
+                        <option value="180" selected>6 months</option>
+                    }
+                    else
+                    {
+                        <option value="30" selected>1 month</option>
+                        <option value="60">2 months</option>
+                        <option value="90">3 months</option>
+                        <option value="180">6 months</option>
+                    }
+                    <option value="365">1 year</option>
+                    <option value="730">2 years</option>
+                </select>
+            </p>
+        </div>
+        <div class="colx2-right">
+            @if ((ViewBag.IsPublisher != null && ViewBag.IsPublisher)
+                || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+            {
+                <div class="mb-3 block-content-dropdown-marquee">
+                    <label>@LabelHelper.DistrictLabel</label>
+                    <div class="block-text-name">
+                        <select id="selectDistrict" class="full-width"></select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+            <p>
+                <label>@LabelHelper.Subject</label>
+                <input type="text" id="selectSubject" class="full-width" />
+            </p>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>School</label>
+                <div class="block-text-name">
+                    <select id="selectSchool" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <p>
+                <label>Teacher</label>
+                <input type="text" id="selectTeacher" class="full-width" />
+            </p>
+            <p>
+                <label>Test</label>
+                <input type="text" id="selectTest" class="full-width" />
+            </p>
+            <p>
+                <label>Test Assignment Code</label>
+                <input type="text" id="selectTestCode" class="full-width" />
+            </p>
+
+        </div>
+    </div>
+</fieldset>
+<script type="text/javascript">
+    _historyData = {};
+    _CURRENT_PAGE_NAME = "ReviewOnlineTest";
+    var isFormLoad = false;
+    var districtId = 0;
+    $(function () {
+        _historyData.isFormLoad = true;
+        ClearSessionsManageSchool();
+        $('#selectDistrict').marquee();
+        $('#selectSchool').marquee();
+        if (performance.navigation.type === 1) {
+            sessionStorage.removeItem("KEEP_SESSION");
+        }
+
+        InitData();
+
+        $('#selectState').change(function () {
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+        });
+
+        if ($('#selectDistrict').val() > 0) {
+            districtId = $('#selectDistrict').val();
+        }
+
+        loadHistoryData();
+
+    });
+
+    function InitData() {
+        if ('@ViewBag.IsNetworkAdmin' != null && '@ViewBag.IsNetworkAdmin' == 'True') {
+            $.get('@Url.Action("GetStatesByDictricIds", "PopulateStateDistrict")', { dictricIds: '@ViewBag.ListDictrictIds' }, function (states) {
+                AddSelectListItems($('#selectState'), states, 'Select States');
+                if (_historyData.stateID > 0) {
+                    $("#selectState").val(_historyData.stateID);
+                    $('#selectState').trigger('change');
+                }
+            });
+        } else {
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                AddSelectListItems($('#selectState'), states, 'Select State');
+                if (_historyData.stateID > 0) {
+                    $("#selectState").val(_historyData.stateID);
+                    $('#selectState').trigger('change');
+                }
+            });
+        }
+
+        $('#selectState').change(function () {
+            $('selectSchool').empty();
+        });
+
+        $('#selectDistrict').change(function () {
+            $('#selectSchool').empty();
+            var districtValue = $('#selectDistrict').val();
+            if (districtValue == null || districtValue == 'select' || districtValue <= 0) {
+                return;
+            }
+            populateSchoolsByDistrict(districtValue);
+            getIsShowConfig(districtValue);
+        });
+
+        @if ((ViewBag.IsPublisher == null || !ViewBag.IsPublisher)
+                                && (ViewBag.IsNetworkAdmin == null || !ViewBag.IsNetworkAdmin))
+        {
+            <text>populateSchoolsByDistrict(null);</text>
+        }
+    }
+    function getIsShowConfig(districtId) {
+        $.get('@Url.Action("GetIsShowIsHideFunctionConfig")', { districtId: districtId }, function (value) {
+            isShowFunction = value;
+        });
+    }
+    function populateSchoolsByDistrict(districtValue) {
+        $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', { districtId: districtValue }, function (schools) {
+            populateSchools(schools);
+            if (_historyData.schoolID > 0) {
+                $("#selectSchool").val(_historyData.schoolID);
+            }
+            //TODO: Call binding data with schoolid selected.
+            LoadTesClassAssignmentToTable();
+        });
+    }
+
+    function populateSchools(schools) {
+        addDefaultOption($('#selectSchool'), "School");
+        addSelectListItems($('#selectSchool'), schools);
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            if ('@ViewBag.IsPublisher' === 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                    if (districts.length === 1) {
+                        $('#selectDistrict').trigger('change');
+                    }
+                    if (_historyData.districtID > 0) {
+                        $("#selectDistrict").val(_historyData.districtID);
+                        $('#selectDistrict').trigger('change');
+                    }
+                });
+            }
+            if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                    if (districts.length === 1) {
+                        $('#selectDistrict').trigger('change');
+                    }
+                    if (_historyData.districtID > 0) {
+                        $("#selectDistrict").val(_historyData.districtID);
+                        $('#selectDistrict').trigger('change');
+                    }
+                });
+            }
+        }
+    }
+
+    function loadHistoryData() {
+        if (sessionStorage.length > 0 && sessionStorage.KEEP_SESSION) {
+            var data = JSON.parse(sessionStorage.KEEP_SESSION);
+            if (data.rootPage === _CURRENT_PAGE_NAME) {
+                if (data.payload) {
+                    _historyData = data.payload;
+                    $("#classDataTable_filter input").val(_historyData.searchText);
+                    $("#selectGrade").val(_historyData.grade);
+                    $("#selectSubject").val(_historyData.subject);
+                    $("#selectBank").val(_historyData.bank);
+                    $("#selectClass").val(_historyData.class);
+                    $("#selectTeacher").val(_historyData.teacher);
+                    $("#selectStudent").val(_historyData.student);
+                    $("#selectTest").val(_historyData.test);
+                    $("#selectTestCode").val(_historyData.testCode);
+                    $("#dateTime").val(_historyData.timeFrame);
+                    $('#classDataTable_length select').val(_historyData.pageSize);
+                    $('#btnActiveTestClassAssignment').attr("class", _historyData.showInactive ? "off" : "on");
+                    $("#spanClassActive").html(_historyData.showInactive ? "off" : "on");
+
+                }
+            }
+        }
+    }
+
+
+
+    function keepSession() {
+        var data = {
+            rootPage: "ReviewOnlineTest",
+            subPages: ["ReviewOnlineTestDetail"],
+            payload: getFilterDatas()
+        };
+
+        sessionStorage.KEEP_SESSION = JSON.stringify(data);
+    }
+
+    function ResetSessionStorage() {
+        if (_historyData) {
+            _historyData.stateID = 0;
+            _historyData.districtID = 0;
+            _historyData.schoolID = 0;
+        }
+    }
+
+</script>
+
+<script type="text/javascript">
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+
+</script>

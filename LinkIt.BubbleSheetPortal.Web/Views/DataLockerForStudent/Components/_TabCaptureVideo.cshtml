@@ -1,0 +1,191 @@
+<template id="tab-capture-video-template">
+    <div class="capture-video-container">
+        <div class="video-capture">
+            <div class="video-capture__timer">
+                <div>{{ recordTime | timerFormat }}</div>
+                <div
+                     v-if="isAutoSave"
+                     :style="{
+                         position: 'absolute',
+                         top: 0,
+                         right: 0,
+                         background: 'transparent'
+                     }">Auto save...</div>
+            </div>
+            <video ref="video" autoplay="" muted="" playsinline="">
+            </video>
+            <div class="video-capture__actions">
+                <button :class="{
+                        'btn-action': true,
+                        'btn-action--video': true,
+                        'btn-action--recording': status === recordStatus.recording
+                    }"
+                        @@click="handleRecordClick"
+                        :disabled="status === recordStatus.staring">
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+    var tabCaptureVideo = {
+        template: document.getElementById('tab-capture-video-template').innerHTML,
+        mixins: [attachmentsMixin, recordMixin],
+        data: function () {
+            return {
+                recorderInstance: new RecordVideo(),
+                uploadInstance: null,
+                isAutoSave: false
+            }
+        },
+        methods: {
+            getFileName: function () {
+                return 'Student Recording (video).' + this.recorderInstance.ext;
+            },
+            startCamera: function () {
+                var self = this;
+                if (!this.recorderInstance) {
+                    this.recorderInstance = new RecordVideo();
+                }
+                self.uploadInstance = new EDMChunkUploadHelper(self.getFileName());
+                this.recorderInstance.startCamera(function (stream) {
+                    self.mediaStream = stream;
+                    self.$nextTick(function () {
+                        self.$refs.video.srcObject = null;
+                        self.$refs.video.srcObject = stream;
+                        self.$refs.video.play();
+                    });
+                });
+            },
+            handleStartRecord: function () {
+                var self = this;
+                self.status = recordStatus.staring;
+                self.$root.shared.isRecording = true;
+                var type = globalConfig.FileTypeGroups.find(function (i) {
+                    return i.SupportFileType.includes('.' + self.recorderInstance.ext)
+                });
+                self.recorderInstance.startRecord({ fileSizeLimit: type.MaxFileSizeInBytes }, function () {
+                    self.startTimer();
+                    self.status = recordStatus.recording;
+                    self.uploadInstance.startRecordUpload(self.recorderInstance.recorder, function (promise, partNumber) {
+                        self.handleAutoSave(promise, partNumber);
+                    }, function (err) {
+                        self.handleRecordError(err);
+                    });
+                }, function (err) {
+                    self.handleRecordError(err);
+                });
+            },
+            handleStopRecord: function () {
+                var self = this;
+                if (self.status !== recordStatus.stoped) {
+                    self.$root.showOverlay('Stopping record');
+                    self.uploadInstance.finishRecordUpload(self.recorderInstance.recorder, function () {
+                        self.stopTimer();
+                        self.$root.showOverlay('Saving');
+                    }).then(function () {
+                        var fileName = self.getFileName();
+                        var options = self.uploadInstance.getOptions();
+                        var documentGuid = options.DocumentGuid;
+                        var uploadId = options.UploadId;
+                        self.recorderInstance.stopRecord(function (file) {
+                            self.$emit('onAddItems', [{ file: file, documentGuid: documentGuid, uploadId: uploadId, isCapture: true }]);
+                        }, fileName);
+                        self.status = recordStatus.stoped;
+                        self.$root.shared.isRecording = false;
+                        self.$root.hideOverlay();
+                    });
+                }
+            },
+            handleRecordError: function (err) {
+                var self = this;
+                if (err.type == 'OFFLINE') {
+                    self.handleStopRecord();
+                    customAlertMessage({ message: 'Network error, please check your internet connection', zIndex: 10000 });
+                    return;
+                }
+                if (err.type == 'fileSizeLimit') {
+                    self.handleStopRecord();
+                    customAlertMessage({ message: err.message, zIndex: 10000 });
+                    return;
+                }
+                self.$root.shared.isRecording = false;
+                self.stopTimer();
+                self.status = recordStatus.stoped;
+            },
+            handleAutoSave: function (promise, partNumber) {
+                var self = this;
+                self.isAutoSave = true;
+                promise.then(function () {
+                    if (partNumber === 1) {
+                        self.$emit('onAutoSave', self.uploadInstance.getOptions());
+                    }
+                    self.isAutoSave = false;
+                });
+            }
+        },
+        deactivated: function () {
+            this.recorderInstance.stopBothVideoAndAudio(this.mediaStream);
+            this.mediaStream = null;
+        },
+        activated: function () {
+            if (!this.mediaStream) {
+                this.startCamera();
+            }
+        },
+        beforeDestroy: function () {
+            this.recorderInstance.stopBothVideoAndAudio(this.mediaStream);
+            this.mediaStream = null;
+        }
+    };
+</script>
+
+<style>
+    .capture-video-container {
+        position: relative;
+    }
+
+        .capture-video-container video {
+            background-color: #000;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+
+        .capture-video-container .video-capture__actions {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .capture-video-container .btn-action.btn-action--video {
+            height: 30px;
+            width: 30px;
+            border-radius: 15px;
+            border: 2px solid #000000;
+            outline: 2px solid #ffffff;
+        }
+
+        .capture-video-container .btn-action.btn-action--recording {
+            height: 30px;
+            width: 30px;
+            border-radius: 5px;
+            background-image: linear-gradient(#ffffff 0%, #b9b9b9 100%);
+        }
+    .capture-video-container .video-capture__timer {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        left: 0;
+        top: 0;
+    }
+        .capture-video-container .video-capture__timer div {
+            background-color: rgba(255, 255, 255, 0.5);
+            padding: 0.25rem 0.5rem;
+        }
+</style>

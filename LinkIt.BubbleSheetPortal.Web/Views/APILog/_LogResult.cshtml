@@ -1,0 +1,229 @@
+﻿<div class="block-border" style="margin-top: 2em" id="divAPILogResults">
+    <div class="block-content form">
+        <div class="clear-10">
+        </div>
+        <div class="no-margin last-child">
+            <table id="dataTable" class="datatable table no-margin" width="100%">
+                <thead>
+                    <tr>
+                        <th scope="col" style="width: 13px">
+                            <input type="checkbox" id="chkAllAPILogIds" />
+                        </th>
+                        <th scope="col" style="width: 110px">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            Request Date
+                        </th>
+                        <th scope="col" style="width: 100px">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            Request URL
+                        </th>
+                        <th scope="col" style="width: 105px;">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            APIName
+                        </th>
+                        <th scope="col" style="width: 125px">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            Response Code
+                        </th>
+                        <th scope="col" style="width: 130px">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            Response Status
+                        </th>
+                        <th scope="col" style="width: 150px">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            @LabelHelper.DistrictLabel
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="height: 60px;"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<style type="text/css">
+    .APILog {
+        vertical-align: 0px;
+        float: left;
+        margin-right: 5px;
+    }
+
+    #ui-datepicker-div {
+        display: none;
+    }
+
+    .table tbody tr:hover td,
+    .table tbody tr td {
+        word-break: break-all;
+    }
+</style>
+
+<script type="text/javascript">
+
+    function LoadAPILogs() {
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("LoadAPILog", "APILog")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "APIName", value: $('#selectAPI').val() },
+                    { name: "APIStatus", value: $('#selectStatus').val() },
+                    { name: "FromDate", value: $('#selectFromDate').val() },
+                    { name: "ToDate", value: $('#selectToDate').val() },
+                    { name: "DistrictId", value: $('#selectDistrict').val() }
+                );
+            },
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aLengthMenu: [10, 25, 50, 100],
+            aaSorting: [[1, "asc"]],
+            oLanguage: { "sEmptyTable": "No data available in table" },
+            aoColumns: [
+                { sType: 'int', sName: 'APILogID', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'RequestDate', bSearchable: false, bSortable: true },
+                { sType: 'string', sName: 'RequestURL', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'APIName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'ResponseCode', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'ResponseStatus', bSearchable: true, bSortable: true },
+                { sType: 'int', sName: 'DistrictId', bSearchable: false, bSortable: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBox(aData[0]));
+                $('td:eq(1)', nRow).html(displayDateWithFormat(aData[1],true));
+                $('td:eq(2)', nRow).html(CutRequestURL(aData[2]));
+                $('td:eq(6)', nRow).html(LoadDistrictName(aData[6]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#divAPILogResults'), 'Loading');
+                $('#filterSheets').attr("disabled", "disabled");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#filterSheets').removeAttr('disabled');
+                $('#chkAllAPILogIds').removeAttr('checked');
+                $('#divAPILogResults').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        $("#dataTable").data("options", options);
+        initializeDataTable($("#dataTable"));
+    }
+
+    $('#chkAllAPILogIds').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkAPILogID"][type=checkbox]').attr('checked', 'checked');
+            setDisabledButtons(false);
+        }
+        else {
+            $('INPUT[name="chkAPILogID"][type=checkbox]').removeAttr('checked');
+            setDisabledButtons(true);
+        }
+    });
+
+    function setDisabledButtons(isDisabled) {
+        if (isDisabled) {
+            $('#deleteSelected').attr('disabled', 'disabled');
+        }
+        else {
+            $('#deleteSelected').removeAttr('disabled');
+        }
+    }
+
+    $('INPUT[name="chkAPILogID"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkAPILogID"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllAPILogIds').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllAPILogIds').attr('checked', 'checked');
+            }
+            setDisabledButtons(false);
+        }
+        else {
+            $('#chkAllAPILogIds').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkAPILogID"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                setDisabledButtons(false);
+            }
+            else {
+                setDisabledButtons(true);
+            }
+        }
+    });
+
+    function GetAPILogIdSelected() {
+        var aPILogIds = '';
+        $('INPUT[name="chkAPILogID"][type=checkbox]:checked').each(function (i, e) {
+            aPILogIds += $(e).val() + ',';
+        });
+        return aPILogIds.substr(0, aPILogIds.length - 1);
+    }
+
+    function setCheckBox(apiLogId) {
+        var checkboxString = '<div style="width:45px; "> <input class="APILog" type="checkbox" name="chkAPILogID" value="' + apiLogId + '" />';
+
+        var href = 'javascript:RegisterOpenDialog(' + apiLogId + ');';
+        var viewIcon = '<img src="' + '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/document-text.png")' + '" width="16" height="16">';
+        var vExtractTestDetail = ' <a  class="actionIcon" title="APILog Detail" href="' + href + '">' + viewIcon + '</a> </div>';
+        return checkboxString + vExtractTestDetail;
+    }
+
+    function CustomFormatDate(strDate) {
+        //  data error, no space in AM or PM -> invalid datetime
+        var tmp = strDate.substring(0, strDate.length - 2);
+        tmp = tmp + ' ' + strDate.substring(strDate.length - 2);
+        var vFormatDate = new Date(tmp);
+        var vReturn = vFormatDate.format("mm/dd/yyyy h:MM:ss TT");
+        return vReturn;
+    }
+
+    function LoadDistrictName(districtId) {
+        return $("#selectDistrict option[value='" + districtId + "']").text();
+    }
+
+    function CutRequestURL(requestURL) {
+        var cutString = requestURL;
+        if (cutString.length > 50) {
+            cutString = cutString.substring(0, 50) + " ...";
+        }
+        return cutString;
+    }
+
+    function RegisterOpenDialog(apiLogId) {
+        var urlViewApiLogDetail = '@Url.Action("LoadAPILogDetail", "APILog")?APILogId=' + apiLogId;
+        $("<div></div>")
+                 .addClass("dialog")
+                 .attr("id", "ViewAPILogDetail")
+                 .appendTo("body")
+                 .dialog({
+                     title: "",
+                     close: function () { $(this).remove(); $("body .my-overlay").remove(); },
+                     open: function (event, ui) {
+                         //Create overlay for Jquery dialog
+                         $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:100%;height:' + $('body').height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                     },
+                     modal: false,
+                     width: 1000,
+                     resizable: false,
+                     position: { my: "center top", at: "center top", of: window }
+                 })
+                 .load(urlViewApiLogDetail, function () {
+                 });
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+</script>

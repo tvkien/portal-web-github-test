@@ -1,0 +1,169 @@
+@model LinkIt.BubbleSheetPortal.Models.School
+
+<p style="height: 5px"></p>
+<div class="no-margin last-child">
+    <table id="dataTableUserSchool" class="datatable table no-margin" width="100%">
+        <colgroup>
+            <col style="width: 1%">
+            <col style="width: 20%">
+            <col style="width: 20%">
+        </colgroup>
+        <thead>
+            <tr>
+                <th scope="col">
+                    Actions
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up">
+                        </a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Username
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up">
+                        </a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Role
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+
+<script type="text/javascript">
+    function setRoleName(roleId) {
+        switch (roleId) {
+            case '1':
+                return 'API';
+            case '2':
+                return 'Classroom Teacher';
+            case '3':
+                return '@LabelHelper.DistrictLabel Administrator';
+            case '4':
+                return 'System';
+            case '5':
+                return 'Publisher';
+            case '7':
+                return 'State Administrator';
+            case '8':
+                return 'School Administrator';
+            case '12':
+                return 'DistrictProspect';
+            case '13':
+                return 'LinkIt Admin';
+            case '14':
+                return 'SchoolProspect';
+            case '15':
+                return 'TeacherProspect';
+            case '16':
+                return 'PartnerProspect';
+            case '20':
+                return 'Director';
+            case '23':
+                return 'Regional Administrator';
+            case '24':
+                return 'Instructional Speciliast';
+            case '25':
+                return 'Advisor / Counselor';
+
+        }
+    }
+
+    $(function () {
+        var optionsUserSchool =
+        {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetUserBySchoolId_V2")?schoolId=@Model.Id',
+            bAutoWidth: true,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'UserSchoolId', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'UserName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'RoleName', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+                $('td:eq(2)', nRow).html(setRoleName(aData[2]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableUserSchool'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableUserSchool').unblock();
+                $('.with-tip').tip();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTableUserSchool_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTableUserSchool_filter').addClass('data-search');
+            }
+
+        };
+        $("#dataTableUserSchool").data("options", optionsUserSchool);
+        initializeDataTable($("#dataTableUserSchool"));
+    });
+
+    $('.UserSchoolId').live('click', function () {
+        var userSchoolId = $(this).attr('userSchoolId');
+        closeDialogComfirmation("Are you sure you want to remove this user from this school?", userSchoolId);
+    });
+
+    function setIconVisibility(userSchoolId) {
+        var addIcon = '<span class="fa-solid fa-circle-xmark icon-red"></span>';
+        var addUserString = '<a href="javascript:void(0)" title="Delete" userSchoolId="' + userSchoolId + '" class="with-tip UserSchoolId">' + addIcon + '</a>';
+        return addUserString;
+    }
+
+    function LoadUserSchool() {
+        ui.dataTableUserSchool.fnDraw();
+    }
+
+
+    function closeDialogComfirmation(message, userSchoolId) {
+        confirmMessageV2(
+            {
+                message: message,
+                cbYesBtnFuncName: 'HandleClassOKClick(' + userSchoolId + ')',
+                cbCancelBtnFuncName: 'HandleClassCancelClick()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'confirmCloseDialog'
+                    }
+                }
+            }
+        )
+    }
+
+    function HandleClassOKClick(userSchoolId) {
+        $.post('@Url.Action("RemoveUserSchool")', { userSchoolId: userSchoolId }, function (response) {
+            if (response == true) {
+                ui.dataTableUserSchool.fnDraw();
+                if (!$('#divListuserNotMatchSchoolContainer').is(':empty')) {
+                    LoadUserNotMatchSchool();
+                }
+                $(this).hide();
+                $("#confirmCloseDialog").dialog("close");
+            } else {
+                closeDialogComfirmation(response.message);
+            }
+        });
+    }
+
+    function HandleClassCancelClick() {
+        $("#confirmCloseDialog").dialog("close");
+    }
+</script>

@@ -1,0 +1,169 @@
+@using LinkIt.BubbleSheetPortal.Models.SGO
+@using StringExtensions = LinkIt.BubbleSheetPortal.Common.StringExtensions
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGO.SGOReportMasterViewModel
+<div class="sgoPrintBreakNewPage"></div>
+<table class="table table-guidance">
+    <tr>
+        <td class="u-size-185">
+            <strong>Student Growth Objectives</strong>
+        </td>
+    </tr>
+    <tr style="background: #fff">
+        <td class="u-size-185">
+            <div style="display: inline-block; width: 155px; vertical-align: top;">
+                <strong>Quantifiable Target:</strong>
+            </div>
+            <div style="display: inline-block;">
+                @if (Model.TargetScoreType == (int) SGOTargetScoreTypeEnum.AchieveOnPostAssessment)
+                {
+                    <span>
+                        #% of students will achieve a score of x on post assessment
+                    </span>
+                }else if (Model.TargetScoreType == (int) SGOTargetScoreTypeEnum.ImproveOnPostAssessment)
+                {
+                    <span>
+                        Based on the pre-assessment, #% of students will improve by x on post assessment
+                    </span>
+                }
+                else if (Model.TargetScoreType == (int)SGOTargetScoreTypeEnum.AchieveXofYOnPostAssessment)
+                {
+                    <span>
+                        #% of students will achieve x out of y on post assessment
+                    </span>
+                }
+                else if (Model.TargetScoreType == (int)SGOTargetScoreTypeEnum.ManualScoring)
+                {
+                    <span>
+                        Manual scoring method
+                    </span>
+                }
+                <br/>
+                @if(Model.PreAssessmentDataPoints.Any(x => x.ImprovementBasedDataPoint == 1)){
+                    <span class="u-underline">Pre-Assessment Datapoint:</span> <span>@Model.PreAssessmentDataPoints.FirstOrDefault(x => x.ImprovementBasedDataPoint == 1).Name</span>
+                }                
+            </div>
+        </td>
+    </tr>
+</table>
+
+<table class="table table-scoring-plan u-text-center">
+    <thead>
+    <tr>
+        <td style="width: 140px;"><strong>Preparedness Group</strong></td>
+        <td><strong>Number of students in each group</strong></td>
+        <td><strong>
+            @if (Model.TargetScoreType == (int)SGOTargetScoreTypeEnum.ManualScoring)
+            {
+                <span>
+                    Manual Scoring Target
+                </span>
+            }
+            else
+            {
+                <span>
+                    Target Score (Minimum Expectation)
+                </span>                
+            }
+        </strong></td>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model.SgoGroups)
+    {
+        <tr>
+            <td>@item.Order - @item.Name</td>
+            <td>@item.StudentNumberInGroup</td>
+            <td>
+                @if (Model.TargetScoreType == (int)SGOTargetScoreTypeEnum.ManualScoring)
+                {
+                    <span>@item.TargetScoreCustom</span>
+                }
+                else
+                {
+                    <span>
+                        &ge; @string.Format("{0:0.###}", item.TargetScore)
+                    </span>                    
+                }
+            </td>
+        </tr>
+    }
+    @if (!Model.SgoGroups.Any())
+    {
+        <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<br/>
+<table class="table table-guidance">
+    <tr>
+        <td class="u-size-185">
+            <strong>Scoring Plan:</strong>
+        </td>
+    </tr>    
+</table>
+
+<table class="table table-scoring-plan u-text-center">
+    <thead>
+        <tr>
+            <td style="width: 140px;"><strong>Preparedness Group</strong></td>
+            <td><strong>Target Score</strong></td>
+            
+            @foreach (var item in Model.SgoAttainmentGoals)
+            {
+                <td><strong>@item.Name (@item.Order) (%)</strong></td>                
+            }            
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var sgoGroup in Model.SgoGroups)
+        {
+            <tr>
+                <td>
+                    @sgoGroup.Order - @Html.Raw(sgoGroup.Name)
+                </td>
+                <td>
+                    @if (Model.TargetScoreType == (int)SGOTargetScoreTypeEnum.ManualScoring)
+                    {
+                        <b>@sgoGroup.TargetScoreCustom</b>
+                    }
+                    else if (sgoGroup.TargetScore.HasValue)
+                    {
+                        <b>&ge; @string.Format("{0:0.###}", sgoGroup.TargetScore)</b>
+                    }
+                    <b id="idTargetScoreInfor-@sgoGroup.SGOGroupID"></b>
+                </td>
+                @foreach (var sgoAttainmentGoal in Model.SgoAttainmentGoals)
+                {
+                    <td>
+                        @{
+                            var sgoAttainmentGroup = Model.SgoAttainmentGroups.FirstOrDefault(x => x.SGOGroupId == sgoGroup.SGOGroupID && x.SGOAttainmentGoalId == sgoAttainmentGoal.SGOAttainmentGoalId);
+                        }
+
+                        @if (sgoAttainmentGroup != null)
+                        {
+                            <span>@StringExtensions.ParseSgoComparisonTypeToHtmlCharacter(sgoAttainmentGoal.ComparisonType) @sgoAttainmentGroup.GoalValue (@Math.Ceiling(((1.0 * sgoAttainmentGroup.GoalValue.GetValueOrDefault() * sgoGroup.StudentNumberInGroup) / 100))/@sgoGroup.StudentNumberInGroup)</span>
+                        }
+                    </td>
+                }
+            </tr>
+        }
+        @if (!Model.SgoGroups.Any())
+        {
+            <tr>
+                <td></td>
+                <td></td>
+                @foreach (var item in Model.SgoAttainmentGoals)
+                {
+                    <td></td>
+                }
+            </tr>
+        }
+    <tr>
+    </tr>
+    </tbody>
+</table>

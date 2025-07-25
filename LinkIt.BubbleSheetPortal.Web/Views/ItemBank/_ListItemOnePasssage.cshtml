@@ -1,0 +1,495 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.ShowPassageFormViewModel
+<style type="text/css">
+    #dataTableItemOnePassage td {
+        font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook !important;
+        font-size: 12px;
+    }
+</style>
+<style>
+    #dataTableItemOnePassage tbody tr {
+        height: 100% !important; /* Fix for IE9 */
+    }
+</style>
+<style>
+    /* No data available in table */
+    #dataTableItemOnePassage .dataTables_empty div {
+        width: 455px !important;
+    }
+
+    .scrollItemDataTableItemOnePassage thead,
+    .scrollItemDataTableItemOnePassage tbody {
+        display: block;
+    }
+
+    .scrollItemDataTableItemOnePassage tbody {
+        height: 289px;
+        overflow: auto;
+        overflow-x: hidden;
+    }
+
+    .scrollItemDataTableItemOnePassage {
+        width: 416px !important;
+    }
+
+    .scrollItemDataTableItemOnePassage tbody td {
+        /*word-break: break-all;*/
+        word-wrap: break-word;
+    }
+
+    .scrollItemDataTableItemOnePassage tbody td:nth-of-type(1) .divContainerStyle {
+        width: 17px;
+    }
+
+    .scrollItemDataTableItemOnePassage tbody td:nth-of-type(2) .divContainerStyle {
+        width: 354px;
+    }
+
+    .scrollItemDataTableItemOnePassage td img {
+        padding-left: 0px;
+        padding-right: 0px;
+    }
+
+    .noscrollItemDataTableItemOnePassage tbody td:nth-of-type(2) .divContainerStyle {
+        width: 398px;
+    }
+
+    .divContainerStyle p {
+        line-height: 1.57143em;
+    }
+
+    #divdataTableItemOnePassage {
+        margin-top: -22px !important;
+        height: 291px !important;
+    }
+</style>
+<div class="block-content form" style="height:425px;">
+    <div class="toggle" style="padding-top: 0px; margin-top: -55px">
+        <h1 style="margin-top: -5px">Associated Items</h1>
+        <button id="btnAddItemsOnePassageToItemSet" type="button" style="margin-left: 165px;margin-right: 2px;height: 35px;margin-top: 5px" disabled="disabled">Add Items to Item Set</button>
+    </div>
+    <div class="no-margin last-child" style="height:425px;overflow: hidden;padding-top: 38px;">
+        <table id="dataTableItemOnePassage" class="datatable table scrollItemDataTableItemOnePassage" style="margin-top:-22px">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 10px">
+                        <input type="checkbox" id="chkAllItemItemOnePassage" />
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Content
+                    </th>
+                    <th scope="col" style="display: none"></th><!--Tooltip-->
+                    <th scope="col" style="display: none"></th><!--Tooltip-->
+                    <th scope="col" style="display: none"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+<script type="text/javascript">
+    
+    $(document).ready(function () {
+
+        var options1 = {
+            bServerSide: true,
+            bDestroy: true,
+            bFilter:false,
+            sAjaxSource: getAjaxSourceItemOnePassage(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox 
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTI3pItemID', bSearchable: false, bSortable: false,sWidth:"10px" },
+                { sType: 'string', sName: 'Name', bSearchable: false, bSortable: false,sWidth:"400px" },
+                { sType: 'string', sName: 'ToolTip', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'int', sName: 'MaxItemTooltipLength', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'From3pUpload', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                //$('td:eq(0)', nRow).html(setIconVisibilityItemOnePassage(aData[0]));
+                $('td:eq(0)', nRow).html(setCheckBoxItemOnePassage(aData[0]));
+                if (aData[4] == 'True' || aData[4] == 'true') {
+                    $('td:eq(1)', nRow).html(parseXmlContentItemOnePassageProgressCertica(aData[1]));
+                    $('td:eq(1)', nRow).attr("onclick", 'showItemOnePassagePopupProgress(' + aData[0] + ',1)');
+                } else {
+                    $('td:eq(1)', nRow).html(parseXmlContentItemOnePassage(aData[1]));
+                    $('td:eq(1)', nRow).attr("onclick", 'showItemOnePassagePopup(' + aData[0] + ',1)');
+                }
+                
+
+                $('td:eq(1)', nRow).addClass('with-tip');
+                $('td:eq(1)', nRow).bind({
+                    mouseenter: function () {
+                        displayItemTooltipItemOnePassage($(this), aData[2],aData[3]);
+                    },
+                    mouseleave: function () {
+                        $(this).removeClass('with-tip');
+                        $('#tips div:last-child').html('');
+                    }
+                });
+                $('td:eq(1)', nRow).addClass('cursor-pointer');
+                $('td:eq(1)', nRow).attr("onclick", 'showItemOnePassagePopup(' + aData[0] + ',1)');
+                addWordBreakToTableCellItem($('td:eq(1)', nRow), 35, aData[1]);
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableItemOnePassage'), 'Loading');
+                return true;
+            },
+            fnDrawCallback: function () {
+                firstLoadListItemsFromLibrary = false;
+                LoadImages('#dataTableItemOnePassage');
+                $('.with-tip').tip();
+                $('#dataTableItemOnePassage').unblock();
+                formatTableForAddingVertialScrollBar('dataTableItemOnePassage', 'scrollItemDataTableItemOnePassage', 'noscrollItemDataTableItemOnePassage', 'scrollItemDataTableItemOnePassageIE9', 'noscrollItemDataTableItemOnePassageIE9');
+            }
+        };
+        $("#dataTableItemOnePassage").data("options", options1);
+        
+        initializeDataTable($("#dataTableItemOnePassage"));
+
+    });
+    
+    function getAjaxSourceItemOnePassage() {
+        $('#chkAllItemItemOnePassage').removeAttr('checked');
+        ShowBlock($('#dataTableItemOnePassage'), "Loading");
+
+        var matchItemXml = '@Model.ShownItemXml';
+
+        return '@Url.Action("LoadItemOnePassage")?qti3pPassageId=@Model.Qti3pPassageID' + '&matchItemXml=' + encodeParameter(matchItemXml);
+    }
+
+    function parseXmlContentItemOnePassage(xmlContent) {
+        if (xmlContent != '') {
+            
+            //return $(xmlContent).find('itemBody').find('span[class="class1"]').find("b").eq(0).text();
+            var divTitle = '';
+            var title = '';
+            var span = $(xmlContent).find('itemBody span').first();
+            var b = $(xmlContent).find("itemBody span b").first();//sometime there's a <b> inside span
+            if (b.length > 0) {
+                title = b.text();//LNKT-5661
+                if (title == null) {
+                    title = '';
+                }
+                if (title.length > 50) {
+                    title = title.substring(0, 47);
+                    title += '...';
+                }
+
+                b.text(title);
+                $(span).html($(b).outerHTML());
+            } else {
+                title = span.text();//LNKT-5661
+                if (title == null) {
+                    title = '';
+                }
+                if (title.length > 50) {
+                    title = title.substring(0, 47);
+                    title += '...';
+                }
+
+                span.text(title);
+            }
+            divTitle = '<div style="max-height:60px; overflow:hidden;max-width:346px">' + $(span).outerHTML() + '</div>';///LNKT-5785
+            if (title == null || title.length == 0) {//un common xml construction, need to parse for special casees
+                //<div class="mainBody" styleName="mainBody"><div><p><span/></p></div><p><span styleName="bold class1" class="bold class1">When is the </span><span styleName="bold class1 class2" class="bold class1 class2">best time to make applesauce?</span></p></div>
+                
+                span = $(xmlContent).find('itemBody span[class="bold class1"]').first();
+                divTitle = '<div style="max-height:100px; overflow:hidden;max-width:237px">' + $(span).outerHTML() + '</div>';///LNKT-5785
+            }
+            if (title == null || title.trim().length == 0) {//sometime there's no class mainbody or mainbody
+                title = $(xmlContent).find('itemBody').first().html();
+                if (title == null || title.trim().length == 0) {
+                    title = $(xmlContent).find('itembody').first().html();
+                }
+                if (title == null) {
+                    title = '';
+                }
+                divTitle = '<div style="max-height:100px; overflow:hidden;max-width:237px">' + title + '</div>';///LNKT-5785
+            }
+            return divTitle;
+        }
+        return '';
+    }
+    function parseXmlContentItemOnePassageProgressCertica(xmlContent) {
+        var title = '';
+        xmlContent = correctInlineChoice(xmlContent);
+        $(xmlContent).find('.itemBody, itemBody, itembody').each(function () {
+            var itemBody = $(this);
+            itemBody.find("videolinkit").replaceWith(function () {
+                return $('');
+            });
+
+            if ($(xmlContent).find("responsedeclaration").attr("partialgrading") == "1") {
+                itemBody.find("sourcetext").each(function () {
+                    if ($(this).attr("pointvalue") > 0) {
+                        $(this).addClass("marker-correct");
+                    }
+                });
+            } else {
+                $(xmlContent).find("correctResponse").each(function () {
+                    var id = $(this).attr("identifier");
+                    itemBody.find("sourcetext[identifier=\"" + id + "\"]").addClass("marker-correct");
+                });
+            }
+
+            title = itemBody.html();
+        });
+
+        //title = title.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+
+        var divTitle = '<div style="max-height:60px; overflow:hidden;max-width:346px">' + title + '</div>';
+
+        return divTitle;
+    }
+    function setIconVisibilityItemOnePassage(qti3pItemId) {
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a href="javascript:void(0)" onclick="showItemOnePassagePopup('+qti3pItemId + ',1)" title="Edit Item" qti3pItemId="' + qti3pItemId + '" class="with-tip EditQti3pItem"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        
+        var addToItemSet = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle.png")';
+        var addToItemSetString = '<a href="javascript:void(0)" title="Add To Item Set" qti3pItemId="' + qti3pItemId + '" class="with-tip addToItemSet1" onclick="AddItemPassageToItemSet(this);"><img src="' + addToItemSet + '" width="16" height="16"></a>';
+        return editString+ addToItemSetString;
+    }
+    function setCheckBoxItemOnePassage(qtiItem3pId) {
+        var checkboxString = '<input type="checkbox" name="chkItemOnePassage" value="' + qtiItem3pId + '"  />';
+
+        return checkboxString;
+    }
+    $('#btnAddItemsOnePassageToItemSet').die('click');
+    $('#btnAddItemsOnePassageToItemSet').live("click", function (e) {
+        var selectedItemId = getSelectedItemsOnePassage();
+        $('#btnAddItemsOnePassageToItemSet').attr('disabled', 'disabled');
+        ShowBlock($("#dataTableItemOnePassage"), "Adding");
+
+        $.post('@Url.Action("AddQTI3ToItemSetMany", "ItemBank")', { qti3pItemIdString: selectedItemId, qtiGroupId: $("#hiddenQIItemGroupID").val() }, function (response) {
+            $("#dataTableItemOnePassage").unblock();
+            $('#btnAddItemsOnePassageToItemSet').removeAttr('disabled');
+            if (response.Success == 'Success') {
+                uncheckAllSelectedqQtiItemsOnePassage();
+                //href.css({ 'display': 'none' });
+                if ($('#qtiItemDataTablePopup').length > 0) {
+                    ui.qtiItemDataTablePopup.fnDraw();
+                }
+            } else {
+                alert(response.message || response.errorMessage);
+            }
+            uncheckAllSelectedqQtiItemsOnePassage();
+        });
+
+    });
+    function AddItemPassageToItemSet(control) {
+        ShowBlock($("#dataTableItemOnePassage"), "Adding");
+        var id = $(control).attr("qti3pItemId");
+        var href = $(control);
+        $.get('@Url.Action("AddQTI3ToItemSet","ItemBank")', { qti3pItemId: id, qtiGroupId: $("#hiddenQIItemGroupID").val() }, function (response) {
+            $("#dataTableItemOnePassage").unblock();
+            if (response.Success == 'Success') {
+                //href.css({ 'display': 'none' });
+                if ($('#qtiItemDataTablePopup').length > 0) {
+                    ui.qtiItemDataTablePopup.fnDraw();
+                }
+            } else {
+                alert(response.errorMessage);
+            }
+
+        });
+    }
+    
+    function ReloadItemOnePassage() {
+        $("#dataTableItemOnePassage").dataTable().fnReloadAjax(getAjaxSourceItemOnePassage());
+        //ui.dataTableItemOnePassage.fnReloadAjax(getAjaxSourceItemOnePassage());
+    }
+    
+    function showItemOnePassagePopup(qti3pItemId, showPassage) {
+        //Show popup
+        ShowBlock($('#dataTableItemOnePassage'), "Opening Item");
+        var worker = $('<div />');
+        worker
+            .addClass("dialog EditQti3pItemPopUpDialogCSS")
+            .attr("id", "editQti3pItemDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowEditQti3pItemItem")\?qti3pItemId=' + qti3pItemId + '&showPassage=' + showPassage, function () {
+                worker.dialog({
+                    title: $(this).attr("Standard"),
+                    open: function () {
+                        //a new overlay will be generated when opening an dialog
+                        //set zindex of new overlay to make it cover Filter Item From Library Popup
+                        var z_index = $("#ShowPassageItem3pFormPopup").parent().css('z-index');
+                        $('.ui-widget-overlay:last').css('z-index', parseInt(z_index) + 1);
+                        $("#editQtiItemDialog").parent().css('z-index', parseInt(z_index) + 2);
+                        $("#editQti3pItemDialog").prev().css('top', '30px');
+                        $('.ui-widget-overlay:last').height(2000);
+                        $('#dataTableItemOnePassage').unblock();
+                        AdjustQti3pItemDetail();//declared in _Qti3pItemDetail.cshtml
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+                    },
+                    modal: false,
+                    width: 420,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+    function showItemOnePassagePopupProgress(qti3pItemId, showPassage) {
+        @*$.ajax({
+            url: '@Url.Action("CheckQtiItemExists", "ItemBank")',
+            data: { qtiItemId: qtiItemId },
+            type: 'get',
+            cache: false
+        }).done(function (response) {
+            if (response.Exists == 'False') {
+                alert(response.errorMessage);
+                return;
+            } else {*@
+                //Show popup
+                ShowBlock($('#dataTableItemOnePassageProgress'), "Opening Item");
+                var worker = $('<div />');
+                worker
+                    .addClass("dialog EditQtiItemPopUpDialogCSS")
+                    .attr("id", "editQtiItemDialog")
+                    .appendTo("body")
+                    .load('@Url.Action("ShowEditQtiItemItem","ItemBank")\?qtiItemId=0' + '&showPassage=' + showPassage + '&qti3pItemIdUploaded=' + qti3pItemId, function () {
+                        worker.dialog({
+                            title: $(this).attr("Standard"),
+                            open: function () {
+                                //a new overlay will be generated when opening an dialog
+                                //set zindex of new overlay to make it cover Filter Item From Library Popup
+                                var z_index = $("#addNewItemFromLibraryPopup").parent().css('z-index');
+                                $('.ui-widget-overlay:last').css('z-index', parseInt(z_index) + 1);
+                                $("#editQtiItemDialog").parent().css('z-index', parseInt(z_index) + 2);
+                                $("#editQtiItemDialog").prev().css('top', '30px');
+                                $('.ui-widget-overlay:last').height(2000);
+                                $('#dataTableItemOnePassageProgress').unblock();
+                                AdjustQtiItemDetail();//declared in _QtiItemDetail.cshtml
+
+                                var qtiItemHTML = $('#divQtiItemDetail').html();
+                                qtiItemHTML = qtiItemHTML.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+                                $('#divQtiItemDetail').html(qtiItemHTML);
+
+                                $('#divQtiItemDetail').find('video').trigger('play');
+                                //loadContentNumberLineHotspot('#divQtiItemDetail');
+                                //loadContentImageHotSpot('#divQtiItemDetail');
+                                loadContentDragAndDrop('#divQtiItemDetail');
+
+                                //Calculator width for sequence horizontal
+                                calculatorSequenceWidth("#divQtiItemDetail partialsequence");
+                            },
+                            close: function () {
+                                $('.ui-widget-overlay:last').remove();
+                                $(this).remove();
+                                $('#tips').html('');
+                            },
+                            modal: false,
+                            width: 480,
+                            resizable: false
+                        });
+                    });
+                showModalDialogBG();
+                //    }
+                //}).error(function (request) {
+                //});
+
+            }
+    function displayItemTooltipItemOnePassage(e, data, maxItemTooltipLength) {
+        if (data == null) {
+            data = '';
+        }
+        var width = '100px'; //default
+        if (maxItemTooltipLength <= 300) {
+            width = '300px';
+        }
+        else if (data.length <= 400) {
+            width = '400px';
+        }
+        else {
+            width = '500px';
+        }
+
+        $(e).attr('title', '<p style="text-align:left;width:' + width + ';white-space: normal;word-break: break-all">' + data.split('|').join('<br />') + '</p>');
+    }
+</script>
+<!-- script for checkbox all-->
+<script type="text/javascript">
+    $('#chkAllItemItemOnePassage').die('click');
+    $('#chkAllItemItemOnePassage').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkItemOnePassage"][type=checkbox]').attr('checked', 'checked');
+            $('#btnAddItemsOnePassageToItemSet').removeAttr('disabled');
+        }
+        else {
+            $('INPUT[name="chkItemOnePassage"][type=checkbox]').removeAttr('checked');
+            $('#btnAddItemsOnePassageToItemSet').attr('disabled', 'disabled');
+        }
+    });
+
+    $('INPUT[name="chkItemOnePassage"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            $('#btnAddItemsOnePassageToItemSet').removeAttr('disabled');
+            var checkboxes = $('INPUT[name="chkItemOnePassage"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllItemItemOnePassage').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllItemItemOnePassage').attr('checked', 'checked');
+            }
+        }
+        else {
+            $('#chkAllItemItemOnePassage').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkItemOnePassage"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+            }
+            else {
+                $('#btnAddItemsOnePassageToItemSet').attr('disabled', 'disabled');
+            }
+        }
+    });
+
+    function getSelectedItemsOnePassage() {
+        var Ids = '';
+        $('INPUT[name="chkItemOnePassage"][type=checkbox]:checked').each(function (i, e) {
+            Ids += $(e).val() + ',';
+        });
+        return Ids.substr(0, Ids.length - 1);
+    }
+    function uncheckAllSelectedqQtiItemsOnePassage() {
+        $('INPUT[name="chkItemOnePassage"][type=checkbox]').removeAttr('checked');
+        $('#btnAddItemsOnePassageToItemSet').attr('disabled', 'disabled');
+    }
+</script>
+<script>
+   
+</script>

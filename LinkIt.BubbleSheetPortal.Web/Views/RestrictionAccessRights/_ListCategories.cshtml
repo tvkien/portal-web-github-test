@@ -1,0 +1,139 @@
+
+<div id="list-Category">
+    <article class="container_12" style="margin-top:2em">
+        <section class="grid-full-with">
+            <div class="block-border">
+                <div class="block-content form" id="divOnTopCategory">
+                    <h1>
+                        Filter Categories
+                        <a href="javascript:void(0)" class="disabled bulk-edit-restrictions-btn">
+                            Edit Restrictions
+                        </a>
+                    </h1>
+                    <p style="height: 5px"></p>
+                    <table id="dataTableCategory" width="100%" cellspacing="0" class="datatable table no-margin">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width:0px;" class="text-center">
+                                    <input type="checkbox" id="chkAllCategory" />
+                                </th>
+                                <th scope="col"></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Category
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Teacher Restriction
+                                </th>
+
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    School Admin Restriction
+                                </th>
+                                <th scope="col" style="width: 55px">XLITeacherModuleRoleId</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </article>
+</div>
+<script>
+    $(function () {
+        LoadCategoryToTable();
+        $('body').on('change', '#chkAllCategory', function () {
+            $('input[name=chkCategory]').attr('checked', this.checked);
+            toggleDisableEditRestrictions();
+        });
+        $('body').on('change', 'input[name=chkCategory]', function () {
+            var isAllChecked = !$('input[name=chkCategory]:not(:checked)').length;
+            $('#chkAllCategory').attr('checked', isAllChecked);
+            toggleDisableEditRestrictions();
+        });
+
+        function toggleDisableEditRestrictions() {
+            if ($('input[name=chkCategory]:checked').length) {
+                $('#list-Category .bulk-edit-restrictions-btn').removeClass('disabled');
+            } else {
+                $('#list-Category .bulk-edit-restrictions-btn').addClass('disabled');
+            }
+        }
+        function LoadCategoryToTable() {
+            var options = {
+                bServerSide: true,
+                sAjaxSource: '@Url.Action("GetRestrictionCategories")',
+                bStateSave: false,
+                bAutoWidth: false,
+                iDisplayLength: 10,
+                aaSorting: [[2, "asc"]],
+                oLanguage: { "sZeroRecords": "No results meet your search criteria. Try changing your date range or other filters and search again." },
+                fnServerParams: function (aoData) {
+                    aoData.push({ name: "districtId", value: districtId });
+                },
+                oSearch: {
+                    sSearch: $("#dataTableCategory_filter input").val()
+                },
+                aoColumns: [
+                    { sType: 'integer', sName: 'CategoryId', bSearchable: false, bSortable: false, sWidth: "0px" },
+                    { sType: 'integer', sName: 'XLITeacherModuleRoleId', bSearchable: false, bSortable: false, sWidth: "0px" },
+                    { sType: 'string', sName: 'CategoryName', bSearchable: true, bSortable: true, sWidth: "100px" },
+                    { sType: 'string', sName: 'TeacherRestriction', bSearchable: true, bSortable: true, sWidth: "100px" },
+                    { sType: 'string', sName: 'SchoolAdminRestriction',bSearchable: true, bSortable: true, sWidth: "100px" },
+                    { sType: 'integer', sName: 'XLISchoolAdminModuleRoleId', bSearchable: false, bSortable: false, bVisible: false },
+                ],
+                fnRowCallback: function (nRow, aData) {
+                    var data = {
+                        CategoryId: aData[0],
+                        XLITeacherModuleRoleId: aData[1],
+                        CategoryName: encodeURI(aData[2]),
+                        TeacherRestrictAccess: aData[3],
+                        SchoolAdminRestrictAccess: aData[4],
+                        XLISchoolAdminModuleRoleId: aData[5]
+                    };
+                    $('td:eq(0)', nRow).html(setIconVisibility(data));
+                    $('td:eq(1)', nRow).html(setIconVisibilityEdit(data));
+                    return nRow;
+                },
+                fnPreDrawCallback: function () {
+                    ShowBlock($('#dataTableCategory'), "Loading");
+                    $('input[name=chkCategory]').attr('checked', false);
+                    $('#chkAllCategory').attr('checked', false);
+                    $('#list-Category .bulk-edit-restrictions-btn').addClass('disabled');
+                    return true;
+                },
+                fnDrawCallback: function () {
+                    $('#dataTableCategory').unblock();
+                    $('.with-tip').tip();
+                }
+            };
+            $("#dataTableCategory").data("options", options);
+        }
+
+        function setIconVisibility(data) {
+            var checkboxString = '<div class="text-center"><input type="checkbox" name="chkCategory" value="' + data.CategoryId + '" restrictAccessName="category" categoryId ="' + data.CategoryId + '" xLITeacherModuleRoleId = "' + data.XLITeacherModuleRoleId + '" teacherRestrictAccess="' + data.TeacherRestrictAccess + '" xLISchoolAdminModuleRoleId ="' + data.XLISchoolAdminModuleRoleId + '" schoolAdminRestrictAccess="' + data.SchoolAdminRestrictAccess + '" categoryName="' + data.CategoryName + '"/></div>';
+            return checkboxString;
+        }
+
+        function setIconVisibilityEdit(data) {
+            var editIcon = '<span class="icon icon-edit-pencil" style="padding:10px;"></span>';
+            var editString = '<div class="text-center"><a href="javascript:void(0)" title="Edit" class="editRestrictAccess" restrictAccessName="category" categoryId ="' + data.CategoryId + '" xLITeacherModuleRoleId = "' + data.XLITeacherModuleRoleId + '" teacherRestrictAccess="' + data.TeacherRestrictAccess + '" xLISchoolAdminModuleRoleId ="' + data.XLISchoolAdminModuleRoleId + '" schoolAdminRestrictAccess="' + data.SchoolAdminRestrictAccess + '" categoryName="' + data.CategoryName + '">' + editIcon + '</a></div>';
+            return editString;
+        }
+    })
+</script>

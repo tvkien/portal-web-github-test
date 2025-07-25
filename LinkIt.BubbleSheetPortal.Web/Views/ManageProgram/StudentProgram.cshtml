@@ -1,0 +1,471 @@
+﻿<style>
+    .program-title {
+        font-family: "Trebuchet MS, Lucida Sans Unicode, Lucida Sans, Arial, Helvetica, sans-serif";
+        font-size: 22px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        margin-left: auto;
+        margin-right: auto;
+        padding-left: 10px;
+    }
+
+    .btn-deassign-student {
+        height: 36px;
+        position: absolute;
+        top: -.65em;
+        left: 25em;
+    }
+</style>
+
+<article style="width: 100%">
+    <section>
+        <div class="block-border">
+            <div class="block-content form">
+                <div id="selectFilters" style="margin-bottom: 30px;">
+                    <div class="block-content form student-filter">
+                        <h1>Filter Students - @ViewBag.ProgramName</h1>
+                        <fieldset>
+                            <div>
+                                <div id="AssignStudentNotifications"></div>
+                            </div>
+                            <div class="columns">
+                                <div class="colx2-left">
+                                    <p>
+                                        <label>Last Name</label>
+                                        <input type="text" id="LastName" class="full-width" />
+
+                                    </p>
+                                    <p>
+                                        <label>First Name</label>
+                                        <input type="text" id="FirstName" class="full-width" />
+                                    </p>
+                                </div>
+                                <div class="colx2-right">
+                                    <p>
+                                        <label>Student local code</label>
+                                        <input type="text" id="StudentCode" class="full-width" />
+                                    </p>
+                                    <p>
+                                    </p>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <button id="filterSheets" class="float-right" type="button" onclick="searchStudentProgram()">Apply Filters</button>
+                        <button id="clearFilter" class="float-right grey" type="button" style="margin-right: 5px;" onclick="clearFilter()">Clear Filter</button>
+                        <div class="clear"></div>
+                    </div>
+                </div>
+                <div style="clear: both; height: 20px"></div>
+                <div id="divLessons">
+                    <div class="block-content form" id="divOnTop">
+                        <h1>
+                            Students
+                            <a href="javascript:void(0)" onclick="showAssignStudentDialog()" id="hrefAssignStudents">
+                                <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                                Assign new students
+                            </a>
+                            <div class="clearfix"></div>
+                        </h1>
+                        <button id="btnDeassignStudents" class="btn-deassign-student" type="button" disabled="disabled">DEASSIGN STUDENTS</button>
+                        <p style="height: 11px"></p>
+                        <div class="no-margin last-child">
+                            <table id="studentProgramDataTable" class="datatable table no-margin" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Select<input type="checkbox" id="chkAllStudent" /></th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Last Name
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            First Name
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Code
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="height: 60px;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div style="clear: both"></div>
+                    <div class="no-margin last-child" style="padding-left: 17px">
+                        <button id="btnCloseUserClick" type="button" class="grey classProgramButton" data-dialog="close" onclick="closeDialogStudentProgram()">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<script type="text/javascript">
+    function LoadStudentToTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            bProcessing: false,
+            sAjaxSource: getAjaxSearchStudentProgram(),
+            cache: false,
+            sServerMethod: "POST",
+            fnServerParams: function (aoData) {
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        if (item.value == null) {
+                            item.value = '';
+                        }
+
+
+                        //encode search box, when user input text like <a>abc </a> will issue error
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''");
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+
+                        break; //only searchbox
+                    }
+                }
+            },
+            iDisplayLength: 25,
+            aaSorting: [[1, "asc"]],
+            oLanguage: { "sEmptyTable": "No results found" },
+            aoColumns: [
+                { sType: 'int', sName: 'StudentProgramId', bSearchable: true, bSortable: false, bVisible: true, sWidth: '25px' },
+                { sType: 'string', sName: 'LastName', bSearchable: true, bSortable: true, bVisible: true, sWidth: '400px' },
+                { sType: 'string', sName: 'FirstName', bSearchable: true, bSortable: true, bVisible: true, sWidth: '300px' },
+                { sType: 'string', sName: 'StudentCode', bSearchable: true, bSortable: true, bVisible: true, sWidth: '120px' }
+
+
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityStudentProgram(aData[0]));
+                $('td:eq(1)', nRow).html($('<div/>').text(aData[1]).html());//encode html
+                $('td:eq(2)', nRow).html($('<div/>').text(aData[2]).html());//encode html
+                $('td:eq(3)', nRow).html($('<div/>').text(aData[3]).html());//encode html
+
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                $('#filterSheets').attr("disabled", "disabled");
+                ShowBlock($('#studentProgramDataTable'), "Loading");
+
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#divLessons').unblock();
+                $('#filterSheets').removeAttr("disabled");
+                $('#studentProgramDataTable').unblock();
+                $('#studentProgramDataTable').dataTable().fnSetFilteringDelay(500);
+
+                $('#chkAllStudent').removeAttr('checked');
+                var checkedboxes = $('INPUT[name="chkStudent"][type=checkbox]:checked');
+
+                if (checkedboxes.length > 0) {
+                    $('#btnDeassignStudents').prop("disabled", false);
+                    if ($('INPUT[name="chkStudent"][type=checkbox]').length == checkedboxes.length) {
+                        $('#chkAllStudent').attr('checked', 'checked');
+                    }
+                }
+                else {
+                    $('#btnDeassignStudents').prop("disabled", true);
+                }
+
+                return true;
+
+            },
+            fnInitComplete: function () {
+
+            }
+        };
+
+        $("#studentProgramDataTable").data("options", options);
+    }
+    function getAjaxSearchStudentProgram() {
+        var studentCode = $('#StudentCode').val();
+        studentCode = encodeURIComponent(htmlEncode(studentCode));
+        var firstName = $('#FirstName').val();
+        firstName = encodeURIComponent(htmlEncode(firstName));
+        var lastName = $('#LastName').val();
+        lastName = encodeURIComponent(htmlEncode(lastName));
+
+        var url = '@Url.Action("GetStudentsOfProgram")?programId=@ViewBag.ProgramId' + '&studentCode=' + studentCode + '&firstName=' + firstName + '&lastName=' + lastName;
+        return url;
+    }
+    function setIconVisibilityStudentProgram(studentId) {
+        var checkboxString = '<input type="checkbox" name="chkStudent" value="' + studentId + '"  />';
+        return checkboxString;
+    }
+    function searchStudentProgram() {
+        ui.studentProgramDataTable.fnReloadAjax(getAjaxSearchStudentProgram());
+    }
+
+    function clearFilter() {
+        $('.student-filter input').val('');
+    }
+
+
+    function getSelectedStudentIds() {
+        var studentIds = '';
+        $('INPUT[name="chkStudent"][type=checkbox]:checked').each(function (i, e) {
+            studentIds += $(e).val() + ',';
+        });
+        return studentIds.substr(0, studentIds.length - 1);
+    }
+
+
+
+    var isOpenAssignStudentDialog = false;
+
+    function showAssignStudentDialog() {
+        if (@ViewBag.ProgramId == 0) {
+            CustomAlert('This program has been deleted by someone already.');
+            return;
+        }
+        //check existing
+        var url = '@Url.Action("CheckProgramExisting", "ManageProgram")?programId=@ViewBag.ProgramId';
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function(response) {
+                if (response.IsExisting) {
+                    url = '@Url.Action("ShowAssignStudentDialog", "ManageProgram")?programId=@ViewBag.ProgramId';
+                    if (isOpenAssignStudentDialog == true) {
+                        return;
+                    }
+                    isOpenAssignStudentDialog = true;
+                    $.ajax(
+                        {
+                            url: url,
+                            cache: false
+                        })
+                        .done(function(html) {
+                            
+                            $("#divOnTop").append('<div id="AssignStudentDialog" class="dialog"></div>');
+                            $("#AssignStudentDialog").append(html);
+                            $('#AssignStudentDialog').dialog({
+                                title: "",
+                                open: function() {
+									//Create overlay for popup
+                                    $("body").append('<div class="my-overlay" style="z-index: ' + ($('.ui-dialog').last().css("z-index") - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                                },
+                                beforeclose: function() {
+                                    return true;
+                                },
+                                close: function() {
+                                    $('#studentProgramDataTable').dataTable().fnDraw(false);
+                                    $('#AssignStudentDialog').remove();
+                                    $("body .my-overlay").remove();
+                                    isOpenAssignStudentDialog = false;
+                                },
+                                modal: false,
+                                width: 800,
+                                resizable: false
+                            });
+
+                        });
+
+                    $(".close").unbind("click");
+                    $(".close").live("click", function(e) {
+                        e.preventDefault();
+                    });
+                } else {
+                    CustomAlert('This program has been deleted by someone already.');
+                }
+
+            });
+
+
+    }
+
+    function closeDialogStudentProgram() {
+        $('#dlStudentProgram' + @ViewBag.ProgramId).dialog("close");
+    }
+
+    function LoadStudentProgram() {
+        $('.dataadmin').addClass('current');
+        $('#manageProgramTab').addClass('current');
+        LoadStudentToTable();
+        initializeDataTable($("#studentProgramDataTable"));
+        $.ajaxSetup({ cache: false });
+        if (@ViewBag.ProgramId == 0) {
+            $('#hrefAssignStudents').attr("disabled","disabled");
+            $('#btnDeassignStudents').prop("disabled", true);
+        }
+
+        $('#btnDeassignStudents').die('click');
+        $('#btnDeassignStudents').live("click", function (e) {
+            //check existing
+            var url = '@Url.Action("CheckProgramExisting", "ManageProgram")?programId=@ViewBag.ProgramId';
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function(response) {
+                    if (response.IsExisting) {
+                        CustomConfirm({
+                            message: 'Do you want to remove the selected student(s) from this program?',
+                            yes: function () {
+                                var selectedStudentProgramIds = getSelectedStudentIds();
+                                ShowBlock($('#studentProgramDataTable'), 'Deassigning');
+                                $.ajax({
+                                    url: '@Url.Action("DeassignStudents", "ManageProgram")',
+                                    data: {
+                                        selectedStudentProgramIds: selectedStudentProgramIds
+                                    },
+                                    type: 'post',
+                                    cache: false
+                                }).done(function (response) {
+                                    $('#studentProgramDataTable').unblock();
+                                    if (response.success == 'true') {
+                                        LinkIt.success('#AssignStudentNotifications', 'Students successfully deassigned.');
+                                        $('#studentProgramDataTable').dataTable().fnDraw();
+                                        $('#studentProgramDataTable1').dataTable().fnDraw();
+                                        $('#btnDeassignStudents').prop("disabled", true);
+                                    } else {
+                                        LinkIt.error('#AssignStudentNotifications', response.errorMessage);
+                                    }
+
+                                }).error(function (request) {
+                                    $('#studentProgramDataTable').unblock();
+                                });
+
+                            },
+                            no: function() {
+                            },
+                            open: function () {
+                            },
+                            close: function () {
+                            },
+
+                        });
+
+
+                    } else {
+                        CustomAlert('This program has been deleted by someone already.');
+                    }
+
+                });
+
+        });
+
+        $('INPUT[name="chkStudent"][type=checkbox]').live("click", function (e) {
+            if (this.checked) {
+                $('#btnDeassignStudents').prop("disabled", false);
+                var checkboxes = $('INPUT[name="chkStudent"][type=checkbox]');
+                var checkall = true;
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if (!(checkboxes[i]).checked) {
+                        $('#chkAllStudent').removeAttr('checked');
+                        checkall = false;
+                        break;
+                    }
+                }
+                if (checkall) {
+                    $('#chkAllStudent').attr('checked', 'checked');
+                }
+
+            }
+            else {
+                $('#chkAllStudent').removeAttr('checked');
+                var checkedboxes = $('INPUT[name="chkStudent"][type=checkbox]:checked');
+                if (checkedboxes.length > 0) {
+                    $('#btnDeassignStudents').prop("disabled", false);
+                }
+                else {
+                    $('#btnDeassignStudents').prop("disabled", true);
+                }
+            }
+        });
+
+        $('#chkAllStudent').die('click');
+        $('#chkAllStudent').live("click", function (e) {
+            if (this.checked) {
+                $('INPUT[name="chkStudent"][type=checkbox]').attr('checked', 'checked');
+                $('#btnDeassignStudents').prop("disabled", false);
+            }
+            else {
+                $('INPUT[name="chkStudent"][type=checkbox]').removeAttr('checked');
+                $('#btnDeassignStudents').prop("disabled", true);
+            }
+        });
+    }
+</script>
+<style>
+    html {
+        overflow-x: auto;
+    }
+
+    body {
+        min-width: 1035px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .sticky {
+        padding-left: 500px;
+    }
+</style>

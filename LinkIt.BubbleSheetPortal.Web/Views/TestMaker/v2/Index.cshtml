@@ -1,0 +1,1633 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.TestdesignManageTest, "Create New Item", true);
+    var isSurvey = ((int?)ViewBag.IsSurvey).Value == 1;
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@BundleHelper.StyleTestMakerBundle()
+@BundleHelper.ScriptTestMakerBundle()
+
+@BundleHelper.Include(new string[] {
+    "/Content/themes/TestMaker/ckeditor.js",
+    "/Content/themes/TestMaker/ckeditor_utils.js",
+    "/Content/themes/TestMaker/ckeditor_functions.js",
+    "/Content/themes/TestMaker/ckeditor_mkV2.js"
+})
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<link rel="stylesheet" href="/Content/css/vue-components/vue-modal.css">
+
+<link rel="stylesheet" href="/Scripts/JqueryBuilder/css/bootstrap-query-builder-v2.css">
+<link rel="stylesheet" href="/Scripts/JqueryBuilder/css/query-builder.default.css" id="qb-theme">
+<link rel="stylesheet" href="/Scripts/JqueryBuilder/css/bootstrap-glyphicon-v2.css">
+
+<link rel="stylesheet" href="/Content/css/vue-components/vue-modal.css">
+<script src="/Scripts/JqueryBuilder/components/interact/interact.js"></script>
+<script src="/Scripts/JqueryBuilder/js/query-builder.standalone.js"></script>
+
+<script src="/Scripts/JqueryBuilder/src/main.js"></script>
+<script src="/Scripts/JqueryBuilder/src/defaults.js"></script>
+<script src="/Scripts/JqueryBuilder/src/plugins.js"></script>
+<script src="/Scripts/JqueryBuilder/src/core.js"></script>
+<script src="/Scripts/JqueryBuilder/src/public.js"></script>
+<script src="/Scripts/JqueryBuilder/src/data.js"></script>
+<script src="/Scripts/JqueryBuilder/src/templateV2.js"></script>
+<script src="/Scripts/JqueryBuilder/src/model.js"></script>
+<script src="/Scripts/JqueryBuilder/src/utils.js"></script>
+<script src="/Scripts/JqueryBuilder/src/jquery.js"></script>
+<script src="/Scripts/JqueryBuilder/src/plugins/bt-tooltip-errors/plugin.js"></script>
+<script src="/Scripts/JqueryBuilder/src/plugins/sortable/plugin.js"></script>
+<script src="/Scripts/JqueryBuilder/src/plugins/atleast/plugin.js"></script>
+<script src="/Scripts/JqueryBuilder/i18n/query-builder.en.js"></script>
+<link href="@Url.Content("~/Content/libs/awesome-icon/css/font-awesome.css")" rel="stylesheet" />
+<link href="@Url.Content("~/Content/css/select2.css")" rel="stylesheet" />
+<link href="@Url.Content("~/Content/css/attachment-setting.css")" rel="stylesheet" />
+<script src=@Url.Content("~/Scripts/select2.full.min.js")></script>
+<script src=@Url.Content("~/Scripts/Select2Customs/CustomSelectionAdapter.js")></script>
+
+<input type="hidden" value="" id="selected" />
+
+<style type="text/css">
+    button {
+        margin-left: 10px;
+    }
+
+    .notSelectedTR td {
+        background-color: #fdd252 !important;
+    }
+
+    #divSummary p {
+        margin-bottom: 10px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 14px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: var(--dark) !important;
+    }
+
+    .divTop {
+        float: left;
+        width: 1035px;
+        margin-top: 20px;
+        margin-bottom: -20px;
+        position: relative;
+        z-index: 3;
+    }
+
+        .divTop button {
+            padding-left: 3px;
+            padding-right: 3px;
+            width: 90px;
+        }
+
+    .question-order {
+        color: #1482D9;
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    #listReference .ui-state-highlight {
+        width: auto;
+        height: 22px;
+    }
+
+    #divQContent > div > .cke_inner > .cke_contents {
+        min-height: 200px;
+        max-height: 600px;
+        height: calc(100vh - 540px) !important;
+    }
+
+    @@media (max-width: 1599px) and (min-width: 1200px) {
+        #divQContent > div > .cke_inner > .cke_contents {
+            height: calc(100vh - 510px) !important;
+        }
+    }
+
+    .divBotButton {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-CustomAlertDialog"] {
+        width: auto !important
+    }
+
+        .ui-dialog[aria-labelledby="ui-dialog-title-CustomAlertDialog"] .ui-dialog-titlebar,
+        .ui-dialog[aria-labelledby="ui-dialog-title-divUrlPreviewOnlinePanel"] .ui-dialog-titlebar {
+            display: none;
+        }
+
+    #divCreateItem #listReference {
+        margin-top: 12px;
+        display: inline-block;
+    }
+
+    .col-attachment-setting {
+        padding-top: 10px;
+    }
+
+    ul#notifications {
+        margin-bottom: 0;
+    }
+
+    #referenceObject {
+        min-height: 20px;
+    }
+
+    .attachment-setting-wrapper {
+        display: flex;
+    }
+
+    .attachment-setting-wrapper .row-select-group {
+        min-width: 410px;
+    }
+
+    .attachment-setting-wrapper .row-checkbox-group {
+        width: 280px;
+    }
+    .action-dropdown-btn {
+        width: 100% !important;
+        text-align: left !important;
+        border-width: 0px !important;
+        font-weight: 400 !important;
+        color: #333 !important;
+        padding: 6px 12px !important;
+        margin-left: 0% !important;
+    }
+    .action-dropdown-btn:hover {
+        color: #fff !important;
+        background-color: #0d6efd !important;
+
+    }
+
+    .dropdown-menu.dropdown-menu-right {
+        right: 0;
+        left: auto;
+    }
+</style>
+@Html.Partial("~/Views/Passage/_KeepingDistrict.cshtml", (int)ViewBag.DistrictId)
+<article class="container_12 CreateItem-v2">
+    <div class="block-border form" id="divCreateItem">
+        <div class="block-section-custom">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <h1 class="page-title mb-0">Create New Item - @ViewBag.QtiGroupName</h1>
+                @if (ViewBag.VirtualTestId > 0)
+                {
+                    <a id="btnCancelQtiItem" href="javascript:void(0)" class="btn btn-link pe-0 btnCancelQtiItem" onclick="backToQtiItemList()"><i class="fa-solid fa-arrow-left me-2"></i>Back to Tests</a>
+                }
+                else
+                {
+                    <a id="btnCancelQtiItem" href="javascript:void(0)" class="btn btn-link pe-0 btnCancelQtiItem" onclick="backToQtiItemList()"><i class="fa-solid fa-arrow-left me-2"></i>Back to Item Set</a>
+                }
+            </div>
+            <ul style="display: none" id="error-messages" class="message error"></ul>
+            <ul style="display: none" id="success-message" class="message success">
+                <li>Item Successfully Created.</li>
+            </ul>
+            <input type="hidden" id="qtiGroupId" value="@ViewBag.QtiItemGroupId" />
+            <h3 class="h3 mb-3">Question Content Area</h3>
+            <div class="row" style="margin-bottom: 15px">
+                <div class="form-group col-4">
+                    <label class="col-form-label" style="font-weight: bolder">Change Item Type</label>
+                    <div>
+                        <select title="There are test results associated with this question. Item type cannot be changed." size="1" name="changeItemType" aria-controls="changeItemType" id="changeItemType">
+                            @if (ViewBag.IsSurvey == 1)
+                            {
+                                <option value="1" titlespecial="MultipleChoice">Multiple Choice</option>
+                                <option value="37" titlespecial="MultipleChoiceVariable">Multiple Choice Variable</option>
+                                <option value="10" titlespecial="ExtendedText">Extended Text</option>
+                            }
+                            else
+                            {
+                                <option value="1" titlespecial="MultipleChoice">Multiple Choice</option>
+                                <option value="37" titlespecial="MultipleChoiceVariable">Multiple Choice Variable</option>
+                                <option value="1" titlespecial="TrueFalse">True/False</option>
+                                <option value="8" titlespecial="InlineChoice">Inline Choice</option>
+                                <option value="9" titlespecial="FillBlank">Fill-in-the-Blank</option>
+                                <option value="10" titlespecial="ExtendedText">Constructed Response</option>
+                                <option value="10d" titlespecial="DrawingResponse">Drawing Response</option>
+                                <option value="21" titlespecial="Multi-Part">Multi-Part</option>
+                                <option value="30" titlespecial="DragDrop">Drag-and-Drop</option>
+                                <option value="31" titlespecial="TextHotSpot">Text Hot Spot</option>
+                                <option value="32" titlespecial="ImageHotSpotSelection">Image Hot Spot</option>
+                                <option value="33" titlespecial="TableHotSpotSelection">Table Hot Spot</option>
+                                <option value="34" titlespecial="NumberLine">Number Line Hot Spot</option>
+                                <option value="35" titlespecial="DragDropNumerical">Drag and Drop Numerical</option>
+                                <option value="36" titlespecial="SequenceOrder">Drag-and-Drop Sequence/Order</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group col-4">
+                    <label class="col-form-label" style="font-weight: bolder">Item Title</label>
+                    <div>
+                        <input name="Title" type="text" id="Title" maxlength="150" class="full-width" />
+                        @*@Html.TextBoxFor(m => m.Title, new { @maxlength = "150", @class = "full-width" })*@
+                    </div>
+                </div>
+
+                <div class="form-group col-4">
+                    <label class="col-form-label" style="font-weight: bolder">@LocalizeHelper.Localized("Libraries.ItemDescription")</label>
+
+                    <div>
+                        <input name="description" id="Description" type="text" maxlength="250" class="full-width" />
+                        @*@Html.TextBoxFor(m => m.Description, new { @maxlength = "250", @class = "full-width" })*@
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="form-group col-12 col-attachment-setting" id="divAttachmentSetting">
+                    <attachment-setting-component v-bind:qti-schema-id="qtiSchemaId" v-bind:attachment-setting="attachmentSetting" v-bind:assessment-artifact-configuration="assessmentArtifactConfiguration"></attachment-setting-component>
+                </div>
+            </div>
+
+
+            @*<div class="row g-4">
+                    <div class="col-3 fileter-item mb-3">
+                        <label>Change Item Type:</label>
+                        <select size="1" name="changeItemType" aria-controls="changeItemType" id="changeItemType">
+                            @if (ViewBag.IsSurvey == 1)
+                            {
+                                <option value="1" titlespecial="MultipleChoice">Multiple Choice</option>
+                                <option value="37" titlespecial="MultipleChoiceVariable">Multiple Choice Variable</option>
+                                <option value="10" titlespecial="ExtendedText">Constructed Response</option>
+                            }
+                            else
+                            {
+                                <option value="1" titlespecial="MultipleChoice">Multiple Choice</option>
+                                <option value="37" titlespecial="MultipleChoiceVariable">Multiple Choice Variable</option>
+                                <option value="1" titlespecial="TrueFalse">True/False</option>
+                                <option value="8" titlespecial="InlineChoice">Inline Choice</option>
+                                <option value="9" titlespecial="FillBlank">Fill-in-the-Blank</option>
+                                <option value="10" titlespecial="ExtendedText">Constructed Response</option>
+                                <option value="10d" titlespecial="DrawingResponse">Drawing Response</option>
+                                <option value="21" titlespecial="Multi-Part">Multi-Part</option>
+                                <option value="30" titlespecial="DragDrop">Drag-and-Drop</option>
+                                <option value="31" titlespecial="TextHotSpot">Text Hot Spot</option>
+                                <option value="32" titlespecial="ImageHotSpotSelection">Image Hot Spot</option>
+                                <option value="33" titlespecial="TableHotSpotSelection">Table Hot Spot</option>
+                                <option value="34" titlespecial="NumberLine">Number Line Hot Spot</option>
+                                <option value="35" titlespecial="DragDropNumerical">Drag and Drop Numerical</option>
+                                <option value="36" titlespecial="SequenceOrder">Drag-and-Drop Sequence/Order</option>
+                            }
+                        </select>
+                    </div>
+                    <div id="divAttachmentSetting" class="col col-attachment-setting mb-3">
+                        <attachment-setting-component v-bind:qti-schema-id="qtiSchemaId" v-bind:attachment-setting="attachmentSetting" v-bind:assessment-artifact-configuration="assessmentArtifactConfiguration"></attachment-setting-component>
+                    </div>
+                </div>*@
+
+            <div class="d-flex justify-content-end mb-2">
+                <div class="dropdown">
+                    <button id="dLabel" type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Actions
+                    <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dLabel" style="width: 220px; right: 0; left: auto; margin-top: 4px;">
+                        <button id="btnPreviewItem" class="js-preview-item js-btn-actions disabled u-tsn action-dropdown-btn">Preview Item</button>
+                        <button id="btnAlgorithmicConfiguration"
+                            type="button"
+                            class="js-btn-actions disabled u-tsn action-dropdown-btn"
+                            v-on:click="openPopupAlgorithmic"
+                            v-show="isShowAlgorithmicConfiguration">
+                        Algorithmic Configuration
+                        </button>
+                        <button id="btnConditionalLogicConfiguration"
+                            type="button"
+                            class="js-btn-actions disabled u-tsn action-dropdown-btn"
+                            v-on:click="openPopupConditionalLogicMultipart"
+                            v-show="isShowConditionalLogicButton">
+                        Conditional Logic
+                        </button>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="duplicateAnswer" class="mb-2"></div>
+            <div>
+                <div class="topMenu w-100">
+                    <div id="topSpace"></div>
+                    <div class="questionType" id="questionType">
+                        <ul>
+                            <li>
+                                <div class="audio js-audio" id="audioQuestion">
+                                    <input type="file" name="file" class="hiddenUpload" accept="audio/mp3" />
+                                    <div class="audioRemove" id="audioRemoveQuestion">
+                                        <img alt="Play audio" class="bntPlay" src="../../Content/themes/TestMaker/images/small_audio_play.png" title="Play audio" />
+                                        <img alt="Stop audio" class="bntStop" src="../../Content/themes/TestMaker/images/small_audio_stop.png" title="Stop audio" />
+                                        <input type="button" value="Remove audio" class="ckbutton removeAudio cke_toolgroup" />
+                                        <span class="audioRef"></span>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <div class="clear"></div>
+                    </div>
+                </div>
+                <div class="clear"></div>
+                <div id="divQContent" class="qContent"></div>
+                <div class="clear"></div>
+                <div id="bottomSpace"></div>
+                <div id="referenceObject">
+                    <ul id="listReference"></ul>
+                    <div class="clear"></div>
+                </div>
+            </div>
+
+            @if (ViewBag.VirtualTestId > 0)
+            {
+                if (ViewBag.HasMoreThanOneSection)
+                {
+                    <div class="u-inline-block u-v-align-middle u-text-left">
+                        <label for="selectSectionAdd" class="mb-0">Select the section to add the items to</label>
+                    </div>
+                }
+
+            }
+            <div class="divBotButton">
+                @if (ViewBag.VirtualTestId > 0)
+                {
+                    if (ViewBag.HasMoreThanOneSection)
+                    {
+                        <div class="col-2">
+                            <div class="block-text-name" style="width:100% !important">
+                                <select id="selectSectionAdd"></select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+                <div>
+                    <button id="btnCancel" class="grey js-btn-actions disabled u-tsn btn-text-secondary px-3" onclick="backToQtiItemList()">Cancel</button>
+                    <button id="btnUpdateItemAndCloseNewItem" class="js-btn-actions disabled u-tsn btn-blue" onclick="newCloseItemClick()">Save and Close</button>
+                    <button id="btnUpdateItemSaveAndCreateNew" class="js-btn-actions disabled u-tsn btn-blue" onclick="saveAndCreateNewClick()">Save and Create New</button>
+                    <button id="btnCreateItem" class="js-btn-actions disabled u-tsn btn-red" onclick="createItem()">Save</button>
+                </div>
+            </div>
+            <div class="mt-4 text-center">
+                @if (ViewBag.VirtualTestId <= 0)
+                {
+                    <div>
+                        <span class="text-navy text-bold"> @Html.Raw(ViewBag.QuestionOrder.ToString()) of @Html.Raw(ViewBag.CountQtiItems.ToString())</span>
+                    </div>
+                }
+                @if (ViewBag.VirtualTestId > 0)
+                {
+                    <div>
+                        <span class="text-navy text-bold"> @Html.Raw(ViewBag.VirtualQuestionOrder.ToString()) of @Html.Raw(ViewBag.CountVirtualQuestions.ToString())</span>
+                    </div>
+                }
+            </div>
+
+
+        </div>
+        @Html.Partial("~/Views/Shared/_ModalKeepAlive.cshtml")
+        @Html.Partial("v2/_ModalAlgorithmicConfiguration")
+        @Html.Partial("v2/_ModalAlgorithmicExpression")
+        @Html.Partial("v2/_ModalMultiPartConfiguration")
+        @Html.Partial("v2/_ModalMultiPartExpression")
+    </div>
+</article>
+<div id="divOnTop"></div>
+<div id="tips">
+    <div class="tool-tip-tips" style="opacity: 0; display: none;">Double click here to edit answer choices<span class="arrow"><span></span></span></div>
+</div>
+<style type="text/css">
+    .CreateItem-v2 #attachmentSetting-allowStudentAttachment {
+        top: -1px;
+    }
+
+    .divBotButton {
+        padding-top: 10px;
+    }
+
+        .divBotButton button {
+            margin-left: 10px;
+        }
+
+    .customDialogStyle {
+        border-radius: 0px;
+        padding: 0px;
+        background: var(--bg-white);
+    }
+
+        .customDialogStyle .ui-widget-header.cke_dialog_title {
+            top: 0;
+        }
+
+        .customDialogStyle .ui-button-text-only {
+            display: inline-block;
+            *display: inline;
+            *zoom: 1;
+            padding: 3px 0;
+            margin: 0;
+            text-align: center;
+            color: var(--dark);
+            vertical-align: middle;
+            cursor: pointer;
+            border: 1px solid var(--grey7);
+            border-bottom-color: var(--grey7);
+            -moz-border-radius: 3px;
+            -webkit-border-radius: 3px;
+            border-radius: 3px;
+            -moz-box-shadow: 0 1px 0 rgba(255,255,255,.5), 0 0 2px rgba(255,255,255,.15) inset, 0 1px 0 rgba(255,255,255,.15) inset;
+            -webkit-box-shadow: 0 1px 0 rgba(255,255,255,.5), 0 0 2px rgba(255,255,255,.15) inset, 0 1px 0 rgba(255,255,255,.15) inset;
+            box-shadow: 0 1px 0 rgba(255,255,255,.5), 0 0 2px rgba(255,255,255,.15) inset, 0 1px 0 rgba(255,255,255,.15) inset;
+            background: var(--grey1);
+            background-image: -webkit-gradient(linear, left top, left bottom, from(var(--white)), to(var(--grey1)));
+            background-image: -moz-linear-gradient(top, var(--white), var(--grey1));
+            background-image: -webkit-linear-gradient(top, var(--white), var(--grey1));
+            background-image: -o-linear-gradient(top, var(--white), var(--grey1));
+            background-image: -ms-linear-gradient(top, var(--white), var(--grey1));
+            background-image: linear-gradient(top, var(--white), var(--grey1));
+            filter: progid:DXImageTransform.Microsoft.gradient(gradientType=0, startColorstr='#ffffff', endColorstr='#e4e4e4');
+        }
+
+            .customDialogStyle .ui-button-text-only:hover {
+                border-color: #9e9e9e;
+                background: var(--borderColor);
+                background-image: -webkit-gradient(linear, left top, left bottom, from(var(--grey1)), to(var(--borderColor)));
+                background-image: -moz-linear-gradient(top, var(--grey1), var(--borderColor));
+                background-image: -webkit-linear-gradient(top, var(--grey1), var(--borderColor));
+                background-image: -o-linear-gradient(top, var(--grey1), var(--borderColor));
+                background-image: -ms-linear-gradient(top, var(--grey1), var(--borderColor));
+                background-image: linear-gradient(top, var(--grey1), var(--borderColor));
+                filter: progid:DXImageTransform.Microsoft.gradient(gradientType=0, startColorstr='#f2f2f2', endColorstr='#cccccc');
+            }
+
+            .customDialogStyle .ui-button-text-only .ui-button-text {
+                padding: .2em 1em;
+            }
+
+            .customDialogStyle .ui-button-text-only:first-child {
+                color: var(--white) !important;
+                text-shadow: 0 0px 0 #55830c;
+                border-color: #62a60a #62a60a #4d9200;
+                background: #69b10b;
+                background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#9ad717), to(#69b10b));
+                background-image: -webkit-linear-gradient(top, #9ad717, #69b10b);
+                background-image: -o-linear-gradient(top, #9ad717, #69b10b);
+                background-image: linear-gradient(to bottom, #9ad717, #69b10b);
+                background-image: -moz-linear-gradient(top, #9ad717, #69b10b);
+                filter: progid:DXImageTransform.Microsoft.gradient(gradientType=0, startColorstr='#9ad717', endColorstr='#69b10b');
+            }
+
+                .customDialogStyle .ui-button-text-only:first-child:hover {
+                    border-color: #5b9909 #5b9909 #478500;
+                    background: #88be14;
+                    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#88be14), color-stop(100%,#5d9c0a));
+                    background: -webkit-linear-gradient(top, #88be14 0%,#5d9c0a 100%);
+                    background: -o-linear-gradient(top, #88be14 0%,#5d9c0a 100%);
+                    background: linear-gradient(to bottom, #88be14 0%,#5d9c0a 100%);
+                    background: -moz-linear-gradient(top, #88be14 0%, #5d9c0a 100%);
+                    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#88be14', endColorstr='#5d9c0a',GradientType=0 );
+                }
+
+        .customDialogStyle .ui-icon-closethick {
+            background-position: -96px -128px !important;
+        }
+
+        .customDialogStyle .ui-icon {
+            width: 16px !important;
+            height: 16px !important;
+        }
+
+        .customDialogStyle .ui-widget-header .ui-icon {
+            background-image: url("/Content/themes/base/images/ui-icons_222222_256x240.png") !important;
+        }
+
+    .ui-dialog.customDialogStyle .ui-dialog-titlebar-close {
+        top: 13px;
+        right: 7px;
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    .no-close .ui-dialog-titlebar-close {
+        display: none;
+    }
+
+    .no-title .ui-dialog-titlebar {
+        display: none;
+    }
+</style>
+
+@section scripts {
+    <script>
+        $(function () {
+            $('#selectSectionAdd').marquee();
+
+            // Initialize all dropdowns
+            $('.dropdown-toggle').dropdown();
+            
+            // Handle click on dropdown button
+            $('#dLabel').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).next('.dropdown-menu').toggleClass('show');
+            });
+
+            // Close dropdown when clicking outside
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.dropdown').length) {
+                    $('.dropdown-menu').removeClass('show');
+                }
+            });
+        });
+        var global = {
+            sessionTimeoutWarning: '@ViewBag.WarningTimeoutMinues',
+            sessionTimeout: '@ViewBag.DefaultCookieTimeOutMinutes',
+            sessionKeepAliveUrl: '@Url.Action("KeepAlive", "Home")',
+            keepAliveDistanceSecond: '@ViewBag.KeepAliveDistanceSecond',
+            basicSciencePaletteSymbol: unescapeHtml('@ViewBag.BasicSciencePaletteSymbol'),
+            itemTypeId: 0,
+            isMultipart: false,
+            isAllowRubricGradingMode: @ViewBag.IsAllowRubricGradingMode,
+            extendtextMethod: 'default',
+            extendtextMethodPrevious: 'default',
+            virtualQuestionRubricCount: 0,
+            isSurvey: @ViewBag.IsSurvey
+        };
+    </script>
+    @BundleHelper.Include(new string[] {
+        "/Scripts/TestMaker/Algorithmic/MultipleChoice.js",
+        "/Scripts/TestMaker/Algorithmic/InlineChoice.js",
+        "/Scripts/TestMaker/Algorithmic/TextEntry.js",
+        "/Scripts/TestMaker/Algorithmic/DragDrop.js",
+        "/Scripts/TestMaker/Algorithmic/TextHotSpot.js",
+        "/Scripts/TestMaker/Algorithmic/ImageHotSpot.js",
+        "/Scripts/TestMaker/Algorithmic/TableHotSpot.js",
+        "/Scripts/TestMaker/Algorithmic/NumberlineHotSpot.js",
+        "/Scripts/TestMaker/Algorithmic/DragDropNumerical.js",
+        "/Scripts/TestMaker/Algorithmic/DragDropSequenceOrder.js",
+        "/Scripts/TestMaker/Algorithmic/MultipleChoiceVariable.js",
+        "/Scripts/TestMaker/MultiPart.js",
+        "/Scripts/TestMaker/Utils.js",
+    })
+
+    <script src="/Scripts/Lib/lodash.js"></script>
+    <script src="~/FeLibs/sortable/sortable.min.js"></script>
+    <script src="/Scripts/Lib/vuedragablefor.min.js"></script>
+
+    @BundleHelper.Include(new string[] {
+        "/Scripts/TestMaker/AssessmentArtifact/AttachmentSettingValidation.js",
+        "/Scripts/TestMaker/AssessmentArtifact/AttachmentSettingV2.js",
+        "/Scripts/TestMaker/AssessmentArtifact/AttachmentSettingAction.js",
+        "/Scripts/TestMaker/IndexV2.js",
+        "/Scripts/TestMaker/MultiPart/RemoveConditional.js",
+    })
+    <script>
+        MKEditor = {
+            imgUrl: "../../Content/themes/TestMaker/",
+            audioUrl: '@Url.Action("AudioUpload", "TestMaker")',
+            loadAudioUrl: window.location.protocol + "//" + window.location.hostname + "/TestMaker/GetAudio",
+            objectId: '@ViewBag.qtiItemGroupId',
+            imgUpload: '@Url.Action("ImageUpload", "TestMaker")',
+            GetViewReferenceImg: window.location.protocol + "//" + window.location.hostname + '/TestAssignmentRegrader/GetViewReferenceImg?imgPath=', //This is config for view image on test maker
+            UseS3Content: true, // this variable use to download to applition(  server) or S3
+            S3PassageMedia: '',
+            GetViewReferenceImgS3: ''
+        };
+        @if (ViewBag.MediaModel != null)
+        {
+            <text>MKEditor.S3PassageMedia = '@ViewBag.MediaModel.PassageMediaFolderPath';</text>
+            <text>MKEditor.GetViewReferenceImg = '@ViewBag.MediaModel.TestMediaFolderPath';</text>
+            <text>MKEditor.GetViewReferenceImgS3 = '@ViewBag.MediaModel.TestMediaFolderPath';</text>
+            <text>MKEditor.UseS3Content = true;</text>
+        }
+        if (global.isSurvey == 1) {
+            MKEditor.isSurveyTest = true;
+        }
+        $(function() {
+
+            $(this).parent().find(".audioRef").text();
+
+            if (@ViewBag.VirtualTestId > 0) {
+                breadcrumbDetailPage('.write', '#manageTests');
+                $.get('@Url.Action("GetSections", "VirtualTest")?virtualTestId=@ViewBag.VirtualTestId', function (states) {
+                    $('#selectSectionAdd').html('');
+                    AddSelectListItems($('#selectSectionAdd'), states, 'Select Section');
+                    $("#selectSectionAdd").trigger('change');
+                });
+            } else {
+                breadcrumbDetailPage('.write', '#assesmenItemRewrite');
+            }
+
+            CKEDITOR.on('instanceReady', function(ev) {
+                ev.editor.on('key', function(ev) {
+                    SessionTimeOutComponent.handlerSessionKeepAlive();
+                });
+
+                ev.editor.on('contentDom', function() {
+                    var editable = ev.editor.editable();
+                    var doc = editable.getDocument();
+
+                    editable.attachListener(editable, 'click', function(e) {
+                        SessionTimeOutComponent.handlerSessionKeepAlive();
+                        closeAttachmentTypesSelect();
+                        closeRecordingOptionsSelect();
+                        e.sender.$.focus();
+                    });
+
+                    editable.attachListener(doc, 'scroll', function() {
+                        SessionTimeOutComponent.handlerSessionKeepAlive();
+                    });
+                });
+            });
+        });
+        var currentCkID = ckID; //remember the current ckID
+        function addReferenceCallBack() {
+            $('.cke_dialog_background_cover').hide();
+            var worker = $('<div />');
+
+            var assignedObjectIdList = getObjectIdList();
+            currentCkID = ckID;
+            worker
+                .addClass("dialog")
+                .attr("id", "PopupAddReference")
+                .appendTo("body")
+                .load('@Url.Action("ShowPassageAvailable", "TestMaker")/?assignedObjectIdList=' + assignedObjectIdList + '&qtiItemGroupId=@ViewBag.QtiItemGroupId&virtualTestId=@ViewBag.VirtualTestId' + '&layoutV2=true', function() {
+                    worker.dialog({
+                        title: $(this).attr("Add Reference"),
+                        close: function() {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                            RecoverTestMakerCKEditorConfig();
+                        },
+                        open: function() {
+                            $('.ui-widget-header').css('top', '70px');
+                        },
+                        modal: false,
+                        width: 'auto',
+                        resizable: false,
+                    });
+                });
+
+            showModalDialogBG();
+        }
+
+        $('#addReference').click(addReferenceCallBack);
+
+        function backToQtiItemList() {
+            if (@ViewBag.VirtualTestId > 0) {
+                window.location.href = '@Url.Action("Index", "VirtualTest")?virtualTestId=@ViewBag.VirtualTestId' + generateDistrictIdParamsFromURL();
+            } else {
+                window.location.href = '@Url.Action("Index", "QTIItem")?qtiItemGroupID=' + '@ViewBag.QtiItemGroupId' + generateDistrictIdParamsFromURL();
+            }
+        }
+
+        function showModalDialogBG() {
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+        }
+
+        function createItem() {
+            var isValidateDragAndDrop = validateDragAndDrop(iResult);
+
+            if (!isValidateDragAndDrop) {
+                customAlert("<p style='text-align: left'>You are using <b>Destination Level Partial Credit Grading</b> on this question, but you have set the overall point value on this question to be greater than the sum of each destination's point value. This means that if a student answers each destination correctly, they still will not earn the full credit on this question. Please adjust the point values on this question before saving.</p>");
+                return false;
+            }
+
+            var pointsPossible = 0;
+            // Validate input
+            var errorMessage = '';
+
+            var xmlContent = xmlExport();
+
+            if (xmlContent == '' || !xmlContent) {
+                return;
+            }
+
+            xmlContent = xmlContent.replace('<span class="placeholder" contenteditable="false" style="position: absolute;z-index: 99999;">Enter Question…</span>', "");
+
+            var selectedVirtualSectionId = 0;
+            if (@ViewBag.VirtualTestId > 0 && '@ViewBag.HasMoreThanOneSection' == 'True') {
+                selectedVirtualSectionId = $('#selectSectionAdd').val();
+                if (selectedVirtualSectionId == null || selectedVirtualSectionId < 0) {
+                    CustomAlert('Please select the section to add the items to.');
+                    return;
+                }
+            }
+            if (!validateUniquePoints()) {
+                return;
+            }
+
+            var validateAttachmentSettingResult = validateAttachmentSetting(TestMakerComponent.attachmentSetting, iSchemeID);
+            if (!validateAttachmentSettingResult.valid) {
+                CustomAlert(validateAttachmentSettingResult.errorMessage);
+                return;
+            }
+
+            $('.js-btn-actions').prop('disabled', true);
+
+            var qType = $('input[name="qType"]:checked').val();
+
+            var data = buidData(xmlContent, selectedVirtualSectionId);
+            ShowBlock($('#divCreateItem'), "Creating");
+            $.ajax({
+                url: '@Url.Action("CreateItem")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ 'model': data }),
+                error: function() {
+                    $('.js-btn-actions').prop('disabled', false);
+                }
+            }).done(function(response) {
+                $('#divCreateItem').unblock();
+
+                var txtTrueFalse = document.URL.split('&')[2];
+
+                if (response.success == true) {
+                    $('#success-message').show();
+                    setTimeout(function() {
+                        if (@ViewBag.VirtualTestId > 0) {
+                            loadItemToEditIncaseVirtualtest(response.qtiItemId, response.virtualQuestionId);
+                        } else {
+                            if (txtTrueFalse == 'DragDrop') {
+                                window.location.href = '@Url.Action("Edit", "TestMaker")?qtiItemID=' + response.qtiItemId + '&DragDrop' + '&virtualQuestionId=' + response.virtualQuestionId + '&virtualTestId='+@ViewBag.VirtualTestId + generateDistrictIdParamsFromURL();
+                            } else if (txtTrueFalse == 'TrueFalse') {
+                                window.location.href = '@Url.Action("Edit", "TestMaker")?qtiItemID=' + response.qtiItemId + '&TrueFalse' + '&virtualQuestionId=' + response.virtualQuestionId + '&virtualTestId=' +@ViewBag.VirtualTestId + generateDistrictIdParamsFromURL();
+                            } else {
+                                window.location.href = '@Url.Action("Edit", "TestMaker")?qtiItemID=' + response.qtiItemId + '&virtualQuestionId=' + response.virtualQuestionId + '&virtualTestId=' +@ViewBag.VirtualTestId + generateDistrictIdParamsFromURL();
+                            }
+                        }
+
+                    }, 2000);
+
+                } else {
+                    $('.js-btn-actions').prop('disabled', false);
+                    displayErrorMessage(response);
+                }
+            });
+        }
+
+        function loadItemToEditIncaseVirtualtest(qtiItemId, virtualQuestionId, virtualTestId) {
+            var url = '@Url.Action("Edit", "TestMaker")';
+            var form = '<form action="' + url + '" method="get">' +
+                '<input type="hidden" name="qtiItemId" value="' + qtiItemId + '" />' +
+                '<input type="hidden" name="fromVirtualQuestionProperty" value="True" />' +
+                '<input type="hidden" name="virtualTestId" value="@ViewBag.VirtualTestId" />' +
+                '<input type="hidden" name="virtualQuestionId" value="' + virtualQuestionId + '" />';
+
+            var districtId = getDistrictIdFromURL();
+            if (districtId) {
+                form += '<input type="hidden" name="districtId" value="' + districtId + '" />';
+            }
+
+            form += '</form>';
+            form = $(form);
+            $('body').append(form);
+            $(form).submit();
+        }
+
+//save close item
+        function newCloseItemClick() {
+            if ('@ViewBag.HasTest' == 'True') {
+                ConfirmItemUpdate("This item is already used by existing tests. Saving it will update the content and the points possible for those tests; however, standards and tags will remain the same on those tests. Are you sure you want to save?", 2);
+            } else {
+                updateCloseItem();
+            }
+        }
+
+        function updateCloseItem() {
+            var isValidateDragAndDrop = validateDragAndDrop(iResult);
+
+            if (!isValidateDragAndDrop) {
+                customAlert("<p style='text-align: left'>You are using <b>Destination Level Partial Credit Grading</b> on this question, but you have set the overall point value on this question to be greater than the sum of each destination's point value. This means that if a student answers each destination correctly, they still will not earn the full credit on this question. Please adjust the point values on this question before saving.</p>");
+                return false;
+            }
+
+            var pointsPossible = 0;
+            // Validate input
+            var errorMessage = '';
+            if ($('iframe[allowtransparency]').contents().find('body').find('span.placeholder').text() == 'Enter Question…') {
+                $('iframe[allowtransparency]').contents().find('body').find('span.placeholder').remove();
+            }
+
+            var xmlContent = xmlExport();
+
+            if (xmlContent == '' || !xmlContent) {
+                return;
+            }
+            var selectedVirtualSectionId = 0;
+            if (@ViewBag.VirtualTestId > 0 && '@ViewBag.HasMoreThanOneSection' == 'True') {
+                selectedVirtualSectionId = $('#selectSectionAdd').val();
+                if (selectedVirtualSectionId == null || selectedVirtualSectionId < 0) {
+                    CustomAlert('Please select the section to add the items to.');
+                    return;
+                }
+            }
+            if (!validateUniquePoints()) {
+                return;
+            }
+
+            var validateAttachmentSettingResult = validateAttachmentSetting(TestMakerComponent.attachmentSetting, iSchemeID);
+            if (!validateAttachmentSettingResult.valid) {
+                CustomAlert(validateAttachmentSettingResult.errorMessage);
+                return;
+            }
+
+            $('.js-btn-actions').prop('disabled', true);
+
+            var qType = $('input[name="qType"]:checked').val();
+            var data = buidData(xmlContent, selectedVirtualSectionId);
+
+            ShowBlock($('#divCreateItem'), "Creating");
+            $.ajax({
+                url: '@Url.Action("CreateItem")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ 'model': data }),
+                error: function() {
+                    $('.js-btn-actions').prop('disabled', false);
+                }
+            }).done(function(response) {
+                $('#divCreateItem').unblock();
+                $('.js-btn-actions').prop('disabled', false);
+
+                if (response.success == true) {
+                    ShowBlock($('#divCreateItem'), "Closing");
+                    $('#success-message').show();
+                    setTimeout(function() {
+                        $('#success-message').hide();
+                        if (@ViewBag.VirtualTestId > 0) {
+                            window.location.href = '@Url.Action("Index", "VirtualTest")?virtualTestId=@ViewBag.VirtualTestId' + generateDistrictIdParamsFromURL();
+                        } else {
+                            window.location.href = '@Url.Action("Index", "QTIItem")?qtiItemGroupID=' + '@ViewBag.QtiItemGroupId' + generateDistrictIdParamsFromURL();
+                        }
+                    }, 2000);
+
+                } else {
+                    displayErrorMessage(response);
+                }
+            });
+        }
+
+//save item and create new
+        function saveAndCreateNewClick() {
+            if ('@ViewBag.HasTest' == 'True') {
+                ConfirmItemUpdate("This item is already used by existing tests. Saving it will update the content and the points possible for those tests; however, standards and tags will remain the same on those tests. Are you sure you want to save?", 5);
+            } else {
+                saveAndCreateNewItem();
+            }
+        }
+
+        function saveAndCreateNewItem() {
+            var isValidateDragAndDrop = validateDragAndDrop(iResult);
+
+            if (!isValidateDragAndDrop) {
+                customAlert("<p style='text-align: left'>You are using <b>Destination Level Partial Credit Grading</b> on this question, but you have set the overall point value on this question to be greater than the sum of each destination's point value. This means that if a student answers each destination correctly, they still will not earn the full credit on this question. Please adjust the point values on this question before saving.</p>");
+                return false;
+            }
+
+            // Validate input
+            var errorMessage = '';
+            if ($('iframe[allowtransparency]').contents().find('body').find('span.placeholder').text() == 'Enter Question…') {
+                $('iframe[allowtransparency]').contents().find('body').find('span.placeholder').remove();
+            }
+
+            var xmlContent = xmlExport();
+            if (xmlContent == '' || !xmlContent) {
+                return;
+            }
+
+            var selectedVirtualSectionId = 0;
+            if (@ViewBag.VirtualTestId > 0 && '@ViewBag.HasMoreThanOneSection' == 'True') {
+                selectedVirtualSectionId = $('#selectSectionAdd').val();
+                if (selectedVirtualSectionId == null || selectedVirtualSectionId < 0) {
+                    CustomAlert('Please select the section to add the items to.');
+                    return;
+                }
+            }
+            if (!validateUniquePoints()) {
+                return;
+            }
+
+            var validateAttachmentSettingResult = validateAttachmentSetting(TestMakerComponent.attachmentSetting, iSchemeID);
+            if (!validateAttachmentSettingResult.valid) {
+                CustomAlert(validateAttachmentSettingResult.errorMessage);
+                return;
+            }
+
+
+            $('.js-btn-actions').prop('disabled', true);
+
+            var qType = $('input[name="qType"]:checked').val();
+
+            var data = buidData(xmlContent, selectedVirtualSectionId);
+
+            ShowBlock($('#divCreateItem'), "Creating");
+
+            $.ajax({
+                url: '@Url.Action("CreateItem")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ 'model': data }),
+            }).done(function(response) {
+                if (response.success == true) {
+                    ShowBlock($('#divCreateItem'), "Closing");
+                    $('#success-message').show();
+                    setTimeout(function() {
+                        $('#success-message').hide();
+                        saveAndNewItem();
+                    }, 2000);
+                } else {
+                    $('#divCreateItem').unblock();
+                    $('.js-btn-actions').prop('disabled', false);
+                    displayErrorMessage(response);
+                }
+            });
+        }
+
+        function saveAndNewItem() {
+            var qtiGroupId = $('#qtiGroupId').val();
+            window.location.href = '@Url.Action("Index", "TestMaker")?qtiItemGroupId=' + qtiGroupId + '&qtiSchemaId=1' + '&virtualTestId=@ViewBag.VirtualTestId' + generateDistrictIdParamsFromURL();
+        }
+
+        function ConfirmItemUpdate(message, updateTypeId) {
+            var hbody = $("body").height() - 109;
+            var strHtml = '<section class="grid_5" style="height:140px;">' +
+                '<div class="block-border" style="width: 350px; min-height: 100px;">' +
+                '<div class="block-content form" style="padding-bottom:0px">' +
+                '<table cellpadding="0" cellspacing="0" style="margin-top:-15px;"><tr><td><p class="styleMessage" style="margin-bottom:10px;">' + message +
+                '</p></td></tr><tr><td>' +
+                '<p class="plButton"  style="margin-bottom:10px;text-align: center">' +
+                '<button id="btnOk" type="button" name="ok" onclick="ConfirmItemUpdateOkClick(' + updateTypeId + ')">OK</button>' +
+                '<button id="btnCancel" type="button" name="cancel" onclick="ConfirmItemUpdateCancellick()" style="margin-left:10px;">Cancel</button>' +
+                '</p></td></tr></table></div></div></section>';
+            $("<div></div>")
+                .html(strHtml)
+                .addClass("dialog")
+                .attr("id", "ConfirmItemUpdateDialog")
+                .appendTo("body")
+                .dialog({
+                    close: function() { $(this).remove(); },
+                    modal: true,
+                    width: 420,
+                    maxheight: 100,
+                    resizable: false
+                });
+
+            $(".ui-dialog").css("height", hbody);
+
+        }
+
+        function ConfirmItemUpdateOkClick(updateTypeId) {
+            $(".dialog").dialog("close");
+
+            if (updateTypeId == 2) {
+                updateCloseItem(); //save and close
+            }
+            if (updateTypeId == 5) {
+                saveAndCreateNewItem(); //save and create new
+            }
+
+        }
+
+        function ConfirmItemUpdateCancellick() {
+            $(".dialog").dialog("close");
+        }
+
+        $(document).ready(function() {
+            var qtiSchemaId = '@ViewBag.QtiSchemaId';
+            TestMakerComponent.qtiSchemaId = qtiSchemaId;
+            TestMakerComponent.assessmentArtifactConfiguration = JSON.parse(unescapeHtml('@ViewBag.AssessmentArtifactConfiguration'));
+
+            loadEditItem(qtiSchemaId, true);
+            CKEDITOR.on('instanceReady', removeDisabledAfterCkeditorLoaded);
+            if(qtiSchemaId === '21'){
+                global.isMultipart = true;
+            }
+
+            $("#listReference").sortable({
+                placeholder: "ui-state-highlight",
+                forcePlaceholderSize: true,
+                axis: "x",
+                forceHelperSize: true,
+                dropOnEmpty: true,
+                distance: 1,
+                cursorAt: { left: 5 },
+                containment: "parent",
+                classes: {
+                    "ui-sortable": "highlight"
+                },
+                scroll: true,
+                tolerance: "pointer",
+                cursor: "move"
+            });
+        });
+
+        function removeDisabledAfterCkeditorLoaded() {
+            var status;
+
+            if (window.CKEDITOR && CKEDITOR.instances && CKEDITOR.instances[ckID]) {
+                status = CKEDITOR.instances[ckID].status;
+            }
+
+            MathJax.Hub.Queue(function() {
+                if (status === 'ready') {
+                    setTimeout(function() {
+                        var $btnActions = $('.js-btn-actions');
+                        $btnActions.removeClass('disabled');
+                    }, 3000);
+                }
+            });
+        }
+
+        function getObjectIdList() {
+            var objectIdList = '';
+
+            $("#listReference li").each(function() {
+                if ($(this).attr("type") != "objectUrl") {
+                    objectIdList += $(this).attr("data") + ';';
+                }
+            });
+            $("#listReference").sortable({
+                placeholder: "ui-state-highlight",
+                forcePlaceholderSize: true,
+                axis: "x",
+                forceHelperSize: true,
+                dropOnEmpty: true,
+                distance: 1,
+                cursorAt: { left: 5 },
+                containment: "parent",
+                classes: {
+                    "ui-sortable": "highlight"
+                },
+                scroll: true,
+                tolerance: "pointer",
+                cursor: "grabbing"
+            });
+            if (objectIdList.length > 0)
+                return objectIdList.substring(0, objectIdList.length - 1);
+            else {
+                return objectIdList;
+            }
+        }
+
+        function viewRefObjectContent(control) {
+            //tracking current refObject is being viewed
+            $(control).parent().addClass('currentView');
+
+            // Get refObjectId from Add Passage Popup
+            var refObjectId = $(control).attr('data');
+            var refObjectLink = '';
+
+            var type = $(control).parent().attr('type'); // ckeditor_mk.js
+            if (type == 'objectUrl') {
+                refObjectLink = $(control).parent().attr('data');
+            }
+            if (type == 'objectId') {
+                // Get refObjectId from view passage control from Create or Edit page
+                if (refObjectId == null)
+                    refObjectId = $(control).parent().attr('data');
+            }
+            if (refObjectId == null || refObjectId == undefined) {
+                refObjectId = 0;
+            }
+
+            var isShowShuffleCheckBox = false;
+            if (@ViewBag.VirtualTestId > 0) {
+                isShowShuffleCheckBox = true;
+            }
+
+            var noShuffle = false;
+            var noshuffleAttr = $(control).parent().attr('noshuffle');
+            if (noshuffleAttr != undefined) {
+                noShuffle = noshuffleAttr;
+            }
+            var worker = $('<div />');
+
+            var assignedObjectIdList = getObjectIdList();
+            var url = '@Url.Action("ShowPassageDetail", "QTIItem")/?refObjectID=' + refObjectId + '&data=' + encodeURI(refObjectLink) + '&IsShowShuffleCheckbox=' + isShowShuffleCheckBox + '&noShuffle=' + noShuffle;
+
+            worker
+                .addClass("dialog")
+                .attr("id", "ShowRefObjectContent")
+                .appendTo("body")
+                .load(url, function() {
+                    worker.dialog({
+                        title: $(this).attr("Show Ref Object Content"),
+                        open: function() { $('#divPassageDetail').find('video').trigger('play'); },
+                        close: function() {
+
+                            if ($('#cbShuffle') != undefined) {
+                                if ($('#cbShuffle').attr('checked') == 'checked') {
+                                    $('.currentView').attr('noShuffle', 'true');
+                                } else {
+                                    $('.currentView').removeAttr('noShuffle');
+                                }
+
+                                $('.currentView').removeClass('currentView');;
+                            }
+
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+
+                            if (window.playsound != null) {
+                                window.playsound.pause();
+                            }
+                        },
+                        modal: false,
+                        width: 750,
+                        resizable: false,
+                    });
+                });
+
+            showModalDialogBG();
+        }
+
+        function chooseQuestionType(qtiSchemeId) {
+            window.location.href = '@Url.Action("Index", "TestMaker")/?qtiItemGroupId=@ViewBag.qtiItemGroupId' + '&qtiSchemaId=' + qtiSchemeId + '&virtualTestId=@ViewBag.VirtualTestId' + generateDistrictIdParamsFromURL();
+
+        }
+
+        function chooseTrueFalse(qtiSchemeId, txt) {
+            window.location.href = '@Url.Action("Index", "TestMaker")/?qtiItemGroupId=@ViewBag.qtiItemGroupId' + '&qtiSchemaId=' + qtiSchemeId + '&' + txt + '&virtualTestId=@ViewBag.VirtualTestId' + generateDistrictIdParamsFromURL();
+
+        }
+
+//Create event click for delete button
+        $(".delReference").click(function() {
+            $(this).parent().remove();
+        });
+
+        function AddSelectListItems(selectList, results, defaultValue) {
+            if (results.length == 0) {
+                return;
+            }
+
+            selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+            $.each(results, function(i, value) {
+                selectList
+                    .append($("<option></option>")
+                        .attr("value", value.Id)
+                        .text(value.Name));
+            });
+        }
+
+        function displayErrorMessage(response) {
+            if (!response || !response.ErrorList || response.ErrorList.length == 0) return;
+            messageList = response.ErrorList.map(function (x) { return x.ErrorMessage; }).join('</br>')
+            customAlert(messageList);
+        }
+    </script>
+    <script>
+        //redirect to item difference
+        $("#changeItemType").change(function (evt) {
+            var id = $(this).val();
+
+            var titleSpecial = $("#changeItemType option:selected").attr('titleSpecial');
+            if (titleSpecial === 'Multi-Part') {
+                global.isMultipart = true;
+            } else {
+                global.isMultipart = false;
+            }
+            if (isChangeCKeditor == false) {
+                if (titleSpecial == 'TrueFalse') {
+                    chooseTrueFalse(id, titleSpecial);
+                } else if (titleSpecial == 'DragDrop') {
+                    chooseTrueFalse(id, 'DragDrop');
+                } else {
+                    chooseQuestionType(id);
+                }
+            } else {
+                selectDialog(titleSpecial, id);
+            }
+        });
+
+        function selectDialog(trueFalse, id) {
+            customConfirm('Item will be lost in converting to a different item type. Do you want to continue?').then(function (result) {
+                if (result) {
+                    $(this).dialog('destroy');
+                    if (trueFalse == 'TrueFalse') {
+                        chooseTrueFalse(id, trueFalse);
+                    } else if (trueFalse == 'DragDrop') {
+                        chooseTrueFalse(id, 'DragDrop');
+                    } else {
+                        chooseQuestionType(id);
+                    }
+                } else {
+                    $(this).dialog('destroy');
+
+                    var $changeItemType = $('#changeItemType');
+                    var txtTrueFalse = document.URL.split('&')[2];
+
+                    if (txtTrueFalse == 'TrueFalse' || isTrueFalse == true) {
+                        $changeItemType.find('option[value="' + iSchemeID + '"][titlespecial="TrueFalse"]').prop('selected', true);
+                    } else if (iSchemeID == '1') {
+                        $changeItemType.find('option[value="' + iSchemeID + '"][titlespecial="MultipleChoice"]').prop('selected', true);
+                    } else {
+                        $changeItemType.find('option[value="' + iSchemeID + '"]').prop('selected', true);
+                    }
+                }
+            });
+        }
+    </script>
+    <!-- Custom alert message box -->
+    <script type="text/javascript">
+        function CustomAlert(message, isLongMessage) {
+            var yesButton = '<button class="btn-red" onclick="CustomAlertYesClick(this);">OK</button>';
+            var messageTextAlign = 'center';
+            var messageBoxWidth = 240;
+            var diaglogWidth = 300;
+
+            if (typeof isLongMessage != "undefined" && isLongMessage == true) {
+                messageTextAlign = 'left';
+                messageBoxWidth = 540;
+                diaglogWidth = 600;
+            }
+            var strHtml = '<section>' +
+                '<div class="block-border">' +
+                '<div class="block-content form" style="text-align:center; padding: 24px !important"><div style="font-weight: 700;text-align:' + messageTextAlign + ';line-height: 26px;">' + message +
+                '</div></div><div style="text-align:center;padding-top: .5em;background: var(--navyColor);height: 64px;">' + yesButton + '</div></div></section>';
+            $("<div></div>")
+                .html(strHtml)
+                .addClass("dialog")
+                .attr("id", "CustomAlertDialog")
+                .appendTo("body")
+                .dialog({
+                    close: function () { $(this).remove(); },
+                    modal: true,
+                    width: diaglogWidth,
+                    maxheight: 400,
+                    resizable: false,
+                    open: function () { $(".ui-dialog-titlebar-close").hide(); }
+                });
+        }
+
+        function CustomAlertYesClick(item) {
+            $("#CustomAlertDialog").dialog("close");
+            var url = $(item).attr('url');
+            if (url != undefined && $.trim(url) != '') window.open(url);
+        }
+
+        $('#btnPreviewItem').click(function() {
+            var isValidateDragAndDrop = validateDragAndDrop(iResult);
+
+            if (!isValidateDragAndDrop) {
+                customAlert("<p style='text-align: left'>You are using <b>Destination Level Partial Credit Grading</b> on this question, but you have set the overall point value on this question to be greater than the sum of each destination's point value. This means that if a student answers each destination correctly, they still will not earn the full credit on this question. Please adjust the point values on this question before saving.</p>");
+                return false;
+            }
+
+            $('#btnPreviewItem').attr('disabled', 'disabled');
+            ShowBlock($('#divCreateItem'), "Previewing");
+
+            var xmlContent = xmlExport();
+            if (xmlContent == '' || !xmlContent) {
+                CustomAlert('Question content is empty.');
+                return;
+            }
+            xmlContent = xmlContent.replace('<span class="placeholder" contenteditable="false" style="position: absolute;z-index: 99999;">Enter Question…</span>', "");
+
+            var multiPartExpressions = [];
+            var enableElement = '';
+            if (TestMakerComponent.listMultiPartExpression.length > 0) {
+                for (var i = 0; i < TestMakerComponent.listMultiPartExpression.length; i++) {
+                    enableElement = TestMakerComponent.listMultiPartExpression[i].enableElements.toString();
+                    if (enableElement) {
+                        multiPartExpressions.push({
+                            MultiPartExpressionPreviewID: null,
+                            QTIItemPreviewRequestID: null,
+                            Expression: TestMakerComponent.listMultiPartExpression[i].expression,
+                            EnableElements: TestMakerComponent.listMultiPartExpression[i].enableElements.toString(),
+                            Order: i + 1,
+                            Rules: JSON.stringify(TestMakerComponent.listMultiPartExpression[i].rules),
+                        });
+                    }
+                }
+            }
+
+            var data = {
+                virtualTestId: @ViewBag.VirtualTestId,
+                xmlContent: xmlContent,
+                multiPartExpressions: multiPartExpressions
+            }
+
+            $.ajax({
+                url: '@Url.Action("GeneratePreviewRequest")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ 'model': data }),
+                error: function() {
+                    $('#btnPreviewItem').removeAttr('disabled');
+                }
+            }).done(function(response) {
+                SessionTimeOutComponent.sessionKeepAlive();
+
+                $('#divCreateItem').unblock();
+                $('#btnPreviewItem').removeAttr('disabled', 'disabled');
+
+                $('body').append('<div id="divUrlPreviewOnlinePanel" class="dialog dialog-custom-new-skin"></div>');
+                var yesButton = '<button id="button-ok">OK</button>';
+                var strHtml = '<section><div class="block-border">' +
+                    '<div class="block-content p-4"><div class="text-center font-bold">Question is ready for preview.</div>' +
+                    `</div>
+                        </div>
+		                    <div class="modal-component-footer">
+                                <div slot="footer">
+			                        ${yesButton}
+                                </div>
+		                    </div>
+                        </section>`;
+
+                $("#divUrlPreviewOnlinePanel").append(strHtml);
+                $('#divUrlPreviewOnlinePanel').dialog({
+                    title: "",
+                    open: function() {
+                        //If width of popup gt window width popup auto show on the left
+                        var currentPopup = $(this);
+                        if (currentPopup.width() > $(window).width()) {
+                            currentPopup.parent().css({ "left": "0" });
+                        }
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        $('#divUrlPreviewOnlinePanel #button-ok').click(function () {
+                            window.open(response.testTakerUrl, '_blank');
+                            closePopUpOnlineTearcherPreview();
+                        });
+                    },
+                    beforeclose: function() {
+                        return true;
+                    },
+                    close: function() {
+                        $('#divUrlPreviewOnlinePanel').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 360,
+                    resizable: false
+                });
+            });
+        });
+
+        function closePopUpOnlineTearcherPreview() {
+            $('#divUrlPreviewOnlinePanel').remove();
+            $("body .my-overlay").remove();
+        }
+    </script>
+    <!-- Custom alert message box -->
+    <script type="text/javascript">
+        function CustomAlert(message, isLongMessage) {
+            var yesButton = '<button class="btn-red" onclick="CustomAlertYesClick(this);">OK</button>';
+            var messageTextAlign = 'center';
+            var messageBoxWidth = 240;
+            var diaglogWidth = 300;
+
+            if (typeof isLongMessage != "undefined" && isLongMessage == true) {
+                messageTextAlign = 'left';
+                messageBoxWidth = 540;
+                diaglogWidth = 600;
+            }
+            var strHtml = '<section>' +
+                '<div class="block-border">' +
+                '<div class="block-content form" style="text-align:center; padding: 24px !important"><div style="font-weight: 700;text-align:' + messageTextAlign + ';line-height: 26px;">' + message +
+                '</div></div><div style="text-align:center;padding-top: .5em;background: var(--navyColor);height: 64px;">' + yesButton + '</div></div></section>';
+            $("<div></div>")
+                .html(strHtml)
+                .addClass("dialog")
+                .attr("id", "CustomAlertDialog")
+                .appendTo("body")
+                .dialog({
+                    close: function() { $(this).remove(); },
+                    modal: true,
+                    width: diaglogWidth,
+                    maxheight: 400,
+                    resizable: false,
+                    open: function() { $(".ui-dialog-titlebar-close").hide(); }
+                });
+        }
+
+        function CustomAlertYesClick(item) {
+            $("#CustomAlertDialog").dialog("close");
+            var url = $(item).attr('url');
+            if (url != undefined && $.trim(url) != '') window.open(url);
+        }
+
+        function RecoverTestMakerCKEditorConfig() {
+            //reset config for CKEditor used in TestMaker
+            MKEditor = {
+                isPassageEditor: false,
+                imgUrl: "../../Content/themes/TestMaker/",
+                audioUrl: '@Url.Action("AudioUpload", "TestMaker")',
+                loadAudioUrl: window.location.protocol + "//" + window.location.hostname + "/TestMaker/GetAudio",
+                objectId: '@ViewBag.QtiItemGroupId',
+                imgUpload: '@Url.Action("ImageUpload", "TestMaker")',
+                GetViewReferenceImg: window.location.protocol + "//" + window.location.hostname + '/TestAssignmentRegrader/GetViewReferenceImg?imgPath=', //This is config for view image on test maker
+                UseS3Content: true, // this variable use to download to applition(  server) or S3
+                S3PassageMedia: '',
+                GetViewReferenceImgS3: ''
+            };
+            @if (ViewBag.MediaModel != null)
+            {
+                <text>MKEditor.S3PassageMedia = '@ViewBag.MediaModel.PassageMediaFolderPath';</text>
+                <text>MKEditor.GetViewReferenceImg = '@ViewBag.MediaModel.TestMediaFolderPath';</text>
+                <text>MKEditor.GetViewReferenceImgS3 = '@ViewBag.MediaModel.TestMediaFolderPath';</text>
+                <text>MKEditor.UseS3Content = true;</text>
+            }
+            ckID = currentCkID; //recover the current ckID (used by test  maker)
+        }
+
+        function buidData(xmlContent, selectedVirtualSectionId) {
+            var noDuplicateAnswers = false;
+            if ($('#noDuplicate').length > 0) {
+                noDuplicateAnswers = $('#noDuplicate').is(':checked');
+            }
+            var selectQuestionGroupId= 0;
+            if(@ViewBag.VirtualTestId > 0 && '@ViewBag.HasQuestionGroups'==='True') {
+                selectQuestionGroupId = $('#selectGroupAdd').val();
+            }
+           var qtiGroupId = $('#qtiGroupId').val();
+
+            var listExpression = [];
+            if (TestMakerComponent.listExpression.length > 0) {
+                for (var i = 0; i < TestMakerComponent.listExpression.length; i++) {
+                    listExpression.push({
+                        QtiItemAlgorithmID: null,
+                        VirtualQuestionAlgorithmID: null,
+                        Expression: TestMakerComponent.listExpression[i].expression,
+                        PointEarned: TestMakerComponent.listExpression[i].point,
+                        Rules: JSON.stringify(TestMakerComponent.listExpression[i].rules),
+                        Order: i + 1
+                    });
+                }
+            }
+
+            var multiPartExpressions = [];
+            var enableElement = '';
+            if (TestMakerComponent.listMultiPartExpression.length > 0) {
+                for (var i = 0; i < TestMakerComponent.listMultiPartExpression.length; i++) {
+                    enableElement = TestMakerComponent.listMultiPartExpression[i].enableElements.toString();
+                    if (enableElement) {
+                        multiPartExpressions.push({
+                            MultiPartQTIItemExpressionID: null,
+                            MultiPartVirtualQuestionExpressionID: null,
+                            Expression: TestMakerComponent.listMultiPartExpression[i].expression,
+                            EnableElements: TestMakerComponent.listMultiPartExpression[i].enableElements.toString(),
+                            Rules: JSON.stringify(TestMakerComponent.listMultiPartExpression[i].rules),
+                            Order: i + 1
+                        });
+                    }
+                }
+            }
+
+            var data = {
+                QTIGroupId: qtiGroupId,
+                XMLContent: xmlContent,
+                VirtualTestId: @ViewBag.VirtualTestId,
+                SelectedVirtualSectionId: selectedVirtualSectionId,
+                NoDuplicateAnswers: noDuplicateAnswers,
+                ListExpression: listExpression,
+                QuestiongroupId: selectQuestionGroupId,
+                ListMultiPartExpression: multiPartExpressions,
+                RubricQuestionCategories: global.scoringMethod === 'rubricBasedGrading' ? global.rubricQuestionCategories : [],
+                Title: $('#Title').val(),
+                Description: $('#Description').val()
+            };
+            return data;
+        }
+    </script>
+    <!-- Close PassageDetail-->
+    <script type="text/javascript">
+        $('#btnCloseUserClickPassageDetail').die('click');
+        $('#btnCloseUserClickPassageDetail').live("click", function (e) {
+            //check checkbox shuffle
+            if ($('#cbShuffle') != undefined) {
+                if ($('#cbShuffle').attr('checked') == 'checked') {
+                    $('.currentView').attr('noShuffle', 'true');
+                } else {
+                    $('.currentView').removeAttr('noShuffle');
+                }
+
+                $('.currentView').removeClass('currentView');;
+            }
+
+            $('#ShowRefObjectContent').dialog("close");
+            $('#PassageDetailDialog').parent().dialog("close");
+            if (window.playsound != null) {
+                window.playsound.pause();
+            }
+        });
+
+        $('#btnConditionalLogicConfiguration').live("click", function (e) {
+            window.exportXmlWarningDisable = true;
+            var xmlContent = '';
+            try {
+                xmlContent = xmlExport();
+            } catch (error) {
+                console.error(error);
+            } finally {
+                delete window.exportXmlWarningDisable;
+            }
+            var options = MultiPart.getQueryBuilder(xmlContent);
+            var response = '';
+            TestMakerComponent.multiPartResponses = ["NEXT"];
+
+            for (var i = 0; i < options.filters.length; i++) {
+                response = options.filters[i].id;
+                if ($.inArray(response, TestMakerComponent.multiPartResponses) < 0) {
+                    TestMakerComponent.multiPartResponses.push(response);
+                }
+            }
+            TestMakerComponent.multiPartResponses.sort();
+        });
+    </script>
+    @if (ViewBag.IsSurvey == 1)
+    {
+        <script>
+            $(function () {
+                var item = $("#main-nav li a[href='@Url.Action("Index", "AssessmentItems")']");
+                item.parent().removeClass('current');
+                item.parent().parent().parent().removeClass('current');
+                item = $("#main-nav li a[href='@Url.Action("Index", "ManageSurvey")']");
+                item.parent().addClass("current");
+                item.parent().parent().parent().addClass("current");
+            })
+        </script>
+    }
+    <script>
+        function validateUniquePoints() {
+            if ('@ViewBag.IsSurvey' == '1' && iSchemeID == '37') {
+                var pointArr = [];
+                $.each(iResult[0].simpleChoice, function () {
+                    pointArr.push(this.answerPoint);
+                });
+                if (_.union(pointArr).length != pointArr.length) {
+                    CustomAlert('The point values must be different.');
+                    return false;
+                }
+            }
+            return true;
+        }
+    </script>
+    @if (ViewBag.VirtualTestId > 0)
+    {
+        if (ViewBag.HasMoreThanOneSection)
+        {
+            <script>
+                $(function () {
+                    $('.divBotButton').css('justify-content', 'space-between')
+                })
+            </script>
+        }
+    }
+}

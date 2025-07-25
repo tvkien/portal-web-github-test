@@ -1,0 +1,284 @@
+<section>   
+<div class="block-border">
+    <div class="block-content form" style="padding:1.5rem">
+        <h1 style="font-size: 1.375rem; padding: 0; margin-bottom: 1.5rem">
+            Assign @LabelHelper.TestGrades For Lesson
+        </h1>
+
+        @if (ViewBag.LessonId > 0)
+        {
+            <text>
+                <p style="height: 25px">
+                    Assign @LabelHelper.TestGrades for lesson: @ViewBag.LessonName
+                </p>
+            </text>
+        }
+
+        @*<p style="height: 5px">
+            <div id="gradeNotInLessonNotifications"></div>
+        </p>*@
+        <div class="no-margin last-child">
+            <table id="dataTableAvailableGrades" class="datatable table no-margin" width="100%">
+                <thead>
+                    <tr>
+                        <th scope="col">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            @LabelHelper.TestGrade
+                        </th>
+                        <th scope="col" style="text-align:center !important">Assign</th>
+                        <th scope="col" style="display:none"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+        <div style="background: var(--navyColor); position: absolute; width: 100%; left: 0; bottom: -50px; height: 70px; display: flex; align-items: center; justify-content: center;">
+            <button class="btn-accept" id="btnCloseUserClick" type="button" data-dialog="close">Close</button>
+        </div>
+    </div>
+</div>
+    </section>
+<style>
+    #dataTableAvailableGrades_wrapper{
+        padding: 1.5rem;
+        padding-top:0
+    }
+    input + label {
+        color: var(--navyColor) !important;
+        line-height: 26px !important;
+        text-transform: capitalize !important;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block !important;
+        width: 44px;
+        height: 22px;
+    }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        -webkit-transition: .4s;
+        transition: .4s;
+    }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            top: calc(50% - 18px/2);
+        }
+
+    input:checked + .slider {
+        background-color: var(--lightBlue);
+    }
+
+        /*input:focus + .slider {
+        box-shadow: 0 0 1px var(--red);
+    }*/
+
+        input:checked + .slider:before {
+            -webkit-transform: translateX(18px);
+            -ms-transform: translateX(18px);
+            transform: translateX(18px);
+        }
+
+    /* Rounded sliders */
+    .slider.round {
+        border-radius: 16px;
+    }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+    .ui-dialog-titlebar-close{
+        top: 1.5rem !important;
+        right: 2rem !important;
+    }
+
+</style>
+<script type="text/javascript">
+    $(function () {
+        //alert('ggggg1:' + $("#AssignedGradeIdString").val());
+
+        var optionsStudentNotInClass = {
+                bServerSide: true,
+                sAjaxSource: '@Url.Action("GetAvailabelGrades")',
+				fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            //sScrollY: "500px",
+            //bScrollCollapse: true,
+                bAutoWidth: false,
+                iDisplayLength: 10,
+                aaSorting: [[2, "asc"]],
+                aoColumns: [
+                    { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sClass: 'text-start' },
+                    { sType: 'integer', sName: 'Id', bSearchable: false, bSortable: false, sWidth: '36%' },
+                    { sType: 'integer', sName: 'Order', bSearchable: false, bSortable: false,bVisible:false }
+                ],
+                fnRowCallback: function (nRow, aData) {
+                    $('td:eq(1)', nRow).html(SetIconSelect(aData[1]));
+                    return nRow;
+                },
+                fnPreDrawCallback: function () {
+                    ShowBlock($('#dataTableAvailableGrades'), "Loading");
+                    return true;
+                },
+                fnDrawCallback: function () {
+                    $('#dataTableAvailableGrades').unblock();
+                    $('.with-tip').tip();
+                    temp()
+                    $('#dataTableAvailableGrades_wrapper .block - controls').css('marginTop', '100px');
+
+                },
+                fnInitComplete: function () {
+                    tranformSearchInputDataTable('dataTableAvailableGrades_filter')
+                }
+        };
+
+        $("#dataTableAvailableGrades").data("options", optionsStudentNotInClass);
+        initializeDataTable($("#dataTableAvailableGrades"));
+
+        $('.control-next').css('margin-right', '0px');
+
+        function bindEvents() {
+            $('button[data-dialog="close"]').die('click');
+            $(document).on('click', 'button[data-dialog="close"]', function (e) {
+
+                var self = $(e.target);
+                self.closest('.dialog').dialog('close');
+
+            });
+
+        }
+
+        @*$('#dataTableAvailableGrades').on('click', '.assignGrade', function () {
+            if (confirm("Do you want to assign this grade to this lesson?")) {
+                var self = $(this);
+
+                var gradeId = self.attr('gradeId');
+                var data = self.closest('.dialog');
+
+                self.hide();
+
+                $.post('@Url.Action("AssignGradeToLesson")', { lessonId: @ViewBag.LessonId, gradeId: gradeId }, function (response) {
+                    if (response.Success == 'success') {
+                        ui.dataTableAvailableGrades.fnDraw();
+                        //$.publish('manageClass/studentAssigned', data); //_Q_
+                        LinkIt.success('#gradeNotInLessonNotifications', 'Grade Assigned');
+                        //re display the assigned grade list
+                        ui.dataTableAssignedGradeList.fnDraw();// there's already a data table name dataTableAssignedGradeList (Edit -> _AssignedGradeList)
+                    } else {
+                        alert(response.errorMessage);
+                    }
+                });
+            }
+        });*@
+
+        bindEvents();
+    });
+    function temp() {
+        $('.switch input[type="checkbox"]').click(function () {
+            var gradeId = $(this).prop('id')
+            if ($(this).is(":checked")) {
+                if (gradeId) {
+                    assignGrade(gradeId)
+                }
+                $(this).next().updateTipContent('Remove Grade')
+            } else {
+                if (gradeId) {
+                    removeGrade(gradeId)
+                }
+                $(this).next().updateTipContent('Assign @LabelHelper.TestGrade')
+            }
+        });
+    }
+
+
+    function SetIconSelect(gradeId) {
+        var gradeIdList = $("#AssignedGradeIdString").val();
+        if(gradeIdList==null) {
+            gradeIdList = '';
+        }
+        var title = 'Assign @LabelHelper.TestGrade';
+        var checked = '';
+        if(gradeIdList.indexOf(',-'+ gradeId + '-')>=0) {
+            title = 'Remove Grade';
+            checked = 'checked';
+        }
+        var switchBtnString = '<div style="text-align: center;"><label class="switch"><input type = "checkbox" name = "assignGrades_' + gradeId + '"' + checked + ' id="' + gradeId +'"><span title="'+title+'" class="slider round with-tip"></span></label ></div>'
+        return switchBtnString;
+    }
+
+
+
+    function assignGrade(gradeId) {
+        var gradeIdList = $("#AssignedGradeIdString").val();//AssignedGradeIdString is declared in AddResource.cshtml
+        if(gradeIdList==null) {
+            gradeIdList = '';
+        }
+        gradeIdList = gradeIdList + ',-' + gradeId +'-';
+        $("#AssignedGradeIdString").val(gradeIdList);
+        //change the icon for assigned grade
+
+        //$("#div_unlock_" + gradeId).hide();
+        //$("#div_lock_" + gradeId).show();
+        //call display assignGrade on AddResource.cshtml
+        PopulateAssignedGrades(gradeIdList);
+
+    }
+    function removeGrade(gradeId) {
+        var gradeIdList = $("#AssignedGradeIdString").val();
+        if(gradeIdList==null) {
+            gradeIdList = '';
+        }
+        gradeIdList = gradeIdList.replace(',-' + gradeId,'-');
+        $("#AssignedGradeIdString").val(gradeIdList);
+        //change the icon for assigned grade
+        //$("#div_unlock_" + gradeId).show();
+        //$("#div_lock_" + gradeId).hide();
+        PopulateAssignedGrades(gradeIdList);
+    }
+
+
+</script>

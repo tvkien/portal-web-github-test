@@ -1,0 +1,176 @@
+<style>
+    #dataTablePassageItem tbody tr {
+        height: 100% !important; /* Fix for IE9 */
+    }
+</style>
+
+<div div="ListItemsPassageNew">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h3 class="h3 mb-0">Filtered Passages</h3>
+    </div>
+    <div>
+        <table id="dataTablePassageItem" class="datatable table no-margin w-100 dataTablePassageItem">
+            <thead>
+                <tr>
+                    <th scope="col">
+                        Action
+                    </th>
+                    <th scope="col">
+                        Source
+                    </th>
+                    <th scope="col">
+                        Name
+                    </th>
+                    <th scope="col">
+                        Number
+                    </th>
+                    <th scope="col">
+                        @LabelHelper.Subject
+                    </th>
+                    <th scope="col">
+                        @LabelHelper.TestGrade
+                    </th>
+                    <th scope="col">
+                        Text Type
+                    </th>
+                    <th scope="col">
+                        Text Sub Type
+                    </th>
+                    <th scope="col">
+                        Flesch Kincaid
+                    </th>
+                    <th scope="col">
+                        Matched Items
+                    </th>
+                    <th scope="col">
+                        All Items
+                    </th>
+                    <th scope="col" style="display: none">
+                        ItemsMatchXml
+                    </th>
+                    <th scope="col" style="display: none">
+                        ItemsAllXml
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="height: 60px;"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script type="text/javascript">
+    function getAjaxSourcePassageItemForEmpty() {
+        $('#chkAllItem').removeAttr('checked');
+        displayNWEASearchCriteria();
+        return getAjaxGetQtiItemsByFiltersPassage('true');
+    }
+    function getAjaxSourcePassageItem() {
+        return getAjaxGetQtiItemsByFiltersPassage();//defined in ItemBank/_ImportItemFromLibraryScript.cshtml
+    }
+
+    function ReloadPassageItem() {
+        $("#dataTablePassageItem").dataTable().fnReloadAjax(getAjaxSourcePassageItem());
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    function DisplayViewPassageNewIcon(qtiRefObjectID) {
+        var icon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/view-item.png")';
+        var string = '<a QTIRefObjectID="' + qtiRefObjectID + '" href="javascript:void(0)" onclick="showPassageDetailPopupListItemPassageNew(' + qtiRefObjectID + ')" title="View passage" class="with-tip"><img src="../' + icon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        return string;
+    }
+    function showPassageDetailPopupListItemPassageNew(qtiRefObjectID, hasQTI3pPassage) {
+        let url = '@Url.Action("ShowPassageDetail", "QTIItem")\?refObjectID=' + qtiRefObjectID;
+        if (hasQTI3pPassage === 'True') {
+            url = '@Url.Action("ShowPassage3pDetail", "QTIItem")\?qti3pPassageID=' + qtiRefObjectID;
+        }
+
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassageDetailPopupOnQtiItemDetailCSS")
+            .attr("id", "PassageDetailDialog")
+            .appendTo("body")
+            .load(url, function () {
+                worker.dialog({
+                    title: $(this).attr("PassageDetail"),
+                    open: function () {
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+
+                        if (window.playsound != null) {
+                            window.playsound.pause();
+                        }
+                    },
+                    modal: false,
+                    width: 780,
+                    resizable: false,
+                    position: {
+                        my: "center",
+                        at: "center",
+                        of: window
+                    }
+                });
+            });
+        showModalDialogBG();
+    }
+    function DisplayAssignAllItemNewIcon(qtiRefObjectID, allCount, matchItemXml) {
+        var showItemIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var showItemLink = '<a qtiRefObjectID="' + qtiRefObjectID + '" matchItemXml="' + matchItemXml + '" href="javascript:void(0)" onclick="showPassageItemForm(this)" title="<p>Show Item(s)</p>" class="passage-found-item-link with-tip">' + allCount + '</a>';
+
+        return showItemLink;
+
+    }
+    function DisplayAssignMatchItemNewIcon(qtiRefObjectID, matchCount, matchItemXml) {
+        var showItemIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var showItemLink = '<a qtiRefObjectID="' + qtiRefObjectID + '" matchItemXml="' + matchItemXml + '" href="javascript:void(0)" onclick="showPassageItemForm(this)" title="<p>Show Item(s)</p>" class="passage-found-item-link with-tip">' + matchCount + '</a>';
+
+        return showItemLink;
+
+    }
+
+    function showPassageItemForm(control) {
+        var self = $(control);
+        var qtiRefObjectID = self.attr('qtiRefObjectID');
+        var matchItemXml = self.attr('matchItemXml');
+        matchItemXml = encodeParameter(matchItemXml);
+        var worker = $('<div />');
+
+        worker
+            .addClass("dialog")
+            .attr("id", "ShowPassageItemFormPopup")
+            .appendTo("body")
+        .load('@Url.Action("ShowPassageItemForm")/?qtiRefObjectID=' + qtiRefObjectID + '&matchItemXml=' + matchItemXml, function () {
+            worker.dialog({
+                title: $(this).attr("Associated items"),
+                close: function () {
+                    $('.ui-widget-overlay').remove();
+                    $(this).remove();
+                },
+                modal: false,
+                width: 950,
+                resizable: false,
+                position: ['top', 20],
+                dialogClass: 'ui-dialog-title-close',
+                position: {
+                    my: "center",
+                    at: "center",
+                    of: window
+                }
+            });
+        });
+        
+
+        showModalDialogBG();
+    }
+</script>

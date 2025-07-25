@@ -1,0 +1,458 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.StudentPreferenceViewModel
+@{
+    ViewBag.Title = "Default Preferences";
+}
+
+
+<style>
+  .pIcon {
+    position: relative;
+    left: 11px;
+  }
+
+  #student-references {
+    max-width: 940px;
+    margin: 30px auto 0;
+  }
+
+  #student-references .block-border {
+    width: 918px;
+  }
+
+  .block-border .filter-group {
+    background: #fff;
+    padding: 2.833em 1.667em 1.667em;
+  }
+
+  .block-border .filter-group .fileter-item {
+    width: 44%;
+    float: left;
+    margin-bottom: 1.667em;
+    margin-left: 4%;
+  }
+
+  .block-border .background-filter::after,
+  .block-border .filter-group::after,
+  #student-references .block-border::after,
+  #student-references::after,
+  .block-border .filter-group .btn-filter::after {
+    display: table;
+    clear: both;
+    content: '';
+  }
+
+  .block-checkbox {
+    height: 150px;
+    overflow: auto;
+    background: #fff;
+  }
+
+  .fileter-checkbox {
+    width: 140px;
+    margin-bottom: 1.667em;
+    margin-left: 4%;
+    float: left;
+  }
+
+  .checkbox-subject {
+    width: 220px;
+    margin-left: 10%;
+  }
+
+  .checkbox-visible {
+    margin-left: 10%;
+  }
+
+  .checkbox-visible .block-checkbox {
+    height: 50px;
+  }
+
+  .checkbox-container .fileter-checkbox>.chechbox {
+    margin-bottom: 10px;
+  }
+
+  .block-border .checkbox-container .fileter-item {
+    float: none;
+  }
+
+  .checkbox-container .checkbox-child {
+    padding: 4px 10px;
+  }
+
+  .checkbox-container .checkbox-child:nth-last-child(even) {
+    background: #f1f1f1
+  }
+  #studentReferences .accordion-scroll {
+      max-height: none;
+  }
+  .alert-custom {
+    background: transparent;
+    border: transparent;
+}
+</style>
+
+<article class="container_12">
+    <section class="grid_12">
+<div id="studentReferences">
+  <div class="block-border form">
+    <div class="filter-group  block-content">
+      <h1>Student Preferences</h1>
+      <fieldset class="background-filter">
+        <legend>Select Preferences Level </legend>
+        <div v-if="userRole === roles.PUBLISHER || userRole === roles.NETWORKADMIN" class="fileter-item">
+          <label>Level</label>
+          <select v-model="selectedLevel" v-on:change='selectLevel' class="full-width" id="selectedLevel">
+            <option v-for="item in level" :value="item.value">{{item.text}}</option>
+          </select>
+        </div>
+        <div v-if="userRole === roles.PUBLISHER || userRole === roles.NETWORKADMIN" class="fileter-item">
+          <label>State</label>
+          <select v-model="selectedState" v-on:change="selectStates" class="full-width">
+            <option v-for="item in state" :value="item.Id">{{item.Name}}</option>
+          </select>
+        </div>
+        <div v-if="userRole !== roles.DISTRICTADMIN" class="fileter-item">
+          <label>@LabelHelper.DistrictLabel</label>
+          <select v-model="selectedDisrtricts" v-on:change="selectDisrtricts" class="full-width">
+            <option v-for="item in districts" :value="item.Id">{{item.Name}}</option>
+          </select>
+        </div>
+        <div class="fileter-item">
+          <label>School</label>
+          <select v-model="selectedSchool" v-on:change="selectSchool" class="full-width">
+            <option v-for="item in school" :value="item.Id">{{item.Name}}</option>
+          </select>
+        </div>
+      </fieldset>
+      <fieldset id="defaultRef" class="grey-bg" style="z-index: 1002">
+        <legend>Default Preferences</legend>
+        <ul style="display: none; margin-bottom: 10px;" id="success-message" class="message success"></ul>
+
+        <div class="accordion-scroll m-t-15">
+          <div id="accordion-assignment-setting" class="accordion">
+            <div v-for="item in listRefs">
+              <div class="accordion-title first active" v-if="item.tagName">
+                <h3>{{item.tagName}}</h3>
+              </div>
+              <div class="accordion-content active">
+                <table class="table table-accordion u-w-p-100">
+                  <tbody>
+                    <tr v-for="ref in item.refs">
+                      <td class="w-370 table-accordion-title">{{ref.name}}</td>
+                      <td class="w-380">
+                        <input type="radio" :name="ref.key" value="0" v-model="ref.value" :id="ref.key + '0'" :disabled="(ref.key !='showTest' && listRefs[0].refs[0].value == 0) || ref.isDisabled"
+                          v-on:click="actionRefClick(ref.key, 0)" />
+                        <label :for="ref.key + '0'">OFF</label>
+                        <input type="radio" value="1" :name="ref.key" :id="ref.key + '1'" v-model="ref.value" :disabled="(ref.key !='showTest' && listRefs[0].refs[0].value == 0) || ref.isDisabled"
+                          v-on:click="actionRefClick(ref.key, 1)" />
+                        <label :for="ref.key + '1'">ON</label>
+                      </td>
+                      <td class="w-130">
+                        <input type="checkbox" :value="ref.value" :id="'check_' + ref.key" v-model="ref.isLock" :disabled="(ref.key !='showTest' && listRefs[0].refs[0].value == 0) || ref.isDisabled"
+                        />
+                        <label :for="'check_' + ref.key">Lock</label>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button :disabled='disabled ? true : false' class="float-right" id="btnTestSettingTestProperty" v-on:click="save" type="button">Save</button>
+      </fieldset>
+    </div>
+  </div>
+</div>
+    </section>
+</article>
+<script type="text/javascript" src="/Scripts/Lib/vue.min.2.5.js"></script>
+<script type="text/javascript" src="/Scripts/StudentPreference/API.js"></script>
+<script type="text/javascript">
+  var USER_ROLE = 'PUBLISHER';
+  var URL_STATE = url + '/StudentPreference/GetStates',
+    URL_DISTRICT = url + '/StudentPreference/GetDistricts?stateId=',
+    URL_SCHOOL = url + '/StudentPreference/GetSchools?districtId=';
+  var LEVEL = [
+    { value: 'enterprise', text: 'Enterprise' },
+    { value: 'district', text: 'District' },
+    { value: 'school', text: 'School' },
+  ];
+  var app = new Vue({
+    el: '#studentReferences',
+    data: {
+      model: [],
+      disabled: true,
+      listRefs: [
+        {
+          tagName: '',
+          refs: [
+            { name: 'Display Test on Student Portal', key: 'showTest', value: 0, isLock: false, isDisabled: false }
+          ]
+        },
+        {
+          tagName: 'Tags',
+          refs: [
+            { name: 'Show Standards', key: 'showStandards', value: 1, isLock: false, isDisabled: false },
+            { name: 'Show Topics', key: 'showTopics', value: 1, isLock: false, isDisabled: false },
+            { name: 'Show Skills', key: 'showSkills', value: 0, isLock: false, isDisabled: false },
+            { name: 'Show Question Types', key: 'showQuestionType', value: 0, isLock: false, isDisabled: false },
+            { name: 'Show Other Tags', key: 'showOther', value: 0, isLock: false, isDisabled: false }
+          ]
+        },
+        {
+          tagName: 'Questions',
+          refs: [
+              { name: 'Show Item Data', key: 'showItemData', value: 0, isLock: false, isDisabled: false },
+              { name: 'Show Question Content', key: 'showQuestions', value: 0, isLock: false, isDisabled: false },
+          ]
+        },
+        {
+          tagName: 'Options',
+          refs: [
+              { name: 'Show Correct Answers', key: 'showCorrectAnswers', value: 0, isLock: false, isDisabled: false },
+              { name: 'Show Student Answers', key: 'showStudentAnswers', value: 0, isLock: false, isDisabled: false },
+              { name: 'Show Points Possible', key: 'showPointPossible', value: 0, isLock: false, isDisabled: false },
+          ]
+        },
+        {
+          tagName: 'Time Spent',
+          refs: [
+              { name: 'Show Student Time Spent', key: 'showStudentTimeSpent', value: 0, isLock: false, isDisabled: false },
+              { name: 'Show Class Time Spent (Avg.)', key: 'showClassTimeSpent', value: 0, isLock: false, isDisabled: false },
+              { name: 'Show School Time Spent (Avg.)', key: 'showSchoolTimeSpent', value: 0, isLock: false, isDisabled: false },
+              { name: 'Show District Time Spent (Avg.)', key: 'showDistrictTimeSpent', value: 0, isLock: false, isDisabled: false },
+          ]
+        },
+        {
+          tagName: 'Averages',
+          refs: [
+            { name: 'Show Class Average', key: 'showClassAverages', value: 0, isLock: false, isDisabled: false },
+            { name: 'Show School Average', key: 'showSchoolAverage', value: 0, isLock: false, isDisabled: false },
+            { name: 'Show District Average', key: 'showDistrictAverage', value: 0, isLock: false, isDisabled: false },
+          ]
+        },
+        {
+          tagName: 'Test Review',
+          refs: [
+            { name: 'Can Review Test', key: 'reviewTest', value: 0, isLock: false, isDisabled: false }
+          ]
+        }
+      ],
+      level: LEVEL,
+      roles: {
+        PUBLISHER: USER_ROLE
+      },
+      userRole: USER_ROLE,
+      selectedState: 0,
+      selectedDisrtricts: 0,
+      selectedSchool: 0,
+      selectedLevel: 'enterprise',
+      state: [],
+      districts: [],
+      school: [],
+    },
+    created: function () {
+        var that = this;
+      getDefaultRef('/StudentPreference/GetDefaultPreferences', function (response) {
+        if (response) {
+          that.model = response;
+          that.bindingDataToView();
+          }
+      });
+      getStates(URL_STATE, function (success) {
+        var arr = [{ Id: 0, Name: 'Select State' }];
+        if (success.length > 0) {
+          that.state = arr.concat(success);
+        } else {
+          that.state = arr;
+        }
+      });
+
+    },
+    methods: {
+      bindingDataToView: function () {
+        for (var i = 0; i < this.model.length; i++) {
+          this.setRefValue(this.model[i]);
+          }
+      },
+      setRefValue: function (model) {
+        for (var i = 0; i < this.listRefs.length; i++) {
+          var group = this.listRefs[i];
+          for (var j = 0; j < group.refs.length; j++) {
+            var ref = group.refs[j];
+            if (ref.key == model.Name) {
+              ref.value = model.Value;
+              ref.isLock = model.isLock;
+              return;
+            }
+          }
+        }
+      },
+      save: function () {
+        var refs = this.bindingDataToModel();
+        var testEls = $('.cbTestId:checked');
+        var testIds = [];
+
+        for (var i = 0; i < testEls.length; i++) {
+          testIds.push($(testEls[i]).val());
+        }
+        var model = {
+          Level: this.selectedLevel,
+          state: this.selectedState ? this.selectedState : '',
+          DistrictID: this.selectedDisrtricts ? this.selectedDisrtricts : '' ,
+          SchoolID: this.selectedSchool ? this.selectedSchool : '',
+          Items: refs,
+          VirtualTestIDs: '0'
+        };
+          ShowBlock($('#defaultRef'), 'Loading');
+        saveStudentTestPreferences("/StudentPreference/SaveStudentTestPreferences", model, function (response) {
+            $('#defaultRef').unblock();
+          if (response.Status == 'success') {
+               customAlertMessage({message: 'Save Student Preferences Successfully!', open: function(element) {
+                    $(element).parent('.ui-dialog').addClass('alert-custom');
+               }});
+          }
+        });
+      },
+      bindingDataToModel: function () {
+        var refModels = [];
+        for (var i = 0; i < this.listRefs.length; i++) {
+          var group = this.listRefs[i];
+          for (var j = 0; j < group.refs.length; j++) {
+            var ref = group.refs[j];
+            refModels.push({
+              Name: ref.key,
+              Value: ref.value,
+              Locked: ref.isLock ? 1 : 0,
+            });
+          }
+        }
+        return refModels;
+      },
+      actionRefClick: function (key, value) {
+        if (key == 'showItemData') {
+          dependKeys = ['showQuestions', 'showCorrectAnswers', 'showStudentAnswers', 'showPointPossible', 'showStudentTimeSpent',
+            'showClassTimeSpent', 'showSchoolTimeSpent', 'showDistrictTimeSpent'];
+          this.listRefs.forEach(function (item) {
+            item.refs.forEach(function (ref) {
+              if (dependKeys.indexOf(ref.key) > -1) {
+                ref.isDisabled = value == 0 ? true : false;
+              }
+            });
+          });
+        } else if (key == 'showTest' && value == 0) {
+            this.listRefs.forEach(function (item) {
+                item.refs.forEach(function (ref) {
+                    ref.value = 0;
+                    ref.isLock = false;
+                });
+            });
+        }
+      },
+        selectLevel: function () {
+            var that = this;
+          if (this.selectedLevel === 'enterprise') {
+              ShowBlock($('#defaultRef'), 'Loading');
+            getDefaultRef('/StudentPreference/GetDefaultPreferences', function (response) {
+                if (response) {
+                    that.model = response;
+                    that.bindingDataToView();
+                }
+                $('#defaultRef').unblock();
+            });
+          }
+      },
+      selectStates: function (e) {
+        var that = this;
+        that.districts = [];
+        that.school = [];
+        that.disabledFilter = false;
+        if (that.selectedState > 0) {
+          getDistrictByStateId(URL_DISTRICT + that.selectedState, function (success) {
+            var arr = [{ Id: 0, Name: 'Select District' }];
+            that.selectedDisrtricts = 0;
+            if (success.length > 0) {
+              that.districts = arr.concat(success);
+              if (that.districts.length === 2) {
+                that.selectedDisrtricts = 1;
+              }
+            } else {
+              that.districts = arr;
+            }
+          });
+        }
+      },
+      selectDisrtricts: function (e) {
+        var that = this;
+        that.school = [];
+          if (that.selectedDisrtricts > 0) {
+              if (this.selectedLevel === 'district') {
+                  ShowBlock($('#defaultRef'), 'Loading');
+                  getDefaultRef('/StudentPreference/GetDefaultPreferences', function (response) {
+                      if (response) {
+                          that.model = response;
+                          that.bindingDataToView();
+                      }
+                      $('#defaultRef').unblock();
+                  }, { DistrictID: that.selectedDisrtricts, level: that.selectedLevel });
+              }
+              getSchoolByDistrictId(URL_SCHOOL + that.selectedDisrtricts, function (success) {
+                var arr = [{ Id: 0, Name: 'Select School' }];
+                that.selectedSchool = 0;
+                if (success.length > 0) {
+                  that.school = arr.concat(success);
+                  if (that.school.length === 2) {
+                    that.selectedSchool = 1;
+                  }
+                } else {
+                  that.school = arr;
+                }
+              });
+        }
+      },
+      selectSchool: function() {
+        var that = this;
+          if (that.selectedSchool > 0 && that.selectedDisrtricts > 0 && this.selectedLevel === 'school') {
+            var model = {
+                DistrictID: that.selectedDisrtricts,
+                SchoolID: that.selectedSchool,
+                level: that.selectedLevel
+            }
+            ShowBlock($('#defaultRef'), 'Loading');
+            getDefaultRef('/StudentPreference/GetDefaultPreferences', function (response) {
+                if (response) {
+                    that.model = response;
+                    that.bindingDataToView();
+                }
+                $('#defaultRef').unblock();
+            }, model);
+        }
+      }
+    },
+    updated: function () {
+        this.$nextTick(function () {
+        switch (this.selectedLevel) {
+            case 'district':
+            if ( this.selectedDisrtricts > 0 && this.selectedState > 0) {
+                this.disabled = false;
+            } else {
+                this.disabled = true;
+            }
+            break;
+            case 'school':
+            if ( this.selectedDisrtricts > 0 && this.selectedSchool > 0 && this.selectedState > 0) {
+                this.disabled = false;
+            } else {
+                this.disabled = true;
+            }
+            break;
+            case 'enterprise':
+                this.disabled = false;
+            break;
+        }
+        })
+    }
+  });
+
+</script>

@@ -1,0 +1,1821 @@
+@model LinkIt.BubbleSheetPortal.Web.Print.VirtualTestPrintingModel
+@using System.Configuration
+@using System.Web.Script.Serialization
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@{
+    Layout = null;
+    var url = ConfigurationManager.AppSettings["LinkItUrl"];
+    var portalUrl = (url.Contains("devblock.net") ? "http://demo." : "http://portal.") + url;
+    var portalImgPrint = portalUrl + "/Content/themes/Print/Images/";
+    var portalFontPrint = portalUrl + "/Content/themes/Print/";
+    var @maxWidth = 620;
+}
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Images Test</title>
+    <style type="text/css">
+         @@font-face {
+            font-family: "dejavu_sansbook";
+            src: url("@(portalFontPrint)dejavusans/dejavusans-webfont.eot");
+            src: url("@(portalFontPrint)dejavusans/dejavusans-webfont.eot?#iefix") format("embedded-opentype"),
+                url("@(portalFontPrint)dejavusans/dejavusans-webfont.woff") format("woff"),
+                url("@(portalFontPrint)dejavusans/dejavusans-webfont.ttf") format("truetype"),
+                url("@(portalFontPrint)dejavusans/dejavusans-webfont.svg#dejavu_sansbook") format("svg");
+            font-weight: normal;
+            font-style: normal;
+        }
+        @@font-face {
+			font-family: "dejavu_sansbook";
+			src: prince-lookup("dejavu_sansbook")
+		}
+		@@font-face {
+			font-family: serif;
+			src: prince-lookup("dejavu_sansbook")
+		}
+		@@font-face {
+			font-family: 'Arial Unicode MS';
+			src: url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.eot');
+			src: url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.eot?#iefix') format('embedded-opentype'),
+				url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.woff2') format('woff2'),
+				url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.woff') format('woff'),
+				url('@(portalFontPrint)ArialUnicodeMS/ArialUnicodeMS.eot') format('truetype');
+			font-weight: normal;
+			font-style: normal;
+			font-display: swap;
+		}
+
+        @@page {
+            size: US-Letter;
+            margin: .8in .8in .8in .8in;
+
+            @@top-left {
+                content: string(className);
+            }
+
+            @@top-right {
+                content: string(teacherName);
+            }
+
+            @@bottom-left {
+                content: "LinkIt Test - " string(testTitle);
+            }
+
+            @if (Model.UserDistrictId == Util.CHYTEN_DistrictID)
+            {
+                <text>
+                    @@bottom-left {
+                        content: "Chyten Test - " string(testTitle);
+                    }
+                </text>
+            }
+            else
+            {
+                <text>
+                    @@bottom-left {
+                        content: "LinkIt Test - " string(testTitle);
+                    }
+            </text>
+            }
+        }
+
+        @@page test-info {
+            @Html.Raw(Model.IncludePageNumbers == "1" && Model.StartCountingOnCover == "1" ? "@bottom-right {content: \"Page \" counter(page)  \" of \" counter(pages);font-style: italic;}" : "")
+        }
+
+        @@page test-section {
+            @Html.Raw(Model.IncludePageNumbers == "1" ? "@bottom-right {content: \"Page \" counter(page)  \" of \" counter(pages);font-style: italic;}" : "")
+        }
+
+        .testSections {
+            @Html.Raw(Model.StartCountingOnCover == "0" ? "counter-reset: page 1 pages 1;" : "")
+            column-count: @Model.ColumnCount;
+        }
+
+        .sectionData {
+            @Html.Raw(Model.ShowSectionHeadings == "0" ? "display: none;" : "")
+        }
+
+        .simpleChoice {
+            list-style-type: @Html.Raw(Model.AnswerLabelFormat == "LA" ? "upper-alpha;" : "decimal;")
+        }
+
+        .passage {
+            background: @Html.Raw(Model.DrawReferenceBackground == "1" ? "#eee;" : "")
+        }
+
+        .TableHotspot-item--checkbox {
+            background: url(@(portalImgPrint)icon-table-checkbox.png) no-repeat;
+        }
+
+        .TableHotspot-item--checkbox.is-checked {
+            background: url(@(portalImgPrint)icon-table-checkbox-checked.png) no-repeat;
+        }
+
+        .TableHotspot-item--circle {
+            background: url(@(portalImgPrint)icon-table-circle.png) no-repeat !important;
+        }
+
+        .TableHotspot-item--circle.is-checked {
+            background: url(@(portalImgPrint)icon-table-circle-checked.png) no-repeat !important;
+        }
+    </style>
+    <style type="text/css">
+        @foreach (var css in Model.Css)
+        {
+            @Html.Raw(css)
+        }
+    </style>
+</head>
+<body>
+    @{
+        var sections = Model.Sections.OrderBy(o => o.SectionOrder).ToList();
+    }
+    @if (sections.Count > 0)
+    {
+        <div class="test">
+            @if (Model.IncludeCoverPage == "1")
+                {
+                <div class="testInfo">
+                    <div class="testTitle">@Model.TestTitle</div>
+                    <div id="teacherName">@Model.TeacherName</div>
+                    <div id="className">@Model.ClassName</div>
+                    <div id="answerKeyLabel">Answer Key</div>
+                    @if (!string.IsNullOrWhiteSpace(Model.TestInstruction))
+                    {
+                        <h3>Instructions:</h3>
+                            <div class="testInstructions">@Html.Raw(Model.TestInstruction)</div>
+                    }
+                </div>
+            }
+            <div class="testSections">
+                @foreach (var section in sections)
+                {
+                    @Html.Raw("<div class=\"section\">")
+
+                    @Html.Raw("<div class=\"questions\">")
+                    foreach (var question in section.Items)
+                    {
+                        <div class='answerKeyItem' questionid='@question.VirtualQuestionID'>
+                            @if (Model.IncludeStandards == "1")
+                            {
+                                <div class="standards"><h5>Standards</h5>@Html.Raw(HttpUtility.HtmlDecode(question.Standards))</div>
+                            }
+                            @if (Model.IncludeTags == "1")
+                            {
+                                <div class='tags'>
+                                    <div class="tag"><h5>Skills</h5>@Html.Raw(HttpUtility.HtmlDecode(question.Skills))</div>
+                                    <div class="tag"><h5>Topics</h5>@Html.Raw(HttpUtility.HtmlDecode(question.Topics))</div>
+                                    <div class="tag"><h5>Other</h5>@Html.Raw(HttpUtility.HtmlDecode(question.Other))</div>
+                                    <div class="tag"><h5>District Tags</h5>@Html.Raw(HttpUtility.HtmlDecode(question.DistrictTag))</div>
+                                </div>
+                            }
+                            @if (Model.IncludeGuidance)
+                            {
+                                <div class='StudentGuidance' style="display: none" virtualquestionid="@question.VirtualQuestionID">
+                                    <h5>Student Guidance</h5>
+                                </div>
+                            }
+
+                            @if (Model.IncludeRationale)
+                            {
+                                <div class='TeacherRationale' style="display: none" virtualquestionid="@question.VirtualQuestionID">
+                                    <h5>Teacher Rationale</h5>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @Html.Raw("</div>")
+                    @Html.Raw("</div>")
+                }
+            </div>
+        </div>
+            <script>
+                @foreach (var javaScript in Model.JS)
+                {
+                    @Html.Raw(javaScript)
+                }
+            </script>
+            <script>
+                jQuery.fn.outerHTML = function (s) {
+                    return (s)
+                        ? this.before(s).remove()
+                        : jQuery("<p>").append(this.eq(0).clone()).html();
+                };
+
+                var studentGuidanceElement = '';
+                var studentGuidanceTextEntry = '';
+                var teacherRationaleElement = '';
+                var teacherRationaleTextEntry = '';
+
+                @if (Model.IncludeGuidance)
+                {
+                    <text>studentGuidanceElement = '.guidance_rationale, .guidance';</text>
+                    <text>studentGuidanceTextEntry = '.value[type="guidance"], .value[type="guidance_rationale"]';</text>
+                }
+
+                @if (Model.IncludeRationale)
+                {
+                    <text>teacherRationaleElement = '.guidance_rationale, .rationale';</text>
+                    <text>teacherRationaleTextEntry = '.value[type="rationale"], .value[type="guidance_rationale"]';</text>
+                }
+
+                function GetAnswerText(text) {
+                    var greaterThanOrEqual = '&#8805;';
+                    var lessThanOrEqual = '&#8804;';
+
+                    var value = $('<div>' + text + '</div>');
+                    value.html(text);
+
+                    var correctAnswerText = '';
+                    var startValue = '';
+                    var endValue = '';
+                    var startExclusivity = '';
+                    var endExclusivity = '';
+                    value.find('rangevalue').each(function () {
+                        if ($(this).find("name").text() === 'start') {
+                            startExclusivity = $(this).find("exclusivity").text();
+                            startValue = $(this).find("value").text();
+                        } else if ($(this).find("name").text() === 'end') {
+                            endExclusivity = $(this).find("exclusivity").text();
+                            endValue = $(this).find("value").text();
+                        }
+                    });
+
+                    var startOperator = startExclusivity == '1' ? greaterThanOrEqual : '>';
+                    var endOperator = endExclusivity == '1' ? lessThanOrEqual : '<';
+
+                    if (startValue != '') {
+                        correctAnswerText = startOperator + ' ' + startValue;
+                        if (endValue != '') {
+                            correctAnswerText = correctAnswerText + ' and ' + endOperator + ' ' + endValue;
+                        }
+                    } else {
+                        if (endValue != '') correctAnswerText = correctAnswerText + ' ' + endOperator + ' ' + endValue;
+                    }
+
+                    if (correctAnswerText == '') {
+                        correctAnswerText = value.html();
+                    } else {
+                        var rangeReplacePattern = '';
+                        value.find('rangevalue').replaceWith(function () {
+                            if (rangeReplacePattern != '')return '';
+                            rangeReplacePattern = '{0}';
+                            return rangeReplacePattern;
+                        });
+
+                        correctAnswerText = value.html().replace('{0}', correctAnswerText);
+                    }
+
+                    return correctAnswerText;
+                }
+
+                function RenderAnswers(question) {
+                    var answerKeyXml = question.AnswerKeyXml;
+                    var hasAnswerScores = answerKeyXml != undefined && answerKeyXml != '' &&
+                        answerKeyXml.AnserKeyItems.length > 1;
+                    var answernode = '';
+                    var qtiSchemaId = question.QTISchemaID;
+                    var isAlgorithmic = question.ResponseProcessingTypeID == "7" ? true : false;
+
+                    if (qtiSchemaId == 30) {
+                        if(isAlgorithmic) {
+                            answernode = RenderDragDropStandardAlgorithmic(question);
+                        } else {
+                            answernode = RenderDragDropStandard(question, hasAnswerScores);
+                        }
+                    } else if (qtiSchemaId == 31 || qtiSchemaId == 32 ||
+                        qtiSchemaId == 33 || qtiSchemaId == 34) {
+                        if(isAlgorithmic) {
+                            answernode = RenderHotspotAnswersAlgorithmic(question);
+                        } else {
+                            answernode = RenderHotspotAnswers(question, hasAnswerScores);
+                        }
+                    } else if (question.QTISchemaID == 36) {
+                        if(isAlgorithmic) {
+                            answernode = RenderDragDropSequenceAnswersAlgorithmic(question);
+                        } else {
+                            answernode = RenderDragDropSequenceAnswers(question);
+                        }
+
+                    } else if (question.QTISchemaID == 35) {
+                        if(isAlgorithmic) {
+                            answernode = RenderDragDropNumericalAlgorithmic(question);
+                        } else {
+                            answernode = RenderNumerical(question, hasAnswerScores);
+                        }
+                    } else {
+                        if(isAlgorithmic) {
+                            answernode = RenderCommonAnswersAlgorithmic(question);
+                        } else {
+                            answernode = RenderOtherAnswers(question, hasAnswerScores);
+                        }
+                    }
+
+                    return answernode;
+                }
+
+                function RenderDragDropSequenceAnswers(question) {
+                    var answernode = '';
+
+                    if (question.QTISchemaID != 36) return answernode;
+
+                    var tree = $(question.XmlContent);
+                    var correctAnswer = tree.find('.value').text();
+                    if (correctAnswer != null && correctAnswer != '') {
+                        var correctMappings = correctAnswer.split(',');
+                        tree.find('.partialSequence').each(function () {
+                            var partialsequence = $(this);
+                            var result = $('<div class="partialSequence"></div>');
+                            CopyAttributes(partialsequence, result);
+                            $.each(correctMappings, function (idx, mappingItem) {
+                                var newSourceItem = $('<div class="sourceItem"></div>');
+                                var currentSourceItem = partialsequence.find('.sourceItem[identifier="' + mappingItem + '"]');
+                                if (currentSourceItem != null) {
+                                    CopyAttributes(currentSourceItem, newSourceItem);
+                                    newSourceItem.html(currentSourceItem.html());
+                                    result.append(newSourceItem);
+                                }
+                            });
+
+                            answernode = result.outerHTML();
+                        });
+                    }
+
+                    var pointText = question.PointsPossible > 1 ? " Points" : " Point";
+                    answernode += " - " + question.PointsPossible + " " + pointText;
+
+                    return answernode;
+                }
+
+                function RenderDragDropStandard(question, hasAnswerScores) {
+                    var answernode = '';
+
+                    if (question.QTISchemaID != 30) {
+                        return;
+                    }
+
+                    question.XmlContent = question.XmlContent.replace(/&#160;/g, ' ');
+                    var $xmlContent = $(question.XmlContent);
+                    var $tree = $('<div/>');
+                    // Get correct answer of question
+                    // CorrectAnswer is DEST_1-SRC_1;SRC_2;SRC_3
+                    var dndCorrectAnswer = question.CorrectAnswer;
+                    var dndMapping = dndCorrectAnswer.split(',');
+
+                    $tree.html($xmlContent);
+
+                    // Check if question have destination object
+                    if ($tree.find('.destinationObject').length) {
+                        $tree.find('.destinationObject').each(function(ind, desObj) {
+                            var $desObj = $(desObj);
+                            var reducePercent = 0;
+
+                            // Replace destinatonobject tag to html
+                            $desObj.replaceWith(function() {
+                                var $desObjHtml = $('<div/>');
+                                var desObjType = $desObj.attr('type');
+                                var desObjWidthImg;
+                                var desObjHeightImg;
+
+                                $desObjHtml.attr({
+                                    'class': 'DestinationObject',
+                                    'type': desObjType
+                                });
+
+                                // Check destination object is type or image
+                                if (desObjType === 'image') {
+                                    var $img = $('<img/>');
+                                    // Copy all attributes of destination object to image
+                                    CopyAttributes($desObj, $img);
+                                    $img.removeClass('DestinationObject');
+                                    var imgWidth = $img.attr('width');
+                                    var imgHeight = $img.attr('height');
+
+                                    desObjWidthImg = imgWidth !== undefined ? imgWidth : 250;
+                                    desObjHeightImg = imgHeight !== undefined ? imgHeight : 100;
+
+                                    var questionContentWidth = @maxWidth;
+                                    if (desObjWidthImg > questionContentWidth) {
+                                        reducePercent = (desObjWidthImg - questionContentWidth) / desObjWidthImg;
+                                        desObjWidthImg = questionContentWidth;
+                                        desObjHeightImg = desObjHeightImg - desObjHeightImg * reducePercent;
+
+                                        $img.attr({
+                                            'width': desObjWidthImg,
+                                            'height': desObjHeightImg
+                                        });
+                                    }
+
+                                    $desObjHtml.css({
+                                        'width': desObjWidthImg,
+                                        'height': desObjHeightImg
+                                    });
+                                    $desObjHtml.append($img);
+                                }
+
+                                // Replace destinatonoitem tag to html
+                                $desObj.find('.destinationItem').each(function(ind, desItem) {
+                                    var $desItem = $(desItem);
+                                    var desItemIdentifier = $desItem.attr('destidentifier');
+                                    var desItemWidth = $desItem.attr('width') - $desItem.attr('width') * reducePercent;
+                                    var desItemHeight = $desItem.attr('height') - $desItem.attr('height') * reducePercent;
+                                    var desItemHtml = '';
+
+                                    desItemWidth = desItemWidth === undefined ? 55 : desItemWidth;
+                                    desItemHeight = desItemHeight === undefined ? 20 : desItemHeight;
+
+                                    // Update correct answer for drag and drop
+                                    if (dndMapping.length) {
+                                        for (var i = 0, len = dndMapping.length; i < len; i++) {
+                                            var mappings = dndMapping[i];
+                                            var mappingValue = mappings.split('-');
+                                            var mappingDest = mappingValue[0];
+                                            var mappingSrc = mappingValue[1];
+
+                                            // Compare destination identifier with mapping correct answer
+                                            if (desItemIdentifier === mappingDest && mappingSrc !== '') {
+                                                var si = 0;
+
+                                                srcObjArr = mappingSrc.split(';');
+
+                                                // Reset destination item when destination item
+                                                // have source object correct answer
+                                                $desItem.html('');
+
+                                                while (si < srcObjArr.length) {
+                                                    var $sourceObject = $tree.find('.sourceObject[srcidentifier="' + srcObjArr[si] + '"]').first()
+                                                    var parentSourceObjectClass = $sourceObject.parent().attr('class')
+                                                    var srcObjHtml = $sourceObject.clone(true);
+                                                    srcObjHtml.addClass(parentSourceObjectClass);
+                                                    $desItem.append($(srcObjHtml).outerHTML());
+                                                    si++;
+                                                }
+                                            }
+                                        }
+
+                                        $desItem.find('img').each(function(ind, img) {
+                                            var $img = $(img);
+                                            var newWidth = $img.attr('width') - $img.attr('width') * reducePercent;
+                                            var newHeight = $img.attr('height') - $img.attr('height') * reducePercent;
+
+                                            $img.attr({
+                                                'width': newWidth,
+                                                'height': newHeight
+                                            });
+                                        })
+                                    }
+
+                                    // Check destionation object is image or text
+                                    if (desObjType === 'image') {
+                                        var desItemTop = $desItem.attr('top') - $desItem.attr('top') * reducePercent;
+                                        var desItemLeft = $desItem.attr('left') - $desItem.attr('left') * reducePercent;
+                                        var percentWidth, percentHeight, percentTop, percentLeft;
+
+                                        desItemTop = desItemTop == undefined ? 10 : desItemTop;
+                                        desItemLeft = desItemLeft == undefined ? 10 : desItemLeft;
+
+                                        percentWidth = (desItemWidth / desObjWidthImg) * 100;
+                                        percentHeight = (desItemHeight / desObjHeightImg) * 100;
+                                        percentTop = (desItemTop / desObjHeightImg) * 100;
+                                        percentLeft = (desItemLeft / desObjWidthImg) * 100;
+
+                                        desItemHtml = '<div class="DestinationItem" style="width: ' + percentWidth + '%; height: ' + percentHeight + '%; top: ' + percentTop + '%; left: ' + percentLeft + '%; position: absolute; overflow: hidden;">' + $desItem.html() + '</div>';
+                                    } else {
+                                        desItemHtml = '<div class="DestinationItem" style="width: ' + desItemWidth + 'px; height: ' + desItemHeight + 'px; overflow: hidden;">' + $desItem.html() + '</div>';
+                                    }
+
+                                    $desObjHtml.append(desItemHtml);
+                                });
+
+                                return $desObjHtml;
+                            });
+                        });
+                    }
+
+                    // Replace br with line break with u-pre class
+                    $tree.find('br[style]').remove();
+                    $tree.find('br').replaceWith(function() {
+                        return $('<span class="u-linebreak"/>');
+                    });
+
+                    // Update correct images
+                    CorrectImages($tree);
+
+                    var pointText = question.PointsPossible > 1 ? ' Points' : ' Point';
+                    answernode += $tree.html();
+                    answernode += '<div class="Point">' + question.PointsPossible + pointText + '</div>';
+
+                    return answernode;
+                }
+
+                function RenderHotspotAnswers(question, hasAnswerScores) {
+                    var answernode = '';
+                    var qtiSchemaId = question.QTISchemaID;
+                    var absoluteGrading = false;
+                    var algorithmicGrading = false;
+                    var $tree = $('<div/>');
+                    var $xmlContent;
+                    var hotspotCorrectAnswer = question.CorrectAnswer;
+                    var hotspotMapping;
+                    var hotspotPoint = '';
+                    var i = 0;
+                    var lenMapping;
+                    var questionContentWidth = @maxWidth;
+
+                    // Append content question
+                    question.XmlContent = question.XmlContent.replace(/&#160;/g, ' ');
+                    $xmlContent = $(question.XmlContent);
+                    $tree.html($xmlContent);
+
+                    if ($xmlContent.find('.responseDeclaration').attr('absoluteGrading') === '1' ||
+                        $xmlContent.find('.responsedeclaration').attr('absolutegrading') === '1') {
+                        absoluteGrading = true;
+                    }
+
+                    if ($xmlContent.find('.responseDeclaration').attr('algorithmicgrading') === '1') {
+                        algorithmicGrading = true;
+                    }
+
+                    if (absoluteGrading) {
+                        //Absolute
+                        var pointText = question.PointsPossible > 1 ? ' Points' : ' Point';
+                        hotspotPoint += '<div class="Point">' + question.PointsPossible + pointText + '</div>';
+                    } else  if (algorithmicGrading) {
+                        hotspotPoint += '<div class="Point">0 Point</div>';
+                    } else {
+                        //Partial
+                        // Display format partial grading hot spot is (1) - 1 Point | (2) - 5 Points
+                        var hotspotAnswers = question.AnswerKeyXml.AnserKeyItems[0].Answer;
+                        var hotspotArr = [];
+                        var hotspotStr = '';
+
+                        if (hotspotAnswers !== '') {
+                            hotspotArr = hotspotAnswers.split('|');
+                        }
+
+                        for (i = 0, lenHotspot = hotspotArr.length; i < lenHotspot; i++) {
+                            var hotspotItem = hotspotArr[i].split('-');
+                            var hotspotValue = hotspotItem[0];
+                            var hotspotKey = hotspotItem[1];
+
+                            if (qtiSchemaId == 31) {
+                                hotspotValue = hotspotValue.slice(4).slice(0, -1);
+                            } else {
+                                hotspotValue = hotspotValue.slice(5).slice(0, -1);
+                            }
+
+                            hotspotStr += ' (' + hotspotValue + ') -';
+                            hotspotStr += hotspotKey;
+
+                            if (i !== lenHotspot - 1) {
+                                hotspotStr += ' | ';
+                            }
+                        }
+
+                        hotspotPoint += '<div class="Point">';
+                        hotspotPoint += '<span class="Point-partial">' + hotspotStr + '</span>';
+                        hotspotPoint += '</div>';
+                    }
+
+                    hotspotMapping = hotspotCorrectAnswer;
+
+                    if (hotspotCorrectAnswer.length > 1) {
+                        hotspotMapping = hotspotCorrectAnswer.split(',');
+                    }
+
+                    lenMapping = hotspotMapping.length;
+
+                    if (qtiSchemaId == 31) {
+                        // Text hot spot
+                        $tree.find('sourcetext').addClass('TextHotspot-item');
+                        for (i = 0; i < lenMapping; i++) {
+                            var texthotspotIdentifier = hotspotMapping[i];
+                            var $texthotspot = $tree.find('sourcetext[identifier="' + texthotspotIdentifier + '"]');
+                            $texthotspot.addClass('is-checked');
+
+                            if (!absoluteGrading || !algorithmicGrading) {
+                                var texthotspotCounter = texthotspotIdentifier.slice(3);
+                                $texthotspot.append('<span class="TextHotspot-counter">(' + texthotspotCounter + ')</span>');
+                            }
+                        }
+                    } else if (qtiSchemaId == 32) {
+                        // Image hot spot
+                        $tree.find('.imageHotSpot').replaceWith(function() {
+                            var $imghotspot = $(this);
+                            var imghotspotResponse = $imghotspot.attr('responseidentifier');
+                            var imghotspotSrc = $imghotspot.attr('src');
+                            var imghotspotWidth = $imghotspot.attr('width');
+                            var imghotspotHeight = $imghotspot.attr('height');
+                            var $img = $('<img/>');
+                            var $div = $('<div/>');
+                            var reducePercent = 0;
+
+                            if (parseInt(imghotspotWidth, 10) > questionContentWidth) {
+                                reducePercent = (imghotspotWidth - questionContentWidth) / imghotspotWidth;
+                                imghotspotWidth = questionContentWidth;
+                                imghotspotHeight = imghotspotHeight - imghotspotHeight * reducePercent;
+                            }
+
+                            $img.attr({
+                                'src': imghotspotSrc,
+                                'width': imghotspotWidth,
+                                'height': imghotspotHeight
+                            });
+
+                            $div.attr({
+                                'class': 'ImageHotspot'
+                            });
+
+                            $div.html($imghotspot.html());
+                            $div.prepend($img);
+
+                            $div.find('.sourceItem').replaceWith(function() {
+                                var $sourceItem = $(this);
+                                var sourceItemIdentifer = $sourceItem.attr('identifier');
+                                var sourceItemTypeHotspot = $sourceItem.attr('typehotspot');
+                                var sourceItemValue = $sourceItem.html();
+                                var sourceItemTop = $sourceItem.attr('top');
+                                var sourceItemLeft = $sourceItem.attr('left');
+                                var sourceItemWidth = $sourceItem.attr('width');
+                                var sourceItemHeight = $sourceItem.attr('height');
+                                var sourceItemShowBorder = $sourceItem.attr('showborderhotspot');
+                                var sourceItemDataFill = $sourceItem.attr('fillhotspot');
+                                var sourceItemHidden = $sourceItem.attr('hiddenHotSpot') == undefined ? false : $sourceItem.attr('hiddenHotSpot');
+                                var $newSourceItem = $('<span class="ImageHotspot-item"/>');
+
+                                sourceItemValue = sourceItemValue === ' ' ? '&nbsp;' : sourceItemValue;
+                                sourceItemTop = sourceItemTop - sourceItemTop * reducePercent;
+                                sourceItemLeft = sourceItemLeft - sourceItemLeft * reducePercent;
+                                sourceItemWidth = sourceItemWidth - sourceItemWidth * reducePercent;
+                                sourceItemHeight = sourceItemHeight - sourceItemHeight * reducePercent;
+
+                                if (sourceItemShowBorder === 'true') {
+                                    $newSourceItem.addClass('ImageHotspot-item--' + sourceItemTypeHotspot + '-border');
+                                }
+
+                                if (sourceItemDataFill === 'true') {
+                                    $newSourceItem.addClass('ImageHotspot-item--' + sourceItemTypeHotspot + '-fill');
+                                }
+
+                                $newSourceItem.html('<span class="ImageHotspot-value">' + sourceItemValue + '</span>');
+                                $newSourceItem
+                                    .addClass('ImageHotspot-item--' + sourceItemTypeHotspot)
+                                    .attr({
+                                        'data-type': sourceItemTypeHotspot,
+                                        'identifier': sourceItemIdentifer
+                                    })
+                                    .css({
+                                        'top': sourceItemTop + 'px',
+                                        'left': sourceItemLeft + 'px',
+                                        'width': sourceItemWidth + 'px',
+                                        'height': sourceItemHeight + 'px',
+                                        'line-height': sourceItemHeight + 'px'
+                                    });
+
+                                for (i = 0; i < lenMapping; i++) {
+                                    var hotspotIdentifier = hotspotMapping[i];
+                                    if (sourceItemIdentifer === hotspotIdentifier) {
+                                        $newSourceItem.addClass('is-checked');
+
+                                        if (!absoluteGrading) {
+                                            var sourceItemCounter = sourceItemIdentifer.slice(4);
+                                            $newSourceItem.append('<span class="ImageHotspot-counter">(' + sourceItemCounter + ')</span>');
+                                        }
+                                    }
+                                }
+
+                                if (sourceItemHidden == 'true' && !$newSourceItem.hasClass('is-checked')) { //hidden and is not correct answer
+                                    $newSourceItem.addClass('hotspot-hidden');
+                                }
+
+                                return $newSourceItem;
+                            });
+
+                            $div.css({
+                                'width': imghotspotWidth + 'px',
+                                'height': imghotspotHeight + 'px'
+                            });
+
+                            return $div;
+                        });
+                    } else if (qtiSchemaId == 33) {
+                        // Table hot spot
+                        $tree.find('.tableitem,span[typehotspot]').replaceWith(function() {
+                            var $tableitem = $(this);
+                            var tableitemTypeHotspot = $tableitem.attr('typehotspot');
+                            var tableitemIdentifier = $tableitem.attr('identifier');
+                            var $div = $('<div/>');
+
+                            $div.attr({
+                                'class': 'TableHotspot-item TableHotspot-item--' + tableitemTypeHotspot,
+                                'data-type': tableitemTypeHotspot
+                            });
+
+                            if ($tableitem.hasClass('bubble')) {
+                                $div.addClass($tableitem.attr('class'))
+                            }
+
+                            for (i = 0; i < lenMapping; i++) {
+                                var hotspotIdentifier = hotspotMapping[i];
+                                if ($tableitem.attr('identifier') === hotspotIdentifier) {
+                                    $div.addClass('is-checked');
+
+                                    if (!absoluteGrading || !algorithmicGrading) {
+                                        var tableItemCounter = tableitemIdentifier.slice(4);
+                                        $div.addClass('TableHotspot-item--partial');
+                                        $div.append('<span class="TableHotspot-counter">(' + tableItemCounter + ')</span>');
+                                    }
+                                }
+                            }
+
+                            return $div;
+                        });
+                    } else if (qtiSchemaId == 34) {
+                        // Number line hot spot
+
+                        $tree.find('.numberLine').replaceWith(function() {
+                            var $numberline = $(this);
+                            var numberlineWidth = $numberline.attr('width');
+                            var numberlineHeight = $numberline.attr('height');
+                            var $div = $('<div/>');
+                            var reducePercent = 0;
+
+                            if (parseInt(numberlineWidth, 10) > questionContentWidth) {
+                                reducePercent = (numberlineWidth - questionContentWidth) / numberlineWidth;
+                                numberlineWidth = questionContentWidth;
+                                numberlineHeight = numberlineHeight - numberlineHeight * reducePercent;
+                            }
+
+                            $div
+                                .attr({
+                                    'class': 'Numberline',
+                                }).css({
+                                    'width': numberlineWidth,
+                                    'height': numberlineHeight
+                                });
+
+                            $div.html($numberline.html());
+
+                            $div.find('.numberLineItem').replaceWith(function() {
+                                var $numberlineItem = $(this);
+                                var numberlineItemIdentifier = $numberlineItem.attr('identifier');
+                                var $newNumberlineItem = $('<span class="Numberline-item"/>');
+
+                                $newNumberlineItem.html($numberlineItem.html());
+
+                                $newNumberlineItem
+                                    .attr('identifier', $numberlineItem.attr('identifier'))
+                                    .css({
+                                        'left': $numberlineItem.attr('left') + '%',
+                                        'top': $numberlineItem.attr('top') + '%'
+                                    });
+
+                                for (i = 0; i < lenMapping; i++) {
+                                    var hotspotIdentifier = hotspotMapping[i];
+                                    if ($numberlineItem.attr('identifier') === hotspotIdentifier) {
+                                        $newNumberlineItem.addClass('is-checked');
+
+                                        if (!absoluteGrading) {
+                                            var numberlineItemCounter = numberlineItemIdentifier.slice(4);
+                                            $newNumberlineItem.append('<span class="Numberline-counter">(' + numberlineItemCounter + ')</span>');
+                                        }
+                                    }
+                                }
+
+                                return $newNumberlineItem;
+                            });
+
+                            return $div;
+                        });
+                    }
+
+                    // Replace br with line break with u-pre class
+                    $tree.find('br[style]').remove();
+                    $tree.find('br').replaceWith(function() {
+                        return $('<span class="u-linebreak"/>');
+                    });
+
+                    // Fix Background Of Prince Below Version 9.0
+                    $('.TableHotspot-item--checkbox')
+                        .css('background', 'url(@(portalImgPrint)icon-table-checkbox.png) no-repeat');
+                    $('.TableHotspot-item--checkbox.is-checked')
+                        .css('background', 'url(@(portalImgPrint)icon-table-checkbox-checked.png) no-repeat');
+                    $('.TableHotspot-item--circle')
+                        .css('background', 'url(@(portalImgPrint)icon-table-circle.png) no-repeat');
+                    $('.TableHotspot-item--circle.is-checked')
+                        .css('background', 'url(@(portalImgPrint)icon-table-circle-checked.png) no-repeat');
+
+                    // Update correct images
+                    CorrectImages($tree);
+
+                    answernode += $tree.html();
+                    answernode += hotspotPoint;
+
+                    return answernode;
+                }
+
+                function RenderNumerical(question, hasAnswerScores) {
+                    var htmlString = '<div class="numerical-correct-box">';
+                    var pointText = question.PointsPossible > 1 ? " Points" : " Point";
+                    var correctAnswerArr = question.CorrectAnswer.split("<br>");
+                    for(i = 0; i < correctAnswerArr.length; i++){
+                        htmlString += '<span class="numerical-correct-answer">' + correctAnswerArr[i] + '</span>';
+                    }
+                    htmlString += "</div>"
+                    htmlString += '<div>' + question.PointsPossible + " " + pointText + '</div>'
+                    return htmlString;
+                }
+
+                function RenderOtherAnswers(question, hasAnswerScores) {
+                    var answernode = '';
+                    if (question.QTISchemaID == 37) {
+                        answernode = GetAnswerText(question.AnswerKeyXml.AnserKeyItems[0].Answer);
+                        return answernode;
+                    }
+                    if (hasAnswerScores) {
+                        answernode = "<div class='responseBox'>";
+                        if (question.XmlContent.indexOf("all-or-nothing-grading") != -1) {
+                            answernode += '<div class="Point">' + question.PointsPossible + (question.PointsPossible > 1 ? " Points" : " Point") + '</div>';
+                            $.each(question.AnswerKeyXml.AnserKeyItems, function (answerIndex, answerItem) {
+                                var aIndex = answerIndex + 1;
+                                var dataVirtualTest = 'question' + question.VirtualQuestionID + '-' + answerItem.ResponseIdentifier;
+                                var answerRenderArr = GetAnswerText(answerItem.Answer).split('-');
+                                var answerRender = answerRenderArr.length > 0 ? answerRenderArr[0] : "";
+                                answernode = answernode + '<div class="responseIdentifier"><span ' + dataVirtualTest + '>Response ' + aIndex + ':</span> ' + answerRender + '</div>';
+                            });
+                        } else {
+                            $.each(question.AnswerKeyXml.AnserKeyItems, function (answerIndex, answerItem) {
+                                var aIndex = answerIndex + 1;
+                                var dataVirtualTest = 'question' + question.VirtualQuestionID + '-' + answerItem.ResponseIdentifier;
+                                answernode = answernode + '<div class="responseIdentifier"><span ' + dataVirtualTest + '>Response ' + aIndex + ':</span> ' + GetAnswerText(answerItem.Answer) + '</div>';
+                            });
+                        }
+                        answernode += "</div>";
+
+                    } else if (question.AnswerKeyXml.AnserKeyItems.length == 1 && question.AnswerKeyXml.AnserKeyItems[0].Score > 0) {
+                        answernode = GetAnswerText(question.AnswerKeyXml.AnserKeyItems[0].Answer);
+                    } else {
+                        var pointText = question.PointsPossible > 1 ? " Points" : " Point";
+                        answernode = GetAnswerText(question.CorrectAnswer) + " - " + question.PointsPossible + " " + pointText;
+                    }
+
+
+                    return answernode;
+                }
+
+                function RenderDragDropSequenceAnswersAlgorithmic(question) {
+                    var answernode = '';
+
+                    if (question.QTISchemaID != 36) return answernode;
+
+                    var tree = $(question.XmlContent);
+
+                    for(var q = 0; q < question.AlgorithmicCorrectAnswers.length; q++) {
+                        var correctAnswer = question.AlgorithmicCorrectAnswers[q].ConditionValue;
+
+                        for(var k = 0; k < correctAnswer.length; k++) {
+                            var correctMappings = correctAnswer[k].split(',');
+                            tree.find('.partialSequence').each(function () {
+                                var partialsequence = $(this);
+                                var result = $('<div class="partialSequence"></div>');
+                                CopyAttributes(partialsequence, result);
+                                $.each(correctMappings, function (idx, mappingItem) {
+                                    var newSourceItem = $('<div class="sourceItem"></div>');
+                                    var currentSourceItem = partialsequence.find('.sourceItem[identifier="' + mappingItem + '"]');
+                                    if (currentSourceItem != null) {
+                                        CopyAttributes(currentSourceItem, newSourceItem);
+                                        newSourceItem.html(currentSourceItem.html());
+                                        result.append(newSourceItem);
+                                    }
+                                });
+
+                                answernode += result.outerHTML();
+                            });
+                            answernode += " - " +  question.AlgorithmicCorrectAnswers[q].PointsEarned + " point(s)";
+                        }
+                    }
+                    return answernode;
+                }
+
+                function RenderDragDropStandardAlgorithmic(question) {
+                    var answernode = '';
+
+                    if (question.QTISchemaID != 30) {
+                        return;
+                    }
+
+                    question.XmlContent = question.XmlContent.replace(/&#160;/g, ' ');
+                    var $xmlContent = $(question.XmlContent);
+                    var $tree = $('<div/>');
+                    $tree.html($xmlContent);
+
+                    // Check if question have destination object
+                    if ($tree.find('.destinationObject').length) {
+                        $tree.find('.destinationObject').each(function(ind, desObj) {
+                            var $desObj = $(desObj);
+                            var reducePercent = 0;
+
+                            // Replace destinatonobject tag to html
+                            $desObj.replaceWith(function() {
+                                var $desObjHtml = $('<div/>');
+                                var desObjType = $desObj.attr('type');
+                                var desObjWidthImg;
+                                var desObjHeightImg;
+
+                                $desObjHtml.attr({
+                                    'class': 'DestinationObject',
+                                    'type': desObjType
+                                });
+
+                                // Check destination object is type or image
+                                if (desObjType === 'image') {
+                                    var $img = $('<img/>');
+                                    // Copy all attributes of destination object to image
+                                    CopyAttributes($desObj, $img);
+                                    $img.removeClass('DestinationObject');
+                                    var imgWidth = $img.attr('width');
+                                    var imgHeight = $img.attr('height');
+
+                                    desObjWidthImg = imgWidth !== undefined ? imgWidth : 250;
+                                    desObjHeightImg = imgHeight !== undefined ? imgHeight : 100;
+
+                                    var questionContentWidth = @maxWidth;
+                                    if (desObjWidthImg > questionContentWidth) {
+                                        reducePercent = (desObjWidthImg - questionContentWidth) / desObjWidthImg;
+                                        desObjWidthImg = questionContentWidth;
+                                        desObjHeightImg = desObjHeightImg - desObjHeightImg * reducePercent;
+
+                                        $img.attr({
+                                            'width': desObjWidthImg,
+                                            'height': desObjHeightImg
+                                        });
+                                    }
+
+                                    $desObjHtml.css({
+                                        'width': desObjWidthImg,
+                                        'height': desObjHeightImg
+                                    });
+                                    $desObjHtml.append($img);
+                                }
+
+                                // Replace destinatonoitem tag to html
+                                $desObj.find('.destinationItem').each(function(ind, desItem) {
+                                    var $desItem = $(desItem);
+                                    var desItemIdentifier = $desItem.attr('destidentifier');
+                                    var desItemWidth = $desItem.attr('width') - $desItem.attr('width') * reducePercent;
+                                    var desItemHeight = $desItem.attr('height') - $desItem.attr('height') * reducePercent;
+                                    var desItemHtml = '';
+
+                                    desItemWidth = desItemWidth === undefined ? 55 : desItemWidth;
+                                    desItemHeight = desItemHeight === undefined ? 20 : desItemHeight;
+
+                                    // Check destionation object is image or text
+                                    if (desObjType === 'image') {
+                                        var desItemTop = $desItem.attr('top') - $desItem.attr('top') * reducePercent;
+                                        var desItemLeft = $desItem.attr('left') - $desItem.attr('left') * reducePercent;
+                                        var percentWidth, percentHeight, percentTop, percentLeft;
+
+                                        desItemTop = desItemTop == undefined ? 10 : desItemTop;
+                                        desItemLeft = desItemLeft == undefined ? 10 : desItemLeft;
+
+                                        percentWidth = (desItemWidth / desObjWidthImg) * 100;
+                                        percentHeight = (desItemHeight / desObjHeightImg) * 100;
+                                        percentTop = (desItemTop / desObjHeightImg) * 100;
+                                        percentLeft = (desItemLeft / desObjWidthImg) * 100;
+
+                                        desItemHtml = '<div class="DestinationItem" style="width: ' + percentWidth + '%; height: ' + percentHeight + '%; top: ' + percentTop + '%; left: ' + percentLeft + '%; position: absolute; overflow: hidden;">' + $desItem.html() + '</div>';
+                                    } else {
+                                        desItemHtml = '<div class="DestinationItem" style="width: ' + desItemWidth + 'px; height: ' + desItemHeight + 'px; overflow: hidden;">' + $desItem.html() + '</div>';
+                                    }
+
+                                    $desObjHtml.append(desItemHtml);
+                                });
+
+                                return $desObjHtml;
+                            });
+                        });
+                    }
+
+                    // Replace br with line break with u-pre class
+                    $tree.find('br[style]').remove();
+                    $tree.find('br').replaceWith(function() {
+                        return $('<span class="u-linebreak"/>');
+                    });
+
+                    // Update correct images
+                    CorrectImages($tree);
+
+                    answernode += $tree.html();
+
+                    var tree = $(question.XmlContent);
+
+                    for(var q = 0; q < question.AlgorithmicCorrectAnswers.length; q++) {
+                        var correctAnswer = question.AlgorithmicCorrectAnswers[q].ConditionValue;
+
+                        for(var k = 0; k < correctAnswer.length; k++) {
+                            var correctMappings = correctAnswer[k].split(',');
+
+                            var result = $('<div class="box-answer-correct-dnd"></div>');
+
+                            for (var i = 0; i < correctMappings.length; i++) {
+                                var responseItem = correctMappings[i].split('-');
+                                var responseItemDest = responseItem[0];
+                                var responseItemSrc = responseItem[1];
+
+                                if (responseItemSrc !== '') {
+                                    var responseItemSrcArr = responseItemSrc.split(';');
+
+                                    for (var j = 0, len = responseItemSrcArr.length; j < len; j++) {
+                                        var newSourceItem = $('<div class="sourceItem"></div>');
+                                        var currentSourceItem = tree.find('.sourceObject[srcidentifier="' + responseItemSrcArr[j] + '"]');
+                                        if (currentSourceItem != null) {
+                                            result.append(responseItemDest + ' - ' + currentSourceItem.outerHTML()  + '<br/>');
+                                        }
+                                        answernode += result.outerHTML();
+                                    }
+                                }
+                                answernode += "- " +  question.AlgorithmicCorrectAnswers[q].PointsEarned + " point(s)";
+                            }
+                        }
+                    }
+
+                    return answernode;
+                }
+
+                function RenderDragDropNumericalAlgorithmic(question) {
+                    var answernode = '';
+
+                    question.XmlContent = question.XmlContent.replace(/&#160;/g, ' ');
+                    var $xmlContent = $(question.XmlContent);
+                    var $tree = $('<div/>');
+                    $tree.html($xmlContent);
+
+                    // Check if question have destination object
+                    if ($tree.find('.destinationObject').length) {
+                        $tree.find('.destinationObject').each(function(ind, desObj) {
+                            var $desObj = $(desObj);
+                            var reducePercent = 0;
+
+                            // Replace destinatonobject tag to html
+                            $desObj.replaceWith(function() {
+                                var $desObjHtml = $('<div/>');
+                                var desObjType = $desObj.attr('type');
+                                var desObjWidthImg;
+                                var desObjHeightImg;
+
+                                $desObjHtml.attr({
+                                    'class': 'DestinationObject',
+                                    'type': desObjType
+                                });
+
+                                // Replace destinatonoitem tag to html
+                                $desObj.find('.destinationItem').each(function(ind, desItem) {
+                                    var $desItem = $(desItem);
+                                    var desItemIdentifier = $desItem.attr('destidentifier');
+                                    var desItemWidth = $desItem.attr('width') - $desItem.attr('width') * reducePercent;
+                                    var desItemHeight = $desItem.attr('height') - $desItem.attr('height') * reducePercent;
+                                    var desItemHtml = '';
+
+                                    desItemWidth = desItemWidth === undefined ? 55 : desItemWidth;
+                                    desItemHeight = desItemHeight === undefined ? 20 : desItemHeight;
+
+                                    desItemHtml = '<div class="DestinationItem" style="width: ' + desItemWidth + 'px; height: ' + desItemHeight + 'px; overflow: hidden;">' + $desItem.html() + '</div>';
+                                    $desObjHtml.append(desItemHtml);
+                                });
+
+                                return $desObjHtml;
+                            });
+                        });
+                    }
+
+                    // Replace br with line break with u-pre class
+                    $tree.find('br[style]').remove();
+                    $tree.find('br').replaceWith(function() {
+                        return $('<span class="u-linebreak"/>');
+                    });
+
+                    answernode += $tree.html();
+
+                    var tree = $(question.XmlContent);
+
+                    for(var q = 0; q < question.AlgorithmicCorrectAnswers.length; q++) {
+                        var correctAnswer = question.AlgorithmicCorrectAnswers[q].ConditionValue;
+
+                        for(var k = 0; k < correctAnswer.length; k++) {
+                            var correctMappings = correctAnswer[k].split(',');
+
+                            var result = $('<div class="box-answer-correct-dnd"></div>');
+
+                            for (var i = 0; i < correctMappings.length; i++) {
+                                var responseItem = correctMappings[i].split('-');
+                                var responseItemDest = responseItem[0];
+                                var responseItemSrc = responseItem[1];
+
+                                if (responseItemSrc !== '') {
+                                    var responseItemSrcArr = responseItemSrc.split(';');
+
+                                    for (var j = 0, len = responseItemSrcArr.length; j < len; j++) {
+                                        var newSourceItem = $('<div class="sourceItem"></div>');
+                                        var currentSourceItem = tree.find('.sourceObject[srcidentifier="' + responseItemSrcArr[j] + '"]');
+                                        if (currentSourceItem != null) {
+                                            result.append(responseItemDest + ' - ' + currentSourceItem.outerHTML() + '<br/>');
+                                        }
+                                        answernode += result.outerHTML();
+                                    }
+                                }
+                                answernode += "- " +  question.AlgorithmicCorrectAnswers[q].PointsEarned + " point(s)";
+                            }
+                        }
+                    }
+
+
+                    return answernode;
+                }
+
+                function RenderHotspotAnswersAlgorithmic(question) {
+                    var answernode = '';
+                    var qtiSchemaId = question.QTISchemaID;
+
+                    var $tree = $('<div/>');
+                    var $xmlContent;
+
+                    var questionContentWidth = @maxWidth;
+
+                    // Append content question
+                    question.XmlContent = question.XmlContent.replace(/&#160;/g, ' ');
+                    $xmlContent = $(question.XmlContent);
+                    $tree.html($xmlContent);
+
+
+                    if (qtiSchemaId == 31) {
+                        var $texthotspot = $tree.find('sourcetext');
+                        $texthotspot.addClass('TextHotspot-item is-checked');
+                        $tree.find('sourcetext').each(function() {
+                            var $textitem = $(this);
+                            var textIdentifier = $textitem.attr('identifier');
+                            $textitem.append('<span class="identifier-hotspot">' + textIdentifier + '</span>');
+                        });
+                    }
+                    else if (qtiSchemaId == 32) {
+                        // Image hot spot
+                        $tree.find('.imageHotSpot').replaceWith(function() {
+                            var $imghotspot = $(this);
+                            var imghotspotResponse = $imghotspot.attr('responseidentifier');
+                            var imghotspotSrc = $imghotspot.attr('src');
+                            var imghotspotWidth = $imghotspot.attr('width');
+                            var imghotspotHeight = $imghotspot.attr('height');
+                            var $img = $('<img/>');
+                            var $div = $('<div/>');
+                            var reducePercent = 0;
+
+                            if (parseInt(imghotspotWidth, 10) > questionContentWidth) {
+                                reducePercent = (imghotspotWidth - questionContentWidth) / imghotspotWidth;
+                                imghotspotWidth = questionContentWidth;
+                                imghotspotHeight = imghotspotHeight - imghotspotHeight * reducePercent;
+                            }
+
+                            $img.attr({
+                                'src': imghotspotSrc,
+                                'width': imghotspotWidth,
+                                'height': imghotspotHeight
+                            });
+
+                            $div.attr({
+                                'class': 'ImageHotspot'
+                            });
+
+                            $div.html($imghotspot.html());
+                            $div.prepend($img);
+
+                            $div.find('.sourceItem').replaceWith(function() {
+                                var $sourceItem = $(this);
+                                var sourceItemIdentifer = $sourceItem.attr('identifier');
+                                var sourceItemTypeHotspot = $sourceItem.attr('typehotspot');
+                                var sourceItemValue = $sourceItem.html();
+                                var sourceItemTop = $sourceItem.attr('top');
+                                var sourceItemLeft = $sourceItem.attr('left');
+                                var sourceItemWidth = $sourceItem.attr('width');
+                                var sourceItemHeight = $sourceItem.attr('height');
+                                var sourceItemShowBorder = $sourceItem.attr('showborderhotspot');
+                                var sourceItemDataFill = $sourceItem.attr('fillhotspot');
+                                var sourceItemHidden = $sourceItem.attr('hiddenHotSpot') == undefined ? false : $sourceItem.attr('hiddenHotSpot');
+                                var $newSourceItem = $('<span class="ImageHotspot-item"/>');
+
+                                sourceItemValue = sourceItemValue === ' ' ? '&nbsp;' : sourceItemValue;
+                                sourceItemTop = sourceItemTop - sourceItemTop * reducePercent;
+                                sourceItemLeft = sourceItemLeft - sourceItemLeft * reducePercent;
+                                sourceItemWidth = sourceItemWidth - sourceItemWidth * reducePercent;
+                                sourceItemHeight = sourceItemHeight - sourceItemHeight * reducePercent;
+
+                                if (sourceItemShowBorder === 'true') {
+                                    $newSourceItem.addClass('ImageHotspot-item--' + sourceItemTypeHotspot + '-border');
+                                }
+
+                                if (sourceItemDataFill === 'true') {
+                                    $newSourceItem.addClass('ImageHotspot-item--' + sourceItemTypeHotspot + '-fill');
+                                }
+
+                                $newSourceItem
+                                    .addClass('ImageHotspot-item--' + sourceItemTypeHotspot)
+                                    .attr({
+                                        'data-type': sourceItemTypeHotspot,
+                                        'identifier': sourceItemIdentifer
+                                    })
+                                    .css({
+                                        'top': sourceItemTop + 'px',
+                                        'left': sourceItemLeft + 'px',
+                                        'width': sourceItemWidth + 'px',
+                                        'height': sourceItemHeight + 'px',
+                                        'line-height': sourceItemHeight + 'px'
+                                    });
+
+                                $newSourceItem.html('<span class="identifier-hotspot">' + sourceItemIdentifer + '</span>');
+
+                                return $newSourceItem;
+                            });
+
+                            $div.css({
+                                'width': imghotspotWidth + 'px',
+                                'height': imghotspotHeight + 'px'
+                            });
+
+                            return $div;
+                        });
+                    }
+                    else if (qtiSchemaId == 33) {
+                        // Table hot spot
+                        $tree.find('.tableitem').replaceWith(function() {
+                            var $tableitem = $(this);
+                            var tableitemTypeHotspot = $tableitem.attr('typehotspot');
+                            var tableitemIdentifier = $tableitem.attr('identifier');
+                            var $div = $('<div/>');
+
+                            $div.attr({
+                                'class': 'TableHotspot-item TableHotspot-item--' + tableitemTypeHotspot,
+                                'data-type': tableitemTypeHotspot
+                            });
+
+                            $div.html('<span class="identifier-hotspot">' + tableitemIdentifier + '</span>');
+
+                            return $div;
+                        });
+                    }
+                    else if (qtiSchemaId == 34) {
+                        // Number line hot spot
+
+                        $tree.find('.numberLine').replaceWith(function() {
+                            var $numberline = $(this);
+                            var numberlineWidth = $numberline.attr('width');
+                            var numberlineHeight = $numberline.attr('height');
+                            var $div = $('<div/>');
+                            var reducePercent = 0;
+
+                            if (parseInt(numberlineWidth, 10) > questionContentWidth) {
+                                reducePercent = (numberlineWidth - questionContentWidth) / numberlineWidth;
+                                numberlineWidth = questionContentWidth;
+                                numberlineHeight = numberlineHeight - numberlineHeight * reducePercent;
+                            }
+
+                            $div
+                                .attr({
+                                    'class': 'Numberline',
+                                }).css({
+                                    'width': numberlineWidth,
+                                    'height': numberlineHeight
+                                });
+
+                            $div.html($numberline.html());
+
+                            $div.find('.numberLineItem').replaceWith(function() {
+                                var $numberlineItem = $(this);
+                                var numberlineItemIdentifier = $numberlineItem.attr('identifier');
+                                var $newNumberlineItem = $('<span class="Numberline-item" style="display: block;"/>');
+
+                                $newNumberlineItem.html($numberlineItem.html());
+
+                                $newNumberlineItem
+                                    .attr('identifier', $numberlineItem.attr('identifier'))
+                                    .css({
+                                        'left': $numberlineItem.attr('left') + '%',
+                                        'top': $numberlineItem.attr('top') + '%',
+
+                                        'width': '15px',
+                                        'height': '15px',
+                                        'line-height': '5px'
+                                    });
+
+                                $newNumberlineItem.html('<span class="identifier-hotspot">' + numberlineItemIdentifier + '</span>');
+
+                                return $newNumberlineItem;
+                            });
+
+                            return $div;
+                        });
+                    }
+
+                    // Replace br with line break with u-pre class
+                    $tree.find('br[style]').remove();
+                    $tree.find('br').replaceWith(function() {
+                        return $('<span class="u-linebreak"/>');
+                    });
+                    answernode += $tree.html();
+
+                    //Add All Correct Answers
+                    answernode += '<div class="AllAnswersCorrect"> \
+                                <h5>All Correct Answers:</h5> \
+                                <div class="border-answer">';
+
+                    for (var i = 0; i < question.AlgorithmicCorrectAnswers.length; i++) {
+                        item = question.AlgorithmicCorrectAnswers[i];
+                        answernode += '<div class="guidance">';
+                        if(!!item.Amount && item.Amount > 0) {
+                            answernode += '<div class="guidance-label" style="width: 65%; float: left;">Atleast ' + item.Amount + ' hotspot ' + item.ConditionValue  + ' is selected ' + '</div>';
+                        } else {
+                            answernode += '<div class="guidance-label" style="width: 65%; float: left;">'+item.ConditionValue+'</div>';
+                        }
+                        answernode += '<div class="guidance-body" style="width: 30%; float: left;">'+item.PointsEarned+' point(s)</div>';
+                        answernode += '</div>';
+                    }
+
+                    answernode += '<div class="guidance">\
+                                <div class="guidance-label" style="width: 65%; float: left;">No Atempt</div>\
+                                <div class="guidance-body" style="width: 30%; float: left;">0 point(s)</div>\
+                            </div>';
+                    answernode += '</div></div>'
+
+                    return answernode;
+                }
+
+                function RenderCommonAnswersAlgorithmic(question) {
+                    var answernode = '<div class="AllAnswersCorrect"> \
+                                <h5>All Correct Answers:</h5> \
+                                <div class="border-answer">';
+
+                    for (var i = 0; i < question.AlgorithmicCorrectAnswers.length; i++) {
+                        item = question.AlgorithmicCorrectAnswers[i];
+                        answernode += '<div class="guidance">';
+                        if (question.QTISchemaID == 9 && item.ConditionValue == '=*') {
+                            item.ConditionValue = '=Anything else';
+                        }
+
+                        if(!!item.Amount && item.Amount > 0) {
+                            answernode += '<div class="guidance-label" style="width: 65%; float: left;">Atleast ' + item.Amount + ' choice ' + item.ConditionValue  + ' is selected ' + '</div>';
+                        } else {
+                            answernode += '<div class="guidance-label" style="width: 65%; float: left;">'+item.ConditionValue+'</div>';
+                        }
+                        answernode += '<div class="guidance-body" style="width: 30%; float: left;">'+item.PointsEarned+' point(s)</div>';
+                        answernode += '</div>';
+                    }
+
+                    answernode += '<div class="guidance">\
+                                <div class="guidance-label" style="width: 65%; float: left;">No Atempt</div>\
+                                <div class="guidance-body" style="width: 30%; float: left;">0 point(s)</div>\
+                            </div>';
+                    answernode += '</div></div>';
+                    return answernode;
+                }
+
+                function CorrectImages(selector) {
+                    var tree = $(selector);
+                    var mapPath = '@portalUrl';
+
+                    tree.find('img').replaceWith(function () {
+                        var $image = $(this);
+                        var imageFloat = $image.attr('float');
+                        var imageUrl = $image.attr('src');
+                        var imageWidth = $image.attr('width');
+                        var imageHeight = $image.attr('height');
+                        var $imageContainer = $('<div/>');
+                        var $imageNew = $('<img/>');
+                        var reducePercent = 0;
+                        var questionContentWidth = @maxWidth;
+
+                        if ($image.parents('.passage').length) {
+                            questionContentWidth = 620;
+                        }
+
+                        // Check float of image
+                        if (imageFloat == null) {
+                            imageFloat = '';
+                        }
+
+                        $image.css('float', imageFloat);
+
+                        // Check if image from Certica
+                        if (imageUrl === undefined) {
+                            imageUrl = $image.attr('source');
+                        }
+
+                        // Check images exists or not
+                        if (imageUrl === null || imageUrl === '' || imageUrl === undefined) {
+                            imageUrl = mapPath + '/Content/images/emptybg.png';
+                        }
+
+                        // Substring images url
+                        if (imageUrl.charAt(0) == '/') {
+                            imageUrl = imageUrl.substring(1);
+                        }
+
+                        // Set attribute for images
+                        $image.attr({
+                            'source': '',
+                            'src': imageUrl
+                        });
+
+                        if (imageUrl && imageUrl.toLowerCase().indexOf('itemset') >= 0 &&
+                            imageUrl.toLowerCase().indexOf('http') < 0 &&
+                            imageUrl.toLowerCase().indexOf('getviewreferenceimg') < 0) {
+                            imageUrl = mapPath + '/Asset/GetViewReferenceImg?imgPath=' + imageUrl;
+                            $image.attr('src', imageUrl);
+                        }
+
+                        imageUrl = $image.attr('src');
+                        // PrintPDF tool (Prince) does not understand file path includes space,
+                        // so that replace space to %20 to let it understand
+                        imageUrl = imageUrl.replace(/ /g, '%20');
+                        $image.attr('src', imageUrl);
+
+                        if (imageWidth > questionContentWidth) {
+                            reducePercent = (imageWidth - questionContentWidth) / imageWidth;
+                            imageWidth = questionContentWidth;
+                            imageHeight = imageHeight - imageHeight * reducePercent;
+
+                            $image.attr({
+                                'width': imageWidth,
+                                'height': imageHeight
+                            });
+                        }
+
+                        CopyAttributes($image, $imageNew);
+                        $imageContainer.append($imageNew);
+
+                        return $imageContainer.html();
+                    });
+
+                    return tree.html();
+                }
+
+                function CopyAttributes(from, to) {
+                    var attrs = from.prop('attributes');
+                    $.each(attrs, function (index, attribute) {
+                        to.attr(attribute.name, attribute.value);
+                    });
+                }
+
+                @{
+                    JavaScriptSerializer js = new JavaScriptSerializer();
+                    js.MaxJsonLength = int.MaxValue;
+                    var data = js.Serialize(Model.Sections.SelectMany(o => o.Items).ToList());
+                    var isCustomItemNaming = js.Serialize(Model.IsCustomItemNaming);
+                }
+                var model = @Html.Raw(data);
+                var isCustomItemNaming = @Html.Raw(isCustomItemNaming);
+
+                $(document).ready(function() {
+                    var imgServiceUrl = '@portalUrl' + '/Asset/GetViewReferenceImg?imgPath=';
+
+                    var answerLabels = [
+                        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q",
+                        "r", "s", "t", "v", "w", "x", "y", "z", "aa", "ab", "ac", "ad", "ae", "af", "ag", "ah",
+                        "ai", "aj", "ak", "al", "am", "an", "ao", "ap", "aq", "ar", "as", "at", "au", "av", "aw",
+                        "ax", "ay", "az", "ba", "bb", "bc", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bk", "bl",
+                        "bm", "bn", "bo", "bp", "bq", "br", "bs", "bt", "bu", "bv", "bw", "bx", "by", "bz", "ca",
+                        "cb", "cc", "cd", "ce", "cf", "cg", "ch", "ci", "cj", "ck", "cl", "cm", "cn", "co", "cp",
+                        "cq", "cr", "cs", "ct", "cu", "cv", "cw", "cx", "cy", "cz"
+                    ];
+
+                    var questionPrefix = "@Html.Raw(Model.QuestionPrefix) ";
+
+                    var byQuestionGroupId = R.groupBy(function (question) {
+                        if (!!question.QuestionGroupId) {
+                            return question.QuestionGroupId;
+                        }
+                    });
+
+                    var byWithQuestionGroupId = function (a, b) {
+                        return a.QuestionGroupId === b.QuestionGroupId && (!!a.QuestionGroupId || !!b.QuestionGroupId);
+                    };
+
+                    var questionGroupList = byQuestionGroupId(model);
+                    var questionGroups = [];
+
+                    delete questionGroupList.undefined;
+
+                    if (Object.keys(questionGroupList).length) {
+                        questionGroups = R.groupWith(byWithQuestionGroupId, model);
+                    }
+
+                    $.each(model, function(index, question) {
+                        var answerHtml = '';
+                        var qtiSchemaId = question.QTISchemaID;
+                        var virtualQuestionId = question.VirtualQuestionID;
+                        var questionOrder = index + 1;
+                        var questionNaming = question.QuestionLabel;
+
+                        answerHtml = RenderAnswers(question);
+
+                        // Append answerkey for question
+                        $('.testSections').find('.answerKeyItem').each(function(ind, answerkey) {
+                            var $answerkey = $(answerkey);
+
+                            if ($answerkey.attr('questionid') == virtualQuestionId) {
+                                $answerkey.prepend(answerHtml);
+
+                                if (questionGroups.length) {
+                                    for (var i = 0; i < questionGroups.length; i++) {
+                                        var questionGroupsChild = questionGroups[i];
+
+                                        for (var j = 0; j < questionGroupsChild.length; j++) {
+                                            var questionGroupsChildItem = questionGroupsChild[j];
+
+                                            if (questionGroupsChildItem.VirtualQuestionID === virtualQuestionId) {
+                                                questionOrder = i + 1;
+
+                                                if (!!questionGroupsChildItem.QuestionGroupId) {
+                                                    questionOrder = questionOrder + answerLabels[j];
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (isCustomItemNaming && questionNaming != null) {
+                                    $answerkey.prepend('<span class="answerKeyItemOrder">' + questionPrefix + questionNaming + '</span>');
+                                } else {
+                                    $answerkey.prepend('<span class="answerKeyItemOrder">' + questionPrefix + questionOrder + '. </span>');
+                                }
+                            }
+                        });
+
+                        // Print Rationale
+                        var $studentGuidance = $('.StudentGuidance[virtualquestionid="' + virtualQuestionId + '"]');
+                        var $teacherRationale = $('.TeacherRationale[virtualquestionid="' + virtualQuestionId + '"]');
+                        var isMultipleChoice = false;
+                        var questionXmlContent = question.XmlContent;
+
+                        // Show student guidance and teacher rationale
+                        $studentGuidance.show();
+                        $teacherRationale.show();
+
+                        if (qtiSchemaId == 1 || qtiSchemaId == 3) {
+                            // Student guidance multiple choice or true/false
+                            $studentGuidance.append(GetRationaleMultipleChoice(questionXmlContent, studentGuidanceElement));
+                            // Teacher rationale multiple choice or true/false
+                            $teacherRationale.append(GetRationaleMultipleChoice(questionXmlContent, teacherRationaleElement));
+                        } else if (qtiSchemaId == 8) {
+                            // Student guidance inline choice
+                            $studentGuidance.append(GetRationaleInlineChoice(questionXmlContent, studentGuidanceElement));
+                            // Teacher rationale inline choice
+                            $teacherRationale.append(GetRationaleInlineChoice(questionXmlContent, teacherRationaleElement));
+                        } else if (qtiSchemaId == 9) {
+                            // Student guidance text entry
+                            $studentGuidance.append(GetRationaleTextEntry(questionXmlContent, studentGuidanceTextEntry));
+                            // Teacher rationale text entry
+                            $teacherRationale.append(GetRationaleTextEntry(questionXmlContent, teacherRationaleTextEntry));
+                        } else if (qtiSchemaId == 21) {
+                            // Student guidance multi part
+                            $studentGuidance.append(GetRationaleMultipleChoice(questionXmlContent, studentGuidanceElement));
+                            $studentGuidance.append(GetRationaleInlineChoice(questionXmlContent, studentGuidanceElement));
+                            $studentGuidance.append(GetRationaleTextEntry(questionXmlContent, studentGuidanceTextEntry));
+                            // Teacher rationale multi part
+                            $teacherRationale.append(GetRationaleMultipleChoice(questionXmlContent, teacherRationaleElement));
+                            $teacherRationale.append(GetRationaleInlineChoice(questionXmlContent, teacherRationaleElement));
+                            $teacherRationale.append(GetRationaleTextEntry(questionXmlContent, teacherRationaleTextEntry));
+
+                            // Check response of guidance
+                            $('.answerKeyItem').each(function(ind, answerkey) {
+                                var $answerkey = $(answerkey);
+                                var $answerResponseBox = $answerkey.find('.responseBox');
+                                var $answerGuidanceRational = $answerkey.find('.StudentGuidance, .TeacherRationale');
+
+                                if ($answerResponseBox.length && $answerGuidanceRational.length) {
+                                    $answerGuidanceRational.each(function(ind, gr) {
+                                        var $gr = $(gr);
+
+                                        $gr.find('div').each(function(ind, div) {
+                                            var $div = $(div);
+                                            var divIdentifier = $div.attr('identifier');
+                                            var guidanceVirtual = 'question' + question.VirtualQuestionID + '-' + divIdentifier;
+                                            var guidancePrefix = $('span[' + guidanceVirtual + ']').text();
+
+                                            if (divIdentifier !== '' && divIdentifier != undefined && guidancePrefix) {
+                                                $div.prepend('<span class="guidance-prefix">' + guidancePrefix + '</span>');
+                                            }
+                                        });
+
+                                        $gr.find('div').each(function(ind, div) {
+                                            var $div = $(div);
+                                            var divIdentifier = $div.attr('identifier');
+
+                                            if (divIdentifier !== '' && divIdentifier != undefined) {
+                                                $div.find('.guidance-prefix').not(':first').remove();
+                                            }
+                                        });
+                                    });
+                                }
+                            });
+                        }
+                    });
+
+                    // Replace br with line break with u-pre class
+                    $('body').find('br[style]').remove();
+                    $('body').find('br').replaceWith(function() {
+                        return $('<span class="u-linebreak"/>');
+                    });
+
+                    // Correct images
+                    CorrectImages($('body'));
+
+                    //'.rationale, .guidance_rationale'
+                    function GetRationaleMultipleChoice(xmlContent, elGuidance) {
+                        var $xmlContent = $(xmlContent);
+                        var $multipleChoice = $xmlContent.find('choiceinteraction');
+                        var $container = $('<div/>');
+
+                        $multipleChoice.find('.videoSpan, video, br[style]').remove();
+                        $multipleChoice.find('br').replaceWith(function() {
+                            return $('<span class="u-linebreak"/>');
+                        });
+
+                        if ($multipleChoice.find(elGuidance).length) {
+                            $multipleChoice.each(function(ind, mc) {
+                                var $mc = $(mc);
+                                var mcIdentifier = $mc.attr('responseidentifier');
+                                var $div = $('<div/>');
+
+                                $mc.find(elGuidance).each(function(ind, ratio) {
+                                    var $ratio = $(ratio);
+                                    var ratioHtml = '';
+                                    var ratioLabel = $ratio.parent().attr('identifier');
+                                    var isRatioContent = false;
+
+                                    isRatioContent = GetGuidanceRationaleContent(ratio);
+
+                                    if (isRatioContent) {
+                                        ratioHtml += '<div class="guidance guidance-multiplechoice">';
+                                        ratioHtml += '<div class="guidance-label">' + ratioLabel + ' -</div>';
+                                        ratioHtml += '<div class="guidance-body">' + $ratio.html() + '</div>';
+                                        ratioHtml += '</div>';
+
+                                        $div
+                                            .attr('identifier', mcIdentifier)
+                                            .append(ratioHtml);
+                                    }
+                                });
+
+                                $container.append($div);
+                            });
+
+                            return $container.html();
+                        }
+
+                        return '';
+                    }
+
+                    function GetRationaleInlineChoice(xmlContent, elGuidance) {
+                        var $xmlContent = $(xmlContent);
+                        var $inlinechoice = $xmlContent.find('inlinechoiceinteraction');
+                        var $container = $('<div/>');
+
+                        $inlinechoice.find('.videoSpan, video, br[style]').remove();
+                        $inlinechoice.find('br').replaceWith(function() {
+                            return $('<span class="u-linebreak"/>');
+                        });
+
+                        if ($inlinechoice.find(elGuidance).length) {
+                            $inlinechoice.each(function(ind, ic) {
+                                var $ic = $(ic);
+                                var icIdentifier = $ic.attr('responseidentifier');
+                                var $div = $('<div/>');
+
+                                $ic.find(elGuidance).each(function(ind, ratio) {
+                                    var $ratio = $(ratio);
+                                    var ratioHtml = '';
+                                    var ratioLabel = $ratio.attr('identifier');
+                                    var isRatioContent = false;
+
+                                    isRatioContent = GetGuidanceRationaleContent(ratio);
+
+                                    if (isRatioContent) {
+                                        ratioHtml += '<div class="guidance guidance-inlinechoice">';
+                                        ratioHtml += '<div class="guidance-label">' + ratioLabel + ' -</div>';
+                                        ratioHtml += '<div class="guidance-body">' + $ratio.html() + '</div>';
+                                        ratioHtml += '</div>';
+
+                                        $div
+                                            .attr('identifier', icIdentifier)
+                                            .append(ratioHtml);
+                                    }
+                                });
+
+                                $container.append($div);
+                            });
+
+
+
+                            return $container.html();
+                        }
+
+                        return '';
+                    }
+
+                    function GetRationaleTextEntry(xmlContent, elGuidance) {
+                        var $xmlContent = $(xmlContent);
+                        var $textentryinteraction = $xmlContent.find('.responseDeclaration');
+                        var $container = $('<div/>');
+
+                        $textentryinteraction.find('.videoSpan, video, br[style]').remove();
+                        $textentryinteraction.find('br').replaceWith(function() {
+                            return $('<span class="u-linebreak"/>');
+                        });
+
+                        if ($textentryinteraction.find(elGuidance).length) {
+                            $textentryinteraction.each(function(ind, textentry) {
+                                var $textentry = $(textentry);
+                                var textentryIdentifier = $textentry.attr('identifier');
+                                var $div = $('<div/>');
+
+                                $textentry.find(elGuidance).each(function(ind, ratio) {
+                                    var $ratio = $(ratio);
+                                    var ratioIdentifier = $ratio.attr('ansIdentifier');
+                                    var ratioHtml = '';
+                                    var $correctresponse = $ratio.parents('.responseDeclaration').find('.correctResponse').find('.value[identifier="' + ratioIdentifier + '"]');
+                                    var isRatioContent = false;
+
+                                    isRatioContent = GetGuidanceRationaleContent(ratio);
+
+                                    if (isRatioContent) {
+                                        ratioHtml += '<div class="guidance">';
+                                        ratioHtml += '<div class="guidance-label">' + $correctresponse.text() + '</div>';
+                                        ratioHtml += '<div class="guidance-body">' + $ratio.html() + '</div>';
+                                        ratioHtml += '</div>';
+
+                                        $div
+                                            .attr('identifier', textentryIdentifier)
+                                            .append(ratioHtml);
+                                    }
+                                });
+
+                                $container.append($div);
+                            });
+
+                            return $container.html();
+                        }
+
+                        return '';
+                    }
+
+                    function GetGuidanceRationaleContent(ratio) {
+                        var emptyRationale = false;
+                        var $ratio = $(ratio);
+
+                        if($ratio.find('img').length > 0){
+                            emptyRationale = true;
+                        } else if ($.trim($ratio.text()) !== ''){
+                            emptyRationale = true;
+                        }
+
+                        return emptyRationale;
+                    }
+                });
+            </script>
+    }
+    <script>
+    $(document).ready(function() {
+        $('[linematching="1"]').each(function (_, responseDeclaration) {
+            var qtiConfig = $(responseDeclaration);
+            var qtiXml = qtiConfig.parent();
+            var anchorObject = qtiConfig.attr('anchorpositionobject') || 'right';
+            var anchorDestination = qtiConfig.attr('anchorpositiondestination') || 'left';
+            qtiXml.addClass('line-matching')
+            .addClass('object-' + anchorObject)
+            .addClass('destination-' + anchorDestination);
+            qtiXml.find('.sourceObject[type="image"]').append('<div class="anchor"></div>')
+            qtiXml.find('.DestinationObject[type="text"]').wrap('<div class="text-wrapper destination"></div>');
+            qtiXml.find('.sourceObject[type="text"]').not('.DestinationItem .sourceObject').wrap('<div class="text-wrapper object"></div>');
+            qtiXml.find('.text-wrapper').append('<div class="anchor"></div>')
+        })
+        updateFontSizeAnswer();
+    })
+
+    function updateFontSizeAnswer () {
+        var $sourceObjects = $('.answerKeyItem .DestinationItem .sourceObject');
+        if ($sourceObjects.length === 0) {
+            return
+        }
+        $sourceObjects.each(function() {
+            var srcIdentifier = $(this).attr('srcidentifier');
+            var matchedItem = $('.answerKeyItem .sourceobject ').not('.answerKeyItem .DestinationItem .sourceObject').filter('[srcidentifier="'+srcIdentifier+'"]');
+            if (matchedItem.length > 0) {
+                $(this).attr('style', $(this).attr('style') + '; font-size: ' + matchedItem.css('font-size') + ' !important;');
+            }
+        });
+    }
+    </script>
+</body>
+</html>

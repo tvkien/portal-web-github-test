@@ -1,0 +1,124 @@
+<style>
+    #portal-v2-containter .ui-dialog .ui-dialog-titlebar {
+        display: none;
+    }
+</style>
+<article class="grid_12 w-100 m-0">
+    <section>
+        <div class="block-border" id="divMoveVirtualTestConfirm">
+            <div class="block-content block-24 form wrapper-block pt-0 dialog-custom-new-skin">
+                <div class="form">
+                    @if (ViewBag.CreateACopy)
+                    {
+                        <p class="title-large mb-4">Enter new test name</p>
+                    }
+                </div>
+                <ul style="display: none" id="error-messages-confirm" class="message error my-3"></ul>
+                <ul style="display: none; font-weight: normal;" id="success-message-confirm" class="message success my-3"></ul>
+
+                @if (!ViewBag.CreateACopy)
+                {
+                    <div class="form">
+                        <div class="main-content" style="font-weight: 700; line-height: 26px;">
+                            Are you sure you want move test [@ViewBag.VirtualTestName] to this bank?
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <input class="mb-4 w-100" type="text" id="txtVirtualTestName" style="width: 380px" maxlength="150" />
+                }
+
+                <div class="foot-content mt-3" style="justify-content: space-around; margin: 0 -24px -24px;">
+                    <button class="btn-cancel" onclick="cancelMoveCopy()">Cancel</button>
+                    @if (!ViewBag.CreateACopy)
+                    {
+                        <button class="button-custom-new-skin btn-red" onclick="moveVirtualTest()">Move</button>
+                    }
+                    else
+                    {
+                        <button class="button-custom-new-skin btn-red" onclick="copyVirtualTest()">Copy</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+
+    $(function () {
+        if ('@ViewBag.CreateACopy'.toLowerCase() == 'true') {
+            //$('#btnCopyVirtualTest').show();
+            $('#txtVirtualTestName').val(htmlDecode('@ViewBag.VirtualTestName') + '_Clone');
+        }
+        else {
+            //$('#moveVirtualTest').show();
+        }
+    });
+    
+    function copyVirtualTest() {
+        var vVirtualTestId = '@ViewBag.VirtualTestId';
+        var vbankId = '@ViewBag.ToBankId';
+        var newVirtualTestName = $('#txtVirtualTestName').val();
+        $('.button-custom-new-skin.btn-red').attr('disabled', true);
+        ShowBlock($('#divMoveVirtualTestConfirm'), "Copying");
+        $.ajax({
+            url: '@Url.Action("CopyVirtualTest","ManageTest")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ virtualTestId: vVirtualTestId, newBankId: vbankId, testName: newVirtualTestName }),
+            success: function (response) {
+                if (response.Success == 'Success') {
+                    $('#success-message-confirm').html('<li>Virtual test successfully copied.</li>');
+                    $('#success-message-confirm').show();
+                    $('#error-messages-confirm').hide();
+                    //close dialog
+                    setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                } else {
+                    $("#error-messages-confirm").html('<li>' + response.Error + '</li>');
+                    $('#error-messages-confirm').show();
+                    $('#success-message-confirm').hide();
+                }
+                $('#divMoveVirtualTestConfirm').unblock();
+            },
+            complete: function() {
+                $('.button-custom-new-skin.btn-red').attr('disabled', false);
+            }
+        });
+    }
+
+    function moveVirtualTest() {
+        var virtualTestId = '@ViewBag.VirtualTestId';
+        var bankId = '@ViewBag.ToBankId';
+        ShowBlock($('#divMoveVirtualTestConfirm'), "Moving");
+        $.ajax({
+            url: '@Url.Action("MoveVirtualTest","ManageTest")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ virtualTestId: virtualTestId, newBankId: bankId}),
+            success: function (response) {
+                if (response.Success == 'Success')
+                {
+                    $('#success-message-confirm').html('<li>Virtual test successfully moved.</li>');
+                    $('#success-message-confirm').show();
+                    $('#error-messages-confirm').hide();
+                    //close dialog
+                    setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                } else {
+                    $("#error-messages-confirm").html('<li>' + response.Error + '</li>');
+                    $('#error-messages-confirm').show();
+                    $('#success-message-confirm').hide();
+                }
+                $('#divMoveVirtualTestConfirm').unblock();
+            }
+        });
+    }
+
+    function cancelMoveCopy() {
+        $("#divPopupMoveVirtualTestConfirmDialog").dialog("close");
+        $('#dataTableTestBankTop').unblock();
+    }
+
+
+</script>

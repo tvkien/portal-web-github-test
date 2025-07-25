@@ -1,0 +1,380 @@
+<link href="/Content/themes/Survey/surveyBank.css" rel="stylesheet" />
+
+<script src="@Url.Content("~/Scripts/constants.js")" type="text/javascript"></script>
+<article class="container_12" style="width: 100%">
+    <section class="grid_12" style="width: 93%">
+        <div class="block-border" style="width: 100%">
+            <div class="block-content form" id="divOnTop">
+                <h1>
+                    Survey Banks
+                    <a href="javascript:void(0)" class="CreateNewTestBank">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Add New Survey Bank
+                    </a>
+                    <div class="clearfix"></div>
+                </h1>
+                @if (ViewBag.IsNetworkAdmin)
+                {
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <label>State</label>
+                                <select id="selectState" class="full-width"></select>
+                            </p>
+                        </div>
+                        <div class="colx2-right">
+                            <p>
+                                <label>@LabelHelper.DistrictLabel</label>
+                                <select id="selectDistrict" class="full-width"></select>
+                            </p>
+                        </div>
+                    </div>
+                }
+                <p style="height: 5px"></p>
+                <div id="divShowArchived">
+                    <p class="showArchived">Show archived</p>
+                    <input type="checkbox" name="chkShowArchived" id="chkShowArchived">
+                </div>
+                <div class="no-margin last-child">
+                    <table id="dataTableSurveyBank" class="datatable table no-margin dataTableTestBankStyle">
+                        <thead>
+                            <tr>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.Subject
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.TestGrade
+                                </th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody style="cursor: pointer"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<input type="hidden" id="selectedbanktestid" />
+<script type="text/javascript">
+    var dataTableSurveyBank;
+    var testBankId = 0;
+
+    $(function () {
+        if ('@ViewBag.IsNetworkAdmin' === 'True') {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                addDefaultOption($('#selectState'), "State");
+                addSelectListItems($('#selectState'), states);
+                $('#selectState').val(@ViewBag.StateId);
+                $('#selectState').trigger('change');
+            });
+
+            $('#selectState').change(function () {
+                populateDistricts();
+            });
+
+            $('#selectDistrict').change(function () {
+                if ($('#selectDistrict').val() != 'select') {
+                    dataTableSurveyBank.fnDraw();
+                }
+            });
+        }
+
+        $('.CreateNewTestBank').on('click', function () {
+            var url = '@Url.Action("CreateSurveyBank", "ManageSurvey")';
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function (html) {
+                    $("#divOnTop").append('<div id="PopupCreateSurveyBank" class="dialog"></div>');
+                    $("#PopupCreateSurveyBank").append(html);
+                    $('#PopupCreateSurveyBank').dialog({
+                        title: "",
+                        open: function () {
+                            $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        },
+                        beforeclose: function () {
+                            return true;
+                        },
+                        close: function () {
+                            $('#dataTableSurveyBank').dataTable().fnDraw(false);
+                            $('#PopupCreateSurveyBank').remove();
+                            $("body .my-overlay").remove();
+                        },
+                        modal: false,
+                        width: 500,
+                        resizable: false
+                    });
+                });
+
+            $(".close").unbind("click");
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+        });
+
+        $('#dataTableSurveyBank tbody').on('click', function (event) {
+            var target = event.target;
+            var targetId = target.id;
+            var targetTagName = target.tagName;
+            var targetParent = target.parentNode;
+            var targetParentId = targetParent.id;
+            var targetParentTagName = targetParent.tagName;
+            var isTarget = targetTagName.toUpperCase() == 'TD' && targetId != null && targetId.length > 0;
+            var isTargetParent = targetParentTagName.toUpperCase() == 'TD' && targetParentId != null && targetParentId.length > 0;
+
+            $(dataTableSurveyBank.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+
+            if (isTarget) {
+                $(targetParent).addClass('row_selected');
+                testBankId = targetId;
+                $("#SelectedTestBankId").val(testBankId);
+                oTableSurveyTest.fnDraw();
+                LoadBankProperty(testBankId);
+            }
+
+            if (isTargetParent) {
+                $(targetParent.parentNode).addClass('row_selected');
+                testBankId = targetParentId;
+                $("#SelectedTestBankId").val(testBankId);
+                oTableSurveyTest.fnDraw();
+                LoadBankProperty(testBankId);
+            }
+        });
+
+        var optionsTestBank = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            sAjaxSource: getAjaxSource(),
+            fnServerParams: function (aoData) {
+                var showArchived = $('#chkShowArchived').is(':checked');
+                if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                    var stateId = $('#selectState').val();
+                    var districtId = $('#selectDistrict').val();
+                    aoData.push(
+                        { name: 'stateId', value: stateId },
+                        { name: 'districtId', value: districtId },
+                        { name: 'showArchived', value: showArchived });
+                }
+                else {
+                    aoData.push(
+                        { name: 'showArchived', value: showArchived });
+                }
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''");
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'string', sName: 'BankName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Subject', bSearchable: true, bSortable: true },
+                { sType: 'integer', sName: 'GradeOrder', bSearchable: true, bSortable: true },
+                { sType: 'integer', sName: 'BankID', bSearchable: false, bSortable: false, sWidth: "0px", bVisible: false },
+                { sType: 'string', sName: 'Grade', bSearchable: true, bSortable: true, sWidth: "0px", bVisible: false },
+                { sType: 'string', sName: 'Archived', bSearchable: false, bSortable: false, sWidth: "0px", bVisible: false }
+
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).attr('id', aData[3]);
+                $('td:eq(1)', nRow).attr('id', aData[3]);
+                $('td:eq(2)', nRow).attr('id', aData[3]);
+                $('td:eq(2)', nRow).html(aData[4]);
+                addWordBreakToTableCell($('td:eq(0)', nRow), 20, aData[0]);
+                addWordBreakToTableCell($('td:eq(1)', nRow), 13, aData[0]);
+                $('td:eq(2)', nRow).html(setIconVisibility(aData[4],aData[3], aData[5]));
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableSurveyBank'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableSurveyBank').unblock();
+                $('.with-tip').tip();
+                formatTableForAddingVertialScrollBar('dataTableSurveyBank', 'scrolldataTableTestBankStyle', 'noscrolldataTableTestBankStyle',
+                    'scrolldataTableTestBankStyleIE9', 'noscrolldataTableTestBankStyleIE9');
+
+                if ($("input[name='inputTestType']:checked").val() == 'selectTestBank') {
+                    $('#btnCreateTest').disableBt();
+                }
+            }
+        };
+
+        var $dataTableTestBank = $('#dataTableSurveyBank');
+        $dataTableTestBank.data('options', optionsTestBank);
+        dataTableSurveyBank = $dataTableTestBank.dataTable();
+
+        $('#chkShowArchived').on('change', function () {
+            dataTableSurveyBank.fnDraw();
+        });
+    });
+
+    function getAjaxSource() {
+        if ('@ViewBag.IsNetworkAdmin' === 'True') {
+            return '@Url.Action("LoadSurveyBanksForNetworkAdmin")';
+        }
+        return '@Url.Action("LoadSurveyBanks")';
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                addSelectListItems($('#selectDistrict'), districts);
+            });
+        } else {
+            dataTableSurveyBank.fnDraw();
+        }
+    }
+
+    function createSurveyBank() {
+        var bankName = $('#inputTestBankName').val();
+        if (bankName.trim() == '') {
+            $('#error-messages').empty();
+            $('#error-messages').html('<li> Please enter the Bank Name. </li>');
+            $('#error-messages').show();
+            $('#success-message').hide();
+            return;
+        }
+        if (bankName.trim().length > 150) {
+            $('#error-messages').empty();
+            $('#error-messages').html('<li> The Bank Name imposes a limit of 150 characters. </li>');
+            $('#error-messages').show();
+            $('#success-message').hide();
+            return;
+        }
+        ShowBlock($('#dvCreateSurveyBank'), "Create Bank");
+        $.post('@Url.Action("CreateSurveyBank", "ManageSurvey")', { bankName: bankName }, function (response) {
+            if (response.Success == true) {
+                $('#success-message').show();
+                $('#error-messages').hide();
+                setTimeout(function () {
+                    $(".dialog").dialog("close");
+                }, 3000);
+            } else {
+                $('#error-messages').html('<li> ' + response.Error + ' </li>');
+                $('#error-messages').show();
+                $('#success-message').hide();
+            }
+            $('#dvCreateSurveyBank').unblock();
+        });
+    }
+
+    function cancelCreateSurveyBank() {
+        $(".dialog").dialog("close");
+    }
+
+    function SaveSurveyBankProperty(vbankId) {
+        var bankName = $('#TestBankName').val();
+        if (bankName.trim() != '') {
+            $.post('@Url.Action("UpdateSurveyBank", "ManageSurvey")', { bankName: bankName, bankId: vbankId }, function () {
+                $('#dataTableSurveyBank').dataTable().fnDraw(false);
+            });
+        }
+    }
+
+    function DeleteSurveyBank(bankId) {
+        var bankName = $('#TestBankName').val();
+        var url = '@Url.Action("LoadConfirmDeleteBank", "ManageSurvey")';
+        $.ajax(
+            {
+                url: url,
+                cache: false,
+                data: { bankId: bankId, bankName: bankName }
+            })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="PopupConfirmDeleteBank" class="dialog"></div>');
+                $("#PopupConfirmDeleteBank").append(html);
+                $('#PopupConfirmDeleteBank').dialog({
+                    title: "",
+                    open: function () {
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupConfirmDeleteBank').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    function DeleteTestBankById(bankId) {
+        $.post('@Url.Action("DeleteSurveyBank", "ManageSurvey")', { bankId: bankId }, function () {
+            $('#dataTableSurveyBank').dataTable().fnDraw(false);
+            $('#dataTableSurveyTest').dataTable().fnDraw(false);
+            $('#divSurveyBankProperties').html('');
+            $(".dialog").dialog("close");
+        });
+    }
+
+    function LoadBankProperty(bankId) {
+        ShowBlock($('#divSurveyBankProperties'), 'Loading');
+        $('#divSurveyBankProperties').load('@Url.Action("GetSurveyBankProperties", "ManageSurvey")?bankId=' + bankId, function () {
+            $('#divVirtualTestProperties').html('');
+            $('#divSurveyBankProperties').focus();
+            $('#divSurveyBankProperties').unblock();
+        });
+    }
+
+    function setIconVisibility(grade, bankId, archived) {
+        var checkboxString = '';
+        if (archived == 'True') {
+            checkboxString = grade + '<input type="checkbox" style="display:none" class="BankArchived" name="chkBankArchived" id="' + bankId + '" checked />';
+        } else {
+            checkboxString = grade + '<input type="checkbox" style="display:none" class="BankArchived" name="chkBankArchived" id="' + bankId + '" />';
+        }
+        return checkboxString;
+    }
+
+    function refreshSurveyBankList() {
+        $("#dataTableSurveyBank").dataTable().fnReloadAjax(getAjaxSource());
+    }
+</script>

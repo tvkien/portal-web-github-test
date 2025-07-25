@@ -1,0 +1,134 @@
+@model LinkIt.BubbleSheetPortal.Models.SGO.VirtualTestCustomScore
+<div>
+    <ul style="display: none; margin-bottom: 1.667rem; width: 100%" id="updateTemplateName-error-message" class="message message-datalocker error me-auto"></ul>
+    <ul style="display: none; margin-bottom: 1.667rem; width: 100%" id="updateTemplateName-success-message" class="message message-datalocker success me-auto">
+    </ul>
+</div>
+<div id="divTemplateName" class="columns">
+    <h1 class="heading-page mb-2">Add Template</h1>
+    @if (Model.Disabled)
+    {
+        <div class="warning-message mb-4">
+            <div class="d-flex align-items-center">
+                <img src="/Content/images/icons/icon-info.svg" alt="icon-info" />
+                <p class="title"><b>Unable to edit Data Locker Template in use for PC</b></p>
+            </div>
+        </div>
+    }
+
+    <div class="row align-items-end">
+        <div class="col-4">
+            <div>
+                <label>Template Name</label>
+                <div>
+                    @Html.TextBoxFor(m => m.Name, new { @maxlength = "200", @class = "full-width first-focus", id = "TemplateName" })
+                </div>
+            </div>
+        </div>
+        <div class="columns col-4">
+            <div id="divEditMutiDate" style="display:none">
+                <label>Data Entry Mode</label>
+                <div class="">
+                    <select id="selectEditMutiDate">
+                        <option value="false">Single-Date</option>
+                        @if (Model.IsMultiDate.GetValueOrDefault())
+                        {
+                            <option value="true" selected="selected">Multi-Date</option>
+                        }
+                        else
+                        {
+                            <option value="true">Multi-Date</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="col-4 text-end">
+            <div>
+                <button id="btnPreviewTemplate" class="btn-accept" type="button" style="margin-right: 15px; ">Preview</button>
+                <button id="btnUpdateTemplateName" class="btn-accept" type="button">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    $(function () {
+        CheckDistrictDecode();
+        CheckHasAssociatedTestResult();
+        $('#btnUpdateTemplateName').click(function () {
+            var templateName = $('#TemplateName').val();
+            var IsMultiDate = $('#selectEditMutiDate').val();
+            templateName = templateName.trim();
+            if (templateName.length == 0) {
+                customAlertMessage({message: 'Please input the name of Template.'});
+                return;
+            }
+
+            var url = '@Url.Action("UpdateTemplateName")';
+            var data = {
+                TemplateID: @Model.VirtualTestCustomScoreId,
+                name: encodeURIComponent(templateName),
+                IsMultiDate: IsMultiDate
+
+            };
+            ShowBlock($('#divTemplateName'), 'Updating');
+            $('#updateTemplateName-error-message').hide();
+            $('#updateTemplateName-success-message').hide();
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: data
+            })
+            .done(function(response) {
+                if (response.success) {
+                    var html = '<li>Template has been updated.</li>';
+                    if (response.message != '') {
+                        html = html + '<li>' + response.message + '</li>'
+                    }
+                    $('#updateTemplateName-success-message').html(html);
+                    $('#updateTemplateName-success-message').show();
+                    setTimeout(function () { $('#updateTemplateName-success-message').hide(); }, 5000);
+                } else {
+                    $('#updateTemplateName-error-message').show();
+                    $('#updateTemplateName-error-message').html('<li>' + response.error + '</li>');
+                }
+                $('#divTemplateName').unblock();
+             });
+
+        });
+
+        $('#btnPreviewTemplate').click(function (e) {
+            var url = '@Url.Action("PreviewTemplate", "DataLocker", new { templateId = Model.VirtualTestCustomScoreId })';
+            window.location.href = url;
+        });
+    });
+    function CheckDistrictDecode() {
+        var useMutiDate = '@ViewBag.useMutiDate';
+        if (useMutiDate === 'True') {
+            $('#divEditMutiDate').show();
+          }
+    }
+    function CheckHasAssociatedTestResult() {
+        var hasAssociatedTestResult = "@Model.HasAssociatedTestResult";
+        var hasAssociatedAutoSave = "@Model.HasAssociatedAutoSave";
+        if (hasAssociatedTestResult === "True" || hasAssociatedAutoSave === "True") {
+            $("#selectEditMutiDate").attr("disabled", "disabled");
+            $("#selectEditMutiDate").css("background-color", "lightgray");
+        } else {
+            $("#selectEditMutiDate").removeAttr("disabled");
+        }
+    }
+</script>
+<style>
+    #portal-v2-containter .warning-message {
+        background-color: var(--blue1);
+        border: 1px solid var(--blue1);
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+
+        #portal-v2-containter .warning-message .title {
+            padding-left: 6px;
+        }
+
+</style>

@@ -1,0 +1,228 @@
+@using LinkIt.BubbleSheetPortal.Models;
+@using System.Collections.Generic;
+@model  List<TestRestrictionModuleDTO>
+    <article class="container_12">
+        <section class="grid_9">
+            <div class="block-border">
+                <div class="block-content form">                  
+                    <div class="title-heading-bank-access-popup mb-4">
+                        <p class="title-large mb-0">
+                            Bank Access Restriction
+                        </p>
+                        <a id="closeBtnBankAccess" href="#closeBtnBankAccess" class="ui-dialog-titlebar-close ui-corner-all" role="button"><span class="ui-icon ui-icon-closethick">close</span></a>
+                    </div>
+
+                    <table id="retricttable">
+                        <colgroup>
+                            <col style="width: 37%" />
+                        </colgroup>
+                        <tr>
+                            <th class="clfirst">
+                                Module/Role
+                            </th>
+                            @for (int i = 0; i < Model[0].ListRoles.Count; i++)
+                            {
+                                <th>
+                                    @Model[0].ListRoles[i].RoleDisplayName
+                                </th>
+                            }
+                        </tr>
+                        @for (int i = 0; i < Model.Count; i++)
+                        {
+                            <tr>
+                                <td style="width:25%">
+                                    @Model[i].ModuleDisplayName
+                                </td>
+                                @for (int j = 0; j < Model[i].ListRoles.Count; j++)
+                                {
+                                    <td>
+                                        @if (Model[i].ListRoles[j].IsShown)
+                                        {
+                                            if (j == 0)
+                                            {
+                                                @Html.Raw(string.Format("<input class='{0}' moduleid='{1}' {2} module-code='{3}'  type='checkbox'/> ", "ckrolemoduleall ckrolemoduleall" +
+                                                         Model[i].ModuleId, Model[i].ModuleId, Model[i].ListRoles[j].IsChecked ? "checked" : "", Model[i].ModuleName));
+                                            }
+                                            else
+                                            {
+                                                @Html.Raw(string.Format("<input class='{0}' moduleid='{1}' {2} roleid='{3}' module-code='{4}'  type='checkbox'/> ", "ckrolemodule",
+                                                         Model[i].ModuleId, Model[i].ListRoles[j].IsChecked ? "checked" : "", Model[i].ListRoles[j].RoleID, Model[i].ModuleName));
+                                            }
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+
+                    </table>               
+                </div>
+            </div>
+            <div class="btn-wrapper">
+                <button id="btnfrcancel" class="btn-cancel">Cancel</button>
+                <button id="btnfrsave" class="btn-red">Save</button>
+            </div>
+        </section>
+    </article>
+<style>
+    .btn-cancel {
+        display: flex;
+        align-items: center;
+        padding: 11px 32px;
+        font-weight: 900;
+        cursor: pointer;
+        width: fit-content;
+        height: 48px;
+        box-sizing: border-box;
+        border: 0;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        text-decoration: none;
+        color: var(--white) !important;
+    }
+
+    .title-heading-bank-access-popup {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+    }
+
+    #closeBtnBankAccess {
+        top: 0 !important;
+        right: 0 !important;
+    }
+
+    #closeBtnBankAccess::after {
+        right: 0 !important;
+    }
+
+    .btn-wrapper {
+        background: var(--navyColor);
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+    }
+</style>
+
+    <script type="text/javascript">
+        $('#closeBtnBankAccess').live('click', function () {
+            $('.my-overlay').remove();
+            $(".dialog").dialog("close");
+        });
+        $("#AssignParentForm").parent().width(900);
+
+       $("#btnfrcancel").click(function () {
+           $('#restrictionForm').hide();
+           $('#listDistrictDiv').show();
+           $("#AssignParentForm").parent().width(750);
+
+       })
+       var issaving = false;
+       var frbankid = "@ViewBag.bankId";
+       var frDistrictId = "@ViewBag.DistrictId";
+
+
+        $(".ckrolemodule").change(function () {
+            var moduleid = $(this).attr("moduleid");
+            var isallcheck = true;
+            $(".ckrolemodule").each(function (index1, object1) {
+                if ($(object1).is(':checked')==false && $(object1).attr("moduleid") == moduleid) {
+                    isallcheck = false;
+
+                }
+            });
+            $(".ckrolemoduleall" + moduleid).attr("checked", false);
+            if (isallcheck)
+                $(".ckrolemoduleall" + moduleid).attr("checked", true);
+
+            var moduleCode = $(this).attr("module-code");
+            if (moduleCode === 'review') {
+                var ischeck = $(this).is(':checked');
+                var roleid = $(this).attr("roleid");
+                if (ischeck) {
+                    $("input[module-code='view_grade'][roleid='" + roleid + "']").attr("checked", !ischeck);
+                }
+
+                $("input[module-code='view_grade'][roleid='" + roleid + "']").attr("disabled", ischeck);
+            }
+         });
+        $(".ckrolemoduleall").change(function () {
+            var moduleid = $(this).attr("moduleid");
+            var isallcheck = $(this).is(':checked');
+            $(".ckrolemodule").each(function (index1, object1) {
+                if ( $(object1).attr("moduleid") == moduleid) {
+                    $(object1).attr("checked", isallcheck);
+                }
+            });
+
+            var modulecode = $(this).attr("module-code");
+
+            if (modulecode === 'review') {
+                $("input[module-code='view_grade']").each(function (index1, object1) {
+                    if (isallcheck) {
+                        $(object1).attr("checked", !isallcheck);
+                    }
+                    $(object1).attr("disabled", isallcheck);
+                });
+            }
+        })
+       $("#btnfrsave").click(function () {
+           if (issaving)
+               return;
+           issaving = true;
+           var listmoduleroles = [];
+           $(".ckrolemodule").each(function (index, object) {
+               var roleid = $(this).attr("roleid");
+               var moduleid = $(this).attr("moduleid");
+               if ($(this).is(':checked') && roleid != "0" && moduleid != "0") {
+                   listmoduleroles.push({
+                       ModuleId: parseInt(moduleid),
+                       RoleId: parseInt(roleid)
+                   });
+               }
+           });
+
+           $.ajax({
+               type: "POST",
+               url: '@Url.Action("SaveRestrictionForm", "ManageTest")',
+               data: JSON.stringify({ bankid: frbankid, bankDistrictId: frDistrictId, listmoduleroles: listmoduleroles }),
+               contentType: "application/json; charset=utf-8",
+               dataType: "json",
+               success: function (arg) { //call successfull
+                   issaving = false;
+                   $("#btnfrcancel").click();
+               },
+               error: function (xhr) {
+                   //error occurred
+               }
+           });
+
+       });
+
+       $('#shareDistrictDiv').hide();
+       $('#listDistrictDiv').hide();
+       $('#restrictionForm').show();
+
+        BindingReviewAndViewGrade();
+
+        function BindingReviewAndViewGrade() {
+            $("input[module-code='review']").each(function (index, item) {
+                const isCheck = $(this).is(':checked');
+
+                if (isCheck) {
+                    const roleId = $(this).attr('roleid');
+                    $("input[roleid='" + roleId + "'][module-code='view_grade']").attr('checked', false);
+                    $("input[roleid='" + roleId + "'][module-code='view_grade']").attr('disabled', true);
+                }
+            });
+
+            const isCheckAll = $(".ckrolemoduleall[module-code='review']").is(':checked');
+
+            if (isCheckAll) {
+                $(".ckrolemoduleall[module-code='view_grade']").attr('checked', false);
+                $(".ckrolemoduleall[module-code='view_grade']").attr('disabled', true);
+            }
+        }
+    </script>

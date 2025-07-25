@@ -1,0 +1,103 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.SATReport.SATReportMasterViewModel
+<style>
+    .col_StudentHistory .tblDiagnostic {
+        width: 700px !important;
+    }
+
+    .tblDiagnostic thead th {
+        padding: 10px 3px !important;
+    }
+</style>
+@{
+    //var sectionScoreNames = new List<string> { "Evidence Based Reading Writing", "Math Section" };
+    List<string> sectionScoreNames = Model.ListVirtualTestConversionName;
+    var sectionScoreNameCount = sectionScoreNames.Count;
+    if (sectionScoreNameCount < 2)
+    {
+        for (int i = 0; i < 2 - sectionScoreNameCount; i++)
+        {
+            sectionScoreNames.Add(string.Empty);
+        }
+    }
+}
+<div class="section">
+    <div class="table-title">
+        DIAGNOSTIC HISTORY
+    </div>
+
+    <table class="act" cellpadding="0" cellspacing="0">
+        <thead>
+        <tr>
+            <th rowspan="2" style="width: 63px;" class="border-bottom">Test Date</th>
+            <th rowspan="2" style="width: 170px;" class="border-bottom">Diag Form</th>
+
+            @{
+                if (Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.Any() == false)
+                {
+                    return;
+                }
+                var maxSubScoreItems = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.Max(x => x.SubScores.Count);
+                var firstScoreItem = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.First(x => x.SubScores.Count == maxSubScoreItems);
+                if (Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.Any(x => x.IsSelected))
+                {
+                    firstScoreItem = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.First(x => x.IsSelected);
+                }
+                var subScoreList = firstScoreItem.SubScores.Where(x => sectionScoreNames.All(s => s != x.SectionName) && x.SectionName != "Composite" && x.SectionName != "NewSAT-Essay").Distinct().Select(x => x.SectionName).ToList();
+            }
+
+            <th rowspan="2" style="width: 130px;" class="border-bottom">@sectionScoreNames[0]</th>
+            <th rowspan="2" class="border-bottom">@sectionScoreNames[1]</th>
+            <th rowspan="2" class="border-bottom">Total</th>
+
+            <th colspan="3" class="text-center" style="border-bottom:1px solid">Test Score</th>
+        </tr>
+        <tr>
+            @foreach (var scoreItem in subScoreList)
+            {
+                <th style="width:68px" class="border-bottom">@scoreItem</th>
+            }
+        </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.Count; i++)
+            {
+                var item = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels[i];
+                string cssClass = "";
+                if (item.IsSelected)
+                {
+                    cssClass = "selected-item";
+                }
+                <tr class="@cssClass">
+                    <td>@item.TestDateText</td>
+                    <td style="word-break:break-all;">@item.TestName</td>
+                    
+                    @{
+                        var sectionScore1 = item.SubScores.FirstOrDefault(x => x.SectionName == sectionScoreNames[0]);
+                        var sectionScore2 = item.SubScores.FirstOrDefault(x => x.SectionName == sectionScoreNames[1]);
+                        var compositeScore = item.SubScores.FirstOrDefault(x => x.SectionName == "Composite");
+                    }
+                                                           
+                    <td class="text-center">@(sectionScore1==null?"":sectionScore1.ScoreText)</td>
+                    <td class="text-center">@(sectionScore2==null?"":sectionScore2.ScoreText)</td>
+                    <td class="text-center">@(compositeScore==null?"":compositeScore.ScoreText)</td>
+                    @{
+                        decimal totalTestScore = 0;
+                    }
+                    @foreach (var subScoreName in subScoreList)
+                    {
+                        var scoreItem = item.SubScores.FirstOrDefault(x => x.SectionName == subScoreName);
+                        if (scoreItem != null)
+                        {
+                            totalTestScore += scoreItem.Score;
+                            <td class="text-center">@scoreItem.ScoreText</td>
+                        }
+                        else
+                        {
+                            <td class="text-center">0</td>
+                        }
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

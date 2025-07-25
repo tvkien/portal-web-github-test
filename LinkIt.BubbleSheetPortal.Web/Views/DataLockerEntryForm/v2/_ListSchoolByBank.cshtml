@@ -1,0 +1,192 @@
+@model int
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog-draggable.css")" rel="stylesheet" type="text/css" />
+
+<style>
+    .center {
+        text-align: center !important;
+    }
+    #dataTablePublishedSchool {
+        min-height: 80px;
+    }
+    #dataTablePublishedSchool .blockUI.blockMsg {
+        width: 100% !important;
+    }
+    .list-school-by-bank .block-content .no-margin.last-child {
+        margin: 0
+    }
+    .list-school-by-bank .block-content .no-margin.last-child {
+        margin: 0
+    }
+    #portal-v2-containter .list-school-by-bank .last-child .block-controls {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    #portal-v2-containter .dialog.dialog-custom-new-skin.ui-dialog-content {
+        display: flex;
+        justify-content: center;
+        position: relative;
+        top: -10vh;
+    }
+    #portal-v2-containter .ui-dialog {
+        overflow: visible !important
+    }
+</style>
+
+<article class="container_12 list-school-by-bank" style="margin-top: 2px; width: 700px;">
+    <section class="grid_9">
+        <div class="block-border">
+            <div class="block-content block-24 form">
+                <div class="row g-0 mb-2 align-items-center justify-content-between">
+                    <h2 class="header">
+                        Published Schools
+                    </h2>
+                </div>
+                <ul style="display: none;" id="success-delete-message" class="message success">
+                    <li>School is removed.</li>
+                </ul>
+                <div id="notification"></div>
+                <div class="row g-0 align-items-center justify-content-end">
+                    <button id="shareNewSchool" class="btn-plus-icon btn-text" href="#" onclick="displayShareNewSchoolView(event)">
+                        Share to new School
+                    </button>
+                </div>
+                <div class="table-box">
+                    <table id="dataTablePublishedSchool" class="datatable table m-0 " width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="black-cell"><span class="loading"></span></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    School Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.DistrictLabel Name
+                                </th>
+
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <div class="row justify-content-center modal-component-footer ps-0" style="margin: 0 -24px -24px -24px">
+                        <div slot="footer">
+                            <button type="button" class="btn-red btnCloseUserClick classProgramButton m-0" data-dialog="close" style="width: auto">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+
+        var sortType = [[2, "asc"]];
+        if('@ViewBag.IsPublisher' == 'True') {
+            sortType = [[1, "asc"], [2, "asc"]];
+        }
+
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            bFilter: true,
+            bPaginate: true,
+            sAjaxSource: '@Url.Action("GetPublishedSchool")?bankId=@Model',
+            bAutoWidth: false,
+            aLengthMenu: [10, 25, 50],
+            iDisplayLength: 10,
+            aaSorting: sortType,
+            aoColumns: [
+                { sType: 'int', sName: 'BankSchoolId', bSearchable: false, bSortable: false, sWidth: '40px', sClass: 'alignRight' },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'DistrictName', bSearchable: true, bSortable: true, bVisible: '@ViewBag.IsPublisher' == 'True' }
+
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTablePublishedSchool'), "Loading");
+                $('#dataTablePublishedSchool').find('.loading').show();
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).addClass('center');
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+            },
+            fnDrawCallback: function () {
+                $('#dataTablePublishedSchool').unblock();
+                $('.with-tip').tip();
+                $('#dataTablePublishedSchool').find('.loading').hide();
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('dataTablePublishedSchool_filter');
+            }
+        };
+
+        function setIconVisibility(bankSchoolId) {
+            var editString = '<a href="#" id="bnt_' + bankSchoolId + '" title="Remove" class="with-tip icon-remove" onclick="depublishSchool(event,' + bankSchoolId + ')"><i class="fa-solid fa-xmark"></i></a>';
+            return editString;
+        }
+
+        $("#dataTablePublishedSchool").data("options", options);
+        initializeDataTable($("#dataTablePublishedSchool"));
+    });
+
+    function yesDepublishSchoolClick(bankSchoolId) {
+        $("#bnt_" + bankSchoolId).hide();
+        closedepublishSchoolClick();
+        $.post('@Url.Action("DepublishSchool")', { bankSchoolId: bankSchoolId }, function (response) {
+            if (response == true) {
+                $("#success-delete-message").show();
+                setTimeout(function () {
+                    $("#success-delete-message").hide();
+                    ui.dataTablePublishedSchool.fnDraw();
+                }, 2000)
+            } else {
+                alert('An error has occured. Please try again.');
+            }
+        });
+        console.log(' ui.dataTablePublishedSchool', ui.dataTablePublishedSchool)
+    }
+    function closedepublishSchoolClick() {
+        $("#depublishSchoolConfirm").dialog("close");
+    }
+    function depublishSchool(event, bankSchoolId) {
+        event.preventDefault();
+        confirmMessageV2(
+            {
+                message: "Do you want to remove this School?",
+                cbYesBtnFuncName: 'yesDepublishSchoolClick(' + bankSchoolId + ')',
+                cbCancelBtnFuncName: 'closedepublishSchoolClick()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'depublishSchoolConfirm'
+                    }
+                }
+            }
+        )
+    }
+
+    function displayShareNewSchoolView(event) {
+        event.preventDefault();
+        $('#listSchoolDiv').hide();
+        $('#shareSchoolDiv').show();
+        $('#shareSchoolDiv').empty();
+        $('#notification').html('');
+        $('#shareSchoolDiv').load('@Url.Action("LoadPublishToSchool")?bankId=@Model', function () {
+        });
+    }
+    $('.btnCloseUserClick').live("click", function (e) {
+        //Reload property
+        LoadBankProperty(@Model);//defined in _TestBanks.cshtml
+        $(".dialog").dialog("close");
+    });
+</script>

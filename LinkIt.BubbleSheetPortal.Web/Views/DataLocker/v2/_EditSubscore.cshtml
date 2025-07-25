@@ -1,0 +1,130 @@
+@model LinkIt.BubbleSheetPortal.Models.VirtualTestCustomSubScore
+<div class="columns sgo-columns" id="divEditSubscore_@(Model.VirtualTestCustomSubScoreId)">
+    <div class="coolfieldset fieldset-datapoint " id="editsubscorefs_@(Model.VirtualTestCustomSubScoreId)">
+        <legend class="js-arrangeable custom-js-arrangeable" id="c@(Model.VirtualTestCustomSubScoreId)">
+            <legend class="border-0 p-0 d-flex">
+                <span class="js-arrangeable dnd-arrangeable custom-dnd-arrangeable">
+                    <span class="icon-arrangeable">
+                        <i class="fa-solid fa-grip-vertical icon-grey"></i>
+                    </span>
+                </span>
+                <span class="subscore-name">@Model.Name</span>
+            </legend>
+            <i class="fa-solid fa-chevron-down icon-arrow"></i>
+        </legend>
+
+        <div class="p-3">
+            @if (!Model.HasAssociatedTestResult && !Model.HasAssociatedAutoSave)
+            {
+                <div class="row mb-3 align-items-center">
+                    <label>Name</label>
+                    <div class="col-4">
+                        <div>
+                            <input class="w-100" type="text" maxlength="200" id="SubscoreName_@(Model.VirtualTestCustomSubScoreId)" value="@Model.Name" />
+                        </div>
+                    </div>
+                    <div class="col-4 text-start">
+                        <div>
+                            <button onclick="updateSubscoreName('@Model.VirtualTestCustomScoreId', '@Model.VirtualTestCustomSubScoreId')" class="btn-accept" type="button">Save Name</button>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="d-flex justify-content-end align-items-center">
+                            <div>
+                                <span onclick="deleteSubscoreName('@Model.VirtualTestCustomScoreId', '@Model.VirtualTestCustomSubScoreId')" class="text-navy fw-bold" type="button">Delete Subscore</span>
+                            </div>
+                            <div class="">
+                                <a href="javascript:void(0)" class="CreateOverallScore-@(Model.VirtualTestCustomSubScoreId) btn btn-link py-0">
+                                    Add Score Column
+                                    <i class="fa-solid fa-plus ms-2"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="row align-items-center">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-end align-items-center">
+                            <span onclick="deleteSubscoreName('@Model.VirtualTestCustomScoreId', '@Model.VirtualTestCustomSubScoreId')" class="text-navy fw-bold" type="button">Delete Subscore</span>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="SubscoreName_@(Model.VirtualTestCustomSubScoreId)" value="@Model.Name" />
+            }
+            <div class="mb-3">
+                @Html.Partial("v2/_SubscoreScoreTypeList")
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    $(function() {
+        $('#editsubscorefs_@(Model.VirtualTestCustomSubScoreId)').coolfieldset({ collapsed: true });
+    });
+
+    function updateSubscoreName(virtualTestCustomScoreId, virtualTestCustomSubScoreId) {
+        if ($('#SubscoreName_' + virtualTestCustomSubScoreId).val().trim().length == 0) {
+            customAlertMessage({ message: 'Please input the name of new subscore.', customClass: 'new-style-popup'});
+            return;
+        }
+        var url = '@Url.Action("SaveSubscoreName")';
+        var subscoreName = $('#SubscoreName_' + virtualTestCustomSubScoreId).val().trim();
+        var data = {
+            VirtualTestCustomScoreId: virtualTestCustomScoreId,
+            VirtualTestCustomSubScoreId: virtualTestCustomSubScoreId,
+            name: encodeURIComponent(subscoreName)
+        };
+        ShowBlock($('#divEditSubscore_' + virtualTestCustomSubScoreId), 'Updating');
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data
+        }).done(function(response) {
+            if (response.success) {
+
+            } else {
+                customAlertMessage({ message: response.error, customClass: 'new-style-popup'});
+            }
+            $('#divEditSubscore_' + virtualTestCustomSubScoreId).unblock();
+            $('#lgSubscoreName_' + virtualTestCustomSubScoreId).text(subscoreName);
+            $('#c' + virtualTestCustomSubScoreId + ' .subscore-name').text(subscoreName);
+        });
+    }
+
+    function deleteSubscoreName(virtualTestCustomScoreId, virtualTestCustomSubScoreId) {
+        var subscoreNameCtrlId = 'SubscoreName_' + virtualTestCustomSubScoreId;
+        var subscoreName = $('#' + subscoreNameCtrlId).val();
+        CustomConfirm({
+            message: 'Are you sure you want to delete ' + subscoreName + '?',
+            textLeft: true,
+            customClass: 'new-style-popup',
+            yes: function() {
+                ShowBlock($('#divEditSubscore_' + virtualTestCustomSubScoreId), "Deleting");
+                $.post('@Url.Action("DeleteSubscore")', { VirtualTestCustomScoreId: virtualTestCustomScoreId, VirtualTestCustomSubScoreId: virtualTestCustomSubScoreId }, function(response) {
+                    $('#divEditSubscore_' + virtualTestCustomSubScoreId).unblock();
+                    if (response.success == true) {
+                        customAlertMessage({ message: 'Subscore has been deleted.', customClass: 'new-style-popup'});
+                        //raise event delete subscore complete
+                        var evt = new CustomEvent('DataLocker_EditSubscore_DeleteSubscoreSucess', { detail: response.subscoreId });
+                        window.dispatchEvent(evt);
+                        delete subScoreColumnForCalculate[subscoreNameCtrlId];
+                        delete listDisableSub[subscoreNameCtrlId];
+                        delete listDisableScore[subscoreNameCtrlId];
+                    } else {
+                        customAlertMessage({ message: response.error, customClass: 'new-style-popup'});
+                    }
+                });
+            },
+            no: function() {
+            },
+            open: function() {
+            },
+            close: function() {
+            }
+        });
+    }
+</script>

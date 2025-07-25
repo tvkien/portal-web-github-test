@@ -1,0 +1,1338 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestAssignmentViewModel
+@using LinkIt.BubbleSheetPortal.Common;
+@{
+    ViewBag.Title = "Test Launch";
+	
+	var cookie = Request.Cookies[Constanst.LKARCookie];
+    var token = string.Empty;
+    if (cookie != null) {token = cookie.Value;}
+}
+<script src="@Url.Content("~/Scripts/jquery.listSplitter.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/FeLibs/jquery-coolfieldset/js/jquery.coolfieldset.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/date.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/moment.min.js")" type="text/javascript"></script>
+<article class="container_12">
+    <section class="grid_12">
+        <div id="generateContent" class="block-border">
+            @using (Html.BeginForm("index", "TestAssignment", FormMethod.Post, new { id = "TestAssignmentForm", @class = "block-content form bubbleSheetSelector" }))
+            {
+                <h1>Select Test</h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <input id="hdfDistrictId" value="@Model.DistrictId" type="hidden"/>
+                
+                <fieldset class="grey-bg" id="fsSelectTest">
+                    <legend>Select Test</legend>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <label>Test Type</label>
+                                <select id="selectBank"></select>
+                            </p>
+                            <p>
+                                <label>Test Session Timing</label>
+                                <select id="selectTimingOption"></select>
+                            </p>                            
+                        </div>                        
+                        <div class="colx2-right">
+                            <p>
+                                <label>Test</label>
+                                <select id="selectTest"></select>
+                                <br/>
+                                <span>*Test already started</span>
+                            </p>                            
+                        </div>
+                    </div>
+                </fieldset>
+                <button class="float-right" id="btnTakeTest" type="button" disabled="disabled">Go</button>
+                <div class="clear"></div>                                
+                
+                <div class="clear"></div>
+                <div id="divPopupTestResult"></div>
+                <input type="hidden" value="0" id="hdfLoadExistAssingment" />
+                <input type="hidden" value="" id="hdfPreferenceLevel" />
+                <input type="hidden" value="TestAssignmentPage" id="hdfTestAssignmentPage" />
+            }
+        </div>
+    </section>
+</article>
+
+<div id="popupConfirmTakeTest" style="display: none;">
+    <section style='z-index: 2004'>
+        <div class='block-border' style='z-index: 2004'>
+            <div class='block-content' style='z-index: 1004'>
+                <h1>Take Test</h1>
+                <p style='z-index: 1004; text-align: left'>
+                    <span id="confirmMessageNewTest" style="display: none;">Note to Student: Before beginning, make sure you have up to <span id="virtualTestTimmingDurationNewTest">0</span> minutes to complete this section. Just as with a real test, once you begin, you must work through to the end of the section. 
+                        There is no way to pause the timer. It stops after you enter the last question in a section or when time runs out for that section, which ever comes first.<br/><br/>Would you like to take this test now?</span>
+                    <span id="confirmMessageOldTest" style="display: none;">You have up to <span id="virtualTestTimmingDurationOldTest">0</span> minutes to complete this section.</span>
+                </p>
+                <br />
+                <p style='z-index: 2004; text-align: center'>
+                    <a id='aGeneratePDFSuccessClose' style='z-index: 2004; text-align: center' class='LinkitStypeButton big-button'>No </a>&nbsp;&nbsp;&nbsp;
+                    <a id='aGeneratePDFSuccess' style='z-index: 2004; text-align: center' href='www.google.com' target='_blank' class='LinkitStypeButton big-button'>Yes </a>
+                </p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div id="popupConfirmTimeOver" style="display: none;">
+    <section style='z-index: 2004'>
+        <div class='block-border' style='z-index: 2004'>
+            <div class='block-content' style='z-index: 1004'>
+                <h1>Take Test</h1>
+                <p style='z-index: 1004; text-align: left'>
+                    <span id="confirmMessageTimeOver">Time is over for this section.</span>
+                </p>
+                <br />
+                <p style='z-index: 2004; text-align: center'>
+                    <a id='aGeneratePDFTimeOver' style='z-index: 2004; text-align: center' class='LinkitStypeButton big-button'>OK </a>
+                </p>
+            </div>
+        </div>
+    </section>
+</div>
+
+
+<div id="popupConfirmFailTakeTest" style="display: none;">
+    <section style='z-index: 2004'>
+        <div class='block-border' style='z-index: 2004'>
+            <div class='block-content' style='z-index: 1004'>
+                <h1>Take Test</h1>
+                <p style='z-index: 1004; text-align: center'>
+                    Create test fail.
+                </p>                
+                <p id="take-test-error-message"></p>
+                <br />
+                <p style='z-index: 2004; text-align: center'><a id='aGeneratePDFFail' style='z-index: 2004; text-align: center' target='_blank' class='LinkitStypeButton big-button'>Close </a></p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script type="text/javascript">
+    $('#fsSelectOption').coolfieldset();
+    $(function () {
+        $("#selectDeadline").datepicker({
+            dateFormat: '@ViewBag.DateFormat',
+            beforeShow: function (input) {
+                $(input).css({
+                    "position": "relative",
+                    "z-index": '2000'
+                });
+
+                var tagActive = $(input).parents('body').find('#ui-datepicker-div');
+                tagActive.find('.ui-state-highlight').css('min-height', 'auto');
+                tagActive.addClass('customCssDataPickerPreference');
+            }
+        }); //TODO: for Edit Setting
+        $('#fsSelectOption').coolfieldset({ collapsed: true });
+        
+        $.get('@Url.Action("GetCHYTENBankByDistrictId", "SearchBank")', { districtId: $('#hdfDistrictId').val() }, function (banks) {
+            addDefaultOption($('#selectBank'), "Test Type");
+            addSelectListItems($('#selectBank'), banks);
+        });
+
+        $('#selectBank').change(function () {
+            populateTests();
+            //LoadSettingDefault(false);
+            $('#fsSelectOption').hide();
+            //TODO: Check Valid Assign
+            CheckValidToAssign();
+        });
+
+        $('#selectTest').change(function () {
+            var testId = $('#selectTest').val();
+            if (testId != 'select' && testId != '') {
+
+                $.get('@Url.Action("GetTimingOptionByVirtualTestId", "StudentTestLaunch")', { districtId: $('#hdfDistrictId').val(), virtualTestId: testId }, function (timingOptions) {
+                    addDefaultOption($('#selectTimingOption'), "Timing Option");
+                    addSelectListItems($('#selectTimingOption'), timingOptions);
+                });
+
+                @*//BuildLinkPrintTest();
+                BuildDistrictSettings();
+                $.get('@Url.Action("CheckIfTestRequiresCorrection", "PopulateTest")', { testId: testId }, function (response) {
+                    if (response.Success == 1 || response.Success == 2) {
+                        var vMessage = 'One or more question has point possible larger than 25. Please check the test or contact technology@linkit.com for help';
+                        if (response.Success == 1) {
+                            vMessage = 'Please contact technology@linkit.com and have them fix the question ordering associated with test id ' + testId;
+                        }
+                        $("<section><div class='block-border'><div class='block-content'><h1>Error With Test</h1><p>" + vMessage + ".</p></div></div></section>")
+                            .appendTo("article")
+                            .dialog({
+                                title: $(this).attr("data-dialog-title"),
+                                close: function () { $(this).remove(); },
+                                modal: true,
+                                width: 500,
+                                resizable: false
+                            })
+                            .load(this.href, function () {
+                            });
+                    }
+                });
+                LoadSettingDefault(false);*@
+            } else {
+                //$('#fsSelectOption').hide();
+            }
+            //TODO: Check Valid Assign
+            //CheckValidToAssign();
+        });
+        
+        $('#btnTakeTest').click(function () {
+            $("#error-messages").html('');
+            $("#error-messages").hide();
+            $('#btnTakeTest').disableBt();
+            ShowBlock($('#generateContent'), "Test Assignment");
+            AssignTest();
+        });
+
+        $('#selectTimingOption').change(function () {
+            if ($('#selectTimingOption').val() != null && $('#selectTimingOption').val() != 'select')
+                $('#btnTakeTest').enableBt();
+            else
+                $('#btnTakeTest').disableBt();
+        });
+    });
+    
+    function GetAssignmentData() {
+        var studentsIdSelected = [];
+        var assignmentType = 2; //TODO: assign Class ( uncheck studen level )
+
+        var districtId = $('#hdfDistrictId').val();
+        
+        var data = {
+            TestName: $("#selectTest option:selected").text(),
+            SubjectName: $("#selectSubject option:selected").text(),
+            GradeName: $("#selectGrade option:selected").text(),
+            StateId: $('#selectState').val(),
+            DistrictId: districtId,
+            SchoolId: $('#selectSchool').val(),
+            UserId: $('#selectTeacher').val() == null ? 0 : $('#selectTeacher').val(),
+            GradeId: $('#selectGrade').val(),
+            SubjectId: $('#selectSubject').val() != 'select' ? 1 : 0,
+            BankId: $('#selectBank').val(),
+            TestId: $('#selectTest').val(),
+            DistrictTermId: $('#selectTerm').val(),
+            ClassId: $('#selectClass').val(),
+            VirtualTestTimingId: $('#selectTimingOption').val(),
+            StudentIdList: studentsIdSelected,
+            AssignmentType: assignmentType,
+            GroupId: 0,
+            IsUseRoster: false
+        };
+
+        return data;
+    }
+    
+    function ConfirmAssignTest(message) {
+        var yesButton = '<button style="width:63px;" onclick="YesClick();">Yes</button>';
+        var noBotton = '<button style="width:63px;" onclick="NoClick();">No</button>';
+        var note = '<div style="font-size: 11px; line-height: 14px;">Note: If you are trying to assign this test as a post-test, please have the original test author create a duplicate copy of the test under Test Design --> Test.</div>';
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + yesButton + '&nbsp;&nbsp;' + noBotton + '</div>' + note + '</div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "confirmSubmitDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $(this).remove(); $('#generateContent').unblock();
+                    $('#btnSubmit').enableBt();
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+    }
+
+    function NoClick() {
+        $('#generateContent').unblock();
+        $('#btnSubmit').enableBt();
+        $("#confirmSubmitDialog").dialog("close");
+    }
+
+    function YesClick() {
+        $("#confirmSubmitDialog").dialog("close");
+        AssignTest();
+    }
+    
+    function AssignTest() {
+        var data = GetAssignmentData();
+        $.ajax({
+            url: '@Url.Action("Index")',
+            traditional: true,
+            type: 'POST',
+            data: data,
+            success: function (response) {
+
+                if (response.Result) {
+                    $("#aGeneratePDFSuccess").live("click", function(e) {
+                        $(this).attr("href", response.Url + '&closeWindowUponLogout=true');
+                        $("#popupConfirmTakeTest").dialog("close");
+                    });
+
+                    $("#aGeneratePDFSuccessClose").live("click", function (e) {
+                        $("#popupConfirmTakeTest").dialog("close");
+                    });
+
+                    $("#aGeneratePDFTimeOver").live("click", function (e) {
+                        $("#popupConfirmTimeOver").dialog("close");
+                    });
+
+                    if (response.VirtualTestTimmingDuration > 0) {
+
+                        var popupWidth = 660;
+
+                        if (response.IsNewTest) {
+                            $("#confirmMessageNewTest").show();
+                            $("#confirmMessageOldTest").hide();
+                            $("#virtualTestTimmingDurationNewTest").text(response.VirtualTestTimmingDuration);
+                        } else {
+                            popupWidth = 330;
+                            $("#confirmMessageNewTest").hide();
+                            $("#confirmMessageOldTest").show();
+                            $("#virtualTestTimmingDurationOldTest").text(response.VirtualTestTimmingDuration);
+                        }
+
+                        $("#popupConfirmTakeTest")
+                            .dialog({
+                                title: $(this).attr("data-dialog-title"),
+                                close: function() {
+                                    //$(this).remove();
+                                },
+                                modal: true,
+                                width: popupWidth,
+                                resizable: false
+                            })
+                            .load(this.href, function() {
+                            });
+                    } else {
+                        $("#popupConfirmTimeOver")
+                            .dialog({
+                                title: $(this).attr("data-dialog-title"),
+                                close: function () {
+                                    //$(this).remove();
+                                },
+                                modal: true,
+                                width: 330,
+                                resizable: false
+                            })
+                            .load(this.href, function () {
+                            });
+                    }
+
+                    $('#generateContent').unblock();
+                    //$('#btnTakeTest').enableBt();
+                } else {
+                    
+                    $("#aGeneratePDFFail").live("click", function (e) {
+                        $("#popupConfirmFailTakeTest").dialog("close");                                                
+                    });
+                    
+                    if (response.ErrorMessage != '') {
+                        $("#take-test-error-message").text(response.ErrorMessage);
+                    }else {
+                        $("#take-test-error-message").text('');
+                    }
+
+                    $("#popupConfirmFailTakeTest")
+                        .dialog({
+                            title: $(this).attr("data-dialog-title"),
+                            close: function () {
+                                //$(this).remove();
+                            },
+                            modal: true,
+                            width: 330,
+                            resizable: false
+                        })
+                        .load(this.href, function () {
+                        });
+
+                    $('#generateContent').unblock();
+                    $('#btnSubmit').enableBt();
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+
+    function ChooseSingleClass() {
+        HideGroupPrintingFunctionality();
+        //keep status single class
+        if ($('#selectClass').val() != null && $('#selectClass').val().length > 0) {
+            populateStudents();
+        }
+        LoadSettingDefault(false);
+        //TODO: Check Valid Assign
+        CheckValidToAssign();
+        ResetCheckboxUseRoster();
+    }
+
+    function ChooseMultiCLass() {
+        ShowBlock($('#generateContent'), "Loading Group List");
+
+        $('#divMultiClass').load('@Url.Action("LoadListPrintingGroup", "GroupPrinting")', function (response) {
+            //$('#aDistrictSetting').hide();
+            //$('#btnChangeSettingGray').show();
+            $('#generateContent').unblock();
+            if (response == false) {
+                addErrorMessages(response);
+            }
+            $('#divUseRosterGroupId').show();
+            $('#chkUseRosterGroup').prop('checked', false);
+
+            $("#studentContent").hide();
+            $("#divSingleClass").hide();
+            $('#divMultibleClasses').show();
+            $("#divMultiClass").show();
+            //$("#btnSubmit").hide();
+            //$('#btnGroupClassSubmit').show();
+            //$('#selectSheetStyle option[value = "1"]').hide();
+            //$('#selectSheetStyle option[value = "0"]').attr("selected", "selected");
+            $("#divbtnAddNewGroup").show();
+            var districtId = $('#hdfDistrictId').val();
+            if (districtId == null) {
+                districtId = $('#selectDistrict').val();
+            }
+            //TODO: Check Valid Assign
+            CheckValidToAssign();
+        });
+        LoadSettingDefault(false);
+        //$('#aDistrictSetting').hide();
+        //$('#btnChangeSettingGray').show();
+    }
+
+    function ChooseGenericSheet() {
+        HideGroupPrintingFunctionality();
+        $('#selectClass').change();
+    }
+
+    function HideGroupPrintingFunctionality() {
+        $('#divUseRosterGroupId').hide();
+
+        $("#selectedPrintingGroupContainer").hide();
+        $('#currentlySelectedPrintingGroup').html('');
+        $("#divMultiClass").html("");
+        $("#divSingleClass").show();
+        $("#divMultiClass").hide();
+        $("#divMultibleClasses").hide();
+        $("#btnSubmit").show();
+        //$('#btnGroupClassSubmit').hide();
+        //$('#selectSheetStyle option[value = "1"]').show();
+        //$('#selectSheetStyle option[value = "2"]').show();
+        $("#divbtnAddNewGroup").hide();
+    }
+
+    $.ajaxSetup({ cache: false });
+
+    function populateSchoolsByDistrict() {
+        $('#selectSchool').empty();
+        var districtValue = $('#selectDistrict').val();
+        if (districtValue != 'select') {
+            $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', { districtId: districtValue }, function (schools) {
+                populateSchools(schools);
+            });
+        }
+    }
+
+    function populateTeachers() {
+        $('#selectTeacher').empty();
+        var schoolValue = $('#selectSchool').val();
+        if (schoolValue != 'select') {
+            $.get('@Url.Action("GetTeachers", "PopulateSchoolTeacher")', { schoolId: schoolValue }, function (teachers) {
+                addDefaultOption($('#selectTeacher'), "Teacher");
+                addSelectListWithDefaultValue($('#selectTeacher'), teachers, 'select', function (item) {
+                    return (item.FirstName) ? item.LastName + ", " + item.FirstName + " (" + item.Name + ")" : item.LastName + " (" + item.Name + ")";
+                });
+            });
+        }
+    }
+
+    function populateStates(states) {
+        addDefaultOption($('#selectState'), "State");
+        addSelectListItems($('#selectState'), states);
+    }
+
+    function populateDistricts(districts) {
+        addDefaultOption($('#selectDstrict'), "@LabelHelper.DistrictLabel");
+        addSelectListItems($('#selectDistrict'), districts);
+    }
+
+    function populateSchools(schools) {
+        addDefaultOption($('#selectSchool'), "School");
+        addSelectListItems($('#selectSchool'), schools);
+    }
+
+    function populateTerms(terms) {
+        addDefaultOption($('#selectTerm'), "@LabelHelper.Term");
+        addSelectListItems($('#selectTerm'), terms);
+    }
+
+    function populateGrades(grades) {
+        $('#selectGrade').empty();
+        addDefaultOption($('#selectGrade'), "@LabelHelper.TestGrade");
+        addSelectListItems($('#selectGrade'), grades);
+    }
+
+    function populateSubjects() {
+        resetSubjects();
+        var gradeValue = $('#selectGrade').val();
+        var districtValue = 0;
+        if ($('#selectDistrict').length && $('#selectDistrict').val() != null && $('#selectDistrict').val() != 'select') {
+            districtValue = $('#selectDistrict').val();
+        }
+        if (gradeValue != 'select') {
+            $.get('@Url.Action("GetSubjectsByGradeIdAndAuthor", "SearchBank")', { gradeId: gradeValue, districtId: districtValue }, function (subjects) {
+            addDefaultOption($('#selectSubject'), "@LabelHelper.Subject");
+            addSelectListItems($('#selectSubject'), subjects);
+        });
+    }
+}
+
+function populateBanks() {
+    resetBanks();
+    var subjectValue = $('#selectSubject').val();
+    var districtValue = 0;
+    if ($('#selectDistrict').length) {
+        districtValue = $('#selectDistrict').val();        
+    }
+    var gradeValue = $('#selectGrade').val();
+    if (subjectValue != 'select') {
+        $.get('@Url.Action("GetBanksBySubjectName", "SearchBank")', { subjectName: subjectValue, districtId: districtValue, gradeId: gradeValue }, function (banks) {
+            addDefaultOption($('#selectBank'), "Bank");
+            addSelectListItems($('#selectBank'), banks);
+        });
+    }
+}
+
+function populateTests() {
+    $('#selectTest').empty();
+    var bankValue = $('#selectBank').val();
+    if (bankValue != 'select') {
+        $.get('@Url.Action("GetTests", "StudentTestLaunch")', { bankId: bankValue }, function (tests) {
+            addDefaultOption($('#selectTest'), "Test");
+            addSelectListItems($('#selectTest'), tests);
+        });
+    }
+}
+
+function populateClasses() {
+    $('#selectClass').empty();
+    //$('#studentsList').html($('#studentsTemplate').html());
+    var termValue = $('#selectTerm').val();
+    var teacherValue = $('#selectTeacher').val();
+    if (termValue != 'select' && teacherValue != 'select') {
+        $.get('@Url.Action("GetClasses", "PopulateStudent")', { termId: termValue, userId: teacherValue }, function (classes) {
+            addDefaultOption($('#selectClass'), "Class");
+            addSelectListItems($('#selectClass'), classes);
+        });
+    }
+}
+
+function resetSubjects() {
+    $('#selectSubject').empty();
+    resetBanks();
+}
+
+function resetBanks() {
+    $('#selectBank').empty();
+    $('#selectTest').empty();
+}
+
+function populateStudents() {
+    var classValue = $('#selectClass').val();
+    if (classValue != 'select') {
+        $('#studentContent').show();
+        $.get('@Url.Action("GetStudentsActive", "PopulateStudent")', { classId: classValue }, function (students) {
+            $('#studentsList').html($('#studentsTemplate').html());
+            addStudentsToList($('#students'), students);
+            populateStudentList();
+            selectAllStudents();
+            CheckStudentLevel();
+            //TODO: enable button Assign
+            CheckValidToAssign();
+        });
+        if ($('#radioMultiClass:checked').val() == 'on') {
+            $('#studentContent').hide();
+        }
+    } else {
+        $('#studentContent').hide();
+    }
+}
+
+function addStudentsToList(list, students) {
+    for (var i = 0; i < students.length; i++) {
+        list.html(list.html() + ("<li studentId='" + students[i].StudentId + "'class='student-item'><a href='javascript:void(0)'>" + students[i].FullName + "</a></li>"));
+    }
+}
+
+
+function populateStudentList() {
+    $('#students').easyListSplitter({ colNumber: 3 });
+    $('.listCol1').addClass('colx3-left');
+    $('.listCol2').addClass('colx3-center');
+    $('.listCol3').addClass('colx3-right');
+    $('.listCol1').addClass('student-col');
+    $('.listCol2').addClass('student-col');
+    $('.listCol3').addClass('student-col');
+}
+
+function selectAllStudents() {
+    $('.student-col').children().attr('isselected', "yes");
+    $('.student-col').children().css('background-color', "#82CAFA");
+    //TODO: check Valid Assignment
+    CheckValidToAssign();
+}
+
+function selectNoStudents() {
+    $('.student-col').children().attr('isselected', "no");
+    $('.student-col').children().css('background-color', "#f2f2f2");
+    //TODO: check Valid Assignment
+    CheckValidToAssign();
+}
+
+function invertSelectedStudents() {
+    $('.generate-student-list li').each(function () {
+        if ($(this).attr('isselected') == "yes") {
+            $(this).attr('isselected', "no");
+            $(this).css('background-color', "#f2f2f2");
+        } else {
+            $(this).attr('isselected', "yes");
+            $(this).css('background-color', "#82CAFA");
+        }
+    });
+    //TODO: check Valid Assignment
+    CheckValidToAssign();
+}
+
+$('.generate-student-list li').live({
+    mouseenter: function () {
+        if ($(this).attr('isselected') == "yes") {
+            $(this).css('background-color', "#75B6E1");
+        }
+        else {
+            $(this).css('background-color', "#e0e0e0");
+        }
+    },
+    mouseleave: function () {
+        if ($(this).attr('isselected') == "yes") {
+            $(this).css('background-color', "#82CAFA");
+        }
+        else {
+            $(this).css('background-color', "#f2f2f2");
+        }
+    },
+    click: function () {
+        //TODO: Click Student Item
+        if ($('#chkUseRoster').is(":checked")) {
+            return;
+        }
+        if ($(this).attr('isselected') == "yes") {
+            $(this).attr('isSelected', "no");
+            $(this).css('background-color', "#e0e0e0");
+        }
+        else {
+            $(this).attr('isSelected', "yes");
+            $(this).css('background-color', "#75B6E1");
+        }
+        //TODO: check Valid Assignment
+        CheckValidToAssign();
+    }
+});
+
+function BuildDistrictSettings() {
+    var districtId = $('#hdfDistrictId').val();
+    if (districtId == null) {
+        districtId = $('#selectDistrict').val();
+    }
+
+    var isMulticlass = false;
+    if ($('#radioMultiClass:checked').val() == 'on') {
+        isMulticlass = true;
+    }
+
+    var bankId = $('#selectBank').val();
+
+    var urlDistrictSetting = '@Url.Action("TestSettings","TestAssignment")?districtId=' + districtId + '&isMultiClass=' + isMulticlass + '&BankId=' + bankId;
+    $("#aDistrictSetting").attr("href", urlDistrictSetting);
+    $("#aDistrictSetting").show();
+
+    //if ($('#radioMultiClass:checked').val() == 'on') {
+    //    $('#aDistrictSetting').hide();
+    //    $('#btnChangeSettingGray').show();
+    //}
+}
+
+function SelectAssignClassOrStudent() {
+    if ($('#selectClass').val() != null && $('#selectClass').val().length > 0) {
+        if ($('#cbStudentLevelAssignment:checked').val() == 'on') {
+            selectNoStudents();
+        }
+        else {
+            selectAllStudents(); // Select All student default.
+        }
+    }
+}
+
+function CheckStudentLevel() {
+    //\
+    if ($('#cbStudentLevelAssignment:checked').val() == 'on') {
+        selectNoStudents();
+        //$('#btnControlSelectStudent').show();
+        //$('#overStudentContent').hide();
+    }
+    else {
+        //$('#btnControlSelectStudent').hide();
+        //$('#overStudentContent').show();
+    }
+}
+
+function BuildLinkPrintTest() {
+    var districtId = $('#hdfDistrictId').val();
+    if (districtId == null) {
+        districtId = $('#selectDistrict').val();
+    }
+    var bankId = $('#selectBank').val();
+    var testId = $('#selectTest').val();
+    if (testId > 0) {
+        var urlPrintTest = '@Url.Action("PrintTest", "TestAssignment")?testId=' + testId + '&QTIBankId=' + bankId + '&districtId=' + districtId;
+        var printIcon = '<img src="' + '@Url.Content("~/Content/themes/Constellation/images/icons/web-app/32/Print.png")' + '" >';
+        var vPrintTestContent = ' <a class="openDialog addGroupButton LinkitStypeButton big-button" data-dialog-id="PringtTest"' +
+            ' data-dialog-title="" title="Print Test" href="' + urlPrintTest + '">Print Test</a> ';
+
+        $("#aDivPrintTest").html('');
+        $("#aDivPrintTest").append(vPrintTestContent);
+        $("#aDivPrintTest").show();
+        $('#btnPreview').show();
+    } else {
+        $("#aDivPrintTest").hide();
+        $('#btnPreview').hide();
+    }
+}
+
+
+function LoadSettingDefault(reload) {
+    var testId = $('#selectTest').val();
+    if (testId == 'select' || testId == '' || testId == null) {
+        $('#fsSelectOption').hide();
+        return;
+    }
+
+    var districtId = $('#hdfDistrictId').val();
+    if (districtId == null) {
+        districtId = $('#selectDistrict').val();
+    }
+    var bankId = $('#selectBank').val();
+    var isMultiClass = false;
+    if ($('#radioMultiClass:checked').val() == 'on') {
+        isMultiClass = true;
+        //$('#aDistrictSetting').hide();
+        //$('#btnChangeSettingGray').show();
+    }
+    $('#divDefaultSetting').html('');
+    $('#divButtonOption').hide();
+    if (bankId > 0) {
+        $('#divButtonOption').show();
+        $.ajaxSetup({
+            // Disable caching of AJAX responses
+            cache: false
+        });
+        $('#divDefaultSetting').load('@Url.Action("DefaultSettings", "TestAssignment")', { districtId: districtId, isMultiClass: isMultiClass, bankId: bankId, isReload: reload }, function (response) {
+            $('#lgSelectOption').html($('#hdfPreferenceLevel').val() + ' Preferences in Effect');
+            if (reload) {
+                $('#tbDefaultSetting').css("font-weight", "bold");
+            } else {
+                $('#tbDefaultSetting').css("font-weight", "normal");
+            }
+            $('#fsSelectOption').show();
+            if (response == false) {
+                addErrorMessages(response);
+            }
+        });
+    }
+}
+
+$(document).ready(function () {
+    if ($('#hdfLoadExistAssingment').val() == '0') {
+        $('#hdfLoadExistAssingment').val('1');
+        $.get('@Url.Action("LoadExistAssignment", "TestAssignment")', function (html) {
+            $('#divPopupTestResult').show();
+            $('#divPopupTestResult').html(html);
+
+            //TODO: Replace UTCTime to LocalTime
+            ReplaceLocalTime();
+        });
+    }
+});
+
+</script>
+<div class="columns" id="studentsTemplate" style="display: none;">
+    <ul id="students" class="generate-student-list with-icon icon-user"></ul>
+</div>
+<style type="text/css">
+    .positionAdd {
+        position: relative;
+        right: -6px;
+        top: 26px;
+    }
+
+    button {
+        margin-left: 30px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    #studentContent {
+        position: relative;
+    }
+
+    .coolfieldset, .coolfieldset.expanded {
+        border: 1px solid #aaa;
+    }
+
+        .coolfieldset.collapsed {
+            border: 0;
+            border-top: 1px solid #aaa;
+        }
+
+        .coolfieldset legend {
+            padding-left: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .coolfieldset legend, .coolfieldset.expanded legend {
+            background: transparent url(/Content/themes/base/images/expanded.gif) no-repeat center left;
+            background-size: 10px 10px;
+        }
+
+        .coolfieldset.collapsed legend {
+            background: transparent url(/Content/themes/base/images/collapsed.gif) no-repeat center left;
+            background-size: 10px 10px;
+        }
+
+    #ui-datepicker-div {
+        z-index: 1051 !important;
+    }
+</style>
+<style type="text/css">
+    /* css for timepicker */
+    .ui-datepicker .ui-datepicker-header {
+        top: 0px;
+    }
+
+    .ui-datepicker .ui-datepicker-prev span,
+    .ui-datepicker .ui-datepicker-next span {
+        background-image: url("/Content/themes/base/images/ui-icons_222222_256x240.png");
+    }
+
+    .ui-datepicker .ui-icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    .ui-timepicker-div .ui-widget-header {
+        margin-bottom: 8px;
+    }
+
+    .ui-timepicker-div dl {
+        text-align: left;
+    }
+
+        .ui-timepicker-div dl dt {
+            float: left;
+            clear: left;
+            padding: 0 0 0 5px;
+        }
+
+        .ui-timepicker-div dl dd {
+            margin: 0 10px 10px 63px;
+        }
+
+    .ui-timepicker-div td {
+        font-size: 90%;
+    }
+
+    .ui-tpicker-grid-label {
+        background: none;
+        border: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .ui-timepicker-rtl {
+        direction: rtl;
+    }
+
+        .ui-timepicker-rtl dl {
+            text-align: right;
+            padding: 0 5px 0 0;
+        }
+
+            .ui-timepicker-rtl dl dt {
+                float: right;
+                clear: right;
+            }
+
+            .ui-timepicker-rtl dl dd {
+                margin: 0 45% 10px 10px;
+            }
+
+    .ui-timepicker-div .ui-widget-header {
+        top: 0px;
+        background: url("images/ui-bg_highlight-soft_75_cccccc_1x100.png") repeat-x scroll 50% 50% #CCCCCC !important;
+    }
+
+    .colx2-left .lblrepeat {
+        line-height: 0px;
+        padding-top: 7px;
+    }
+
+    .colx2-left .lblend {
+        line-height: 0px;
+        padding-top: 5px;
+    }
+
+    .clear10 {
+        clear: both;
+        height: 10px;
+    }
+</style>
+<style type="text/css">
+    .tr-odd td {
+        background: none repeat scroll 0 0 #F2F2F2 !important;
+    }
+
+    .tr-even td {
+        background: none repeat scroll 0 0 #E6E6E6 !important;
+    }
+</style>
+<script>
+    var dialog;
+    $("#btnCreatePDF").live("click", function (e) {
+        e.preventDefault();
+        ShowBlock($('#divconfigGenerateTest'), "Creating PDF");
+        //alert("Call Print Test Function! " );
+        var vColumns = 'single';
+        if ($('#idTowColumns:checked').val() == 'on') {
+            vColumns = 'double';
+        }
+        var vIncludePageNumbers = 0;
+        if ($('#idcbIncludePageNumber:checked').val() == 'on') {
+            vIncludePageNumbers = 1;
+        }
+        var vStartCountingOnCover = 0;
+        if ($('#idStartCounting:checked').val() == 'on') {
+            vStartCountingOnCover = 1;
+        }
+        var vIncludeCoverPage = 0;
+        if ($('#idIncludeCoverPage:checked').val() == 'on') {
+            vIncludeCoverPage = 1;
+        }
+
+        var vShowSectionHeadings = 0;
+        if ($('#idShowSelectionHeading:checked').val() == 'on') {
+            vShowSectionHeadings = 1;
+        }
+        var vShowQuestionBorders = 0;
+        if ($('#idShowBorderAroundQuestion:checked').val() == 'on') {
+            vShowQuestionBorders = 1;
+        }
+        var vDrawReferenceBackground = 0;
+        if ($('#idShadeReference:checked').val() == 'on') {
+            vDrawReferenceBackground = 1;
+        }
+        var vExtendedTextAreaAnswerOnSeparateSheet = 0;
+        if ($('#idAnswerOn:checked').val() == 'on') {
+            vExtendedTextAreaAnswerOnSeparateSheet = 1;
+        }
+        var vExtendedTextAreaShowLines = 0;
+        if ($('#idShowLine:checked').val() == 'on') {
+            vExtendedTextAreaShowLines = 1;
+        }
+
+        var vAnswerLabelFormat = 'LA';
+        if ($('#idNumberic:checked').val() == 'on') {
+            vAnswerLabelFormat = 'LN';
+        }
+        var vIncludeStandards = 0;
+        if ($('#idIncludeStandards:checked').val() == 'on') {
+            vIncludeStandards = 1;
+        }
+        var vIncludeTags = 0;
+        if ($('#idIncludeTags:checked').val() == 'on') {
+            vIncludeTags = 1;
+        }
+        //"http://portal.linkitdev.com/Content/FlashModules/ModuleLaunch/proc/linkit.php/printVirtualTestAnswerKey";
+        //"http://portal.linkitdev.com/Content/FlashModules/ModuleLaunch/proc/linkit.php/printVirtualTest";
+        var vURLPrintTest = $('#hdfPrintAnswerKeyURL').val();
+        var vPrintType = $('#hdfPDFType').val();
+        if (vPrintType == 'test') {
+            vURLPrintTest = $('#hdfPrintTestURL').val();
+        }
+
+        var testDataPost =
+        {
+            StartCountingOnCover: vStartCountingOnCover,
+            TestTitle: $('#TestTitle').val(),
+            TeacherName: $('#idTeacherName').val(),
+            IncludePageNumbers: vIncludePageNumbers,
+            IncludeCoverPage: vIncludeCoverPage,
+            Columns: vColumns,
+            AnswerLabelFormat: vAnswerLabelFormat,
+            IncludeStandards: vIncludeStandards,
+            ShowQuestionBorders: vShowQuestionBorders,
+            TestInstructions: $('#idTestInstructions').val(),
+            ExtendedTextAreaShowLines: vExtendedTextAreaShowLines,
+            IncludeTags: vIncludeTags,
+            VirtualTestID: $('#VirtualTestID').val(),
+            Instruction: '',
+            ClassName: $('#idClassName').val(),
+            DrawReferenceBackground: vDrawReferenceBackground,
+            ExtendedTextAreaAnswerOnSeparateSheet: vExtendedTextAreaAnswerOnSeparateSheet,
+            ShowSectionHeadings: vShowSectionHeadings,
+            PrintingType: 1,
+            QuestionPrefix: $('#idQuestionPrefix').val(),
+            ExtendedTextAreaNumberOfLines: $('#idSelectLines').val(),
+            Token: '@token'
+        };
+        $.support.cors = true;
+        $.ajax({
+            crossDomain: true,
+            url: vURLPrintTest,
+            type: 'POST',
+            data: testDataPost,
+            dataType: 'xml',
+            success: function (response) {
+                var rp = response.getElementsByTagName('pdfurl')[0].textContent;
+
+                $("#aGeneratePDFSuccess").live("click", function (e) {
+                    $(this).attr("href", rp);
+                    $("#popupConfirm111").dialog("close");
+                });
+
+                dialog = $("#popupConfirm111")
+                    .dialog({
+                        title: $(this).attr("data-dialog-title"),
+                        close: function () {
+                            //$(this).remove();
+                        },
+                        modal: true,
+                        width: 330,
+                        resizable: false
+                    })
+                    .load(this.href, function () { });
+                $('#divconfigGenerateTest').unblock();
+            },
+            failure: function (response) {
+                $('#divconfigGenerateTest').unblock();
+                alert("failure: " + response);
+            },
+            error: function (response) {
+                $('#divconfigGenerateTest').unblock();
+                alert("Error: " + response);
+            }
+        });
+
+    });
+
+    function getCookie(name) {
+        var ckList = document.cookie.split("; ");
+        for (var i = 0; i < ckList.length; i++) {
+            var ck = ckList[i].split("=");
+            if (ck[0] == name) {
+                return unescape(ck[1]);
+            }
+        }
+        return "";
+    }
+
+    //$("#aGeneratePDFSuccess").live("click", function (e) {
+    //alert("Close Popup OK ???"); //TODO: close popup
+    
+    //setTimeout('dialog.dialog(\"close\")', 1000);
+    //});
+
+    $("#btnTestSettingSubmit").unbind('click');
+    $("#btnTestSettingSubmit").live("click", function (e) {
+        e.preventDefault();
+        //check deadline time must be equal or greater than current time
+        var vdeadline = '';
+        if ($('#rdTimeLimitON:checked').length > 0 && $('#enableDeadline:checked').length > 0) {
+            vdeadline = BuildLocalDateTimeToUTC();
+            var today = new Date();
+            var deadline = new Date(vdeadline);
+            if (deadline < today) {
+                alertMessageSetting('Deadline must be equal or greater than current time.');
+                return;
+            }
+        }
+
+        if ($('#rdTimeLimitON:checked').length > 0 && $('#enableDurationOption:checked').length > 0 && ($("#durationId").val() == '' || $("#durationId").val() == '0')) {
+            alertMessageSetting('Value must be provided.');
+            return;
+        }
+
+        $("#btnTestSettingSubmit").disableBt();
+
+        var isMulticlass = false;
+        if ($('#radioMultiClass:checked').val() == 'on') {
+            isMulticlass = true;
+        }
+
+        var isLockedbank = $('#hdfIsLockedBankId').val();
+
+        var vdistrictId = 0;
+        if ($('#hdfDistrictId').length) {
+            vdistrictId = $('#hdfDistrictId').val();
+        } else {
+            if ($('#selectDistrict').val() != 'select')
+                vdistrictId = $('#selectDistrict').val();
+        }
+        var highlightTextOption = $('input[name=SupportHighlightText]:checked').val() == "OFF" ? 0 : 1;
+        if (highlightTextOption == 1) {
+            highlightTextOption = $('input[name=SupportHighlightText]:checked').val() == "ONLYSTUDENT" ? 2 : 1;
+        }
+
+
+
+        var vDurationValue = 0;
+        if ($('#rdTimeLimitON:checked').length > 0 && $('#enableDurationOption:checked').length > 0) {
+            vDurationValue = $("#durationId").val();
+        }
+
+        var vOptions1 = {
+            IslockedBank: isLockedbank,
+            IsAssignGroup: isMulticlass,
+            DistrictId: vdistrictId,
+            SettingType: $('#selectSettingType').val(),
+            VerifyStudent: $('input[name=vStudent]:checked').val() == "ON" ? 1 : 0,
+            RequireTestTakerAuthentication: $('input[name=RequireTestTakerAuthentication]:checked').val() == "ON" ? 1 : 0,
+            ShuffleQuestions: $('input[name=ShuffleQuestions]:checked').val() == "ON" ? 1 : 0,
+            ShuffleAnswers: $('input[name=ShuffleAnswers]:checked').val() == "ON" ? 1 : 0,
+            AutoAdvanceTest: $('input[name=AutoAdvance]:checked').val() == "ON" ? 1 : 0,
+            
+            MustAnswerAllQuestions: $('input[name=AnswerAllQuestions]:checked').val() == "ON" ? 1 : 0,
+            CanReviewTest: $('input[name=CanReviewTest]:checked').val() == "ON" ? 1 : 0,
+            CanPauseTest: $('input[name=CanPauseTest]:checked').val() == "ON" ? 1 : 0,
+            DisplayAnswerLabels: $('input[name=DisplayAnswerLabels]:checked').val() == "ON" ? 1 : 0,
+            AnswerLabelFormat: $('input[name=AnswerLabelFormat]:checked').val() == "ON" ? 1 : 0,
+            OverrideAutoGradedTextEntry: $('input[name=OverrideAutoGradedTextEntry]:checked').val() == "ON" ? 1 : 0,
+            PassagePositioninTestTaker: $('input[name=PassagePositioninTestTaker]:checked').val() == "LEFT" ? 1 : 0,
+            SupportHighlightText: highlightTextOption,
+            EliminateChoiceTool: $('input[name=EliminateChoiceTool]:checked').val() == "ON" ? 1 : 0,
+            FlagItemTool: $('input[name=FlagItemTool]:checked').val() == "ON" ? 1 : 0,
+            TimeLimit: $('input[name=TimeLimit]:checked').val() == "ON" ? 1 : 0,
+            Duration: vDurationValue,
+            Deadline: vdeadline,
+            ShowTimeLimitWarning: $('input[name=ShowTimeLimitWarning]:checked').val() == "ON" ? 1 : 0,
+            MultipleChoiceClickMethod: $('input[name=MultipleChoiceClickMethod]:checked').val() == "ClickAnswer" ? 1 : 0
+        };
+
+        var vTools1 = {
+            MathPalette: $('#mathPalette').is(':checked') ? '1' : '0',
+            SpanishPalette: $('#spanishPalette').is(':checked') ? '1' : '0'
+        };
+
+        var data = JSON.stringify({ vOptions: vOptions1, vTools: vTools1 });
+
+        $.ajax({
+            url: '@Url.Action("TestSettings","TestAssignment")',
+            traditional: true,
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: data,
+            success: function (response) {
+                if (response.Success != false) {
+                    $('#hdfChangedDefaultSetting').val(1);
+                    LoadSettingDefault(true); //TODO: Reload Default Setting
+                    $(".dialog").dialog("close");
+                }
+                else {
+                    //alert("Update That Bai");
+                }
+                $("#btnTestSettingSubmit").enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+
+    //TODO: Check Valid Assign
+    function CheckValidToAssign() {
+        // Check Selected Test
+        var isShowAssignmentButton = false;
+        var testId = $('#selectTest').val();
+        if (testId == 'select' || testId == '' || testId == null) {
+            $('#btnSubmit').attr("disabled", "disabled");
+            return;
+        }
+
+        // If Single Class
+        if ($('#radioSingleClass').is(':checked')) {
+            //TODO: Class Assignment
+            var classId = $('#selectClass').val();
+            if (classId == 'select' || classId == '' || classId == null) {
+                $('#btnSubmit').attr("disabled", "disabled");
+                return;
+            }
+
+            var studentsIdSelected = [];
+            $(".student-item[isSelected=yes]").each(function () {
+                studentsIdSelected.push($(this).attr('studentId'));
+            });
+
+            if (studentsIdSelected.length > 0 || $('#chkUseRoster').is(":checked")) {
+                isShowAssignmentButton = true;
+            }
+        } else {
+            //TODO: Group Assignment
+            var groupId = GetCurrentGroupSelected();
+            if (groupId > 0) {
+                isShowAssignmentButton = true;
+            }
+            //isShowAssignmentButton = true;
+        }
+        if (isShowAssignmentButton) {
+            $('#btnSubmit').removeAttr("disabled");
+        } else {
+            $('#btnSubmit').attr("disabled", "disabled");
+        }
+    }
+
+    function BuildLocalDateTimeToUTC() {
+        var vDate = $("#selectDeadline").datepicker("getDate");
+        vDate.setHours($("#selectHouse").val());
+        vDate.setMinutes($("#selectMunite").val());
+        return vDate.toISOString();
+    }
+    function alertMessageSetting(message) {
+        var oldzIndex = $('#SettingsDialog').parent('.ui-dialog').css('z-index');
+        $('#SettingsDialog').parent('.ui-dialog').css({ 'z-index': '1000' });
+        var overlayHeight = $('.my-overlayy').height();
+        //set the height for overlay
+        $('.my-overlay').height(2000);
+
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $('.ui-widget-overlay:last').remove();
+                    $('#SettingsDialog').parent('.ui-dialog').css({ 'z-index': oldzIndex });//recover the old value
+                    $('.my-overlay').height(overlayHeight);
+                    $(this).remove();
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+
+    function closeAlert() {
+        $('#alertDialog').dialog('close');
+    }
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    $('#chkUseRoster').change(function () {
+        if ($(this).is(":checked")) {
+            selectNoStudents();
+            $("#btnSelectAll").attr("disabled", "disabled");
+            $("#btnSelectNone").attr("disabled", "disabled");
+            $("#btnInvertSelect").attr("disabled", "disabled");
+        } else {
+
+            $("#btnSelectAll").removeAttr("disabled");
+            $("#btnSelectNone").removeAttr("disabled");
+            $("#btnInvertSelect").removeAttr("disabled");
+        }
+        $('#chkUseRoster').val($(this).is(':checked'));
+    });
+
+    function ResetCheckboxUseRoster() {
+        //Begin Reset Use Roster at time of test Taking
+        $('#chkUseRoster').prop('checked', false);
+        $("#btnSelectAll").removeAttr("disabled");
+        $("#btnSelectNone").removeAttr("disabled");
+        $("#btnInvertSelect").removeAttr("disabled");
+        //End Reset Use Roster at time of test Taking
+    }
+
+    function ReplaceLocalTime() {
+        //Set Local Time
+        $('.toLocalTime').each(function () {
+            var element = $(this);
+            var currentValue = element.text().trim();
+
+            var localTimeUtc = moment.utc(currentValue).toDate();
+
+            element.html(displayDateWithFormat(localTimeUtc.valueOf(), true));
+        });
+    }
+</script>

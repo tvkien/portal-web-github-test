@@ -1,0 +1,135 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.ItemTagViewModel
+<style type="text/css">
+    .ui-menu .ui-menu-item:hover {
+        cursor: pointer;
+    }
+
+    .ui-autocomplete {
+        z-index: 2000 !important;
+        max-height: 200px !important;
+        overflow-x: hidden;
+        overflow-y: visible;
+        width: 244px !important;
+    }
+
+    .ui-menu .ui-menu-item {
+        background-color: transparent;
+    }
+</style>
+<section>
+    <div class="block-border" id="divCreateEditItemTagCategory">
+        <div class="block-content">
+            <h1>Update @LabelHelper.DistrictLabel Tag </h1>
+            <ul style="display: none" id="error-messages" class="message error"></ul>
+            <ul style="display: none" id="success-message" class="message success">
+                <li>Update @LabelHelper.DistrictLabel Tag successfully.</li>
+            </ul>
+            <table class="form full-width">
+                <tr>
+                    <td class="u-text-right u-p-r-10">
+                        Name:
+                    </td>
+                    <td>
+                        <div class="u-m-b-10">
+                            @Html.TextBoxFor(x => x.Name, new {id = "inputItemTagName", @class = "full-width EditItemTagControl"})
+                            <ul id="tagsSuggest" class="ul-tag list-tag-a" style="display: none"></ul>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="u-text-right u-p-r-10">
+                        Description:
+                    </td>
+                    <td>
+                        @Html.TextBoxFor(x => x.Description, new {id = "inputItemTagDescription", @class = "full-width EditItemTagControl"})
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button type="button" id="btnUpdateItemTag" style="margin-top: 15px;margin-left: 5px">Update</button>
+                        <button type="button" id="btnCancelUpdateItemTag">Cancel</button>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</section>
+<script type="text/javascript">
+    $(function () {
+        $.browser.chrome = /chrome/.test(navigator.userAgent.toLowerCase());
+        $('#inputItemTagName').val(htmlDecode($('#inputItemTagName').val()));
+        $('#inputItemTagDescription').val(htmlDecode($('#inputItemTagDescription').val()));
+        $("#inputItemTagName").autocomplete({
+            source: function (request, response) {
+                $.ajax({
+                    url: '@Url.Action("GetSuggestTags", "ItemTag")',
+                    type: "get",
+                    dataType: "json",
+                    data: {
+                        districtId: '@Model.DistrictId',
+                        textToSearch: encodeURIComponent(request.term)
+                    },
+                    success: function (data) {
+                        response(data);
+                    }
+                });
+            },
+            minLength: 2
+        });
+    });
+
+    $("#inputItemTagName").keypress(function( event) {
+        if($.browser.msie||$.browser.chrome) {
+            var limit = 500;
+            var len = $("#inputItemTagName").val().length ;
+            if(len+1>limit) {
+                event.preventDefault();
+            }
+        }
+    });
+
+    $("#inputItemTagDescription").keypress(function( event) {
+        if($.browser.msie||$.browser.chrome) {
+            var limit = 1000;
+            var len = $("#inputItemTagDescription").val().length ;
+            if(len+1>limit) {
+                event.preventDefault();
+            }
+        }
+    });
+
+    $('#btnCancelUpdateItemTag').die('click');
+    $('#btnCancelUpdateItemTag').live('click', function () {
+        $(".dialog").dialog("close");
+    });
+
+    $('#btnUpdateItemTag').die('click');
+    $('#btnUpdateItemTag').live('click', function () {
+
+        var tagName = $("#inputItemTagName").val();
+        tagName = tagName.trim();
+        tagName = encodeURIComponent(htmlEncode(tagName));
+
+        var description = $("#inputItemTagDescription").val();
+        description = encodeURIComponent(htmlEncode(description));
+        if (tagName.length > 0) {
+
+            $('#btnUpdateItemTag').attr('disabled', true);
+
+            $.post('@Url.Action("UpdateItemTag")', { itemTagCategoryId: @Model.ItemTagCategoryID, itemTagId:@Model.ItemTagID, tagName: tagName, description: description }, function (response) {
+                if (response == true) {
+                    $('#success-message').show();
+                    setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                } else {
+                    addErrorMessages(response);
+                    $('#btnUpdateItemTag').removeAttr('disabled');
+                }
+            });
+        } else {
+            var response = { ErrorList:[{ErrorMessage:'Please input Item Tag Name'}]};
+            addErrorMessages(response);
+        }
+    });
+
+</script>

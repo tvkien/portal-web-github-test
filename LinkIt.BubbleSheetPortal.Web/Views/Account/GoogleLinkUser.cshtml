@@ -1,0 +1,116 @@
+@model string
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>LinkIt!</title>
+    <meta charset="utf-8">
+    <meta name="robots" content="none">
+    <link href="/Content/themes/Constellation/css/reset.css" rel="stylesheet" type="text/css">
+    <link href="/Content/themes/Constellation/css/common.css" rel="stylesheet" type="text/css">
+    <link href="/Content/themes/Constellation/css/form.css" rel="stylesheet" type="text/css">
+    <link href="/Content/themes/Constellation/css/standard.css" rel="stylesheet" type="text/css">
+    <link href="/Content/themes/Constellation/css/special-pages.css" rel="stylesheet" type="text/css">
+    <link href="/Content/themes/Constellation/css/simple-lists.css" rel="stylesheet" type="text/css">
+    @Html.Partial("_Favicons")
+    @LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.jQueryUpgrade()
+    <script type="text/javascript" src="/Content/themes/Constellation/js/html5.js"></script>
+    <script type="text/javascript" src="/Content/themes/Constellation/js/common.js"></script>
+    <script type="text/javascript" src="/Content/themes/Constellation/js/standard.js"></script>
+    <script type="text/javascript" src="/Content/themes/Constellation/js/jquery.tip.js"></script>
+    <script type="text/javascript" src="/Content/themes/Constellation/js/list.js"></script>
+    <style>
+        .align-right {
+            text-align: right;
+        }
+
+        .align-center {
+            text-align: center;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .label {
+            text-align:center;
+            line-height: 22px;
+        }
+    </style>
+</head>
+<body class="special-page error-bg dark">
+    <section id="error-desc">
+        <ul class="action-tabs with-children-tip children-tip-left">
+            <li>
+                @if (ViewBag.IsStudent != null && ViewBag.IsStudent == true)
+                {
+                    <a id="btnLinkHomePage" href="/Student/LogOn" title="Go home"><img src="/Content/themes/Constellation/images/icons/fugue/navigation-180.png" width="16" height="16"></a>
+                }
+                else
+                {
+                    <a id="btnLinkHomePage" href="/Account/LogOn" title="Go home"><img src="/Content/themes/Constellation/images/icons/fugue/navigation-180.png" width="16" height="16"></a>
+                }
+            </li>
+        </ul>
+        <div class="block-border">
+            <div class="block-content">
+                <div class="block-header">Google Link Account</div>
+                <p class="label">Please enter your LinkIt! credentials to associate your Google account <span class="bold">@ViewBag.Email</span></p>
+                @*<p class="align-center bold">@ViewBag.Email</p>*@
+                <p id="loginMessage"></p>
+                @using (Html.BeginForm("GoogleLinkUser", "Account", FormMethod.Post, new { @class = "form with-margin", id = "login-form" }))
+                {
+                    <p class="inline-small-label">
+                        <label for="login"><span class="big">Username</span></label>
+                        <input type="text" name="userName" id="login" class="full-width first-focus" value="" />
+                    </p>
+                    <p class="inline-small-label">
+                        <label for="pass"><span class="big">Password</span></label>
+                        <input type="password" name="password" id="pass" class="full-width" value="" maxlength="50" />
+                    </p>
+                    <p class="align-right">
+                        <button type="submit" id="btn-submit">Submit</button>
+                    </p>
+                }
+            </div>
+        </div>
+    </section>
+
+    <script>
+        $(document).ready(function () {
+            if ('@Model') {
+                sessionStorage.setItem("LINK_TOKEN", '@Model');
+                history.pushState("", "Gogole Link Account", document.location.origin);
+            } else {
+                $('#error-desc').removeBlockMessages().blockMessage("An unknown error has occurred.", { type: 'error' });
+                 $("#btn-submit").disableBt();
+            }
+            
+
+            $("#btn-submit").click(function () {
+                $('#error-desc').removeBlockMessages().blockMessage('Please wait, checking login...', { type: 'loading' });
+                $("#btn-submit").disableBt();
+                $.ajax({
+                    url: '/account/processlinkgoogleaccount',
+                    beforeSend: function(request) {
+                        request.setRequestHeader("Auth", sessionStorage["LINK_TOKEN"]);
+                    },
+                    dataType: 'json',
+                    type: 'POST',
+                    data: $('#login-form').serialize(),
+                    success: function (data) {
+                        if (!data.Message) {
+                            location.reload();
+                        } else {
+                            $("#btn-submit").enableBt();
+                            $('#error-desc').removeBlockMessages().blockMessage(data.Message, { type: 'error' });
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

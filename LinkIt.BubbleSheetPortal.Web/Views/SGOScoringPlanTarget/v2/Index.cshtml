@@ -1,0 +1,827 @@
+@using LinkIt.BubbleSheetPortal.Models.SGO
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.ReportItemSGOManager, "SGO Scoring Plan & Target",true);
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleSGOManageStudentPopulationBundleV2()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptSGOManageStudentPopulationBundle()
+
+<script src="@Url.Content("~/FeLibs/jquery-validation/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.numeric.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Lib/handsontable/pro/handsontable.full.min.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Scripts/Lib/handsontable/pro/handsontable.full.min.css")" rel="stylesheet" type="text/css">
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptSGOScoringPlanBundle()
+
+<style>
+    .attachment-item {
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+        .attachment-item:hover,
+        .attachment-item:focus {
+            color: #52a6d1;
+            cursor: pointer;
+        }
+
+        .attachment-item > img {
+            width: 22px;
+            position: relative;
+            top: -1px;
+        }
+
+    .directions-warning {
+        width: 682px;
+        background-color: var(--blue1);
+        border: 1px solid var(--blue1);
+        padding: 16px;
+    }
+
+        .directions-warning ol {
+            margin-top: 32px;
+        }
+
+        .directions-warning * {
+            line-height: 26px !important;
+        }
+
+    #portal-v2-containter .ui-dialog,
+    #portal-v2-containter .ui-dialog .dialog {
+        padding: 0;
+    }
+
+        #portal-v2-containter .ui-dialog section {
+            margin: 0;
+            float: none;
+        }
+
+    #portal-v2-containter .form label {
+        font-size: inherit;
+    }
+
+    #portal-v2-containter .custom-text-color {
+        color: var(--navyColor);
+    }
+
+    #portal-v2-containter table thead th {
+        color: var(--navyColor);
+    }
+
+    .mt-32 {
+        margin-top: 32px !important;
+    }
+
+    .mb-32 {
+        margin-bottom: 32px !important;
+    }
+
+    .box-warning-scoring ol {
+        line-height: 1.625 !important;
+        padding-left: 0;
+    }
+</style>
+
+<article class="container_12" id="idTopNavigation">
+    @Html.Action("LoadNavigation", "SGOManage", new { sgoId = ViewBag.SgoId })
+    <section class="grid_12 custom-text-color">
+        <div class="block-border" id="selectFilters">
+            <div class="block-content form">
+                <input type="hidden" id="sgoId" value="@ViewBag.SgoId" />
+                <input type="hidden" id="attainmentGoalCacheData" />
+                <p class="title-large mb-4">Establish Target Scores</p>
+
+
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>Passage successfully deleted.</li>
+                </ul>
+                <div class="box-warning box-warning-scoring">
+                    <img src="/Content/images/icons/icon-info.svg" class="ico-info">
+                    @Html.Raw(ViewBag.DirectionConfigurationValue)
+                </div>
+                <div class="divider mt-32 mb-32"></div>
+                <div class="qtiItemSelector" id="fieldsetTargetScore">
+                    <p class="title-medium mb-32">Target Scores</p>
+                    <div id="divTargetScore">
+                    </div>
+                </div>
+                <div class="divider mt-32 mb-32"></div>
+                @Html.Action("LoadSGONote", "SGOManage", new { sgoId = ViewBag.SgoId, pageName = LinkIt.BubbleSheetPortal.Models.SGO.SGOPageNameConstant.ScoringPlan })
+
+                <div class="text-end">
+                    <button id="btnScorePlanSubmit" class="btn-blue me-3" type="button" style="display: none;">Submit</button>
+                    <button class="btn-red" id="btnScorePlanSave" type="button" disabled="disabled">Save</button>
+                    @*<button id="btnScorePlanContinue" type="button">Continue</button>*@
+                </div>
+
+            </div>
+        </div>
+    </section>
+</article>
+<input type="hidden" id="idhdfScoringPlanIsCompleted" value="@ViewBag.IsAttainmentDataCompleted?.ToString()" />
+<div id="divPopup"></div>
+
+<script>
+    var vReload = 0;
+    var vOptionSelected = 0;
+    var vDefaultValue = 0;
+    $(function() {
+        breadcrumbDetailPage('.stats', '#rpSGOManager');
+
+        loadTargetScoreContent();
+
+        //Init Navigation
+        initNavigationTabs(5, $('#sgoId').val());
+
+        if (@ViewBag.PermissionAccess != null && @ViewBag.PermissionAccess != 3) //Full Update
+        {
+            LockAllUI();
+        }
+        if ($('#idhdfScoringPlanIsCompleted').val() > 0 && @ViewBag.ApproverUserID == 0) {
+            $('#btnScorePlanSubmit').show();
+        }
+    });
+
+    function checkAttainmentDataCompleted() {
+        $.ajax({
+            type: "POST",
+            url: '@Url.Action("CheckAttainmentDataCompleted", "SGOScoringPlanTarget")',
+            data: { sgoId: $('#sgoId').val() }
+        })
+            .done(function (response) {
+
+                if (response.Success == true && @ViewBag.ApproverUserID == 0) {
+                    $('#btnScorePlanSubmit').show();
+                }
+            });
+        }
+
+        function loadTargetScoreContent() {
+            ShowBlock($('#idTopNavigation'), "Loading");
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("LoadTargetScoreContent", "SGOScoringPlanTarget")',
+                data: { sgoId: $('#sgoId').val() }
+            })
+            .done(function (response) {
+                $('#divTargetScore').html(response);
+                $('#idTopNavigation').unblock();
+                $('#btnScorePlanSave').prop('disabled', false); // just enable Save button after load Target Score content
+
+                // Initialize data when page load done
+                // GetJSONDataScoringPlanTarget() from _NavigationTabs.cshtml
+                window.oldJSONData = GetJSONDataScoringPlanTarget();
+                $('#selectTestPreAssessment').marquee();
+                $('#selectTestPreAssessmentCustom').marquee();
+
+                // Check Log
+                if (@ViewBag.PermissionAccess != null && @ViewBag.PermissionAccess != 3) //Full Update
+                {
+                    LockAllUI();
+                }
+            });
+        }
+
+        $('#btnSetTarget').live("click", function () {
+            ShowBlock($('#idTopNavigation'), "Loading");
+            var url = '@Url.Action("LoadSetTargetScore", "SGOScoringPlanTarget")?sgoId=' + $('#sgoId').val() + '&targetScoreType=' + $('input[name="quantifiableType"]:checked').val();
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function (html) {
+                    $('#idTopNavigation').unblock();
+                    $("#divPopup").append('<div id="popupSetTargetScore" class="dialog"></div>');
+                    $("#popupSetTargetScore").append(html);
+                    $('#popupSetTargetScore').dialog({
+                        title: "",
+                        open: function () {
+                            var $doc = $(document);
+                            var $overlay = $('<div/>');
+                            $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                            //Create overlay for popup
+                            $overlay
+                                .addClass('my-overlay')
+                                .css({
+                                    'background-color': 'black',
+                                    'z-index': $('.ui-dialog').css('z-index') - 1,
+                                    'width': $doc.width() + 'px',
+                                    'height': $doc.height() + 'px',
+                                    'opacity': '0.3',
+                                    'position': 'absolute',
+                                    'top': '0',
+                                    'left': '0'
+                                });
+
+                            $overlay.appendTo($('body'));
+                        },
+                        beforeclose: function () {
+                            //TODO if you want do anything after close popup.
+                            return true;
+                        },
+                        close: function () {
+                            $('#popupSetTargetScore').remove();
+                            $("body .my-overlay").remove();
+                        },
+                        modal: false,
+                        width: 'auto',
+                        minWidth: '300px',
+                        maxWidth: '900px',
+                        resizable: false
+                    });
+                });
+        });
+
+        $('button[name="btnSetAttainment"]').live("click", function () {
+            ShowBlock($('#idTopNavigation'), "Loading");
+            var url = '@Url.Action("LoadSetAttainment", "SGOScoringPlanTarget")';
+
+        $.ajax(
+            {
+                url: url,
+                data: {
+                    sgoId: $('#sgoId').val(),
+                    sgoAttainmentGoalId: $(this).attr('data'),
+                    targetScoreType: $('input[name="quantifiableType"]:checked').val()
+                },
+                cache: false
+            })
+            .done(function (html) {
+                $('#idTopNavigation').unblock();
+                $("#divPopup").append('<div id="popupSetAttainment" class="dialog"></div>');
+                $("#popupSetAttainment").append(html);
+                $('#popupSetAttainment').dialog({
+                    title: "",
+                    open: function () {
+                        var $doc = $(document);
+                        var $overlay = $('<div/>');
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+
+                        //Create overlay for popup
+                        $overlay
+                            .addClass('my-overlay')
+                            .css({
+                                'background-color': 'black',
+                                'z-index': $('.ui-dialog').css('z-index') - 1,
+                                'width': $doc.width() + 'px',
+                                'height': $doc.height() + 'px',
+                                'opacity': '0.3',
+                                'position': 'absolute',
+                                'top': '0',
+                                'left': '0'
+                            });
+
+                        $overlay.appendTo($('body'));
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#popupSetAttainment').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 'auto',
+                    minWidth: '300px',
+                    maxWidth: '900px',
+                    resizable: false
+                });
+            });
+    });
+
+    $('#btnSaveTargetScore').live("click", function () {
+
+        var sgoGroups = [];
+
+        var isValid = 1;
+        var maxTargetScore = 9999;
+
+        if ($("#idQuantifiableType3").is(":checked")) {
+            if ($('#idScorePostAssessmentToBeCreated').length > 0) {
+                maxTargetScore = parseFloat($('#idScorePostAssessmentToBeCreated').val());
+            } else {
+                maxTargetScore = parseFloat($('#idPointPossiblePostAssessmentLinkit').val());
+            }
+        }
+
+        $.each($('input[name="txtGroupTargetScore"]'), function (i, item) {
+            if ($(item).val() == '') {
+                CustomAlertV2('Please set all target scores.');
+                isValid = 0;
+                return false;
+            }
+
+            if (!$("#idQuantifiableType4").is(":checked")) {
+                if (parseFloat($(item).val()) > maxTargetScore) {
+                    CustomAlertV2('Target score cannot be greater than ' + maxTargetScore);
+                    isValid = 0;
+                    return false;
+                }
+            }
+
+            sgoGroups.push({
+                SGOGroupID: $(item).attr('data'),
+                TargetScore: !$("#idQuantifiableType4").is(":checked")?$(item).val():0,
+                TargetScoreCustom: $(item).val(),
+            });
+        });
+
+        if (isValid == 0)
+            return;
+
+        ShowBlock($('#popupSetTargetScore'), 'Save');
+        $('#btnSaveTargetScore').attr('disabled', 'disabled');
+        $.ajax({
+            type: "POST",
+            url: '@Url.Action("SetTargetScore", "SGOScoringPlanTarget")',
+            data: {
+                sgoId: $('#sgoId').val(),
+                targetScoreType: $('input[name="quantifiableType"]:checked').val(),
+                improvementBasedDataPoint: $('#selectTestPreAssessment').val(),
+                improvementBasedDataPointCustom: $('#selectTestPreAssessmentCustom').val(),
+                sgoGroupData: JSON.stringify(sgoGroups)
+            }
+        })
+            .done(function (response) {
+                $('#popupSetTargetScore').unblock();
+                closePopup('popupSetTargetScore');
+                if (response.Success == true) {
+                    vReload = 1;
+                    vOptionSelected = $('input:radio[name="quantifiableType"]:checked').val();
+                    if (vOptionSelected == '2') {
+                        vDefaultValue = $('#selectTestPreAssessment').val();
+                    } else if (vOptionSelected == '3') {
+                        vDefaultValue = $('#idScorePostAssessmentToBeCreated').val();
+                    }
+                    loadTargetScoreContent();
+                    checkAttainmentDataCompleted();
+                } else {
+                    CustomAlertV2(response.ErrorMessage, true);
+                }
+
+            });
+    });
+
+    $('#btnSaveAttainment').live("click", function () {
+        ShowBlock($('#popupSetAttainment'), 'Save');
+        var sgoAttainmentGroups = [];
+        var isValid = true;
+        $.each($('input[name="txtGoalValue"]'), function (i, item) {
+            if (parseInt($(item).val()) > 100) {
+                var msg='Attainment Goal cannot be greater than 100';
+                CustomAlertV2(msg);
+                isValid = false;
+                return;
+            }
+
+            sgoAttainmentGroups.push({
+                SGOGroupID: $(item).attr('data'),
+                GoalValue: $(item).val()
+            });
+        });
+
+        if (!isValid)
+            return;
+
+        cacheAttainmentGoalData();
+
+        $('#btnSaveAttainment').attr('disabled', 'disabled');
+        $.ajax({
+            type: "POST",
+            url: '@Url.Action("SetAttainment", "SGOScoringPlanTarget")',
+                data: {
+                    sgoId: $('#sgoId').val(),
+                    sgoAttainmentGroupData: JSON.stringify(sgoAttainmentGroups),
+                    sgoAttainmentGoalId: $('#sgoAttainmentId').val()
+                }
+            })
+            .done(function () {
+                $('#popupSetAttainment').unblock();
+                closePopup('popupSetAttainment');
+                vReload = 1;
+                vOptionSelected = $('input:radio[name="quantifiableType"]:checked').val();
+                if (vOptionSelected == '2') {
+                    vDefaultValue = $('#selectTestPreAssessment').val();
+                }else if (vOptionSelected == '3') {
+                    vDefaultValue = $('#idScorePostAssessmentToBeCreated').val();
+                }
+                loadTargetScoreContent();
+                checkAttainmentDataCompleted();
+            });
+        });
+
+        $('input:radio[name="quantifiableType"]').live('change', function() {
+            if ($(this).is(':checked') && $(this).val() == '2') {
+                $('#divPreAssessmentDataPoint').show();
+            } else {
+                $('#divPreAssessmentDataPoint').hide();
+            }
+            if ($(this).is(':checked') && $(this).val() == '3') {
+                if ($('#idScorePostAssessmentToBeCreated').length > 0) {
+                    $('label[id^="lblToBeCreated-"]').html('/' + $('#idScorePostAssessmentToBeCreated').val());
+                } else {
+                    if ($('#idPointPossiblePostAssessmentLinkit').val() != '')
+                        $('label[id^="lblToBeCreated-"]').html('/' + $('#idPointPossiblePostAssessmentLinkit').val());
+                    else
+                        $('label[id^="lblToBeCreated-"]').html('');
+                }
+            }
+        });
+
+        function cacheAttainmentGoalData() {
+            var goalArray = [];
+
+            $.each($('input[name="txtGoalValue"]'), function (index, item) {
+                goalArray.push($(item).val());
+            });
+
+            $('#attainmentGoalCacheData').val(goalArray.join(';'));
+        }
+
+        function closePopup(id) {
+            $('#' + id).dialog('close');
+        }
+
+        $('#btnScorePlanSubmit').click(function () {
+            ShowBlock($('#idTopNavigation'), "Loading");
+            $.ajax({
+                url: '@Url.Action("CheckReadyForSubmit", "SGOManage")',
+                data: JSON.stringify({ id: $('#sgoId').val() }),
+                contentType: 'application/json',
+                cache: false,
+                type : 'POST'
+            }).done(function(response) {
+
+                $('.ui-dialog .block-border').css('width', 'auto');
+                if (response.success === false) {
+                    $('#idTopNavigation').unblock();
+                    var msg = '<div class="text-left">';
+                    if (response.studentInGroup === false) {
+                    msg += '<p>Please assign all students to preparedness groups</p>';
+                    }
+                    if (response.postAssessment === false) {
+                        msg += '<p>You must select a post-assessment before submitting your SGO for review.</p>';
+                    }
+                    msg += '</div>';
+                    CustomAlertV2(msg,420);
+                    return;
+                } else {
+                    LoadSubmitForm();
+                }
+            });
+        });
+
+            function LoadSubmitForm() {
+                var url = '@Url.Action("SubmitForReview", "SGOManage")/' + $('#sgoId').val();
+                $.ajax({ url: url, cache: false })
+                    .done(function(html) {
+                        $('#idTopNavigation').unblock();
+                        $("#divPopup").append('<div id="popupsubmitForReview" class="dialog"></div>');
+                        $("#popupsubmitForReview").append(html);
+                        $('#popupsubmitForReview').dialog({
+                            title: "",
+                            open: function() {
+                                $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                                //Create overlay for popup
+                                $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                            },
+                            beforeclose: function() {
+                                //TODO if you want do anything after close popup.
+                                return true;
+                            },
+                            close: function() {
+                                $('#popupsubmitForReview').remove();
+                                $("body .my-overlay").remove();
+                            },
+                            modal: false,
+                            width: 500,
+                            resizable: false
+                        });
+                    });
+            }
+
+            function SubmitReviewer (sgoId) {
+                ShowBlock($('#SubmitForReviewSection'), "Saving");
+                var data = { SGOID: sgoId, DistrictAdminID: $('#DistrictAdminID').val() };
+                var url = '@Url.Action("SubmitForReviewPost", "SGOManage")';
+                $.ajax({
+                    type: 'post',
+                    url: url,
+                    data: data,
+                    datatype: 'json'
+                }).success(function(data) {
+
+            if (data.Status === 'success') {
+                $('#popupsubmitForReview').dialog('close');
+                confirmMessageV2(
+                    {
+                        message: "Your SGO has been submitted for approval.",
+                        cbYesBtnFuncName: 'FinishSubmitReview(' + sgoId + ' )',
+                    },
+                    {
+                        dialogAttr: {
+                            attr: {
+                                id: 'savePost'
+                            }
+                        }
+                    }
+                )
+            } else if (data.Status === 'error') {
+
+            }
+        }).always(function() {
+            $('#SubmitForReviewSection').unblock();
+        });
+    }
+
+    function FinishSubmitReview(sgoId) {
+        var url = "/SGOManage/Index";
+        window.location.href = url;
+    }
+
+    $('#btnScorePlanSave').click(function() {
+        SaveScoringPlan(false, '');
+    });
+
+    function SaveScoringPlan(isNext, param) {
+        if ('@ViewBag.SgoType' == '@((int) SGOTypeEnum.UnstructuredData)') {
+            SaveUnstructuredScoringPlan(isNext, param);
+        } else {
+            SaveNormalScoringPlan(isNext, param);
+        }
+    }
+
+    function SaveNormalScoringPlan(isNext, param) {
+        var vOption3TotalPointPossible = -1;
+        var vOption = $('input[name="quantifiableType"]:checked').val();
+        if (vOption == '2') {
+            var preDataPointId = $('#selectTestPreAssessment').val();
+            if (preDataPointId == '' || preDataPointId == 'select') {
+                if (isNext) {
+                    $('div[id*="popup-alert-"]').dialog('destroy').remove();
+                }
+                CustomAlertV2('Please select Pre-Assessment Data Point.');
+                return;
+            } else {
+                var scoreTypeCutomTextPreAssessment = @Html.Raw(Json.Encode(ViewBag.ScoreTypePreAssessment));
+                if (scoreTypeCutomTextPreAssessment.indexOf(preDataPointId) > -1  && '@ViewBag.IsNumbericScoreTypePostAssessment' != '' && '@ViewBag.IsNumbericScoreTypePostAssessment' == 'True') {
+                    CustomAlertV2('The score types you have chosen for your pre and post-assessment cannot be compared or cannot be used for auto-scoring your SGO. Please return to Step 3 and change your score types or select a different scoring option.', true);
+                    return;
+                }
+            }
+        }
+        //if (vOption == '4') {
+        //    if ($('#selectTestPreAssessmentCustom').val() == '' || $('#selectTestPreAssessmentCustom').val() == 'select') {
+        //        CustomAlert('Please select Pre-Assessment Custom Data Point.');
+        //        return;
+        //    }
+        //}
+        else if (vOption == '3' && $('#idScorePostAssessmentToBeCreated').length > 0) {
+            vOption3TotalPointPossible = $('#idScorePostAssessmentToBeCreated').val();
+        }
+
+        var data = {
+            sgoId: $('#sgoId').val(),
+            targetScoreType: $('input[name="quantifiableType"]:checked').val(),
+            improvementBasedDataPoint: $('#selectTestPreAssessment').val(),
+            improvementBasedDataPointCustom: $('#selectTestPreAssessmentCustom').val(),
+            totalPointPossible: vOption3TotalPointPossible
+        };
+
+        var url = '@Url.Action("SaveScoringPlan", "SGOScoringPlanTarget")';
+        ShowBlock($('#idTopNavigation'), "Saving");
+        $.ajax({
+            type: 'post',
+            url: url,
+            data: data,
+            datatype: 'json'
+        }).success(function(response) {
+            $('#idTopNavigation').unblock();
+
+            if (response.Success == true) {
+                checkAttainmentDataCompleted();
+                var msg = 'Your goal has been successfully saved.';
+                CustomAlertV2(msg);
+                // Get data when save page
+                // GetJSONDataScoringPlanTarget() from _NavigationTabs.cshtml
+                window.oldJSONData = GetJSONDataScoringPlanTarget();
+                if (isNext) {
+                    window.location.href = param;
+                }
+            } else {
+                CustomAlertV2(response.ErrorMessage, true);
+            }
+
+        });
+    }
+
+    function SaveUnstructuredScoringPlan(isNext, param) {
+        if (!ValidateUnstructuredData()) {
+            CustomAlertV2('Please input all data for each row.');
+            return;
+        }
+
+        var sgoGroups = [];
+        var sgoAttainmentGroups = [];
+        var orderCounter = 1;
+
+        $('input[name="targetScoreCustom"]').each(function(index, item) {
+            var dataRow = $(item).attr('data-row');
+
+            if ($('input[name="targetScoreCustom"][data-row="' + dataRow + '"]').val() != '') {
+                var sgoGroup = {
+                    sgoGroupId: $('input[name="sgoGroupId"][data-row="' + dataRow + '"]').val(),
+                    targetScoreCustom: $('input[name="targetScoreCustom"][data-row="' + dataRow + '"]').val(),
+                    order: orderCounter
+                };
+
+                sgoGroups.push(sgoGroup);
+
+                $('input[name="goalValueCustom"][data-row="' + dataRow + '"]').each(function(i, attaintmentGroup) {
+                    var sgoAttainmentGroup = {
+                        sgoGroupId: $('input[name="sgoGroupId"][data-row="' + dataRow + '"]').val(),
+                        sgoAttainmentGroupId: $(attaintmentGroup).attr("attaintment-group-id"),
+                        sgoAttainmentGoalId: $(attaintmentGroup).attr("attaintment-goal-id"),
+                        goalValueCustom: $(attaintmentGroup).val(),
+                        order: orderCounter
+                    };
+
+                    sgoAttainmentGroups.push(sgoAttainmentGroup);
+                });
+            }
+
+            orderCounter++;
+        });
+
+        if (sgoGroups.length == 0) {
+            CustomAlertV2('Please input at least one goal.');
+            return;
+        }
+
+        var data = {
+            sgoId: $('#sgoId').val(),
+            targetScoreType: $('input[name="quantifiableType"]:checked').val(),
+            rationaleUnstructured: $('#rationaleUnstructured').val(),
+            attachUnstructuredUrl: $('#txtHiddenAttachUrl').val(),
+            sgoGroupData: JSON.stringify(sgoGroups),
+            sgoAttainmentGroupData: JSON.stringify(sgoAttainmentGroups)
+        };
+
+        ShowBlock($('#idTopNavigation'), "Saving");
+        var url = '@Url.Action("SaveUnstructuredScoringPlan", "SGOScoringPlanTarget")';
+        $.ajax({
+            type: 'post',
+            url: url,
+            data: data,
+            datatype: 'json'
+        }).success(function() {
+            $('#idTopNavigation').unblock();
+            checkAttainmentDataCompleted();
+            var msg= 'Your goal has been successfully saved.';
+            CustomAlertV2(msg);
+            // Get data when save page
+            // GetJSONDataScoringPlanTarget() from _NavigationTabs.cshtml
+            window.oldJSONData = GetJSONDataScoringPlanTarget();
+            if (isNext) {
+                window.location.href = param;
+            }
+        });
+    }
+
+    function ValidateUnstructuredData() {
+        var isValid = true;
+        var isEmptyTextOccur = false;
+
+        $('input[name="targetScoreCustom"]').each(function(index, item) {
+            var dataRow = $(item).attr('data-row');
+
+
+            $('input[name="goalValueCustom"][data-row="' + dataRow + '"]').each(function(i, goal) {
+                // Text appear after empty text
+                if (isEmptyTextOccur && ($(item).val() != '' || $(goal).val() != '')) {
+                    isValid = false;
+                }
+
+                if (($(item).val() == '' && $(goal).val() != '') || ($(item).val() != '' && $(goal).val() == '')) {
+                    isValid = false;
+                }
+
+                if ($(item).val() == '' || $(goal).val() == '') {
+                    isEmptyTextOccur = true;
+                }
+            });
+        });
+
+        return isValid;
+    }
+
+
+    @*$('#btnScorePlanContinue').click(function() {
+        var url = "/SGOManage/AdminReview/" + @ViewBag.SgoId;
+        window.location.href = url;
+    });*@
+
+    function CancelSubmitForReview() {
+        $('#popupsubmitForReview').dialog('close');
+    }
+
+    function LockAllUI() {
+        $('#selectFilters input').each(function() {
+            $(this).prop('disabled', 'disabled');
+        });
+        $('#selectFilters :button').attr('disabled', true);
+        //$('#btnScorePlanContinue').removeAttr('disabled');
+
+        if ($('#targetScoreCustomIsEmpty').val() == 'true') {
+            $('#btnSetTarget').prop('disabled', false);
+        }
+
+        $('#txtSGONote').prop('disabled', false);
+        $('#btnSaveNote').prop('disabled', false);
+        $('.btn-sgo-upload').addClass('disabled');
+    }
+
+    function supportNavigationSaveAndRedirect(param) {
+        SaveScoringPlan(true,param);
+    }
+
+    function removeAttach() {
+        if ('@ViewBag.PermissionAccess' == '' || '@ViewBag.PermissionAccess' == '3') //Full Update
+        {
+            $('#divAttachResultInfo').hide();
+            $('#divAttachResultInfo').css('visibility', 'hidden'); // Use visibility to ignore coolfieldset effect when show/hide datapoint tab
+            $('#txtHiddenAttachUrl').val('');
+        }
+    }
+</script>
+<!-- Custom alert message box -->
+<script type="text/javascript">
+    function CustomAlertV2(message, isLongMessage) {
+        var yesButton = '<button onclick="YesClick(this);">OK</button>';
+        var messageTextAlign = 'center';
+        var messageBoxWidth = 240;
+        var diaglogWidth = 360;
+
+        if (typeof isLongMessage != "undefined" && isLongMessage == true) {
+            messageTextAlign = 'left';
+            messageBoxWidth = 540;
+            diaglogWidth = 550;
+        }
+
+        if (typeof isLongMessage === "number") {
+            messageTextAlign = 'left';
+            messageBoxWidth = 540;
+            diaglogWidth = isLongMessage;
+        }
+
+        var strHtml = '<div>' +
+            '<div class="block-border">' +
+            '<div class="block-content form p-4" style="padding-bottom: 1em;text-align:center;"><div class="text-bold" style="text-align:' + messageTextAlign + ';line-height: 18px;">' + message +
+            '</div></div>' +
+            `<div class="modal-component-footer">
+                <div slot="footer">
+                    ${yesButton}
+                </div>
+             </div></div></div >`;
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "CustomAlertDialog")
+            .appendTo("body")
+
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: diaglogWidth,
+                maxheight: 400,
+                resizable: false,
+                open: function () { $(".ui-dialog-titlebar-close").hide(); }
+            });
+    }
+
+    function YesClick(item) {
+        $("#CustomAlertDialog").dialog("close");
+        var url = $(item).attr('url');
+        if (url != undefined && $.trim(url) != '') window.open(url);
+    }
+</script>

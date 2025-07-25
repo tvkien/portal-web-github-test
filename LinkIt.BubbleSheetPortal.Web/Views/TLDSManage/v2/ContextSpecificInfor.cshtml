@@ -1,0 +1,239 @@
+@using LinkIt.BubbleSheetPortal.Models.Enum
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TDLS.TDLSProfileViewModel
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.ReportItemTLDSManager, "TLDS Section 1",true);
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleTDLSContextSpecificInforBundleV2()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptTDLSContextSpecificInforBundle()
+<style>
+    .sub-list {
+        list-style: disc;
+        margin-left: 40px;
+    }
+
+        .sub-list li {
+            margin: 4px;
+            line-height: normal;
+        }
+
+    .form textarea {
+        border: 2px solid var(--selectBorder);
+    }
+
+        .form input[type="text"].is-disabled, .form select.is-disabled, .form textarea.is-disabled {
+            background: var(--disabledColorBg);
+        }
+
+    .ui-dialog[aria-labelledby^="ui-dialog-title-CustomConfirmDialog_"] {
+        width: 460px !important;
+    }
+</style>
+
+<article class="container_12" id="idTopNavigation">
+    @Html.Partial("v2/_NavigationTabs", Model)
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form" id="divOnTop">
+                <h3 class="h3 mb-3">Section 1</h3>
+
+                <ul style="display: none" id="success-messages" class="message success mb-3">
+                </ul>
+
+                @using (Html.BeginForm("ContextSpecificInfor", "TLDSManage", FormMethod.Post, new { id = "ContextSpecificInforForm", @class = "form" }))
+                {
+                    @Html.HiddenFor(m => m.ProfileId)
+                    <div class="mb-3">
+                        <h5 class="h5 mb-3">Context of early years setting/s</h5>
+                        <div class="box-warning mb-4">
+                            <img src="/Content/images/icons/icon-info.svg" class="ico-info">
+                            <p>
+                                Please provide a brief description of the learning environment.
+                                This should cover:
+                            </p>
+                            <ol>
+                                <li>Name and type of each relevant early childhood setting</li>
+                                <li>A description of program delivery (e.g. five-hour sessions, three times a week)</li>
+                                <li>Total number of children in group</li>
+                                <li>Information about staffing changes or the child's participation that may have impacted continuity of learning.</li>
+                            </ol>
+                        </div>
+                        @Html.TextAreaFor(m => m.ContextOfEarlyYearsSetting, new { @class = "w-50", @rows = "10", @cols = "50" })
+                    </div>
+                    <div class="mb-3">
+                        <h5 class="h5 mb-3">Specific information</h5>
+                        <div class="box-warning mb-4">
+                            <img src="/Content/images/icons/icon-info.svg" class="ico-info">
+                            <p>
+                                Please provide an overview of any information that may impact on this child's continuity of learning including (for example):
+                            </p>
+                            <ol>
+                                <li>Any significant health concerns</li>
+                                <li>Language/s spoken at home (including Auslan and Aboriginal languages if appropriate)</li>
+                                <li>Any significant family circumstances or changes to family circumstances </li>
+                                <li>Specific positive learning relationships</li>
+                                <li>Any disclosed/diagnosed disability and/or developmental delay (noting that additional information can be provided in Section 1.2)</li>
+                                <li>Any overall comments</li>
+                            </ol>
+                        </div>
+                        @Html.TextAreaFor(m => m.SpecificInformation, new { @class = "w-50", @rows = "15", @cols = "50" })
+                    </div>
+                    <div class="text-end">
+                        <input type="hidden" id="IsContinue" name="isContinue" value="false" />
+                        <button id="btnContinue" class="ms-3 @(Model.AccessRight == AccessRightEnum.Update ? "btn-blue" : "btn-red")" type="button" @if (!Model.ContextSpecificInforHasBeenSaved) { <text> disabled</text>}>Continue</button>
+                        @if (Model.AccessRight == AccessRightEnum.Update)
+                        {
+                            <button id="btnSaveAndContinue" class="ms-3 btn-blue" type="button">Save And Continue</button>
+                            <button id="btnSave" class="ms-3 btn-red" type="button">Save</button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+</article>
+<script>
+    var isAccessRight = '@Model.AccessRight' == '@AccessRightEnum.Create' || '@Model.AccessRight' == '@AccessRightEnum.Update';
+    var contextSpecificInforFormSerializeString = '';
+    var completedChange = false;
+
+    $(document).ready(function () {
+        if ('@Model.ContextSpecificInforHasBeenSaved' === 'False') {
+            $('#idSgoNavigationStep4').addClass('disabled');
+        }
+        $('#ContextSpecificInforForm').find(':input').each(function (index, value) {
+            $(this).data('val', $(this).val());
+        });
+
+        setInterval(autoSaving, 60000);
+
+        if ('@Model.SectionChildParentCompleted' == 'True') {
+            $("#idSgoNavigationStep7").removeClass("disabled");
+        }
+    });
+
+    $('#ContextSpecificInforForm').on('change paste', ':input', function (e) {
+        $(this).data('val', $(this).val());
+        completedChange = true;
+    });
+
+    $('#ContextSpecificInforForm').on('keyup', ':input', function (e) {
+        if ($(this).val() != $(this).data('val')) {
+            $(this).data('val', $(this).val());
+            completedChange = true;
+        }
+    });
+
+    $('#btnContinue').click(function () {
+        var developmentOutcomeUrl = '@Url.Action("DevelopmentOutcome","TLDSManage")/?profileId=@Model.ProfileId';
+
+        if (isAccessRight) {
+            var formData = getContextSpecificInforFormSerializeString();
+            if (formData != contextSpecificInforFormSerializeString) {
+                CustomConfirm({
+                    message: 'Would you like to save changes before moving continue?',
+                    customClass: 'new-style-popup',
+                    yes: function () {
+                        $("#btnSaveAndContinue").trigger("click");
+                    },
+                    no: function () {
+                        //continue
+                        location.href = developmentOutcomeUrl;
+                    }
+                });
+            } else {
+                location.href = developmentOutcomeUrl;
+            }
+        } else {
+            location.href = developmentOutcomeUrl;
+        }
+    });
+
+    $('#btnSaveAndContinue').click(function () {
+        $('#IsContinue').val('true');
+        ShowBlock($('#divOnTop'),'Saving');
+        $('#ContextSpecificInforForm').submit();
+    });
+
+    $('#btnSave').click(function () {
+        $('#IsContinue').val('false');
+        ShowBlock($('#divOnTop'), 'Saving');
+
+        var formData = $("#ContextSpecificInforForm").serializeArray();
+        $.ajax({
+            url: '@Url.Action("ContextSpecificInfor")',
+            type: 'POST',
+            data: formData,
+            success: function (response) {
+                if (response.Success) {
+                    $('#success-messages').html('<li> Successfully saved</li>');
+                    $('#success-messages').show();
+                    setTimeout(function () {
+                        $('#success-messages').hide();
+                    }, 5000);
+                    $('#divOnTop').unblock();
+                    $('#btnContinue').prop('disabled', false);
+                    $('#idSgoNavigationStep4').removeClass('disabled');
+                }
+            },
+            failure: function (response) {
+                alert(response);
+                $('#divOnTop').unblock();
+            }
+        });
+        contextSpecificInforFormSerializeString = getContextSpecificInforFormSerializeString();
+    });
+
+    $(function () {
+        breadcrumbDetailPage('.stats', '#rpTLDSManager');
+        contextSpecificInforFormSerializeString = getContextSpecificInforFormSerializeString();
+
+        if (!isAccessRight) {
+            // Disable all controls
+            tldsDisableInputControls();
+        }
+    });
+
+    function getContextSpecificInforFormSerializeString() {
+        return $("#ContextSpecificInforForm").serialize();
+    }
+
+    function autoSaving() {
+        if (completedChange) {
+            $('#IsContinue').val('false');
+
+            var formData = $("#ContextSpecificInforForm").serializeArray();
+            formData.push({ name: "AutoSaving", value: true });
+            $.ajax({
+                url: '@Url.Action("ContextSpecificInfor")',
+                type: 'POST',
+                data: formData,
+                success: function (response) {
+                    if (response.Success) {
+                    }
+                },
+                failure: function (response) {
+                    alert(response);
+                }
+            });
+
+            contextSpecificInforFormSerializeString = getContextSpecificInforFormSerializeString();
+            completedChange = false;
+        }
+    }
+</script>

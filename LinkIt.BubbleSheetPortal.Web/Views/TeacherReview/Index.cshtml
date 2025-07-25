@@ -1,0 +1,654 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TeacherReviewModel.TeacherReviewIndexModel
+
+@{
+    ViewBag.Title = "Teacher Reviewer";
+}
+
+<script src="@Url.Content("~/Scripts/popper.min.js")"></script>
+<script src="@Url.Content("~/Scripts/tippy-bundle.umd.min.js")"></script>
+<script src="@Url.Content("~/Scripts/constants.js")"></script>
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleTeacherReviewBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptTeacherReviewBundle()
+<div class="teacherReviewerFullPage">
+    <article id="StudentPreferenceArticle" class="container_12">
+        <section class="grid_12">
+            <div class="block-border m-t-15" id="popup_content">
+                <div class="block-content form no-padding">
+                    <h1>Assignment Reviewer</h1>
+                    <div class="block-reviewer block-reviewer-cancel">
+                        <label class="anonymized-label">Anonymized</label>
+                        <a href="/TestAssignmentReview" class="big-button btn-assignment">Back to Assignment List</a>
+                    </div>
+                    <div class="block-reviewer block-reviewer-first">
+                        <div class="assignment assignment-first u-clearfix">
+                            <div class="assignment-form form">
+                                <fieldset class="assignment-fieldset">
+                                    <legend>Test Info</legend>
+                                    <div class="assignment-content">
+                                        <div class="assignment-group u-clearfix">
+                                            <div data-bind="template:{name:'VirtualTestTemplate', data: VirtualTest, if: VirtualTest() != null}" class="u-pull-left u-w-420"></div>
+                                            <div class="u-pull-right u-w-420 u-text-right">
+                                                <b class="assignment-lead">Teacher:</b>
+                                                <span class="assignment-title assignment-title-teacher" data-bind="html: TeacherName"></span> -
+                                                <b class="assignment-lead">Class:</b>
+                                                <span class="assignment-title assignment-title-class" data-bind="html: ClassName"></span>
+                                            </div>
+                                        </div>
+                                        <div class="assignment-group u-clearfix">
+                                            <div class="u-inline-block u-w-440">
+                                                <b>@LabelHelper.CodeLabel by:</b>
+                                                <label for="student" class="assignment-label"><input type="radio" value="student" name="grade" id="student" data-bind="checked: GradingType"> Student</label>
+                                                <label for="item" class="assignment-label"><input type="radio" value="item" name="grade" id="item" data-bind="checked: GradingType"> Item</label>
+                                                <label for="grade-manually" class="assignment-label"><input type="checkbox" name="grade-manually" id="grade-manually" data-bind="checked: ManuallyGradedOnly, click: ManuallyGradedOnlyClickHandler"> Manually @LabelHelper.CodedLabel Only</label>
+                                            </div>
+                                            <div class="u-inline-block u-w-400 u-text-right u-pull-right">
+                                                <button class="btn-assignment btn-assignment-icon btn-assignment-tipsy js-fullscreen"
+                                                        data-bind="click: ToggleFullScreen" data-tipsy="Fullscreen">
+                                                    <span class="icon icon-fullscreen"></span>
+                                                </button>
+                                                <button class="btn-assignment btn-assignment-icon btn-assignment-tipsy"
+                                                        data-bind="click: OpenCodingGuidePopup, visible: IsVisibleCodingGuide"
+                                                        data-tipsy="@LabelHelper.ViewRubricLabel">
+                                                    <span class="icon icon-coding-guide"></span>
+                                                </button>
+                                                <button class="btn-assignment btn-assignment-icon btn-assignment-tipsy"
+                                                        data-bind="click: OpenGradingShortcutsPopup, enable: GradingShortcutsPopupCss"
+                                                        data-tipsy="@LabelHelper.CodingLabel Shortcuts">
+                                                    <span class="icon icon-grading-shortcuts"></span>
+                                                </button>
+                                                @if (Model.IsAllowToPrint)
+                                                {
+                                                    <button class="btn-assignment btn-assignment-icon btn-assignment-tipsy"
+                                                            data-bind="click: OpenPrintTestOfStudentPopup, enable: PrintTestOfStudentVisible"
+                                                            data-tipsy="Print">
+                                                        <span class="icon icon-print-student"></span>
+                                                    </button>
+                                                }
+                                                <button class="btn-assignment btn-assignment-icon btn-assignment-tipsy"
+                                                        data-bind="click: OpenViewBatchPrintingPopup"
+                                                        data-tipsy="View Batch Printing">
+                                                    <span class="icon icon-view-batch"></span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="assignment-group u-clearfix">
+                                            <div class="u-inline-block u-w-315" data-bind="css: { 'u-m-t-20': GradingType() === 'item' }">
+                                                <b>Filter Student By:</b>
+                                                <select id="selectFilterStudents"
+                                                        data-bind="
+                                                        value: SelectedStudentFilterNew,
+                                                        options: StudentFilters,
+                                                        optionsText: 'FilterText',
+                                                        optionsValue: 'FilterValue',
+                                                        select2: {
+                                                            minimumResultsForSearch: Infinity,
+                                                            placeholder: {
+                                                                id: 'Empty',
+                                                                placeholder: ''
+                                                            }
+                                                        }"></select>
+                                            </div>
+                                            <div class="u-inline-block u-w-525 u-text-right u-pull-right">
+                                                <div data-bind="if: GradingType() === 'student'">
+                                                    <b>Select Student to Review:</b>
+                                                    <select id="selectStudents"
+                                                            data-bind="
+                                                            value: SelectedStudentID,
+                                                            options: Students,
+                                                            optionsText: 'StudentName',
+                                                            optionsValue: 'StudentID',
+                                                            optionsAfterRender: SetStudentOptionAttrs,
+                                                            select2: {
+                                                                minimumResultsForSearch: Infinity,
+                                                                templateResult: FormatStudentInSelect2,
+                                                                templateSelection: FormatStudentInSelect2,
+                                                                width: '300',
+                                                                containerCssClass: 'assignment-select',
+                                                                dropdownCssClass: 'assignment-select-dropdown'
+                                                            }"></select>
+                                                </div>
+                                                <div data-bind="if: GradingType() === 'item'" class="assignment-grading-type-bulk">
+                                                    <div class="u-text-right u-clearfix">
+                                                        <div class="u-pull-right u-w-315 assignment-filter-question">
+                                                            @Html.Partial("_QuestionFiltersList")
+                                                        </div>
+                                                    </div>
+                                                    <div class="u-clearfix">
+                                                        <b class="u-inline-block">Select Item to Review (<span data-bind="text: TotalVisibleQuestions"></span>):</b>
+                                                        <div data-bind="if: TotalVisibleQuestions() > 0" class="assignment-select-dropdown-question u-inline-block u-m-l-5">
+                                                            <select id="selectQuestion"
+                                                                    data-bind="
+                                                                    value: SelectedQuestionVirtualQuestionID,
+                                                                    options: Questions,
+                                                                    optionsText: 'QuestionOrderDisplay',
+                                                                    optionsValue: 'VirtualQuestionID',
+                                                                    optionsAfterRender: SetQuestionOptionAttrs,
+                                                                    select2: {
+                                                                        minimumResultsForSearch: Infinity,
+                                                                        templateResult: FormatQuestionInSelect2,
+                                                                        templateSelection: FormatQuestionInSelect2,
+                                                                        width: '200',
+                                                                        containerCssClass: 'assignment-select',
+                                                                        dropdownCssClass: 'assignment-select-dropdown'
+                                                                    }"></select>
+                                                        </div>
+                                                        <div data-bind="if: TotalVisibleQuestions() == 0" class="assignment-select-dropdown-question u-inline-block u-m-l-5">
+                                                            <select id="selectQuestion"
+                                                                    class="assignment-select-dropdown-question"
+                                                                    data-bind="
+                                                                    if: TotalVisibleQuestions() == 0,
+                                                                    select2: {
+                                                                        minimumResultsForSearch: Infinity,
+                                                                        width: '200',
+                                                                        containerCssClass: 'assignment-select',
+                                                                        dropdownCssClass: 'assignment-select-dropdown assignment-select-dropdown-not-found',
+                                                                        placeholder: 'Select Item'
+                                                                    }"></select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </fieldset>
+                            </div>
+                        </div>
+                        <div class="assignment u-clearfix u-m-t-20" data-bind="if: IsRubricBasedQuestion">
+                            <div class="u-pull-left w-100">
+                                <div class="assignment-form form">
+                                    @Html.Partial("_CategoryList")
+                                </div>
+                            </div>
+                        </div>
+                        <div class="assignment u-clearfix u-m-t-20">
+                            <div class="u-pull-left assignment-question-student">
+                                <div class="assignment-form form">
+                                    <div data-bind="visible: GradingType() === 'student'">
+                                        @Html.Partial("_QuestionList")
+                                    </div>
+                                    <div data-bind="visible: GradingType() === 'item'">
+                                        @Html.Partial("_StudentList")
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="u-pull-left u-m-l-10 u-w-550 assignment-detail-and-answers js-assignment-detail-and-answers">
+                                <div class="assignment-form form">
+                                    <fieldset class="assignment-fieldset">
+                                        <legend>@LabelHelper.QuestionLabel Detail and Answers</legend>
+                                        <div class="assignment-content u-no-padding" id="answersBox">
+                                            <div class="time-log-history">
+                                                <div class="assignment-update-history">
+                                                    Times Visited:
+                                                    <span data-bind="visible: QuestionDetailsVisible() && SelectedStudentID() != -1, text: VisitedTimes"></span>
+                                                    <span data-bind="visible: !QuestionDetailsVisible() || SelectedStudentID() == -1">0</span>
+                                                </div>
+                                                <div class="assignment-update-history">
+                                                    Time Spent on @LabelHelper.QuestionLabel:
+                                                    <span data-bind="visible: QuestionDetailsVisible() && SelectedStudentID() != -1, text: TotalSpentTimeOnQuestion"></span>
+                                                    <span data-bind="visible: !QuestionDetailsVisible() || SelectedStudentID() == -1">0s</span>
+                                                </div>
+                                                <div class="assignment-update-history">
+                                                    Time Spent on Test:
+                                                    <span data-bind="visible: QuestionDetailsVisible() && SelectedStudentID() != -1, text: TotalSpentTimeOnTest"></span>
+                                                    <span data-bind="visible: !QuestionDetailsVisible() || SelectedStudentID() == -1">0s</span>
+                                                </div>
+                                            </div>
+                                            <div class="extendTimelog" data-bind='visible: showPostAsswerLogs'>
+                                                <div class="timelogList">
+                                                    <select id="timelogList"
+                                                            data-bind="
+                                                            options: PostAnswerLogs,
+                                                            optionsText: 'TextValue',
+                                                            optionsValue: 'AnswerTemp',
+                                                            value: SelectedAnswerTemp,
+                                                            optionsAfterRender: SetPostAsswerLogsOptionAttrs,
+                                                            select2:{
+                                                                minimumResultsForSearch: Infinity,
+                                                                width: '300',
+                                                                containerCssClass: 'assignment-select',
+                                                                dropdownCssClass: 'assignment-select-dropdown'
+                                                            }"></select>
+                                                </div>
+                                                <div class="timelogAction">
+                                                    <button id="btnRecoverTimelog" class="btn-assignment btn-assignment-tipsy" data-bind="click: SavePostAsswerLogs, enable: activePostAnswerLogs" data-tipsy="Pressing Recover will take the currently selected saved response and turn it into the active 'in use' response for the student.">Recover</button>
+                                                    <button id="btnResetTimelog" class="btn-assignment" data-bind="click: ResetPostAsswerLogs, enable: activePostAnswerLogs">Reset</button>
+                                                </div>
+                                            </div>
+                                            <div class="assignment-desc assignment-desc-question js-assignment-desc-question">
+                                                <div id="divSectionInstruction"
+                                                     class="assignment-desc-section"
+                                                     data-bind='template: { name: "SectionInstructionTemplate",data: SectionInstruction }, visible: ShowSectionInstruction'></div>
+                                                <div class="assignment-question-detail u-m-t-10 u-m-l-10" data-bind="visible: QuestionDetailsVisible">
+                                                    <span data-bind="text: SelectedQuestion().QuestionOrderDisplay"></span>
+                                                </div>
+                                                <div id="divQuestionDetails"
+                                                     class="assignment-desc-answers"
+                                                     data-bind="template: {name: 'QuestionDetailsTemplate', data: Respones, afterRender: AfterRenderQuestionDetails}"></div>
+                                            </div>
+                                            <div class="assignment-note">
+                                                <div class="assignment-note-cell">
+                                                    <div class="u-pull-left u-w-145">
+                                                        <b class="reference-title">View Reference(s):</b>
+                                                    </div>
+                                                    <div class="u-pull-left u-w-375">
+                                                        <div data-bind='foreach: RefObjects'>
+                                                            <div class="reference" data-bind="click: $parent.ViewReference, visible: $parent.HasViewReference, enable: $parent.IsStart" type="button">
+                                                                <span>Reference #<span data-bind="text: $index() + 1"></span></span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="assignment-note" data-bind="visible: HasAnswerAttachments">
+                                                <div class="assignment-note-cell">
+                                                    <div class="u-pull-left u-w-145">
+                                                        <b class="reference-title">View Attachment(s):</b>
+                                                    </div>
+                                                    <div class="u-pull-left u-w-375">
+                                                        <div data-bind='foreach: AnswerAttachments'>
+                                                            <div class="reference" data-bind="click: $parent.ViewAnswerAttachment" type="button">
+                                                                <span data-bind="text: DisplayName"></span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </fieldset>
+                                </div>
+                            </div>
+                            <div class="u-pull-right assignment-coding-and-feedback" data-bind="if: IsFullScreen">
+                                <div class="u-m-b-15">@Html.Partial("_CodingAndFeedbackForItem")</div>
+                                @Html.Partial("_OverallTestFeedback")
+                                @Html.Partial("_SubmitTest")
+                            </div>
+                        </div>
+                        <div class="assignment u-clearfix" data-bind="if: IsFullScreen() == false">
+                            <div class="u-pull-left u-w-315">
+                                @Html.Partial("_OverallTestFeedback")
+                            </div>
+                            <div class="u-pull-right u-w-550">
+                                @Html.Partial("_CodingAndFeedbackForItem")
+                            </div>
+                        </div>
+                    </div>
+                    <div data-bind="if: IsFullScreen() == false">
+                        @Html.Partial("_SubmitTest")
+                    </div>
+                </div>
+            </div>
+        </section>
+        <div data-bind="dialog: { autoOpen: false, modal: false, width: 600, resizable: false, dialogClass: 'ui-popup-fullpage' }, dialogVisible: IsOpenPrintTestOfStudentPopup">
+            @Html.Partial("_PrintTestOfStudent")
+        </div>
+        <div data-bind="dialog: { autoOpen: false, modal: false, width: 600, resizable: false, dialogClass: 'ui-popup-fullpage' }, dialogVisible: IsOpenGradingShortcutsPopup">
+            @Html.Partial("_GradingShortcuts")
+        </div>
+        <div data-bind="dialog: { autoOpen: false, modal: false, width: 600, resizable: false, dialogClass: 'ui-popup-fullpage' }, dialogVisible: IsConfirmAutoBulkSubmitTestPopup">
+            @Html.Partial("_ConfirmAutoBulkSubmitTest")
+        </div>
+        <div id="pdfGuide" data-bind="dialog: { autoOpen: false, width: 750, resizable: false, dialogClass: 'ui-popup-coding-guide', position: 'left'}, dialogVisible: IsOpenCodingGuidePopup">
+            @Html.Partial("_ViewCodeGrading")
+        </div>
+    </article>
+</div>
+<script type="text/html" id="VirtualTestTemplate">
+    <b class="assignment-lead">Test name:</b>
+    <span class="assignment-title assignment-title-name" data-bind="html: VirtualTestName, attr: {'VirtualTestID' : VirtualTestID}"></span>
+</script>
+
+<script type="text/html" id="QuestionDetailsTemplate">
+    <div data-bind="html: $data, visible: $parent.QuestionDetailsVisible"></div>
+</script>
+<script type="text/html" id="SectionInstructionTemplate">
+    <div data-bind="html: $data"></div>
+</script>
+<script>
+
+    var viewModel = null;
+
+    $(function () {
+
+        $(window).scroll(function () {
+            $(".ui-popup-coding-guide").css("position", "fixed");
+        });
+
+
+        var reviewerWidget = $('body').ReviewerWidget({
+            WidgetUtil: Reviewer,
+            GetStudentsForAssignmentUrl: '@Url.Action("GetStudentsForAssignment", "TestAssignmentRegrader")',
+            GetQuestionsForAssignmentUrl: '@Url.Action("GetQuestionsForAssignment", "TestAssignmentRegrader")',
+            GetTestOnlineSessionAnswersURL: '@Url.Action("GetTestOnlineSessionAnswers", "TestAssignmentRegrader")',
+            UpdateAnswerTextURL: '@Url.Action("UpdateAnswerText", "TestAssignmentRegrader")',
+            UpdateAnswerPointsEarnedURL: '@Url.Action("UpdateAnswerPointsEarned", "TestAssignmentRegrader")',
+            GetViewReferenceContentURL: '@Url.Action("GetViewReferenceContent", "TestAssignmentRegrader")',
+            GetViewReferenceImgFullPath: '@Model.GetViewReferenceImgFullPath',
+            PrintTestOfStudentURL: '@Url.Action("PrintTestOfStudent", "PrintTest")',
+            SaveFeedbackOverallURL: '@Url.Action("SaveTestFeedback", "TestAssignmentRegrader")',
+            SaveFeedbackQuestionURL: '@Url.Action("SaveItemFeedback", "TestAssignmentRegrader")',
+            SubmitTestURL: '@Url.Action("SubmitTest", "TestAssignmentRegrader")',
+            DownloadRubricFileURL: '@Url.Action("DownloadRubricFile", "Notification")',
+            GetRubricByVirtualTestURL: '@Url.Action("GetRubricByVirtualTest", "Rubric")',
+            GetOverrideAutoGradedOfAssignmentURL: '@Url.Action("GetOverrideAutoGradedOfAssignment", "TestPreference")',
+            GetNextApplicableStudentURL: '@Url.Action("GetNextApplicableStudent", "TestAssignmentRegrader")',
+            GetNextApplicableQuestionURL: '@Url.Action("GetNextApplicableQuestion", "TestAssignmentRegrader")',
+            ViewBatchPrintingURL: '@Url.Action("GetBatchPrintingView", "TeacherReview")',
+            CheckGradingQueueIsExistURL: '@Url.Action("CheckGradingQueueIsExist", "TestAssignmentRegrader")',
+            UpdateAutoSaveToAnswerTextURL: '@Url.Action("RecoverAnswerFromPostAnswerLog", "TestAssignmentRegrader")',
+            ViewAttachmentUrl: '@Url.Action("ViewAttachment", "TestAssignmentRegrader")',
+            DownloadAudioFileUrl: '@Url.Action("DownloadFile", "Artifact")',
+        });
+
+        // Set s3 domain
+        window.S3Domain = '@Model.GetViewReferenceImgFullPath';
+
+        var questionRenderWidget = $('body').QuestionRender({
+            Util: Reviewer,
+            Self: viewModel
+        });
+
+        var reviewerValidation = $('body').ReviewerValidationWidget({
+            WidgetUtil: Reviewer
+        });
+
+        var studentFilterWidget = $('body').StudentFilterWidget({
+            WidgetUtil: Reviewer
+        });
+
+        var gradingShortcutsWidget = $('body').GradingShortcutsWidget({
+            WidgetUtil: Reviewer,
+            GradingShortcutsUrl: '@Url.Action("GradingShortcuts", "TestAssignmentRegrader")'
+        });
+
+        viewModel = new TeacherReviewerViewModel({
+            ReviewerWidget: reviewerWidget,
+            QuestionRenderWidget: questionRenderWidget,
+            ReviewerValidation: reviewerValidation,
+            StudentFilterWidget: studentFilterWidget,
+            GradingShortcutsWidget: gradingShortcutsWidget,
+        });
+
+        reviewerValidation.ReviewerValidationWidget('Constructor', viewModel);
+        questionRenderWidget.QuestionRender('Constructor', viewModel);
+        studentFilterWidget.StudentFilterWidget('Constructor', viewModel);
+
+        ko.bindingHandlers.tippy = {
+            init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+                var value = valueAccessor();
+
+                tippy(element, {
+                    content() {
+                        var regex = /No description/;
+
+                        return regex.test(value)
+                            ? value
+                            : '<textarea cols="35" readonly>' + value + '</textarea>';
+                    },
+                    allowHTML: true,
+                    delay: [500, 250],
+                    inertia: true,
+                    interactive: true,
+                    maxWidth: 350,
+                    placement: 'bottom',
+                    theme: 'light',
+                    onMount(instance) {
+                        $('.tippy-box').find('textarea').each(function () {
+                            this.style.cssText = 'height:auto; padding:0; overflow-y:hidden;';
+                            this.style.cssText = 'height:' + this.scrollHeight + 'px';
+                        });
+                        $('.tippy-box').css('visibility', 'visible');
+                    }
+                });
+            }
+        };
+        ko.applyBindings(viewModel);
+
+        viewModel.QTITestClassAssignmentID('@Model.QtiTestClassAssignmentID');
+        viewModel.StudentId('@Model.StudentId');
+        viewModel.VirtualTest(
+            new VirtualTest({
+                VirtualTestName: '@(Model.VirtualTest == null ? string.Empty :  Model.VirtualTest.Name)',
+                VirtualTestID: '@(Model.VirtualTest == null ? string.Empty : Model.VirtualTest.VirtualTestID.ToString())',
+                TestScoreMethodID: '@(Model.VirtualTest == null ? string.Empty : Model.VirtualTest.TestScoreMethodID.ToString())'
+            })
+        );
+        viewModel.DistrictId = @Model.DistrictId;
+        viewModel.TeacherName('@Model.TeacherName');
+        var teacherName = viewModel.TeacherName();
+        viewModel.TeacherName(teacherName);
+        viewModel.ClassName('@Model.ClassName');
+        viewModel.VirtualTestSubtypeID('@(Model.VirtualTest == null ? string.Empty : Model.VirtualTest.VirtualTestSubTypeID.ToString())');
+        viewModel.Mode(@(Model.QTITestClassAssignment == null ? 1 : Model.QTITestClassAssignment.TutorialMode));
+        viewModel.AutoSelectFirstPendingTestSession(@(Model.SelectFirstStudentForReview.HasValue && Model.SelectFirstStudentForReview.Value == 1 ? "true" : "false" ));
+
+        var isAllowManualGrade = ('@Model.IsAllowToManualGrade').toLowerCase() == 'true';
+
+
+        if (isAllowManualGrade) {
+            viewModel.ManuallyGradedOnly(viewModel.AutoSelectFirstPendingTestSession());
+        }
+        else {
+            viewModel.ManuallyGradedOnly(true);
+            $("#grade-manually").attr("disabled", "disabled");
+        }
+
+        viewModel.FirstName('@Model.FirstName');
+        viewModel.LastName('@Model.LastName');
+
+        $('body').ReviewerWidget('GetOverrideAutoGradedOfAssignment', viewModel.QTITestClassAssignmentID(),
+            function (result) {
+                viewModel.OverrideAutoGraded(result.OverrideAutoGraded);
+                viewModel.OverrideItems(result.OverrideItems);
+                viewModel.OverrideAutoGradedOptionValue(result.OverrideAutoGradedOptionValue);
+            }, null);
+
+        viewModel.RefreshStudents();
+
+        if ('@Model.IsPassThrough' == 'True') {
+            viewModel.QuestionFilters(['credit-partial', 'credit-no-credit']);
+        }
+
+        //attach keypress to input
+        $('.onlyNumber').keydown(function (event) {
+            // Allow special chars + arrows
+            if (event.keyCode == 46 || event.keyCode == 8 || event.keyCode == 9
+                || event.keyCode == 27 || event.keyCode == 13
+                || (event.keyCode == 65 && event.ctrlKey === true)
+                || (event.keyCode >= 35 && event.keyCode <= 39)) {
+                return;
+            } else {
+                // If it's not a number stop the keypress
+                if (event.shiftKey || (event.keyCode < 48 || event.keyCode > 57) && (event.keyCode < 96 || event.keyCode > 105)) {
+                    event.preventDefault();
+                }
+            }
+        });
+        viewModel.GradingType('@Model.GradingType');
+    });
+
+</script>
+<script type="text/javascript">
+    function FormatStudentInSelect2(student) {
+        return $('body').ReviewerWidget('FormatStudentInSelect2', student);
+    }
+
+    function FormatQuestionInSelect2(question) {
+        return $('body').ReviewerWidget('FormatQuestionInSelect2', question);
+    }
+
+    function CreateQuestionMenuItem(xml) {
+        return $('body').ReviewerWidget('CreateQuestionMenuItem', xml);
+    }
+
+    function ShowCorrectAnswer() {
+        var $body = $('body');
+        var selectedQuestion = viewModel.SelectedQuestion();
+        var schemaId = selectedQuestion.QTIItemSchemaID();
+
+        if (selectedQuestion == null) {
+            return;
+        }
+
+        if (schemaId == 30) {
+            // Show popup correct answer drag and drop
+            $body.DragDropStandard('ShowCorrectAnswer', viewModel, selectedQuestion);
+        } else if (schemaId == 31) {
+            // Show popup correct answer text hot spot
+            $body.TextHotspot('ShowCorrectAnswer', viewModel, selectedQuestion);
+        } else if (schemaId == 32) {
+            // Show popup correct answer image hot spot
+            $body.ImgHotspot('ShowCorrectAnswer', viewModel, selectedQuestion);
+        } else if (schemaId == 33) {
+            // Show popup correct answer table hot spot
+            $body.TableHotspot('ShowCorrectAnswer', viewModel, selectedQuestion);
+        } else if (schemaId == 34) {
+            // Show popup correct answer number line hot spot
+            $body.Numberline('ShowCorrectAnswer', viewModel, selectedQuestion);
+        }
+    }
+
+    function ShowAllCorrectAnswers() {
+        var $body = $('body');
+        var selectedQuestion = viewModel.SelectedQuestion();
+        var schemaId = selectedQuestion.QTIItemSchemaID();
+        if (selectedQuestion == null) {
+            return;
+        }
+        if (schemaId == 1) {
+            $body.SimpleChoiceAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 3) {
+            $body.MultipleChoiceAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 8) {
+            $body.InlineChoiceAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 9) {
+            $body.TextEntryAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 30) {
+            // Show popup correct answer drag and drop
+            $body.DragDropStandardAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 31) {
+            $body.TextHotspotAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 32) {
+            $body.ImgHotspotAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 33) {
+            $body.TableHotspotAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 34) {
+            $body.NumberlineAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 35) {
+            $body.DragDropNumericalAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 36) {
+            $body.DragDropSequenceAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        } else if (schemaId == 37) {
+            $body.MultipleChoiceVariableAlgorithmic('ShowAllCorrectAnswers', viewModel, selectedQuestion);
+        }
+    }
+
+    function NewItemClick(target, answerID, answerSubID, pointsEarned, pointsPossible, qtiSchemaID, updatedBy, updatedDate, overridden) {
+        if (!viewModel.SelectedStudent) {
+            return;
+        }
+
+        var $target = $(target);
+
+        $('.border_0C5FA5').removeClass('border_0C5FA5');
+        $target.addClass('border_0C5FA5');
+        viewModel.AnswerID(answerID);
+        viewModel.AnswerSubID(answerSubID);
+        viewModel.PointsEarned(pointsEarned);
+        viewModel.OldPointsEarned(pointsEarned);
+        viewModel.PointsPossible(pointsPossible);
+        viewModel.QTIItemSchemaID(qtiSchemaID);
+        viewModel.UpdatedBy(updatedBy);
+
+        if (!Reviewer.IsNullOrEmpty(updatedDate)) {
+            updatedDate = displayDateWithFormat(moment.utc(updatedDate).toDate().valueOf(), true);
+        } else {
+            updatedDate = '';
+        }
+
+        viewModel.UpdatedDate(updatedDate);
+        viewModel.Overridden(overridden);
+
+        if (qtiSchemaID == 9 || qtiSchemaID == 10) {
+            if (viewModel.TestOnlineSessionAnswers() !== null) {
+                ko.utils.arrayForEach(viewModel.TestOnlineSessionAnswers(), function (testOnlineSessionAnswer) {
+                    if (testOnlineSessionAnswer.QTIOnlineTestSessionAnswerID() == answerID) {
+                        viewModel.ResponseProcessingTypeID(testOnlineSessionAnswer.ResponseProcessingTypeID());
+                        if (testOnlineSessionAnswer.TestOnlineSessionAnswerSubs().length > 0) {
+                            ko.utils.arrayForEach(testOnlineSessionAnswer.TestOnlineSessionAnswerSubs(), function (testOnlineSessionAnswerSub) {
+                                if (testOnlineSessionAnswerSub.QTIOnlineTestSessionAnswerSubID() == answerSubID) {
+                                    viewModel.ResponseProcessingTypeID(testOnlineSessionAnswerSub.ResponseProcessingTypeID());
+                                    if (qtiSchemaID == 10) {
+                                        var postAnswerLogsForSelectedPart = ko.utils.arrayFilter(testOnlineSessionAnswer.PostAnswerLogs(), function (item) {
+                                            return item.ResponseIdentifier() == testOnlineSessionAnswerSub.ResponseIdentifier();
+                                        });
+                                        viewModel.CurrentResponseIdPostAnswerLogs(testOnlineSessionAnswerSub.ResponseIdentifier());
+                                        viewModel.PostAnswerLogs(postAnswerLogsForSelectedPart);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        } else {
+            viewModel.ResponseProcessingTypeID('');
+        }
+
+
+        if (qtiSchemaID == 10 && $target.find('extendedtextinteraction[drawable="true"]').length) {
+            var w = 0;
+            var h = 0;
+
+            if ($target.find('canvas').length) {
+                w = Math.max($target.find('.divdraw > img').width(), $target.find('canvas').width());
+                h = Math.max($target.find('.divdraw > img').height(), $target.find('canvas').height());
+                w += 15;
+                h += 35;
+            } else if ($target.find('svg').length) {
+                w = $target.find('svg').parent().width();
+                h = $target.find('svg').parent().height();
+                w += 10;
+                h += 60;
+            }
+
+            $target.css({
+                width: w + 'px',
+                height: h + 'px'
+            });
+        }
+    }
+</script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var $testAssignmentReview = $("#main-nav li a[href='@Url.Action("Index", "TestAssignmentReview")']");
+
+        /**
+         * Active curent test assignment
+         */
+        $testAssignmentReview.parent().addClass('current');
+        $testAssignmentReview.parents('.menu-item').addClass('current');
+
+        window.onresize = function () {
+            var elQuestionStudent = document.querySelector('.assignment-question-student');
+            var elListQuestion = document.querySelectorAll('.assignment-list-question');
+            var elDetailAndAnswers = document.querySelector('.js-assignment-detail-and-answers');
+            var elDescQuestion = document.querySelector('.js-assignment-desc-question');
+
+            if (viewModel.IsFullScreen()) {
+                elListQuestion.forEach(function (el) {
+                    el.style.width = elQuestionStudent.clientWidth - 150 + 'px';
+                });
+
+                elDescQuestion.style.width = elDetailAndAnswers.clientWidth - 14 + 'px';
+            } else {
+                elListQuestion.forEach(function (el) {
+                    el.style.width = '200px';
+                });
+
+                elDescQuestion.style.width = '535px';
+            }
+        }
+    });
+</script>

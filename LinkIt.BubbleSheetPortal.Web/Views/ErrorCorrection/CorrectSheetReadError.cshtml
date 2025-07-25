@@ -1,0 +1,94 @@
+@{
+    ViewBag.Title = "Correct Sheet Read Error";
+}
+
+<script type="text/javascript">
+    $(function () {
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+        if (window.FormData !== undefined) {
+            $('#file_upload').uploadifive({
+                'uploadScript': '@Url.Action("SubmitNewSheetForError")',
+                'overrideEvents': ['onDialogClose'],
+                'buttonText': 'Select File',
+                'fileObjName': 'postedFile',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 100,
+                'auto': true,
+                'onUpload': function (file) {
+                    $('#file_upload').data('uploadifive').settings.formData = getFormData(auth);
+                },
+                'onUploadComplete': function (file, data) {
+                    var result = $.parseJSON(data);
+                    if (result) {
+                        location.href = '@Url.Action("ProcessErrors")';
+                    }
+                }
+            });
+        }
+    });
+
+    function getFormData(auth) {
+        var bubbleSheetErrorId = '@Model.BubbleSheetErrorId';
+        return { 'AUTHID': auth, 'bubbleSheetErrorId': bubbleSheetErrorId };
+    }
+</script>
+
+<article class="container_12">
+    <section class="grid_8">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Sheet Read Error</h1>
+                <ul class="message warning no-margin">
+                    <li>
+                        When reading the bubble sheet, a portion of the bubble sheet was unable to be determined. Please follow
+                        the steps below to submit a new bubble sheet to be graded.
+                    </li>
+                </ul>
+                <fieldset>
+                    <legend>Step 1</legend>
+                    <ul class="message no-margin">
+                        <li>View the file that caused the error. (Clicking on the image will open a larger version of the image in a new tab)</li>
+                    </ul>
+                    <a href="@Model.RelatedImage" target="_new"><img src="@Model.RelatedImage" width="128px" height="170px"/></a>
+                </fieldset>
+                <fieldset>
+                    <legend>Step 2</legend>
+                    <ul class="message no-margin">
+                        <li>
+                            This error was caused by either the quality of the scan or some type of errant marks on
+                            the sheet. We suggest uploading a new, clearer sheet at a higher resolution and submit the new sheet
+                            for grading.
+                        </li>
+                    </ul>
+                    <input id="file_upload" type="button"/>
+                </fieldset>
+                <button id="btnDelete" type="button" class="red">Delete</button>
+                <button id="btnCancel" type="button" class="grey">Cancel</button>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function() {
+        $('#generateTab').addClass('current');
+
+        $('#btnDelete').click(function () {
+            if (confirm("Are you sure you want to delete this error?")) {
+                $.post('@Url.Action("RemoveBubbleSheetError")', { bubbleSheetErrorId: '@Model.BubbleSheetErrorId' }, function (response) {
+                    if (response == true) {
+                        location.href = '@Url.Action("ProcessErrors")';
+                    } else {
+                        alert('Error does not exist, please try again.');
+                    }
+                });
+            }
+        });
+
+        $('#btnCancel').click(function () {
+            location.href = '@Url.Action("ProcessErrors")';
+        });
+    });
+</script>

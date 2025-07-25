@@ -1,0 +1,143 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.ItemTagCategoryViewModel
+
+<style>
+    .ui-dialog .ui-dialog-titlebar.ui-widget-header {
+        display: none
+    }
+</style>
+<section>
+    <div class="block-border" id="divCreateEditItemTagCategory">
+        <div class="block-content block-24">
+            <h2 class="header">Update @LabelHelper.DistrictLabel Category</h2>
+            <ul style="display: none" id="error-messages" class="message error"></ul>
+            <ul style="display: none" id="success-message" class="message success">
+                <li>@LabelHelper.DistrictLabel Category successfully updated.</li>
+            </ul>
+            <div class="form full-width">
+                @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                {
+                <div class="mb-3">
+                    <label>@LabelHelper.DistrictLabel</label>
+                    <div class="block-text-name" style="width: 100%">
+                        <select id="selectDistrict1"></select>
+                        <div class="box-select" style="width: 100%">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+                }
+                <div>
+                    <label>Name</label>
+                    @Html.TextBoxFor(x => x.Name, new { id = "inputItemTagCategoryName", @class = "full-width" })
+                </div>
+                <div class="mt-3 mb-4">
+                    <label>Description</label>
+                    @Html.TextBoxFor(x => x.Description, new { id = "inputItemTagCategoryDescription", @class = "full-width" })
+                </div>
+            </div>
+            <div class="modal-component-footer" style="margin: 0 -24px -24px -24px">
+                <div slot="footer">
+                    <button type="button" id="btnCancelUpdateItemTagCategory">Cancel</button>
+                    <button type="button" id="btnUpdateItemTagCategory" class="btn-red">Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<script type="text/javascript">
+    $(function () {
+        $.browser.chrome = /chrome/.test(navigator.userAgent.toLowerCase());
+
+        @if(Model.IsPublisher||Model.IsNetworkAdmin)
+        {
+            <text>
+        var dropdownSelector = '#selectDistrict1';
+        $.ajax({
+            url: '@Url.Action("GetAllDistrict", "Admin")',
+            dataType: 'json',
+            async: false,
+            success: function (districts) {
+                addSelectListWithDefaultValue($(dropdownSelector), districts, @Model.DistrictId);
+                loadMarquee()
+            },
+            beforeSend: function () {
+            },
+            complete: function (district) {
+                loadMarquee()
+            }
+         });
+
+        </text>
+        }
+
+    });
+
+    $("#inputItemTagCategoryName").keypress(function( event) {
+        if($.browser.msie||$.browser.chrome) {
+            var limit = 500;
+            var len = $("#inputItemTagCategoryName").val().length ;
+            if(len+1>limit) {
+                event.preventDefault();
+            }
+        }
+    });
+
+    $("#inputItemTagCategoryDescription").keypress(function( event) {
+        if($.browser.msie||$.browser.chrome) {
+            var limit = 1000;
+            var len = $("#inputItemTagCategoryDescription").val().length ;
+            if(len+1>limit) {
+                event.preventDefault();
+            }
+        }
+    });
+    $('#btnCancelUpdateItemTagCategory').die('click');
+    $('#btnCancelUpdateItemTagCategory').live('click', function () {
+        $(".dialog").dialog("close");
+    });
+
+    $('#btnUpdateItemTagCategory').die('click');
+    $('#btnUpdateItemTagCategory').live('click', function () {
+
+        var categoryName = $("#inputItemTagCategoryName").val();
+        categoryName = categoryName.trim();
+
+        var description = $("#inputItemTagCategoryDescription").val();
+        var districtId = 0;
+        @if(Model.IsPublisher||Model.IsNetworkAdmin)
+        {
+            <text>
+            districtId = $('#selectDistrict1').val();
+            </text>
+        }
+        if(districtId=='select') {
+            districtId = 0;
+        }
+        if (categoryName.length > 0) {
+
+            $('#btnUpdateItemTagCategory').attr('disabled', true);
+
+            $.post('@Url.Action("UpdateItemTagCategory")', {itemTagCategoryID:@Model.ItemTagCategoryID, districtId:districtId, categoryName: encodeURIComponent(categoryName),description:encodeURIComponent(description) }, function (response) {
+                if (response == true) {
+                    $('#success-message').show();
+                    setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                } else {
+                    addErrorMessages(response);
+                    $('#btnUpdateItemTagCategory').removeAttr('disabled');
+                }
+            });
+        } else {
+            var response = { ErrorList:[{ErrorMessage:'Please input Item Tag Category Name'}]};
+            addErrorMessages(response);
+        }
+    });
+    function loadMarquee() {
+        setTimeout(function () {
+            $('#selectDistrict1').marquee()
+        }, 500)
+        setTimeout(function () {
+            $('#selectDistrict1').trigger('change', @Model.DistrictId)
+        }, 1000)
+    }
+
+</script>

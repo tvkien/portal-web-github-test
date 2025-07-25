@@ -1,0 +1,113 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.ManageTestViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+<style>
+    #portal-v2-containter .ui-dialog .ui-dialog-titlebar-close:after, #portal-v2-containter .ui-dialog-titlebar-close:after {
+        bottom: -4px;
+    }
+
+    #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-PopupCreateTestBank"] {
+        width: 500px !important;
+        padding: 0;
+    }
+</style>
+
+<section>
+    <div id="dvCreateTestBank" class="block-content form p-4">
+        <p class="title-large mb-4">Create Test Bank</p>
+        <ul style="display: none" id="error-messages" class="message error"></ul>
+        <ul style="display: none" id="success-message" class="message success">
+            <li>Test bank created.</li>
+        </ul>
+
+        <div class="mb-4">
+            @if (Model.IsPublisher || Model.IsNetWorkAdmin)
+            {
+                <div class="mb-3">
+                    <label>State:</label>
+                    <select id="selectState1" class="w-100"></select>
+                </div>
+            }
+            <div class="mb-3">
+                <label>@LabelHelper.TestGrade</label>
+                <select id="selectGrade" class="w-100"></select>
+            </div>
+            <div class="mb-3">
+                <label>@LabelHelper.Subject</label>
+                <select id="selectSubject" class="w-100"></select>
+            </div>
+            <div>
+                <label>Bank Name</label>
+                <input type="text" id="inputTestBankName" class="w-100" />
+            </div>
+        </div>
+
+        <div class="modal-component-footer mx-n4 px-4">
+            <div slot="footer">
+                <button type="button" id="btnCancelCreateTestBank" onclick="cancelCreateTestBank()">Cancel</button>
+                <button class="btn-red" type="button" id="btnCreateTestBank" onclick="createTestBank()">Create</button>
+                <input id="hdfStateId" type="hidden" value="@Model.StateId" />
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    $(function () {
+        @if (Model.IsPublisher || Model.IsNetWorkAdmin)
+        {
+            <text>
+        populateSate();
+        </text>
+        }
+        else {
+            <text>
+        PopularGrade();
+        </text>
+        }
+    });
+
+    function populateSate() {
+        $('#selectState1').empty();
+        $.get('@Url.Action("GetStateByPublisherOrNetworkAdmin", "PopulateStateDistrict")', function (states) {
+            AddSelectListItems($('#selectState1'), states, 'Select State');
+        });
+    }
+
+    function PopularGrade() {
+        $('#selectGrade').empty();
+        var vStateId = $('#hdfStateId').val();
+        if (vStateId < 0) {
+            vStateId = $('#selectState1').val();
+        }
+        $.get('@Url.Action("GetGradesByStateId", "PopulateTest")', { stateId: vStateId }, function (grades) {
+            AddSelectListItems($('#selectGrade'), grades, 'Select @LabelHelper.TestGrade');
+        });
+    }
+
+    function populateSubject() {
+        $('#selectSubject').empty();
+        var vStateId = $('#hdfStateId').val();
+        if (vStateId < 0) {
+            vStateId = $('#selectState1').val();
+        }
+        var vGradeId = $('#selectGrade').val();
+        $.get('@Url.Action("GetSubjectByStateIdAndGradeId", "PopulateTest")', { stateId: vStateId, gradeId: vGradeId }, function (subjects) {
+            AddSelectListItems($('#selectSubject'), subjects, 'Select @LabelHelper.Subject');
+        });
+    }
+
+    $('#selectState1').change(function () {
+        $('#selectGrade').empty();
+        $('#selectSubject').empty();
+        if ($('#selectState1').val() != '-1') {
+            PopularGrade();
+        }
+    });
+
+    $('#selectGrade').change(function () {
+        $('#selectSubject').empty();
+        if ($('#selectGrade').val() != '-1') {
+            populateSubject();
+        }
+    });
+</script>

@@ -1,0 +1,107 @@
+﻿<section style='z-index: 2004'>
+    <div class='block-border' style='z-index: 2004'>
+        <div class='block-content form' style='z-index: 1004'>
+            <h1>New Item Set Name
+            </h1>
+            <ul style="display: none" id="error-messages-confirm" class="message error"></ul>
+            <ul style="display: none" id="success-message-confirm" class="message success">
+            </ul>
+            <div class="clear"></div>
+            @if (!string.IsNullOrWhiteSpace(ViewBag.ErrorMessage))
+            {
+                <ul class="message error">
+                    <li>
+                    @Html.Raw(ViewBag.ErrorMessage)
+                    </li>
+                </ul>
+                <div class="clear"></div>
+                <button type="button" id="btnMoveCopyCancel" onclick=" cancelMoveCopy() ">Cancel</button>
+            }
+            else
+            {
+                <input type="text" id="txtItemSetName" style="width: 400px" maxlength="150" />
+                <div class="clear"></div>
+                <p style='text-align: center; margin-top: 10px'>
+                    <button type="button" id="btnMoveCopyOK" onclick=" moveCopyItemSet() ">OK</button>
+                    <button type="button" id="btnMoveCopyCancel" onclick=" cancelMoveCopy() ">Cancel</button>
+                </p>
+            }
+            
+        </div>
+
+    </div>
+</section>
+
+<script type="text/javascript">
+
+    $(function () {
+        if('@ViewBag.CreateACopy'.toLowerCase() == 'true')
+            $('#txtItemSetName').val(htmlDecode('@ViewBag.ItemSetName') + '_Clone');
+        else {
+            $('#txtItemSetName').val(htmlDecode('@ViewBag.ItemSetName'));
+        }
+    });
+    function moveCopyItemSet() {
+        var itemSetId =  '@ViewBag.QtiGroupId';
+        var itemBankId = '@ViewBag.ToQtiBankId';
+        var createACopy = '@ViewBag.CreateACopy';
+        var newItemSetName = $('#txtItemSetName').val();
+        if (createACopy == 'True') {
+            ShowBlock($('#divPopupMoveItemSetConfirmDialog').parent(), 'Copying');
+        }
+        else {
+            ShowBlock($('#divPopupMoveItemSetConfirmDialog').parent(), 'Moving');
+        }
+        $('.my-overlay').last().css('z-index', 2000);
+        
+        $.ajax({
+            url: '@Url.Action("MoveItemSet")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ qtiGroupId: itemSetId, toQtiBankId: itemBankId, createACopy: createACopy,newItemSetName:encodeURI(newItemSetName) }),
+            success: function (response) {
+                $('#divPopupMoveItemSetConfirmDialog').parent().unblock();
+                $('#dataTableItemBankOnTop').unblock();
+                if (response.Success == 'Success') {
+                    if (createACopy.toLowerCase()=='true') {
+                        $('#success-message-confirm').html('<li>Item Set Successfully Copied.</li>');
+                    }
+                    else {
+                        $('#success-message-confirm').html('<li>Item Set Successfully Moved.</li>');
+                    }
+                    $('#success-message-confirm').show();
+                    //close dialog
+                    setTimeout(function () {
+                        $(".dialog").dialog("close");
+                        $('#dataTableItemBankOnTop').unblock();
+                    }, 1000);
+                } else {
+                    //addErrorMessages(response);  
+                    $('#error-messages-confirm').show();
+                    $('#divPopupMoveItemSetConfirmDialog').parent().css('z-index', '9999');
+                    if(response.ExistSetName=='1') {
+                        $('#error-messages-confirm').html('<li>An item set "' + newItemSetName + '" is existed in the destination item bank.</li>');
+                    } else {
+                        $('#error-messages-confirm').html('<li>' + response.errorMessage + '</li>');
+                    }
+                    //close dialog
+                    setTimeout(function () {
+                        $(".dialog").dialog("close");
+                        $('#dataTableItemBankOnTop').unblock();
+                    }, 2000);
+                }
+            }
+        });
+        
+    }
+
+    function cancelMoveCopy() {
+        $("#divPopupMoveItemSetConfirmDialog").dialog("close");
+        $('#dataTableItemBankOnTop').unblock();
+    }
+    
+	function htmlDecode(value) {
+        return $('<div/>').html(value).text();
+    }
+    
+</script>

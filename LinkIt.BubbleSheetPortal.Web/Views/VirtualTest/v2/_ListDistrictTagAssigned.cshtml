@@ -1,0 +1,259 @@
+<style>
+    .no-margin {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .block-content .no-margin.last-child {
+        margin-bottom: 0 !important
+    }
+
+    #dataTableAssignedDistrictTag_wrapper .block-controls,
+    #dataTableAssignedDistrictTag_wrapper .block-footer {
+        display: none;
+    }
+
+    #dataTableAssignedDistrictTag {
+        display: block;
+        max-height: 250px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    #dataTableAssignedDistrictTag tbody {
+        border-collapse: collapse;
+        width: 100%;
+        display: table;
+    }
+
+    #dataTableAssignedDistrictTag thead {
+        width: 100%;
+        position: sticky;
+        top: 0;
+        z-index: 12;
+        border-collapse: collapse;
+        display: table;
+    }
+
+    #dataTableAssignedDistrictTag tbody tr td:first-child {
+        width: 92px;
+        text-align: center !important;
+    }
+
+    #dataTableAssignedDistrictTag tbody tr td:nth-of-type(2) {
+        width: 240px;
+    }
+
+    #dataTableAssignedDistrictTag thead tr th {
+        border-bottom: none;
+    }
+</style>
+<div class="form">
+    <div class="toggle mb-4">
+        <p class="title-large" style="font-size: 1.125rem !important">
+            @if (ViewBag.VirtualQuestionIdString.Contains(","))
+            {
+                <text>
+                    Shared Tags
+                </text>
+            }
+            else
+            {
+                <text>
+                    Associated Tags
+                </text>
+            }
+        </p>
+    </div>
+    <table id="dataTableAssignedDistrictTag" class="datatable table dataTableAssignedDistrictTagStyle">
+        <thead>
+            <tr>
+                <th scope="col">
+                    Actions
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Tag Category
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Tag
+                </th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+<script type="text/javascript">
+    var oTableDistrictTagAssigned;
+    $(function () {
+        LoadAssignedDistrictTagTable();
+    });
+
+    function LoadAssignedDistrictTagTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceForAssignedDistrictTag(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+
+                }
+
+            },
+            bFilter: false,
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'ItemTagId', bSearchable: false, bSortable: false, bVisible: true, sWidth: '92px' },
+                { sType: 'string', sName: 'CategoryName', bSearchable: false, bSortable: true, sWidth: '240px' },
+                { sType: 'string', sName: 'TagName', bSearchable: false, bSortable: true },
+                { sType: 'integer', sName: 'RubricQuestionCategoryID', bSearchable: false, bSortable: false, bVisible: false}
+
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityAssignedDistrictTag(aData[0], aData[3]));
+
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableAssignedDistrictTag'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableAssignedDistrictTag').unblock();
+                $('.with-tip').tip();
+                updateAssignDistrictButtonStatus();
+            }
+        };
+
+        $("#dataTableAssignedDistrictTag").data("options", options);
+        initializeDataTable($("#dataTableAssignedDistrictTag"));
+        oTableDistrictTagAssigned = $('#dataTableAssignedDistrictTag').dataTable();
+    }
+
+    function getAjaxSourceForAssignedDistrictTag() {
+        var MutualItemTagIdString = $('#MutualItemTagIdString').val();//defined in _Tag.cshtml
+        if (MutualItemTagIdString == null) {
+            MutualItemTagIdString = '';
+        }
+        var rubricCategoryId = Number.isInteger(vm.selectedCategoryId())
+            ? vm.selectedCategoryId()
+            : 0;
+        var queryString = 'mutualItemTagIdString=' + MutualItemTagIdString + '&virtualQuestionIds=@ViewBag.VirtualQuestionIdString'  + '&rubricCategoryId=' + rubricCategoryId;
+
+        return '@Url.Action("GetMutualAssignedDistrictTags")/?' + queryString;
+    }
+
+    function setIconVisibilityAssignedDistrictTag(itemTagId, rubricQuestionCategoryId) {
+        var deleteIcon = '<span class="icon fa-solid fa-circle-minus icon-red"></span>';
+        var deleteString = '<a id="iconAssignedDelete_' + itemTagId + '" rubricQuestionCategoryId="' + rubricQuestionCategoryId +  '" href="javascript:void(0)" onclick="RemoveDistrictTag(this);" title="Remove Tag" operation="1"  class="with-tip actionIcon " style="display: inline-block">' + deleteIcon + '</a>';
+
+        var result = '';
+        result = deleteString; //allow only delete
+        return result;
+    }
+    function ReloadDistrictTagAssigned() {
+        $("#dataTableAssignedDistrictTag").dataTable().fnReloadAjax(getAjaxSourceForAssignedDistrictTag());
+    }
+
+    function RemoveDistrictTag(control) {
+        $('#tips').empty();
+        var self = $(control);
+        var id = self.attr('id');
+        var itemTagId = id.split('_')[1];
+        var rubricQuestionCategoryId = self.attr('rubricQuestionCategoryId');
+
+        ConfirmDistrictTagDeselect("Do you want to remove this tag?", itemTagId, rubricQuestionCategoryId);
+
+    }
+</script>
+<script type="text/javascript">
+    function ConfirmDistrictTagDeselect(message, itemTagId, rubricQuestionCategoryId) {
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section class="mb-0">' +
+            '<div class="block-border" style="background-color: var(--white)">' +
+            '<div class="form">' +
+            '<div style="text-align: center; font-weight: bold; padding: 24px;">' + message +
+            '</div>' +
+            '<div class="plButton">' +
+            '<button id="btnCancel" type="button" name="cancel" onclick="ConfirmDistrictTagDeselectCancelClick()">Cancel</button>' +
+            '<button id="btnOk" class="btn-red" type="button" name="ok" onclick="ConfirmDistrictTagDeselectOkClick(' + itemTagId + ')">OK</button>' +
+            '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "ConfirmDistrictTagDeselectCancelClickDialog")
+            .appendTo("body")
+            .dialog({
+                open: function () {
+                    $('#ConfirmDistrictTagDeselectCancelClickDialog').prev().css('top', '30px');//adjust postion for title bar
+                },
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 420,
+                maxheight: 100,
+                resizable: false
+            });
+
+        $(".ui-dialog").css("height", hbody);
+
+    }
+    function ConfirmDistrictTagDeselectOkClick(itemTagId, rubricQuestionCategoryId) {
+        $.post('@Url.Action("RemoveDistrictTagForVirtualQuestions")', {
+            virtualQuestionIdString: '@ViewBag.VirtualQuestionIdString',
+            itemTagId: itemTagId,
+            rubricQuestionCategoryId: vm.selectedCategoryId()
+        }, function (response) {
+            if (response.Success == 'Success') {
+
+                LinkIt.success('#divLinkitDefaultTagNotifications', 'Tag Removed');//divLinkitDefaultTagNotifications is defined in _Tag.cshtml
+
+                var idString = '';
+                idString = $('#MutualItemTagIdString').val();
+                if (idString == null) {
+                    idString = '';
+                }
+                idString = idString.replace(',-' + itemTagId + '-', '');
+                $('#MutualItemTagIdString').val(idString);
+                $("#iconAdd_" + itemTagId).show();
+                $("#iconDelete_" + itemTagId).hide();
+
+                ReloadDistrictTagAvailable();//defined in _ListDistrictTagAvailable.cshtml
+                //reload assigned list
+                ReloadDistrictTagAssigned();
+                $("#ConfirmDistrictTagDeselectCancelClickDialog").dialog("close");
+            } else {
+                alert(response.errorMessage);
+            }
+
+        });
+    }
+    function ConfirmDistrictTagDeselectCancelClick() {
+        $("#ConfirmDistrictTagDeselectCancelClickDialog").dialog("close");
+    }
+</script>

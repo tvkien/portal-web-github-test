@@ -1,0 +1,124 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.EditUserViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Edit Staff");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<style>
+    .container_12 {
+        display: flex;
+    }
+
+    #block-content {
+        width: 70%
+    }
+
+    #sideContainer {
+        width: 30%;
+        margin-left: 20px;
+    }
+</style>
+
+<article class="container_12">
+    <section id="block-content">
+        <div class="block-border">
+            <div class="form">
+                @using (Html.BeginForm("EditUser", "Admin", FormMethod.Post, new { id = "editUserForm", @class = "form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Partial("v2/_EditUserForm", Model)
+                }
+            </div>
+        </div>
+    </section>
+    <div id="sideContainer"></div>
+</article>
+<script type="text/javascript">
+    _CURRENT_PAGE_NAME = "EditUser";
+    $(function () {
+        $('.dataadmin').addClass('current');
+        $('#dtaManageuser').addClass('current');
+    });
+
+    $('#editUserForm').submit(function (event) {
+        event.preventDefault();
+        $('#btnSubmit').disableBt();
+        $('#success-message').hide();
+
+    $.ajax({
+        url: $(this).target,
+        type: 'POST',
+        data: $(this).serialize(),
+        success: function (response) {
+            if (response.Success != false) {
+                $('#error-messages').hide();
+                $('#success-message').show();
+            }
+            else {
+                addErrorMessages(response);
+                $('#error-messages').addClass('no-margin');
+                $("html, body").animate({ scrollTop: 0 }, 200);
+            }
+            $('#btnSubmit').enableBt();
+            }
+        });
+    });
+
+    $('#changePassword').click(function () {
+        $.get('@Url.Action("ResetPassword", new {userId = Model.UserId})', function (result) {
+            $('#sideContainer').html(result);
+        });
+    });
+
+    $('#btnCancel').click(function () {
+        location.href = '@Url.Action("ManageUsers")';
+    });
+
+    $('#btnAddSchoolSubmit').live('click', function (e) {
+            $.ajax({
+                url: '@Url.Action("AddUserSchool", "Admin")',
+                //dataType: 'json',
+                type: 'POST',
+                data: $('#addUserSchoolForm').serialize(),
+                success: function (data) {
+                    if (data.success) {
+                        loadSchools();
+                        $("#sideContainer").html('');
+                    } else {
+                        $('#error-messages-add-user-school').empty();
+                        if (data.ErrorList != undefined && data.ErrorList != null && data.ErrorList.length > 0) {
+                            $('#error-messages-add-user-school').append('<li>' + data.ErrorList[0].ErrorMessage + '</li>');
+                            $('#error-messages-add-user-school').show();
+                        } else {
+                            $('#error-messages-add-user-school').hide();
+                        }
+                    }
+                }
+            });
+        });
+
+    function loadSchools() {
+        $.post('@Url.Action("GetSchoolsForUser", new { userId = Model.UserId })', function (response){
+            if (response == false) {
+                alert('Invalid user, please try again.');
+                return;
+            }
+            $('#userSchoolsContainer').html(response);
+
+        });
+    }
+</script>

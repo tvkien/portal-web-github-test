@@ -1,0 +1,151 @@
+@model LinkIt.BubbleSheetPortal.Web.Models.TestAssignSameTestParam
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Onlinetesting, "Student");
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<link href="@BundleHelper.Version("~/Content/css/v2/student-assign-test.css")" rel="stylesheet" type="text/css" />
+
+<article class="container_12">
+    <section class="grid_12 student-assign-same-test-v2">
+        <div class="block-border">
+            <div class="block-content form p-4">
+                <div class="no-margin last-child">
+                    <table id="dataTable" class="datatable table no-margin mt-3" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Assignment Date
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Student Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Assignment Code
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Result Date
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<script src="@Url.Content("~/Scripts/custom.js")" type="text/javascript"></script>
+<script type="text/javascript">
+    var oTable;
+
+    $(function () {
+        $('.testing ').addClass('current');
+        var parrentHtml = $('.testing').html();
+        renderBreadcrumb(parrentHtml);
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSource(),
+            oSearch: {
+                sSearch: $("#dataTable_filter input").val()
+            },
+            fnServerParams: function (aoData) {
+                aoData.push({ name: "StudentIds", value: "@Model.StudentIds" },
+                    { name: "TestId", value: "@Model.TestId" },
+                    { name: "DistrictID", value: "@Model.DistrictID" },
+                    { name: "GroupID", value: "@Model.GroupId" },
+                    { name: "ClassId", value: "@Model.ClassId" },
+                    { name: "IsUseRoster", value: "@Model.IsUseRoster" });
+            },
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aaSorting: [[0, 'desc']],
+            aoColumns: [
+                { sType: 'string', sName: 'AssignmentDate', bSearchable: false, bSortable: true },
+                { sType: 'string', sName: 'FullName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Code', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'ResultDate', bSearchable: false, bSortable: true },
+                { sType: 'integer', sName: 'StudentId', bVisible: false },
+                { sType: 'integer', sName: 'QTITestClassAssignmentID', bVisible: false },
+            ],
+            fnRowCallback: function (nRow, aData) {
+                var assignmentDateStr = displayDateWithFormatJsonDate(aData[0], true);
+                var resultDateStr = displayDateWithFormatJsonDate(aData[3], true, true);
+                $('td:eq(0)', nRow).html(assignmentDateStr);
+                $('td:eq(3)', nRow).html(resultDateStr);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTable_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTable_filter').addClass('data-search');
+            }
+        };
+
+        $("#dataTable").data("options", options);
+
+        function getAjaxSource() {
+            return '@Url.Action("GetStudentAssignSameTest")';
+        }
+    });
+</script>

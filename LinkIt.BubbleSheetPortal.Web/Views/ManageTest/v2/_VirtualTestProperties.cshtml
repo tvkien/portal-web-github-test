@@ -1,0 +1,786 @@
+@using LinkIt.BubbleSheetPortal.Common
+<style type="text/css">
+
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        /*top: 100px !important;*/
+        height: auto !important;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: var(--dark) !important;
+    }
+
+    #portal-v2-containter .btn-blue {
+        min-width: auto;
+    }
+
+    #portal-v2-containter .custom-btn {
+        width: auto;
+        padding: 8px 12px !important;
+        min-width: 95px;
+    }
+
+</style>
+
+<script src="@Url.Content("~/Scripts/TestPreferences/v2/testPreferences.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/marqueeV2.js")"></script>
+
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestPropertiesViewModel
+<div>
+    <section>
+        <div class="block-content form form-properties-v2 d-flex flex-column">
+                <p class="title-large p-0 m-0">Test Properties</p>
+
+                <ul style="display: none" id="update-error-messages" class="message error"></ul>
+
+                <div class="mt-3">
+                    @Html.TextBoxFor(x => x.TestName, new { @class = "full-width border-gray color-navy fw-bold p-065", tabindex = 1, rows = 2 })
+                    @Html.ValidationMessageFor(x => x.TestName, " ")
+                </div>
+
+                <div style="margin-top: 32px;">
+                    <table class="datatable table" style="table-layout: fixed; width: 100%">
+                        <tr>
+                            <td>
+                                Created Date:
+                            </td>
+                            <td>
+                                @if (!Model.CreatedDate.Equals(DateTime.MinValue))
+                                {
+                                    <text>
+                                        @Model.CreatedDate.DisplayDateWithFormat()
+                                    </text>
+                                }
+
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Updated Date:
+                            </td>
+                            <td>
+                                @if (!Model.UpdatedDate.Equals(DateTime.MinValue))
+                                {
+                                    <text>
+                                        @Model.UpdatedDate.DisplayDateWithFormat()
+                                    </text>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Created By:
+                            </td>
+                            <td>
+                                @Model.CreatedBy
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                # of Questions:
+                            </td>
+                            <td>
+                                @Model.TotalQuestion
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Total Points Possible:
+                            </td>
+                            <td>
+                                @Model.TotalPointsPossible
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                # of Test Results:
+                            </td>
+                            <td>
+                                @Model.TotalTestResult
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Earliest Result Date:
+                            </td>
+                            <td>
+                                @if (!Model.EarliestResultDate.Equals(DateTime.MinValue))
+                                {
+                                    <text>
+                                        @Model.EarliestResultDate.DisplayDateWithFormat()
+                                    </text>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Most Recent Result Date:
+                            </td>
+                            <td>
+                                @if (!Model.MostRecentResultDate.Equals(DateTime.MinValue))
+                                {
+                                    <text>
+                                        @Model.MostRecentResultDate.DisplayDateWithFormat()
+                                    </text>
+                                }
+                            </td>
+                        </tr>
+                        @if (Model.IsShowTemplate)
+                        {
+                            <tr>
+                                <td>
+                                    Template:
+                                </td>
+                                <td>
+                                    @Model.TemplateName
+                                </td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+
+                <div class="row g-2 mt-3 align-items-center justify-content-start flex-wrap">
+                    <div class="w-auto">
+                        <button @(Model.HasRetakeRequest ? "disabled" : "") id="btnDeleteVirtualTest" class="btn-blue custom-btn" onclick="popUpConfirmDeleteVirtualTest('@Model.TestId');">Delete</button>
+                    </div>
+                    <div class="w-auto">
+                        <button id="btnOpenVirtualTest" class="btn-blue custom-btn">Open</button>
+                    </div>
+                    
+                    <div class="w-auto custom-mt-3">
+                        <button id="btnSaveTestProperties" class="btn-red custom-btn" onclick="SaveTestProperty('@Model.TestId');" style="width: auto;"> Save </button>
+                    </div>
+                </div>
+
+
+
+
+                <div class="mt-3">
+                    <div class="d-flex flex-row m-0 mb-3">
+                        <button id="btnPreviewOnline" class="btn-blue me-2 custom-btn" style="display: none">
+                            Preview Online
+                        </button>
+                        @if (Model.RestrictionAccessList != null && Model.RestrictionAccessList.AllowToPrint)
+                        {
+                            <button id="btnPrintTest" class="btn-blue me-2 custom-btn">Print Test</button>
+                        }
+                        <button id="btnMoveCopyVirtualTest" class="btn-blue custom-btn me-2">Move/Copy</button>
+                    </div>
+                    <div class="d-flex flex-row mt-3 m-0">
+                        <button id="btnPreferencesTest" class="btn-blue me-2 custom-btn">Test Preferences</button>
+                        <div id="tdmanageraccess" class="p-0 me-2" style="width: auto">
+                            <button onclick="displayManageerAccessVirtualTestForm()" id="btnPreviewOnline" class="btn-blue custom-btn">Manage Access</button>
+                        </div>
+                        @if (Model.RestrictionAccessList != null && Model.RestrictionAccessList.AllowToExport)
+                        {
+                            <button id="btnExportTestPropertyToCSV" class="btn-blue custom-btn me-2">Export to CSV</button>
+                        }
+                    </div>
+                    @if (Model.IsShowTemplate)
+                    {
+                        <div class="d-flex flex-row m-0 mt-3">
+                            <button class="btn-blue custom-btn" onclick="showChooseTemplateDialog()">Choose Template</button>
+                        </div>
+                    }
+
+                </div>
+        </div>
+    </section>
+</div>
+
+<style>
+    .group1 {
+        display: inline-block;
+        width: 48%;
+        vertical-align: top;
+    }
+    .group1 button,.group2 button {
+        display: block;
+        margin-bottom: 6px;
+    }
+    .group2 {
+        display: inline-block;
+        width: 48%;
+        vertical-align: top;
+    }
+
+    #ManageerAccessVirtualTestForm, #chooseTemplateDialog {
+        padding: 0;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-ManageerAccessVirtualTestForm"] .ui-dialog-titlebar,
+    .ui-dialog[aria-labelledby="ui-dialog-title-chooseTemplateDialog"] .ui-dialog-titlebar {
+        display: none;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-ManageerAccessVirtualTestForm"],
+    .ui-dialog[aria-labelledby="ui-dialog-title-chooseTemplateDialog"] {
+        width: auto !important;
+    }
+</style>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var linkitProtocol = window.location.protocol;
+        var linkitHostname = window.location.hostname;
+
+        MKEditor = {
+            imgUrl: "../../Content/themes/TestMaker/",
+            audioUrl: "/PassageEditor/AudioUpload/",
+            objectId: '0',
+            loadAudioUrl: linkitProtocol + "//" + linkitHostname + "/PassageEditor/GetAudio",
+            imgUpload: "/PassageEditor/ImageUpload/",
+            GetViewReferenceImg: linkitProtocol + "//" + linkitHostname + '/TestAssignmentRegrader/GetViewReferenceImg?imgPath=' //This is config for view image on test maker
+        };
+    });
+</script>
+<script>
+        function displayManageerAccessVirtualTestForm() {
+        var worker = $('<div />');
+        var bankId = $("#SelectedTestBankId").val();
+        //alert(bankId);
+        var virtualtestid = '@Model.TestId';
+        worker
+            .addClass("dialog")
+           .attr("id", "ManageerAccessVirtualTestForm")
+           .appendTo("body")
+            .load('@Url.Action("LoadVirtualTestRestrictionForm")/?bankId=' + bankId + '&testId=' + virtualtestid, function() {
+           worker.dialog({
+               title: $(this).attr("Virtual Test Access Retriction"),
+                close: function() {
+                    $('.ui-widget-overlay').remove();
+                   $(this).remove();
+                    //refreshTestBankProperties();
+                },
+                modal: false,
+               width: 750,
+                resizable: false,
+            });
+        });
+
+       showModalDialogBG(); //defined in Index.cshtml
+    }
+
+    function showChooseTemplateDialog() {
+        var url = '@Url.Action("ChooseTemplate")?virtualTestId=' + '@Model.TestId' + '&templateId=' + '@Model.TemplateId'
+        var worker = $('<div />');
+        worker
+            .addClass("dialog")
+            .attr("id", "chooseTemplateDialog")
+            .appendTo("body")
+            .load(url, function () {
+                worker.dialog({
+                    title: $(this).attr("Choose Template"),
+                    close() {
+                        $('.ui-widget-overlay').remove();
+                    },
+                    modal: false,
+                    width: 750,
+                    resizable: false
+                });
+            });
+
+        showModalDialogBG();
+    }
+
+    var testPreferenceModel = null;
+    $(function () {
+        $('#btnPrintTest').click(function() {
+            PopupPrintTest(@Model.TestId);
+        });
+    });
+
+    function PopupPrintTest(virtualTestID) {
+        ShowBlock($('#divVirtualTestProperties'), 'Loading');
+        var districtId = $("#selectDistrict").val();
+
+        if (!districtId) districtId = 0;
+        var url = '@Url.Action("PrintVirtualTest", "PrintTest")';
+        url += '?layoutV2=true&districtID=' + districtId+'&testId=' + virtualTestID;
+
+        $.ajax({
+            url: url,
+            cache: false
+        }).done(function (html) {
+            $('#divVirtualTestProperties').unblock();
+            $('body').append('<div id="PrintVirtualTestPanel" class="dialog"></div>');
+            $("#PrintVirtualTestPanel").append(html);
+            $('#PrintVirtualTestPanel').dialog({
+                title: "",
+                open: function () {
+
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+
+                    //Create overlay for popup
+                    $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $('#PrintVirtualTestPanel').remove();
+                    $("body .my-overlay").remove();
+                },
+                modal: false,
+                width: 1006,
+                resizable: false
+            });
+
+        });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+
+</script>
+<script>
+
+    var IsShowManagerAccess =@ViewBag.IsShowManagerAccess;
+    if (IsShowManagerAccess) {
+        $("#tdmanageraccess").show();
+    }
+    else
+        $("#tdmanageraccess").hide();
+    $('#btnOpenVirtualTest').die('click');
+    $('#btnOpenVirtualTest').click(function () {
+        var virtualTestId = '@Model.TestId';
+        var districtId = $("#selectDistrict").val();
+        var url = '@Url.Action("Index","VirtualTest")?virtualTestId=' + virtualTestId;//+ '&virtualTestName=' + virtualTestName;//no transfer virtualName, error when virtualName contains special characters such as ' &# <a>
+        if (districtId) {
+            url += '&districtId=' + districtId;
+        }
+        window.location.href = url;
+    });
+
+    $('#btnMoveCopyVirtualTest').click(function () {
+        var virtualTestId = '@Model.TestId';
+        var virtualTestName = '@Model.TestName';
+        var url = '@Url.Action("LoadMoveVirtualTest", "ManageTest")?virtualTestId=' + virtualTestId + '&virtualTestName=' + virtualTestName;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="PopupMoveCopyVirtualTest" class="dialog"></div>');
+                $("#PopupMoveCopyVirtualTest").append(html);
+                $('#PopupMoveCopyVirtualTest').dialog({
+                    title: "",
+                    open: function () {
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#dataTableVirtualTest').dataTable().fnDraw(false);
+                        $('#PopupMoveCopyVirtualTest').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 750,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    });
+
+    //TODO: change code open popup change preferences
+    $('#btnPreferencesTest').die('click');
+    $('#btnPreferencesTest').click(function () {
+        ShowBlock($('#divPropertiy'), 'Loading');
+        var virtualTestId = '@Model.TestId';
+        var url = '@Url.Action("TestSettingForTestProperty", "TestAssignment")';
+        url += '?layoutV2=true&testId=' + virtualTestId;
+
+        $.ajax({
+            url: url,
+            cache: false
+        }).done(function (html) {
+            $('#divPropertiy').unblock();
+
+            $('body').append('<div id="divTestSettingTestPropertyPanel" class="dialog"></div>');
+            $("#divTestSettingTestPropertyPanel").append(html);
+            $('#divTestSettingTestPropertyPanel').dialog({
+                title: "",
+                open: function () {
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+                    //Create overlay for popup
+                    $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $('#divTestSettingTestPropertyPanel').remove();
+                    $("body .my-overlay").remove();
+                },
+                modal: false,
+                width: 1040,
+                resizable: false
+            });
+        });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    });
+
+    function alertMessageSetting(message) {
+        var oldzIndex = $('#divContentTestSettingTestProperty').parent('.ui-dialog').css('z-index');
+        $('#divContentTestSettingTestProperty').parent('.ui-dialog').css({ 'z-index': '1000' });
+        var overlayHeight = $('.my-overlayy').height();
+        //set the height for overlay
+        $('.my-overlay').height(2000);
+
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $('.ui-widget-overlay:last').remove();
+                    $('#divContentTestSettingTestProperty').parent('.ui-dialog').css({ 'z-index': oldzIndex });//recover the old value
+                    $('.my-overlay').height(overlayHeight);
+                    $(this).remove();
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+
+    function closeAlert() {
+        $('#divContentTestSettingTestProperty').unblock();
+        $('#alertDialog').dialog('close');
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    var genSectionSettings = (tag_key, section, option_or_tool_tag) => {
+        let timeLimitParams = [
+            {
+                "Key": "sectionId",
+                "Value": `${section.VirtualSectionId}`
+            },
+            {
+                "Key": "duration",
+                "Value": section[option_or_tool_tag][`duration_${tag_key}`]
+            },
+            {
+                "Key": "timeLimitDurationType",
+                "Value": section[option_or_tool_tag][`timeLimitDurationType_${tag_key}`]
+            },
+            {
+                "Key": "on",
+                "Value": section[option_or_tool_tag][tag_key] == "1" ? "1" : "0"
+            },
+            {
+                "Key": "lock",
+                "Value": section[option_or_tool_tag][`chklock_${tag_key}`]
+            }
+        ]
+        let onOffParams = [
+            {
+                "Key": "sectionId",
+                "Value": `${section.VirtualSectionId}`
+            },
+            {
+                "Key": "on",
+                "Value": `${section[option_or_tool_tag][tag_key]}`
+                //"Value": section[option_or_tool_tag][tag_key] == "1" ? "1" : "0"
+            },
+            {
+                "Key": "lock",
+                "Value": section[option_or_tool_tag][`chklock_${tag_key}`]
+            }
+        ]
+
+        return tag_key == 'timeLimitSectionItems' ? timeLimitParams : onOffParams
+    }
+
+    var updateSectionsAttrsOfCurrentTags = (tags, option_or_tool_tag) => {
+        let customTags = tags.map(tag => {
+            return  {
+                "Key": tag.Key,
+                "Value": "",
+                "Attributes": [],
+                "SectionItems": [
+                //section list
+                    ...customSectionsSettting.map(section => ({
+                                "Key": "sectionItem",
+                                "Value": "",
+                                "SectionItems": [],
+                                "Attributes": genSectionSettings(tag.Key, section, option_or_tool_tag)
+                    }))
+                ]
+            }
+        })
+
+        return customTags
+    }
+
+    var customDataHaveSectionsItem = () => {
+        let optionTagsRemoveItems = testPreferenceModel.OptionTags.filter(opt => !opt.Key.includes("SectionItems"))
+        let toolTagsRemoveItems = testPreferenceModel.ToolTags.filter(opt => !opt.Key.includes("SectionItems"))
+        let currentOptionTags = sectionsOptionsToolsTags.filter( a => ["timeLimitSectionItems", 'mustAnswerAllQuestionsSectionItems'].includes(a.Key) )
+        let currentToolTags = sectionsOptionsToolsTags.filter( a => !["timeLimitSectionItems", 'mustAnswerAllQuestionsSectionItems'].includes(a.Key) )
+
+        let getUpdatedValsCurrentOptionTags = updateSectionsAttrsOfCurrentTags(currentOptionTags, 'option_tags')
+        let getUpdatedValsCurrentToolTags = updateSectionsAttrsOfCurrentTags(currentToolTags, 'tool_tags')
+
+        return {
+            OptionTags: [...optionTagsRemoveItems, ...getUpdatedValsCurrentOptionTags],
+            ToolTags:  [...toolTagsRemoveItems, ...getUpdatedValsCurrentToolTags]
+        }
+    }
+
+    function customDataSectionAvailability() {
+        let currentChecked = $("input[name='sectionAvailability']:checked").val()
+        let sectionAvailability = testPreferenceModel.OptionTags.filter(o => o.Key == "sectionAvailability")[0]
+
+        if (!sectionAvailability) {
+            testPreferenceModel.OptionTags.push({
+                "Key": "sectionAvailability",
+                "Value": "",
+                "Attributes": [],
+                "SectionItems": []
+            })
+
+            sectionAvailability = testPreferenceModel.OptionTags.filter(o => o.Key == "sectionAvailability")[0]
+        }
+
+        let sectionItems = testSections.map(s => (
+            {
+                "Key": "sectionItem",
+                "Value": "",
+                "Attributes": [
+                    {
+                    "Key": "sectionId",
+                    "Value": `${s.VirtualSectionId}`
+                    },
+                    {
+                    "Key": "open",
+                    "Value": `${$(`input[name='section_${s.VirtualSectionId}_open']:checked`).val()}`
+                    },
+                    {
+                    "Key": "lock",
+                    "Value": "True"
+                    }
+                ],
+                "SectionItems": []
+            }
+        ))
+
+
+        if (currentChecked == 1) {
+            sectionAvailability[`SectionItems`] = [...sectionItems]
+        } else {
+            sectionAvailability[`SectionItems`] = []
+        }
+        sectionAvailability.Attributes = [
+                {
+                    "Key": "on",
+                    "Value": `${currentChecked}`
+                },
+                 {
+                    "Key": "lock",
+                    "Value": `${$(`#chklockSectionAvailability`).is(":checked")}`
+                },
+        ]
+        sectionAvailability.Value = ''
+
+    }
+
+    function customDateTimeLimit() {
+        let timeLimitSectionItemsChecked = $(`#timeLimitSectionItems`).is(":checked")
+        let deadline = testPreferenceModel.OptionTags.filter(o => o.Key == "deadline")[0]
+        let duration = testPreferenceModel.OptionTags.filter(o => o.Key == "duration")[0]
+        if (timeLimitSectionItemsChecked) {
+            deadline.Value = ''
+            duration.Value = '1'
+        }
+    }
+
+    $(document).off('click', '#btnTestSettingTestProperty');
+    $(document).on("click", '#btnTestSettingTestProperty', function () {
+        $("#btnTestSettingTestProperty").attr('disabled', true);
+        if (!testSchedule.validateTestScheduleForm()) return;
+
+        ShowBlock($('#divContentTestSettingTestProperty'), 'saving');
+        var errMsg = UpdateTestPreferenceModel();
+        if (errMsg != '') {
+            CustomAlert(errMsg);
+            $('#divContentTestSettingTestProperty').unblock();
+            return;
+        }
+
+        if (customSectionsSettting.length > 1) {
+            let finalDataCustom = customDataHaveSectionsItem()
+            testPreferenceModel = finalDataCustom
+            customDataSectionAvailability()
+        }
+
+        customDateTimeLimit()
+
+        var data = JSON.stringify({ obj: testPreferenceModel, testId: '@Model.TestId' });
+
+        //Save Test Preferences
+        var url = '@Url.Action("SaveTestSettingForTestProperty", "TestAssignment")';
+        $.ajax({
+            url: url,
+            traditional: true,
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: data,
+            cache: false
+        }).done(function (response) {
+            $('#divContentTestSettingTestProperty').unblock();
+            if (response.success == true) {
+                $('#success-message').html('<li style="text-transform:none;font-size:100%"> Preferences have been successfully saved at the test level. </li>');
+                $('#success-message').show();
+                $('#lastUpdateInfor').empty();
+                $('#lastUpdateInfor').append('<label>Last Update: ' + response.inforUpdated.LastUpdatedDate + '</label>');
+                $("html, body").animate({ scrollTop: $('#divTestSettingTestPropertyPanel').offset().top });
+            }
+        });
+    });
+
+    $('#btnStudentSettingTestProperty').die('click');
+    $('#btnStudentSettingTestProperty').live("click", function () {
+        ShowBlock($('#divContentTestSettingTestProperty'), 'saving');
+        UpdateStdentPreferenceModel();
+        var data = JSON.stringify({ obj: testPreferenceModel, testId: '@Model.TestId' });
+        var url = '@Url.Action("SaveStudentSettingForTestProperty", "TestAssignment")';
+        $.ajax({
+            url: url,
+            traditional: true,
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: data,
+            cache: false
+        }).done(function (response) {
+            $('#divContentTestSettingTestProperty').unblock();
+            if (response.success == true) {
+                $('#success-message').html('<li style="text-transform:none;font-size:100%"> Student preferences have been successfully saved at the test level. </li>');
+                $('#success-message').show();
+                $("html, body").animate({ scrollTop: $('#divTestSettingTestPropertyPanel').offset().top });
+            }
+        });
+    });
+
+    function FillDataStudentPreference() {
+        BindOptionToRadioInput('showStandards', 'showStandards');
+        BindOptionToRadioInput('showTopics', 'showTopics');
+        BindOptionToRadioInput('showSkills', 'showSkills');
+        BindOptionToRadioInput('showOther', 'showOther');
+        BindOptionToRadioInput('showCorrectAnswers', 'showCorrectAnswers');
+        BindOptionToRadioInput('showClassAverages', 'showClassAverages');
+        BindOptionToRadioInput('showTest', 'showTest');
+    }
+
+    function UpdateStdentPreferenceModel() {
+        BindRadioInputToOption('showStandards', 'showStandards');
+        BindRadioInputToOption('showTopics', 'showTopics');
+        BindRadioInputToOption('showSkills', 'showSkills');
+        BindRadioInputToOption('showOther', 'showOther');
+        BindRadioInputToOption('showCorrectAnswers', 'showCorrectAnswers');
+        BindRadioInputToOption('showClassAverages', 'showClassAverages');
+        BindRadioInputToOption('showTest', 'showTest');
+    }
+
+    $('#btnExportTestPropertyToCSV').click(function () {
+        var virtualTestId = '@Model.TestId';
+        var getUrl = '@Url.Action("ExportTestPropertyToCSV", "ManageTest")/?&strVirtualTestID=' + virtualTestId;
+        $.ajax(getUrl).done(function (response) {
+            if (response.search("ExportTestPropertyToCSV-Exception") == -1) {
+
+                var fileName = '@Model.TestName';
+
+                const blob = new Blob(["\uFEFF" + response], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', fileName);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+            }
+        });
+    });
+
+</script>

@@ -1,0 +1,1045 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SchoolAndClassViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+<link href="@Url.Content("~/Content/css/dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/vue-components/vue-modal.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/vue-components/vue-component-manage-class.css")" rel="stylesheet" type="text/css" />
+
+<link rel="stylesheet" href="/Scripts/Qtip/jquery.qtip.css">
+<script src="@Url.Content("~/Scripts/tipped/tipped.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Qtip/jquery.qtip.js")" type="text/javascript"></script>
+
+<script src="@BundleHelper.Version("~/Scripts/select2.full.min.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Content/css/select2.css")" rel="stylesheet" />
+
+<style type="text/css">
+    #dataTable_wrapper.no-margin {
+        margin: 0;
+    }
+
+    .tooltip {
+        position: relative;
+    }
+
+    .icon {
+        vertical-align: text-bottom !important;
+    }
+</style>
+
+<article class="" id="classes-by-teacher-and-school">
+    <section class="grid_12">
+        <div class="class-title m-0">@ViewBag.TeacherName</div>
+        <div class="block-border">
+            <div class="block-content form">
+                <ul style="display: none" id="error-messages-classList" class="message error"></ul>
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h1 class="page-title mb-0">Classes</h1>
+                    <a class="btn btn-link p-0" id="addNewClass" onClick="setFilterData()" href="javascript:void(0)">
+                        Add new class
+                        <i class="fa-solid fa-plus ms-2"></i>
+                    </a>
+                </div>
+                <div id="manageClassNotificationContainer"></div>
+
+                <table id="dataTable" width="100%" cellspacing="0" class="datatable table custom-width-column center-first-column datatable-Classes">
+                    <thead>
+                        <tr>
+                            <th class="sorting_disabled check-all-class" scope="col">
+                                <input type="checkbox" id="chkAllClass" />
+                            </th>
+                            <th class="table-actions sorting_disabled manage-class" scope="col">Manage Class</th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>Class
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>Class Type
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>@LabelHelper.Term
+                            </th>
+                            <th class="table-actions sorting_disabled manage-students" scope="col">Manage Students</th>
+                            <th scope="col" class="column-sub">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>Subjects
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>School
+                            </th>
+                            <th class="table-actions sorting_disabled" scope="col">Teachers</th>
+                            <th style="display: none"></th>
+                            <th style="display: none"></th>
+                            <th style="display: none"></th>
+                            <th style="display: none"></th>
+                            <th style="display: none"></th>
+                            <th style="display: none"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td style="height: 60px;"></td></tr>
+                    </tbody>
+                </table>
+
+                <div class="me-3 manageclass-btn-remove" style="display: none;">
+                    <button id="btnBatchRemoveClass" class="btn-action" onclick="openMassActionPopup()">Actions</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <modal-component id="mass-action-modal" class="static mass-action-modal" v-bind:show.sync="isShowModalMassAction" v-bind:width="600">
+        <div slot="close"><span></span></div>
+        <div slot="header">
+            <div class="block-heading">
+                <h1 class="block-heading-item is-active">ACTIONS</h1>
+            </div>
+        </div>
+        <div slot="body" class="u-m-t-20">
+            <form class="form">
+                <div class="action-input mb-2" v-show="hasClassConfig">
+                    <input id="addRemoveTypeOption" type="radio" name="actionType" v-model="actionType" value="addRemoveTypeOption" />
+                    <label for="addRemoveTypeOption" class="ms-1"><b>Add/Remove Subject(s)</b></label><br />
+                </div>
+                <div class="option-section" style="margin-bottom: 10px; position: relative;" v-show="actionType === 'addRemoveTypeOption'">
+                    <div class="add-new-subject-btn">
+                        <a class="btn btn-link p-0" v-on:click="addNewSubject" href="javascript:void(0)">
+                            Add new subject
+                            <i class="fa-solid fa-plus ms-2"></i>
+                        </a>
+                    </div>
+                    <div class="mb-3 list-subject" v-show="classMetas.length > 0">
+                        <div class="row">
+                            <div class="col-6 my-3" v-for="(index, subject) in classMetas" :key="subject.ClassMetaID">
+                                <label>Subject {{index + 1}}</label>
+                                <span class="relative" style="display: flex; ">
+                                    <select class="selectTag w-100" :value="subject.Data" :classmetaid="subject.ClassMetaID">
+                                        <option value="" disabled></option>
+                                        <option v-for="item in getMetaOptions(subject)" v-bind:value="item.AggregateSubjectName">{{ item.AggregateSubjectName }}</option>
+                                    </select>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-input mb-2">
+                    <input id="deleteClassOption" type="radio" name="actionType" v-model="actionType" value="deleteClassOption" />
+                    <label for="deleteClassOption" class="ms-1"><b>Delete Class</b></label>
+                </div>
+
+                <div class="action-input my-3">
+                    <div class="text-message" v-if="actionType === 'deleteClassOption'">
+                        You will delete <b>{{ selectedClassIds.length }}</b> class{{selectedClassIds.length > 1 ? 'es' : ''}}
+                    </div>
+
+                    <div class="text-message" v-if="actionType === 'addRemoveTypeOption' && subjectAdded.length">
+                        You will add <b v-html="subjectTextRender(subjectAdded)"></b> for <b>{{ selectedClassIds.length }}</b> class{{selectedClassIds.length > 1 ? 'es' : ''}}
+                    </div>
+
+                    <div class="text-message" v-if="actionType === 'addRemoveTypeOption' && subjectRemoved.length">
+                        You will remove <b v-html="subjectTextRender(subjectRemoved)"></b> for <b>{{ selectedClassIds.length }}</b> class{{selectedClassIds.length > 1 ? 'es' : ''}}
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div slot="footer">
+            <button type="button" onclick="handleCloseMassActionPopup()" class="grey">Cancel</button>
+            <button type="button" onclick="handleSubmitMassActionPopup()">Submit</button>
+        </div>
+    </modal-component>
+
+    <modal-component v-bind:show.sync="isShowModalAssignStudent" v-bind:width="800" style="display: none;">
+        <div slot="header">
+            <a href="#" v-on:click="closeModalAddStudentClass" class="modal-component-close">Close</a>
+        </div>
+        <div slot="body">
+            @Html.Partial("v2/_AvailableStudentsEnhancements")
+        </div>
+        <div slot="footer">
+            <div class="u-text-right">
+                <button v-on:click="closeModalAddStudentClass">Close</button>
+            </div>
+        </div>
+    </modal-component>
+</article>
+<input type="hidden" id="hidClassId" value="" />
+<script src="/Scripts/ManageClass/App.js"></script>
+
+<script type="text/javascript">
+    $(function () {
+        var isNewSession = '@ViewBag.IsNewSession';
+        var isLoadHistory = JSON.parse(localStorage.getItem('loadHistory'));
+        if (isLoadHistory) {
+            isNewSession = 'false';
+        }
+        var selectedDistrictId = '@Model.DefaultDistrictId';
+        var selectedSchoolId = '@Model.CurrentSelectedSchoolId';
+        var selectedTeacherId = '@Model.CurrentSelectedTeacherId';
+        var roleId = '@Model.RoleId';
+        var userId = '@Model.UserId';
+        var urlLoadClass = '@Url.Action("GetClassesByUserId")';
+        if (isNewSession == 'True') {
+            localStorage.setItem('FilterData', null);
+        }
+        var isFirstLoad = true;
+        var userID = $('#selectTeacher').val();
+        var schoolID = $('#selectSchool').val();
+        var subjectKey = $('#selectSubject').val() != 'select' && $('#selectSubject').val() != 'No Results Found' && $('#selectSubject').val() ? $('#selectSubject option:selected').text() : '';
+        var className = $('#inputClassName').val();
+        var sEmptyTableMess = "Make a selection and click on 'Apply Filters'";
+        if (roleId == '2') {
+            sEmptyTableMess = "Your search returned no results. Try changing your selection and click on 'Apply Filters'";
+        }
+        var pageSize = 10;
+        var historyData = JSON.parse(localStorage.getItem('FilterData'));
+        if (historyData) {
+            pageSize = parseInt(historyData.pageSize);
+            sEmptyTableMess = "Your search returned no results. Try changing your selection and click on 'Apply Filters'";
+        }
+        var searchKey = localStorage.getItem("SearchKey");
+        localStorage.removeItem('SearchKey');
+        if (searchKey == null || searchKey == undefined)
+            searchKey = "";
+
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            oLanguage: { "sEmptyTable": sEmptyTableMess, sSearch: "" },
+            sAjaxSource: urlLoadClass,
+            bAutoWidth: false,
+            iDisplayLength: pageSize,
+            bAutoWidth: true,
+            oSearch: {
+                sSearch: searchKey
+            },
+            fnServerParams: function (aoData) {
+                var historyData = JSON.parse(localStorage.getItem('FilterData'));
+                if (historyData) {
+                    userID = historyData.teacherID;
+                    schoolID = historyData.schoolID;
+                    subjectKey = historyData.subjectKey;
+                    className = historyData.className;
+                    districtID = historyData.districtID;
+                    isFirstLoad = historyData.isFirstLoad;
+                    pageSize = parseInt(historyData.pageSize);
+
+                    $('#filterSheets').attr("disabled", "disabled");
+                }
+                if (roleId != '2') {
+                    aoData.push(
+                        { name: "districtId", value: selectedDistrictId ? selectedDistrictId : 0 },
+                        { name: "userID", value: userID },
+                        { name: "schoolID", value: schoolID },
+                        { name: "className", value: className },
+                        { name: "isFirstLoad", value: isFirstLoad }
+                    );
+                }
+                else {
+                    aoData.push(
+                        { name: "userID", value: selectedTeacherId ? selectedTeacherId : 0 },
+                        { name: "schoolId", value: selectedSchoolId ? selectedSchoolId : 0 },
+                        //{ name: "districtId", value: selectedDistrictId ? selectedDistrictId : 0 },
+                        { name: "isFirstLoad", value: false }
+                    );
+                }
+                aoData.push({ name: "subject", value: subjectKey });
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                }
+            },
+            aaSorting: [[5, "asc"], [3, "asc"], [2, "asc"], [13, "asc"], [14, "asc"]],
+            aoColumns: [
+                {
+                    "aTargets": [0],
+                    "mRender": function (data, type, full) {
+                        return '<input type="checkbox" name="chkClass" value="' + data + '" />';
+                    },
+                    "bSearchable": false,
+                    "bSortable": false
+                },  
+                {
+                    "aTargets": [1],
+                    "mRender": function (data, type, full) {
+                        return setIconVisibility(full[0]);
+                    },
+                    "bSearchable": false,
+                    "bSortable": false,
+                    "sWidth": "70px"
+                },
+                {
+                    "aTargets": [2],
+                    "bSearchable": false,
+                    "bSortable": false
+                },
+                {
+                    "aTargets": [3],
+                    "bSearchable": true,
+                    "bSortable": false
+                },
+                {
+                    "aTargets": [4],
+                    "bSearchable": false,
+                    "bSortable": false,
+                },
+                {
+                    "aTargets": [5],
+                    "mRender": function (data, type, full) {
+                        return setManageStudentsIcon(full[0]);
+                    },
+                    "bSearchable": false,
+                    "bSortable": false,
+                    "sWidth": "150px"
+                },
+                {
+                    "aTargets": [6],
+                    "bSearchable": false,
+                    "bSortable": false
+                },
+                {
+                    "aTargets": [7],
+                    "bSearchable": false,
+                    "bSortable": false
+                },
+                {
+                    "aTargets": [8],
+                    "bSearchable": false,
+                    "bSortable": false
+                },
+                {
+                    "aTargets": [9],
+                    "bSearchable": false,
+                    "bSortable": false,
+                    "bVisible": false
+                },
+                {
+                    "aTargets": [10],
+                    "bSearchable": false,
+                    "bSortable": false,
+                    "bVisible": false
+                },
+                {
+                    "aTargets": [11],
+                    "bSearchable": false,
+                    "bSortable": false,
+                    "bVisible": false
+                },
+                {
+                    "aTargets": [12],
+                    "bSearchable": false,
+                    "bSortable": false,
+                    "bVisible": false
+                },
+                {
+                    "aTargets": [13],
+                    "bSearchable": false,
+                    "bSortable": false,
+                    "bVisible": false
+                },
+                {
+                    "aTargets": [14],
+                    "bSearchable": false,
+                    "bSortable": false,
+                    "bVisible": false
+                }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                $('#filterSheets').attr("disabled", "disabled");
+                return true;
+            },
+            fnDrawCallback: function () {
+                var _pageSizeDefault = _historyData.pageSize ? _historyData.pageSize : 10;
+                var pageSizeGrid = $('#dataTable_length select').val();
+                if (_pageSizeDefault != pageSizeGrid) {
+                    keepLocalStorage();
+                    _pageSizeDefault = pageSizeGrid;
+                }
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+                getStudentsQtip('.js-tooltip-students');
+                if ($('#selectSchool').val() && $('#selectSchool').val() != 'select') {
+                    $('#filterSheets').removeAttr("disabled");
+                }
+                setDisabledButtons(true);
+                var isCheckAllClass = false;
+                var checkboxes = $('INPUT[name="chkClass"][type=checkbox]');
+                var checkedboxes = $('INPUT[name="chkClass"][type=checkbox]:checked');
+                if(checkedboxes && checkedboxes.length) {
+                    setDisabledButtons(false);
+                    isCheckAllClass = checkboxes.length === checkedboxes.length;
+                }
+                $('#chkAllClass').prop('checked', isCheckAllClass);
+                portalV2SkinCheckBox()
+                var table = $(this).dataTable();
+                if (!hasConfigClassMeta) {
+                    $("#id-dropdown-subject").hide();
+                    $(".column-sub").hide();
+                } else {
+                    $("#id-dropdown-subject").show();
+                    $(".column-sub").show();
+                }
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                hasConfigClassMeta = aData[15] === 'True' ? true : false;
+                if (typeof aData[5] === 'string' && aData[5]) {
+                    var teachers = aData[5].split(',');
+                    teachers = teachers.filter((item, index) => item !== '' && teachers.indexOf(item) === index);
+                    aData[5] = teachers.join(',');
+                }
+                $('td:eq(3)', nRow).html(aData[13]);
+                $('td:eq(4)', nRow).html(aData[3]);
+                $('td:eq(5)', nRow).html(displayStudent(aData[0], aData[10], aData[12]));
+                $('td:eq(6)', nRow).addClass('column-sub').html(displaySubject(aData[14]));
+                $('td:eq(7)', nRow).html(aData[4]);
+                $('td:eq(8)', nRow).html(displayTeacher(aData[5]));
+            },
+            fnInitComplete: function () {
+                if ($("#dataTable_wrapper .data-table-action .manageclass-btn-remove").length === 0) {
+                    $("#dataTable_wrapper .data-table-action").prepend($(".manageclass-btn-remove").prop('outerHTML'));
+                    $("#dataTable_wrapper .data-table-action .manageclass-btn-remove").css("display", "inline-flex");
+                }
+                var elSearchLabel = $('#dataTable_filter');
+                var elSearchInput = elSearchLabel.find('input');
+                elSearchInput.attr('style', 'padding-left: 32px !important; position: relative;');
+                $('#dataTable_filter').addClass('data-search');
+            }
+        };
+        $("#dataTable").data("options", options);
+        initializeDataTable($("#dataTable"));
+    });
+</script>
+<script type="text/javascript">
+
+    ManageClassModel.getStudentsUrl = '@Url.Action("GetStudentsInDistrictByFilter")/?classid=';
+    ManageClassModel.addStudentsToClassUrl = '@Url.Action("AddManyStudentToClass")';
+    ManageClassModel.getSelectedStudentURL = '@Url.Action("GetSelectedStudentIncaseSelectAll")';
+
+    function displayTeacherDetailTooltip(e, data) {
+        $(e).attr('title', '<p style="text-align:left;">' + data.split(',').join('<br />') + '</p>');
+    }
+
+    function detectWithTip(data) {
+        if (data == null || data == '')
+            return '';
+        else {
+            return 'with-tip';
+        }
+    }
+
+    function searchDelay() {
+        var inputFilter = $("#dataTable_filter input[type='text']");
+        var dataTable = $("#dataTable");
+        var delay = null;
+
+        inputFilter.off('keyup.DT input.DT');
+
+        inputFilter.on("keyup", function () {
+            var search = inputFilter.val();
+            clearTimeout(delay);
+            delay = setTimeout(function () {
+                if (search != null) {
+                    dataTable.dataTable().fnFilter(search);
+                }
+            }, 1000);
+        });
+    }
+
+    function getStudentsQtip(el) {
+        var $el = $(el);
+        $el.qtip({
+            content: {
+                text: function (event, api) {
+                    var title = $(this).attr('title');
+
+                    if (typeof title !== 'undefined' && title !== '') {
+                        return title
+                    }
+                }
+            },
+            hide: {
+                fixed: true,
+                delay: 300
+            },
+            style: {
+                classes: 'qtip-students qtip-bootstrap qtip-shadow'
+            },
+            position: {
+                at: 'center right',
+                my: 'left center',
+                viewport: $('#divClassTestAssignments'),
+                adjust: {
+                    method: 'none shift'
+                }
+            }
+        });
+    }
+
+    function displayStudent(classId, studentNames, modifiedBy) {
+        var studentElement = '';
+
+        var studentTitle = getStudentsTitleWithIcon(studentNames);
+
+        if (studentNames != null) {
+            studentElement = '<span class="js-tooltip-students" title="' + studentTitle + '"><i class="fa-solid fa-user-group"></i></span>';
+        } else {
+            studentElement = '<span class="d-inline-block" style="width: 20px"></span>';
+        }
+
+
+        var editor = setManageStudentsIcon(classId, modifiedBy);
+
+        return editor + studentElement;
+    }
+
+    function displaySubject(subjects) {
+        var subjectTitle = '';
+        if (subjects == null || subjects.length == 0)
+            return subjectTitle;
+
+        var subjectList = subjects.split(',');
+
+        subjectList = subjectList.filter(function (subName) {
+            return subName.trim() !== '';
+        }).sort(function (a, b) {
+            a = a.toLowerCase().trim();
+            b = b.toLowerCase().trim();
+
+            if (a < b) {
+                return -1;
+            }
+            if (a > b) {
+                return 1;
+            }
+            return 0;
+        }).map(function (subName) {
+            return subName + '<br/>';
+        });
+
+        subjectTitle = subjectList.join('');
+
+        return '<span class="js-tooltip-students" title="' + subjectTitle + '">' + getFirstText(subjects) + '</span>';
+    }
+
+    function displayTeacher(teachers) {
+        var subjectTitle = '';
+        if (teachers == null || teachers.length == 0)
+            return subjectTitle;
+
+        var subjectList = teachers.split(',');
+
+        subjectList = subjectList.filter(function (subName) {
+            return subName.trim() !== '';
+        }).sort(function (a, b) {
+            a = a.toLowerCase().trim();
+            b = b.toLowerCase().trim();
+
+            if (a < b) {
+                return -1;
+            }
+            if (a > b) {
+                return 1;
+            }
+            return 0;
+        }).map(function (subName) {
+            return "<i class='fa-solid fa-user'></i> " + subName + '<br/>';
+        });
+
+        subjectTitle = subjectList.join('');
+
+        return '<span class="js-tooltip-students" title="' + subjectTitle + '">' + getFirstText(teachers) + '</span>';
+    }
+
+    function getFirstText(params) {
+        var displayText = '';
+        if (params == null)
+            return displayText;
+
+        paramArr = params.split(",").filter(item => item.trim() !== '');
+        if (paramArr.length > 1) {
+            displayText = paramArr[0] + ",...";
+        } else {
+            displayText = paramArr[0];
+        }
+        return displayText;
+    }
+
+    function TextAbstract(text, length) {
+        if (text == null) {
+            return "";
+        }
+        if (text.length <= length) {
+            return text;
+        }
+        text = text.substring(0, length);
+        var last = text.lastIndexOf(" ");
+        if (last > 0) text = text.substring(0, last);
+
+        text = $.trim(text);
+        if (text.indexOf(",") == text.length - 1) text = text.substring(0, text.length - 1);
+
+        return text + "...";
+    }
+
+    function getStudentsTitleWithIcon(studentNames) {
+        var studentsTitle = '';
+        if (studentNames == null || studentNames.length == 0)
+            return studentsTitle;
+
+        var studentList = studentNames.split(',');
+
+        studentList = studentList.filter(function (stuName) {
+            return stuName.trim() !== '';
+        }).sort(function (a, b) {
+            a = a.toLowerCase().trim();
+            b = b.toLowerCase().trim();
+
+            if (a < b) {
+                return -1;
+            }
+
+            if (a > b) {
+                return 1;
+            }
+
+            return 0;
+        }).map(function (stuName) {
+            return "<i class='fa-solid fa-user'></i> " + stuName + '<br/>';
+        });
+
+        studentsTitle = studentList.join('');
+
+        return studentsTitle;
+    }
+
+    function setIconVisibility(classId) {
+        var editIcon = '<i class="custom-icon fa-solid fa-pencil icon-grey"></i>';
+        var editString = '<a onClick="setFilterData()" href="javascript:void(0)" title="Edit" classId="' + classId + '" class="with-tip editClass">' + editIcon +'</a>';
+
+        var deleteIcon = '<i class="custom-icon fa-solid fa-circle-xmark icon-red"></i>';
+        var deleteString = '<a href="javascript:void(0)" title="Delete" classId="' + classId + '" class="with-tip deleteClass" onclick="deleteClass(this)">' + deleteIcon + '</a>';
+
+        var assignIcon = '<i class="fa-solid fa-chalkboard-user"></i>';
+        var assignString = '<a href="javascript:void(0)" title="Assign Teacher" classId="' + classId + '" class="with-tip assignClass" onclick="assignTeacher(this)">' + assignIcon + '</a>';
+
+        return editString + deleteString + assignString;
+    }
+
+    function setManageStudentsIcon(classId, modifiedBy) {
+        var editIcon = '';
+        var editString = '';
+        var assignIcon = '';
+        var assignString = '';
+
+        if (modifiedBy == "Focus Group Automation") {
+            editIcon = '<i class="custom-icon fa-solid fa-pencil icon-grey" style="color:#D9D9D9"></i>';
+            editString = '<a onClick="setFilterData()" href="@Url.Action("ManageStudents", "ManageClasses")/' + classId + '" title="Manage Current Students" class="with-tip editClass" style="pointer-events:none">' + editIcon + '</a>';
+
+            assignIcon = '<i class="custom-icon fa-solid fa-circle-plus icon-green" style="color:#D9D9D9"></i>';
+            assignString = '<a href="javascript:void(0)" title="Assign New Students" classId="' + classId + '" class="with-tip deleteClass" onclick="assignStudents(this)" style="pointer-events:none">' + assignIcon + '</a>';
+        }
+        else {
+            editIcon = '<i class="custom-icon fa-solid fa-pencil icon-grey"></i>';
+            editString = '<a onClick="setFilterData()" href="@Url.Action("ManageStudents", "ManageClasses")/' + classId + '" title="Manage Current Students" class="with-tip editClass">' + editIcon + '</a>';
+
+            assignIcon = '<i class="custom-icon fa-solid fa-circle-plus icon-green"></i>';
+            assignString = '<a href="javascript:void(0)" title="Assign New Students" classId="' + classId + '" class="with-tip deleteClass" onclick="assignStudents(this)">' + assignIcon + '</a>';
+        }
+        return editString + assignString;
+    }
+
+    function setFilterData() {
+        var selectedState = $("#selectState").val() === 'select' ? 0 : $("#selectState").val();
+        var selectedDistrict = $("#selectDistrict").val() === null ? 0 : $("#selectDistrict").val();
+        var schoolId = ($('#selectSchool').val() === null || $('#selectSchool').val() === 'select') ? 0 : $('#selectSchool').val();
+        var teacherId = $('#selectTeacher').val() === null ? 0 : $('#selectTeacher').val();
+        var subjectKey = $('#selectSubject').val() != 'select' && $('#selectSubject').val() != 'No Results Found' && $('#selectSubject').val() ? $('#selectSubject option:selected').text() : '';
+        var className = $('#inputClassName').val();
+        var searchKey = $("#dataTable_filter input[type='text']").val();
+        var pageSize = 10;
+        var isFirstLoad = true;
+        var historyData = JSON.parse(localStorage.getItem('FilterData'));
+        if (historyData) {
+            isFirstLoad = historyData.isFirstLoad;
+            pageSize = historyData.pageSize;
+        }
+        var data = {
+            stateID: selectedState,
+            districtID: selectedDistrict,
+            schoolID: schoolId,
+            teacherID: teacherId,
+            subjectKey: subjectKey,
+            className: className,
+            searchKey: searchKey,
+            pageSize: pageSize,
+            isFirstLoad: isFirstLoad
+        };
+        if (schoolId) {
+            localStorage.setItem("FilterData", JSON.stringify(data));
+        }
+        localStorage.setItem("SearchKey", searchKey);
+    }
+
+    function deleteClass(e) {
+        var classID = $(e).attr('classId');
+        confirmMessageV2(
+                {
+                    message: "Are you sure you want to delete this class?",
+                    cbYesBtnFuncName: 'yesDeleteClass(' + classID + ')',
+                    cbCancelBtnFuncName: 'closeDeleteClass()',
+                    cbCloseBtnFuncName: 'closeDeleteClass()'
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'deleteClassConfirm'
+                        }
+                    }
+                }
+        )
+    }
+
+    function closeDeleteClass() {
+         $("#deleteClassConfirm").dialog("close");
+    }
+
+    function yesDeleteClass(classID) {
+        closeDeleteClass();
+        $('#error-messages-classList').hide();
+         $.ajax({
+            url: '@Url.Action("DeleteClass")',
+            type: 'POST',
+            data: {classId: classID},
+            success: function (response) {
+                if (response.Success != false) {
+                    if(typeof refreshTable == 'function') {
+                        refreshTable("#dataTable");
+                    }
+                    $('#selectTeacher').change();
+                }
+                else {
+                    addErrorMessagesToList(response, 'error-messages-classList');
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+
+    function deleteBatchClass() {
+        confirmMessageV2(
+                {
+                    message: "Are you sure you want to delete these classes?",
+                    cbYesBtnFuncName: 'yesBatchClass()',
+                    cbCancelBtnFuncName: 'closeBatchClass()',
+                    cbCloseBtnFuncName: 'closeBatchClass()'
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'deleteClassConfirm'
+                        }
+                    }
+                }
+        )
+    }
+
+    function closeBatchClass() {
+         $("#deleteClassConfirm").dialog("close");
+    }
+
+    function yesBatchClass(classID) {
+       closeBatchClass();
+        var removeClassIds = getSelectedClassIds();
+        $('#error-messages-classList').hide();
+        $.ajax({
+            url: '@Url.Action("DeleteBatchClasses")',
+            type: 'POST',
+            data: {listIds: removeClassIds},
+            success: function (response) {
+                if (response.Success != false) {
+                    if(typeof refreshTable == 'function') {
+                        refreshTable("#dataTable");
+                    }
+                }
+                else {
+                    addErrorMessagesToList(response, 'error-messages-classList');
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+
+    $('#dataTable').on('click', '.editClass', function() {
+        var classID = $(this).attr('classId');
+        if (classID != undefined) {
+            var url = '@Url.Action("EditClass")/?id=' + classID + '&fromManageSchools=' + '@ViewBag.FromManageSchools';
+            window.location.href = url;
+        }
+    });
+
+    $('#addNewClass').click(function () {
+        var teacherId = '@HttpContext.Current.Session["SelectedTeacherID"]';
+        if (teacherId.length == 0)
+            teacherId = -1;
+
+        location.href = "/ManageClasses/AddClass?teacherID=" + teacherId + '&fromManageSchools=' + '@ViewBag.FromManageSchools';
+    });
+
+    $('INPUT[name="chkClass"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkClass"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllClass').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllClass').attr('checked', 'checked');
+            }
+            setDisabledButtons(false);
+            ManageClassModel.selectedClassIds.push(this.value);
+        }
+        else {
+            $('#chkAllClass').removeAttr('checked');
+            $('#chkAllClass').removeClass('input-checked-v2');
+            var checkedboxes = $('INPUT[name="chkClass"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                setDisabledButtons(false);
+            }
+            else {
+                setDisabledButtons(true);
+            }
+            ManageClassModel.selectedClassIds = _.without(ManageClassModel.selectedClassIds, this.value);
+        }
+    });
+
+    $('#chkAllClass').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkClass"][type=checkbox]').attr('checked', 'checked');
+        }
+        else {
+            $('INPUT[name="chkClass"][type=checkbox]').removeAttr('checked');
+        }
+        portalV2SkinCheckBox();
+        var selectedClassIds = getSelectedClassArrIds();
+        ManageClassModel.selectedClassIds = selectedClassIds;
+        setDisabledButtons(!!!selectedClassIds.length);
+    });
+
+    function setDisabledButtons(isDisabled) {
+        if (isDisabled) {
+            $('#btnBatchRemoveClass').attr('disabled', 'disabled');
+        }
+        else {
+            $('#btnBatchRemoveClass').removeAttr('disabled');
+        }
+    }
+
+    function getSelectedClassIds() {
+        var classIds = '';
+        $('INPUT[name="chkClass"][type=checkbox]:checked').each(function (i, e) {
+            classIds += $(e).val() + ',';
+        });
+        return classIds.substr(0, classIds.length - 1);
+    }
+
+    function assignStudents(el)
+    {
+        var classId = $(el).attr('classId');
+
+        $.get('@Url.Action("GetAvailableStudentsEnhancement")', { classId: classId })
+            .done(function(response) {
+                ManageClassModel.classId = classId;
+                ManageClassModel.showInactive = false;
+                ManageClassModel.manageClass.programs = response.Programs;
+                ManageClassModel.manageClass.grades = response.Grades;
+                ManageClassModel.isShowModalAssignStudent = true;
+                ManageClassModel.manageClass.programSelected = [];
+                ManageClassModel.manageClass.gradesSelected = [];
+                ManageClassModel.isShowAddNewStudent = response.IsShowAddNewStudent;
+                displayFilterManageClass();
+                registerEvent();
+            });
+    }
+
+    function assignTeacher(el) {
+        var classId = $(el).attr('classId');
+        var worker = $('<div />');
+
+        worker
+            .addClass("dialog")
+            .attr("id", "assignTeacherDialog")
+            .appendTo("body")
+            .load('@Url.Action("AddTeacherToClass")/?classId=' + classId, function() {
+                worker.dialog({
+                    title: $(this).attr("Assign Teacher"),
+                    close: function() {
+                        $('.ui-widget-overlay').remove();
+                        $(this).remove();
+                    },
+                    modal: false,
+                    resizable: false
+                });
+            });
+
+        //todo: the jQuery UI "dialog" plugin wasn't working properly here, so this workaround went in.. :(
+        showModalDialogBG();
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    $(function () {
+        //LoadClassToTable();
+        searchDelay();
+    });
+
+    $(document).on('submit', '[data-ajax-form]', function (e) {
+        e.preventDefault();
+
+        var self = $(e.target);
+        var formId = self.attr('id');
+
+        if (formId == "addTeacherToClassForm")
+            return false;
+
+        self.ajaxSubmit({
+            success: ajaxHandler[formId]
+        });
+
+        // !!! Important !!!
+        // always return false to prevent standard browser submit and page navigation
+        return false;
+    });
+
+    var ajaxHandler = (function () {
+        function addTeacherToClassForm(resp, statusText, xhr, form) {
+            if (resp == true) {
+                //LinkIt.success('#manageClassNotificationContainer', 'Teacher sucessfully added to class.');
+                $('#assignTeacherDialog').dialog('close');
+                //LoadClassToTable();
+                searchDelay();
+            } else {
+                CustomAlert(resp.ErrorList.map(function (e, i) { return e.ErrorMessage; }).join(', '));
+            }
+        };
+
+        return {
+            addTeacherToClassForm: addTeacherToClassForm
+        };
+    })();
+
+    function openMassActionPopup()
+    {
+        ManageClassModel.classMetas = ManageClassModel.oldClassMetas = [];
+        ManageClassModel.isShowModalMassAction = true;
+        loading($('#mass-action-modal'), true);
+
+        $.ajax({
+            type: 'POST',
+            url: '@Url.Action("GetMetaDataForClass")',
+            data: {
+                districtId: $('#selectDistrict').val(),
+                classIds: getSelectedClassArrIds()
+            },
+            dataType: 'json',
+            traditional: true,
+            success: function (response) {
+                const { SubjectMappingOptionJson, ClassMetas, HasConfigClassMeta } = response.data;
+                const uniqueData = _.uniq(ClassMetas.map(function (item) { return item.Data }));
+                const result = uniqueData.map(function (data) {
+                    return ClassMetas.find(function (item) { return item.Data === data })
+                });
+
+                ManageClassModel.classMetas = ManageClassModel.oldClassMetas = result;
+                ManageClassModel.classMetaOptions = JSON.parse(SubjectMappingOptionJson);
+
+                ManageClassModel.hasClassConfig = HasConfigClassMeta;
+                if (!HasConfigClassMeta) {
+                    $("[name=actionType]").removeClass('input-checked-v2')
+                    ManageClassModel.actionType = 'deleteClassOption';
+                }
+                ManageClassModel.selectedClassIds = getSelectedClassArrIds();
+            },
+            failure: function (response) {
+                console.error("GetMetaDataForClass error: ", response);
+            },
+            complete: function () {
+                loading($('#mass-action-modal'), false);
+            }
+        });
+    }
+    
+    function handleSubmitMassActionPopup() {
+        if (ManageClassModel.actionType === 'addRemoveTypeOption') {
+            const payload = ManageClassModel.selectedClassIds.map(function (classId) {
+                return {
+                    classId: Number(classId),
+                    classMetas: ManageClassModel.classMetas
+                        .filter(function (item) { return item.Data })
+                        .map(function (subject, index) {
+                            subject.ClassID = Number(classId);
+                            subject.Name = "Subject " + (index + 1);
+                            return subject;
+                        })
+                }
+            });
+            $.ajax({
+                type: 'POST',
+                url: '@Url.Action("SaveMetaDataForClass")',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                traditional: true,
+                success: function (response) {
+                    if (response.success) {
+                        CustomAlert('Add or remove subject successfully.', false, 250);
+                        $('.datatable-Classes').dataTable().fnDraw(false);
+                    } else {
+                        CustomAlert('Add or remove subject fail.');
+                    }
+                },
+                failure: function (response) {
+                    console.error("SaveMetaDataForClass error: ", response);
+                }
+            });
+        } else {
+            deleteBatchClass();
+        }
+        ManageClassModel.resetPopup();
+    }
+
+    function handleCloseMassActionPopup() {
+        ManageClassModel.isShowModalMassAction = false;
+        ManageClassModel.resetPopup();
+    }
+
+    function getSelectedClassArrIds() {
+        let selectedClassIds = getSelectedClassIds();
+        return _.filter(getSelectedClassIds().split(','), Boolean);
+    }
+
+</script>

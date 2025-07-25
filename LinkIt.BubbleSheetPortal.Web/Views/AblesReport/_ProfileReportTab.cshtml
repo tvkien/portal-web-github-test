@@ -1,0 +1,162 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.ABLESReport.ABLESReportViewModel
+@if (Model.IsPublisher)
+{
+    <fieldset id="publisherContent" class="grey-bg">
+        <legend>Select State/@LabelHelper.DistrictLabel</legend>
+        <div class="columns">
+            <div class="colx2-left">
+                <p>
+                    <label>State</label>
+                    <select id="selectState"></select>
+                </p>
+            </div>
+            <div class="colx2-right">
+                <p>
+                    <label>@LabelHelper.DistrictLabel</label>
+                    <select id="selectDistrict"></select>
+                </p>
+            </div>
+        </div>
+    </fieldset>
+}
+<div class="clear"></div>
+<fieldset class="grey-bg">
+    <legend>Select Class</legend>
+    <div id="divSingleClass" class="columns">
+        <div class="colx2-left">
+            <p>
+                <label>School</label>
+                <select id="selectSchool"></select>
+            </p>
+            <p>
+                <label>Teacher</label>
+                <select id="selectTeacher"></select>
+            </p>
+
+        </div>
+        <div class="colx2-right">
+            <p>
+                <label>Class</label>
+                <select id="selectClass"></select>
+            </p>
+        </div>
+    </div>
+</fieldset>
+<div class="clear"></div>
+
+<button class="float-right" id="btnSubmit" type="button">Generate</button>
+<div class="clear"></div>
+
+<script type="text/javascript">
+    $.ajaxSetup({ cache: false });
+
+    $(function () {
+
+        @if (Model.IsPublisher)
+        {
+            <text>
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            populateStates(states);
+        });
+
+        </text>
+        }
+        else
+        {
+            <text>
+                populateSchools();
+            </text>
+        }
+
+        $('#selectState').change(function () {
+            $('#selectDistrict').empty();
+            $('#selectTeacher').empty();
+            $('#selectSchool').empty();
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+        });
+
+        $('#selectDistrict').change(function () {
+            $('#selectTeacher').empty();
+            $('#selectSchool').empty();
+            if ($('#selectDistrict').val() != 'select')
+                populateSchools();
+        });
+
+        $('#selectTest').change(function () {
+            populateSchools();
+        });
+        $('#selectSchool').change(function () {
+            $('#selectTeacher').empty();
+            $('#selectClass').empty();
+            if ($('#selectSchool').val() != 'select') {
+                populateTeachers();
+            }
+        });
+
+        $('#selectTeacher').change(function () {
+            $('#selectClass').empty();
+
+            if ($('#selectTeacher').val() != 'select') {
+                populateClasses();
+            }
+        });
+    });
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                addSelectListItems($('#selectDistrict'), districts);
+            });
+        }
+    }
+
+    function populateSchools() {
+        $('#selectSchool').empty();
+        var districtValue = $('#selectDistrict').val();
+        $.get('@Url.Action("GetSchools")', { districtId: districtValue }, function (schools) {
+            addDefaultOption($('#selectSchool'), "School");
+            addSelectListItems($('#selectSchool'), schools);
+        });
+    }
+
+    function populateStates(states) {
+        addDefaultOption($('#selectState'), "State");
+        addSelectListItems($('#selectState'), states);
+    }
+
+
+    function populateClasses() {
+        $('#selectClass').empty();
+        var districtValue = $('#selectDistrict').val();
+        var schoolValue = $('#selectSchool').val();
+        var teacherValue = $('#selectTeacher').val();
+        if (teacherValue != 'select') {
+            $.get('@Url.Action("GetClasses")', { districtId: districtValue, schoolId: schoolValue, userId: teacherValue }, function (classes) {
+                addDefaultOption($('#selectClass'), "Class");
+                addSelectListItems($('#selectClass'), classes);
+            });
+        }
+    }
+
+    function populateTeachers() {
+        $('#selectTeacher').empty();
+        var schoolValue = $('#selectSchool').val();
+        var districtValue = 0;
+        if ($('#selectDistrict').length && $('#selectDistrict').val() != null && $('#selectDistrict').val() != 'select') {
+            districtValue = $('#selectDistrict').val();
+        }
+        if (schoolValue != 'select') {
+            $.get('@Url.Action("GetTeachers")', { districtId: districtValue, schoolId: schoolValue }, function (teachers) {
+                addDefaultOption($('#selectTeacher'), "Teacher");
+                addSelectListWithDefaultValue($('#selectTeacher'), teachers, 'select', function (item) {
+                    return (item.FirstName) ? item.LastName + ", " + item.FirstName + " (" + item.Name + ")" : item.LastName + " (" + item.Name + ")";
+                });
+            });
+        }
+    }
+</script>

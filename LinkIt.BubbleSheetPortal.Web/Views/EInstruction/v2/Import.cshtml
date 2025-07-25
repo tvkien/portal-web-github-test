@@ -1,0 +1,1029 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.EInstructionImportViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testmanagement, "eInstruction Import");
+}
+<script src="@Url.Content("~/Scripts/jquery.listSplitter.js")" type="text/javascript"></script>
+<article class="container_12">
+    <section class="grid_12">
+        <div id="generateContent" class="block-border">
+            @using (Html.BeginForm("Import", "EInstruction", FormMethod.Post, new { id = "eInstructionImportForm", @class = "block-content form bubbleSheetSelector" }))
+            {
+                <h1>eInstruction Import</h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                if (Model.IsPublisher || Model.IsNetworkAdmin)
+                {
+                    <fieldset id="fsPublisherContent" class="grey-bg">
+                        <legend>Select State/@LabelHelper.DistrictLabel</legend>
+                        <div class="columns">
+                            <div class="colx2-left">
+                                <div class="mb-3">
+                                    <label>State</label>
+                                    <select id="selectState"></select>
+                                </div>
+                            </div>
+                            <div class="colx2-right">
+                                <div class="mb-3 block-content-dropdown-marquee">
+                                    <label>@LabelHelper.DistrictLabel</label>
+                                    <div class="block-text-name">
+                                        <select id="selectDistrict"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                }
+                <fieldset id="fsVirtualTestContent" class="grey-bg">
+                    <legend>Select Test</legend>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <div class="mb-3">
+                                <label>@LabelHelper.GradeLabel</label>
+                                <select id="selectGrade"></select>
+                            </div>
+                            <div class="mb-3">
+                                <label>@LabelHelper.Subject</label>
+                                <select id="selectSubject"></select>
+                            </div>
+                        </div>
+                        <div class="colx2-right">
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>Bank</label>
+
+                                <div class="block-text-name">
+                                    <select id="selectBank"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>Test</label>
+                                <div class="block-text-name">
+                                    <select id="selectTest"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="clear"></div>
+                <fieldset id="fsClassContent" class="grey-bg">
+                    <legend>Select Students</legend>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>School</label>
+                                <div class="block-text-name">
+                                    <select id="selectSchool"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            @if (Model.CanSelectTeachers || Model.IsSchoolAdmin)
+                            {
+                                <div class="mb-3 block-content-dropdown-marquee">
+                                    <label>Teacher</label>
+                                    <div class="block-text-name">
+                                        <select id="selectTeacher"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="colx2-right">
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>
+                                    Term
+                                </label>
+                                <div class="block-text-name">
+                                    <select id="selectTerm"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>Class</label>
+                                <div class="block-text-name">
+                                    <select id="selectClass"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="clear"></div>
+                <fieldset id="fsSummary" class="grey-bg" style="display: none;">
+                    <legend>Summary</legend>
+                    <div id="divSummary"></div>
+                </fieldset>
+                <div class="clear"></div>
+                <input id="file_upload" name="file_upload" type="file" />
+                <div class="clear"></div>
+                <fieldset id="fsTestResult" class="grey-bg" style="display:none;">
+                    <legend>Test Results</legend>
+                    <div id="divError" style="color: var(--red);"></div>
+                    <div id="divTestResultTable" class="columns">
+                    </div>
+                </fieldset>
+                <input type="hidden" id="hidRequestID" value="" />
+                <button class="float-right grey" id="btnGradeTest" type="button" disabled="disabled">Grade Test</button>
+                <button class="float-right grey" id="btnCancel" type="button" disabled="disabled">Cancel</button>
+                <div class="clear"></div>
+            }
+        </div>
+    </section>
+</article>
+<script type="text/javascript">
+    $(function () {
+
+        $('#selectDistrict').marquee();
+        $('#selectBank').marquee();
+        $('#selectTest').marquee();
+        $('#selectSchool').marquee();
+        $('#selectTeacher').marquee();
+        $('#selectTerm').marquee();
+        $('#selectClass').marquee();
+        @if (Model.IsPublisher||Model.IsNetworkAdmin)
+        {
+            <text>
+        $('#selectState').change(function () {
+            $('#selectDistrict').empty();
+            $('#selectSchool').empty();
+            $('#selectTeacher').empty();
+            $('#selectGrade').empty();
+            //populateSubjects();
+            $('#selectTerm').empty();
+            $('#selectClass').empty();
+            $('#studentContent').hide();
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+        });
+
+        function populateDistricts() {
+            $('#selectDistrict').empty();
+            var stateValue = $('#selectState').val();
+            if (stateValue != 'select') {
+                if ('@Model.IsPublisher' === 'True') {
+                    $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#selectDistrict'), districts);
+                    });
+                }
+                if ('@Model.IsNetworkAdmin' === 'True') {
+                    $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#selectDistrict'), districts);
+                    });
+                }
+
+            }
+            }
+        </text>
+        }
+        @if (Model.IsAdmin || Model.CanSelectTeachers || Model.IsSchoolAdmin)
+        {
+            <text>
+        $('#selectSchool').change(function () {
+            $('#selectTeacher').empty();
+            $('#selectTerm').empty();
+            $('#selectClass').empty();
+            $('#studentContent').hide();
+            if ($('#selectSchool').val() != 'select') {
+                populateTeachers();
+            }
+        });
+
+        $('#selectTeacher').change(function () {
+            $('#selectClass').empty();
+            $('#selectTerm').empty();
+            $('#selectClass').empty();
+            $('#studentContent').hide();
+            populateTermsByTeacherAndSchool();
+        });
+
+        function populateTermsByTeacherAndSchool() {
+            $('#selectTerm').empty();
+            var teacherValue = $('#selectTeacher').val();
+            var schoolValue = $('#selectSchool').val();
+            if (teacherValue != 'select') {
+                $.get('@Url.Action("GetTerms")', { userId: teacherValue, schoolId: schoolValue }, function (terms) {
+                        addDefaultOption($('#selectTerm'), "@LabelHelper.Term");
+                        addSelectListItems($('#selectTerm'), terms);
+                    });
+                }
+            }
+            </text>
+        }
+        else
+        {
+            <text>
+        $('#selectSchool').change(function () {
+            $('#studentContent').hide();
+            $('#selectClass').empty();
+            $('#selectTerm').empty();
+            var schoolValue = $('#selectSchool').val();
+            if (schoolValue != 'select') {
+                $.get('@Url.Action("GetTerms")', { userId: null, schoolId: schoolValue }, function (terms) {
+                        populateTerms(terms);
+                    });
+                }
+            });
+        </text>
+        }
+
+        @if (Model.IsPublisher)
+        {
+            <text>
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            populateStates(states);
+        });
+            </text>
+        }
+        else
+        {
+            if (Model.IsNetworkAdmin)
+            {
+                <text>
+        $.get('@Url.Action("GetStatesByDictricIds", "PopulateStateDistrict")', { dictricIds: '@Model.StrIds' }, function (states) {
+            populateStates(states);
+        });
+                </text>
+            }
+            else
+            {
+                <text>
+        $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', function (schools) {
+            populateSchools(schools);
+            var schoolValue = $('#selectSchool').val();
+            if (schoolValue != 'select') {
+                $.get('@Url.Action("GetTerms")', { userId: null, schoolId: schoolValue }, function (terms) {
+                            $('#selectTerm').empty();
+                            populateTerms(terms);
+                        });
+                    }
+                });
+        $.get('@Url.Action("GetGradesByDistrict", "PopulateTest")', { districtId: '-1' }, function (grades) {
+            populateGrades(grades);
+        });
+        </text>
+            }
+        }
+
+        @*$.get('@Url.Action("GetGrades", "PopulateTest")', function (grades) {
+            populateGrades(grades);
+        });*@
+        function populateGradesByDistrict() {
+            $('#selectGrade').empty();
+            $('#selectSubject').empty();
+            var districtValue = $('#selectDistrict').val();
+            if (districtValue != 'select') {
+                $.get('@Url.Action("GetGradesByDistrict", "PopulateTest")', { districtId: districtValue }, function (grades) {
+                    //populateSchools(schools);
+                    populateGrades(grades);
+                });
+            }
+        }
+
+        $('#selectDistrict').change(function () {
+            $('#selectTeacher').empty();
+            $('#selectTerm').empty();
+            $('#selectClass').empty();
+            populateSchoolsByDistrict();
+            populateGradesByDistrict();
+        });
+
+        $('#selectGrade').change(function () {
+            populateSubjects();
+        });
+
+        $('#selectSubject').change(function () {
+            populateBanks();
+        });
+
+        $('#selectBank').change(function () {
+            populateTests();
+        });
+
+        $('#selectTerm').change(function () {
+            populateClasses();
+        });
+
+        $('#selectClass').change(function () {
+            populateStudents();
+        });
+
+        $('#selectTest').change(function () {
+            var testId = $('#selectTest').val();
+            if (testId != 'select' && testId != '') {
+                $.get('@Url.Action("CheckIfTestRequiresCorrection","PopulateTest")', { testId: testId }, function (response) {
+                    if (response.Success == 1 || response.Success == 2) {
+                        var vMessage = 'One or more question has point possible larger than 25. Please check the test or contact technology@linkit.com for help';
+                        if (response.Success == 1) {
+                            vMessage = 'Please contact technology@linkit.com and have them fix the question ordering associated with test id ' + testId;
+                        }
+                        $("<section><div class='block-border'><div class='block-content'><h1>Error With Test</h1><p>" + vMessage + ".</p></div></div></section>")
+                            .appendTo("section")
+                            .dialog({
+                                title: $(this).attr("data-dialog-title"),
+                                close: function () { $(this).remove(); },
+                                modal: true,
+                                width: 500,
+                                resizable: false
+                            })
+                            .load(this.href, function () { });
+                    }
+                });
+            }
+        });
+    });
+
+    $.ajaxSetup({ cache: false });
+
+    function populateStudents() {
+        var classValue = $('#selectClass').val();
+        if (classValue != 'select') {
+            $('#studentContent').show();
+            $.get('@Url.Action("GetStudents")', { classId: classValue }, function (students) {
+                    var dict = new Array();
+                    for (var i = 0; i < students.length; i++) {
+                        dict[students[i].Code] = students[i].FullName;
+                    }
+                    window._STUDENTS = dict;
+                });
+            }
+        }
+
+        function populateSchoolsByDistrict() {
+            $('#selectSchool').empty();
+            var districtValue = $('#selectDistrict').val();
+            if (districtValue != 'select') {
+                $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', { districtId: districtValue }, function (schools) {
+                populateSchools(schools);
+            });
+        }
+    }
+
+    function populateTeachers() {
+        $('#selectTeacher').empty();
+        var schoolValue = $('#selectSchool').val();
+        if (schoolValue != 'select') {
+            $.get('@Url.Action("GetTeachers")', { schoolId: schoolValue }, function(teachers) {
+                addDefaultOption($('#selectTeacher'), "Teacher");
+                addSelectListWithDefaultValue($('#selectTeacher'), teachers, 'select', function(item) {
+                    return (item.FirstName) ? item.LastName + ", " + item.FirstName + " (" + item.Name + ")" : item.LastName + " (" + item.Name + ")";
+                });
+            });
+        }
+    }
+
+    function populateStates(states) {
+        addDefaultOption($('#selectState'), "State");
+        addSelectListItems($('#selectState'), states);
+    }
+
+    function populateDistricts(districts) {
+        addDefaultOption($('#selectDstrict'), "@LabelHelper.DistrictLabel");
+        addSelectListItems($('#selectDistrict'), districts);
+    }
+
+    function populateSchools(schools) {
+        addDefaultOption($('#selectSchool'), "School");
+        addSelectListItems($('#selectSchool'), schools);
+    }
+
+    function populateTerms(terms) {
+        addDefaultOption($('#selectTerm'), "@LabelHelper.Term");
+        addSelectListItems($('#selectTerm'), terms);
+    }
+
+    function populateGrades(grades) {
+        $('#selectGrade').empty();
+        addDefaultOption($('#selectGrade'), "@LabelHelper.GradeLabel");
+        addSelectListItems($('#selectGrade'), grades);
+    }
+
+    function populateSubjects() {
+        resetSubjects();
+        var gradeValue = $('#selectGrade').val();
+        var districtValue = 0;
+
+        if ($('#selectDistrict').length && $('#selectDistrict').val() != null && $('#selectDistrict').val() != 'select') {
+            districtValue = $('#selectDistrict').val();
+        }
+
+        if (gradeValue != 'select') {
+            $.get('@Url.Action("GetSubjectsByGradeIdAndAuthor", "SearchBank")', { gradeId: gradeValue, districtId: districtValue }, function(subjects) {
+                addDefaultOption($('#selectSubject'), "@LabelHelper.Subject");
+                addSelectListItems($('#selectSubject'), subjects);
+            });
+        }
+    }
+
+    function populateBanks() {
+        resetBanks();
+        var subjectValue = $('#selectSubject').val();
+        var districtValue = 0;
+        if ($('#selectDistrict').length && $('#selectDistrict').val() != null && $('#selectDistrict').val() != 'select') {
+            districtValue = $('#selectDistrict').val();
+        }
+        var gradeValue = $('#selectGrade').val();
+        if (subjectValue != 'select') {
+            $.get('@Url.Action("GetBanksBySubjectName", "SearchBank")', { subjectName: subjectValue, districtId: districtValue, gradeId: gradeValue }, function (banks) {
+                addDefaultOption($('#selectBank'), "Bank");
+                addSelectListItems($('#selectBank'), banks);
+            });
+        }
+    }
+
+    function populateTests() {
+        $('#selectTest').empty();
+        var bankValue = $('#selectBank').val();
+        if (bankValue != 'select') {
+            $.get('@Url.Action("GetTests", "PopulateTest")', { bankId: bankValue }, function (tests) {
+                addDefaultOption($('#selectTest'), "Test");
+                addSelectListItems($('#selectTest'), tests);
+            });
+        }
+    }
+
+    function populateClasses() {
+        $('#selectClass').empty();
+        var termValue = $('#selectTerm').val();
+        var teacherValue = $('#selectTeacher').val();
+        var schoolValue = $('#selectSchool').val();
+        if (termValue != 'select' && teacherValue != 'select' && schoolValue != 'select') {
+            $.get('@Url.Action("GetClasses")', { termId: termValue, userId: teacherValue, schoolId: schoolValue }, function (classes) {
+                addDefaultOption($('#selectClass'), "Class");
+                addSelectListItems($('#selectClass'), classes);
+            });
+        }
+    }
+
+    function resetSubjects() {
+        $('#selectSubject').empty();
+        resetBanks();
+    }
+
+    function resetBanks() {
+        $('#selectBank').empty();
+        $('#selectTest').empty();
+    }
+</script>
+<script type="text/javascript">
+    $(function () {
+        var NOTSELECTEDCLASS = "notSelectedTR";
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+        loadFlashModule();
+
+        function loadFlashModule() {
+            $("#divError").html('');
+
+            if (window.FormData !== undefined) {
+                $('#file_upload').uploadifive({
+                    'uploadScript': '@Url.Action("UploadCSV")',
+                    'fileType': ["application/vnd.ms-excel"],//*.pdf; *.png; *.jpg; *.jpeg; *.gif; *.tiff
+                    'overrideEvents': ['onDialogClose'],
+                    'formData': { AUTHID: auth },
+                    'buttonText': 'Select Files',
+                    'fileObjName': 'FileData',
+                    'multi': false,
+                    'removeCompleted': true,
+                    'width': 100,
+                    'auto': true,
+                    'onAddQueueItem': function (file) {
+                        var selectTestVal = $('#selectTest').val();
+                        var selectClassVal = $('#selectClass').val();
+
+                        if (selectTestVal == null || selectTestVal == "select" || selectClassVal == null || selectClassVal == "select") {
+                            alert('All the selections are required prior to uploading ' + file.name + ' file.');
+                            $('#file_upload').uploadifive('cancel', $('.uploadifive-queue-item').first().data('file'));
+                            return;
+                        }
+                        else {
+                            displayInputSelection(false);
+                            displayInputSummary(true);
+                        }
+                    },
+                    'onUpload': function (file) {
+                        $('#file_upload').data('uploadifive').settings.formData = getFormData(auth);
+                        $('#error-messages').hide();
+                        $('#error-messages').empty();
+                    },
+                    'onUploadComplete': function (file, data) {
+                        var result = $.parseJSON(data);
+                        if (result == undefined) {
+                            alert('An error has occured.  Please try again');
+                        }
+                        if (result.success == true) {
+                            setRequestId(result.requestID);
+                            loadTestResultTable(result.data);
+                            displayTestResultSection(true);
+                            displayButton("#btnCancel", true);
+                            displayButton("#btnGradeTest", result.canGradeTest);
+                            displayChkCheckAll(result.canGradeTest);
+                            displayUploadPanel(false);
+                        }
+                        else {
+                            displayButton("#btnCancel", true);
+                            displayUploadPanel(false);
+                            if (result.success == false) {
+                                $("#divError").html('Showing ' + result.resResultCount + ' out of ' + result.totalRows + ' results due to processing error');
+                            }
+                            else if (result.type == "warning") {
+                                alert("Warning: " + result.message);
+                            } else {
+                                alert("Error: " + result.message);
+                            }
+                        }
+                    },
+                    'onError': function (errorType, file) {
+                        alert('The error was: ' + errorType);
+                    },
+                    'onCancel': function (file) {
+                        displayButton("#btnCancel", false);
+                        displayButton("#btnGradeTest", false);
+                        displayInputSelection(true);
+                        displayInputSummary(false);
+                        displayTestResultSection(false);
+                    }
+                });
+            }
+        }
+
+        function displayInputSelection(isShow) {
+            if (isShow) {
+                $("#fsVirtualTestContent").show();
+                $("#fsClassContent").show();
+                if (("#fsPublisherContent").length > 0) {
+                    $("#fsPublisherContent").show();
+                }
+            }
+            else {
+                $("#fsVirtualTestContent").hide();
+                $("#fsClassContent").hide();
+                if (("#fsPublisherContent").length > 0) {
+                    $("#fsPublisherContent").hide();
+                }
+            }
+        }
+
+        function displayTestResultSection(isShow) {
+            if (isShow) {
+                $("#fsTestResult").show();
+            }
+            else {
+                $("#fsTestResult").hide();
+            }
+        }
+
+        function displayInputSummary(isShow) {
+            var summary = "";
+            if (isShow) {
+                var gradeName = $("#selectGrade option:selected").text();
+                var subjectName = $("#selectSubject option:selected").text();
+                var bankName = $("#selectBank option:selected").text();
+                var testName = $("#selectTest option:selected").text();
+                var schoolName = $("#selectSchool option:selected").text();
+                var teacherName = $("#selectTeacher option:selected").text();
+                var termName = $("#selectTerm option:selected").text();
+                var className = $("#selectClass option:selected").text();
+
+                summary = "<p><b>@LabelHelper.GradeLabel:</b> " + gradeName + ", ";
+                summary += "<b>Subject:</b> " + subjectName + ", ";
+                summary += "<b>Bank:</b> " + bankName + ", ";
+                summary += "<b>Test:</b> " + testName + "</p>";
+                summary += "<p><b>School:</b> " + schoolName + ", ";
+                summary += "<b>Teacher:</b> " + teacherName + ", ";
+                summary += "<b>Term:</b> " + termName + ", ";
+                summary += "<b>Class:</b> " + className + "</p>";
+                $("#fsSummary").show();
+            } else {
+                $("#fsSummary").hide();
+            }
+            $('#divSummary').html(summary);
+        }
+
+        function displayButton(buttonId, isShow) {
+            if (isShow) {
+                $(buttonId).removeAttr("disabled").removeClass("grey");
+            }
+            else {
+                $(buttonId).attr("disabled", "disabled").addClass("grey");
+            }
+        }
+
+        function displayUploadPanel(isShow) {
+            if (isShow) {
+                $('#file_upload').css('width', '100');
+                $('#file_upload').css('height', '30');
+                $('#file_upload').css('overflow', '');
+            }
+            else {
+                $('#file_upload').css('width', '0');
+                $('#file_upload').css('height', '0');
+                $('#file_upload').css('overflow', 'hidden');
+            }
+        }
+
+        function displayChkCheckAll(canGradeTest) {
+            if (canGradeTest) {
+                $('#chkAllStudents').attr('checked', 'checked');
+            }
+        }
+
+        function setRequestId(requestId) {
+            $('#hidRequestID').val(requestId);
+        }
+
+        function getFormData(auth) {
+            var classId = $('#selectClass').val();
+            var districtId = $('#selectDistrict').val();
+            var schoolId = $('#selectSchool').val();
+            return { 'AUTHID': auth, 'districtId': districtId, 'classID': classId, 'schoolID': schoolId };
+        }
+
+        function loadTestResultTable(data) {
+            var aDataSet = new Array();
+            for (var i = 0; i < data.length; i++) {
+                var itemDataSet = new Array(data[i].ID, data[i].InputName, data[i].LocalCode, data[i].ClassName, data[i].SectionName, data[i].Score, data[i].IsSelected, data[i].LocalCode);
+                aDataSet.push(itemDataSet);
+            }
+            $('#divTestResultTable').html('<div class="no-margin last-child"><table id="dataTable" style="clear:both;" class="datatable table no-margin" width="100%"></table></div>');
+            $('#dataTable').dataTable({
+                "bAutoWidth": false,
+                "bLengthChange": false,
+                "iDisplayLength": 1000000,
+                "bPaginate": false,
+                "bFilter": false,
+                "bInfo": false,
+                "aaData": aDataSet,
+                "oLanguage": {
+                    "sEmptyTable": "There is no result"
+                },
+                "aoColumns": [
+                    { "sTitle": '<input type="checkbox" id="chkAllStudents" />', 'bSortable': false, },
+                    { "sTitle": "eInstruction" },
+                    { "sTitle": "Linkit" },
+                    { "sTitle": "Class Name" },
+                    { "sTitle": "Section Name" },
+                    { "sTitle": "Score", "bVisible": true },
+                    { "sTitle": "IsSelected", "bVisible": false },
+                    { "sTitle": "hidLocalCode", "bVisible": false }
+                ],
+                fnRowCallback: function (nRow, aData) {
+                    $('td:eq(0)', nRow).parent().attr('id', 'row_' + aData[0]);
+                    $('td:eq(0)', nRow).parent().addClass(setClassRow(aData[6]));
+                    $('td:eq(0)', nRow).html(setCheckBox(aData[0], aData[6]));
+                    $('td:eq(2)', nRow).html(setDropdownList(aData[0], aData[7]));
+                    return nRow;
+                }
+            });
+        }
+
+        function setClassRow(isSelected) {
+            if (isSelected === "1") {
+                return '';
+            }
+            else {
+                return NOTSELECTEDCLASS;
+            }
+        }
+
+        function setCheckBox(resId, isSelected) {
+            if (isSelected === "1") {
+                return '<input id="chk_' + resId + '" type="checkbox" name="chkStudent" value="' + resId + '" checked="checked" />';
+
+            }
+            else {
+                return '<input id="chk_' + resId + '" type="checkbox" name="chkStudent" value="' + resId + '" style="display:none" disabled="disabled"  />';
+            }
+        }
+
+        function setDropdownList(resId, localCode) {
+            var string = '<select class="clsStudentLocalCode" id="cbStudentLocalCode_' + resId + '" name="cbStudentLocalCode_' + resId + '" >';
+            string += getOptionHtml(resId, localCode);
+            string += '</select>';
+            return string;
+        }
+
+        function getOptionHtml(resId, localCode) {
+            var strCb = "";
+            var key;
+            if (window._STUDENTS[localCode] == undefined) {
+                strCb += '<option value="select" selected="selected">------ Selected ------- </option>';
+                for (key in window._STUDENTS) {
+                    strCb += '<option value="' + key + '">' + window._STUDENTS[key] + ' (' + key + ')' + '</option>';
+                }
+            } else {
+                strCb += '<option value="select">------ Selected ------- </option>';
+                for (key in window._STUDENTS) {
+                    if (key === localCode) {
+                        strCb += '<option value="' + key + '" selected="selected">' + window._STUDENTS[key] + ' (' + key + ')' + '</option>';
+                    } else {
+                        strCb += '<option value="' + key + '">' + window._STUDENTS[key] + ' (' + key + ')' + '</option>';
+                    }
+                }
+            }
+            return strCb;
+        }
+
+        function unSelectDropdownList(cbId) {
+            $(cbId + " > option[selected='selected']").removeAttr('selected');
+        }
+
+        $('select.clsStudentLocalCode').live('change', function () {
+            var currentId = $(this).attr('id');
+            var selectedVal = $(this).val();
+            makeUpColumn(currentId, selectedVal);
+        });
+
+        function makeUpColumn(currentCbId, selectedVal) {
+            var rowPrefix = "#row_";
+            var chkPrefix = "#chk_";
+            var cbPrefix = "#cbStudentLocalCode_";
+
+            var foundId = null;
+            var resId = currentCbId.split("_")[1];
+            if (selectedVal != "select") {
+                //check exists selected item by selectedVal
+                var option = $(".clsStudentLocalCode > option[value='" + selectedVal + "'][selected='selected']");
+                if (option.length > 0) {
+                    var opParentId = option.parent().attr('id');
+                    if (opParentId != currentCbId) {
+                        foundId = opParentId.split("_")[1];
+                    }
+                }
+            }
+            ShowBlock($('#generateContent'), "Update Student Local Code");
+            $.ajax({
+                url: '@Url.Action("UpdateStudentLocalCode")',
+                type: 'POST',
+                data: { resId: resId, selectedVal: selectedVal, foundId: foundId },
+                success: function (response) {
+                    if (response.success == true) {
+                        if (selectedVal == "select") {
+                            //inactive if choose empty selectedVal
+                            $(rowPrefix + resId).addClass(NOTSELECTEDCLASS);
+                            $(chkPrefix + resId).css("display", "none").attr("disabled", true);
+                        }
+                        else {
+                            if (foundId != null) {
+                                //if found. disable this dropdownlist
+                                $(rowPrefix + foundId).addClass(NOTSELECTEDCLASS);
+                                $(chkPrefix + foundId).css("display", "none").attr("disabled", true);
+                                $(cbPrefix + foundId + " option:selected").removeAttr('selected');
+                                $(cbPrefix + foundId + ' option[value="select"]').attr('selected', 'selected');
+                            }
+                            //enable current dropdownlist and selected this value
+                            $(rowPrefix + resId).removeClass(NOTSELECTEDCLASS);
+                            $(chkPrefix + resId).css("display", "block").removeAttr("disabled").attr('checked', 'checked');
+                        }
+                        unSelectDropdownList(cbPrefix + resId);
+                        $(cbPrefix + resId + " option[value='" + selectedVal + "']").attr('selected', 'selected');
+                        needDisableGradeButton();
+                        verifyCheckAll();
+                    }
+                    else {
+                        alert(response.message);
+                    }
+                    $('#generateContent').unblock();
+                },
+                error: function (response) {
+                    if (response.status != 401) {
+                        alert('Error when updating student local code.');
+                        $('#generateContent').unblock();
+                        response.setStatus(200);
+                    }
+                }
+            });
+        }
+
+        $('#chkAllStudents').live("click", function (e) {
+            if (this.checked) {
+                $('INPUT[name="chkStudent"][type=checkbox]:not(:disabled)').attr('checked', 'checked');
+            }
+            else {
+                $('INPUT[name="chkStudent"][type=checkbox]:not(:disabled)').removeAttr('checked');
+            }
+            needDisableGradeButton();
+        });
+
+        $('INPUT[name="chkStudent"][type=checkbox]:not(:disabled)').live("click", function (e) {
+            if (this.checked) {
+                $(this).attr('checked', 'checked');
+                var checkboxes = $('INPUT[name="chkStudent"][type=checkbox]:not(:disabled)');
+                var checkall = true;
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if (!(checkboxes[i]).checked) {
+                        $('#chkAllStudents').removeAttr('checked');
+                        checkall = false;
+                        break;
+                    }
+                }
+                if (checkall) {
+                    $('#chkAllStudents').attr('checked', 'checked');
+                }
+                displayButton('#btnGradeTest', true);
+            }
+            else {
+                $(this).removeAttr('checked');
+                $('#chkAllStudents').removeAttr('checked');
+                var checkedboxes = $('INPUT[name="chkStudent"][type=checkbox][checked="checked"]:not(:disabled)');
+                if (checkedboxes.length > 0) {
+                    displayButton('#btnGradeTest', true);
+                }
+                else {
+                    displayButton('#btnGradeTest', false);
+                }
+            }
+        });
+
+        function needDisableGradeButton() {
+            var isEnable = ($('INPUT[name="chkStudent"][type=checkbox][checked="checked"]:not(:disabled)').length > 0);
+            displayButton("#btnGradeTest", isEnable);
+        }
+
+        function verifyCheckAll() {
+            var countEnableCheckbox = $('INPUT[name="chkStudent"][type=checkbox]:not(:disabled)').length;
+            if (countEnableCheckbox == 0) {
+                $('#chkAllStudents').removeAttr('checked');
+            }
+            else {
+                var countChecked = $('INPUT[name="chkStudent"][checked="checked"][type=checkbox]:not(:disabled)').length;
+                if (countChecked == countEnableCheckbox) {
+                    $('#chkAllStudents').attr('checked', 'checked');
+                }
+                else {
+                    $('#chkAllStudents').removeAttr('checked');
+                }
+            }
+        }
+
+        $('#btnGradeTest').live('click', function () {
+            var requestId = $('#hidRequestID').val();
+            var virtualTestId = $('#selectTest').val();
+            if (requestId === "" || requestId == null) {
+                alert('Error. RequestID cannot empty!');
+                return;
+            }
+            var approveStudent = getApproveStudent();
+            if (approveStudent === "") {
+                alert('Please choose at least one record to grade test!');
+                return;
+            }
+            ShowBlock($('#generateContent'), "Grade Test processing");
+            $.ajax({
+                url: '@Url.Action("GradeTest")',
+                type: 'POST',
+                data: { requestId: requestId, approveStudent: approveStudent, virtualTestId: virtualTestId },
+                success: function (response) {
+                    $('#generateContent').unblock();
+                    if (response.success == true) {
+                        loadGradeTestMessage(response.message);
+                        resetPage();
+                    }
+                    else {
+                        alert(response.message);
+                    }
+                },
+                error: function (response) {
+                    if (response.status != 401) {
+                        alert('Grade Test not success with unexpected error.');
+                        $('#generateContent').unblock();
+                        response.setStatus(200);
+                    }
+                }
+            });
+        });
+
+        $('#btnCancel').live('click', function () {
+            resetPage();
+        });
+
+        function loadGradeTestMessage(message) {
+            var strHtml = '<div style="position: static" class="block-border" id="divGradeTestMessage">';
+            strHtml += '<div style="position: static" class="block-content form">';
+            strHtml += '<h1 style="left: 2.5em; top: 2.0em" class="title_edit_group">Grade Test Message</h1>';
+            strHtml += '<div class="gradeTestContent">' + message + '</div></div>';
+
+            $("<div></div>")
+                .html(strHtml)
+                .addClass("dialog")
+                .attr("id", "messageDialog")
+                .appendTo("body")
+                .dialog({
+                    close: function () { $(this).remove(); },
+                    modal: true,
+                    width: 700,
+                    maxheight: 800,
+                    resizable: false
+                });
+        }
+
+        function resetPage() {
+            displayButton("#btnCancel", false);
+            displayButton("#btnGradeTest", false);
+            displayInputSelection(true);
+            displayInputSummary(false);
+            $('#divTestResultTable').html("");
+            displayTestResultSection(false);
+            displayUploadPanel(true);
+        }
+
+        function getApproveStudent() {
+            var approveStudent = "";
+            var lstApprove = $('INPUT[name="chkStudent"][type=checkbox][checked="checked"]:not(:disabled)');
+            for (var i = 0; i < lstApprove.length; i++) {
+                approveStudent += lstApprove[i].value + "|";
+            }
+            if (approveStudent != "") {
+                approveStudent = approveStudent.substring(0, approveStudent.length - 1);
+            }
+            return approveStudent;
+        }
+    });
+
+</script>
+
+<style type="text/css">
+    button {
+        margin-left: 10px;
+    }
+
+    .notSelectedTR td {
+        background-color: #fdd252 !important;
+    }
+
+    #divSummary p {
+        margin-bottom: 10px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: var(--dark) !important;
+    }
+
+    #divGradeTestMessage .block-content {
+        max-height: 450px;
+        overflow-y: auto;
+    }
+
+    #selectTest {
+        border-color: transparent;
+    }
+</style>

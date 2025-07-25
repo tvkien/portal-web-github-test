@@ -1,0 +1,173 @@
+﻿@{
+    ViewBag.Title = "SGO Admin Review";
+}
+@*@MvcHtmlString.Create(
+        Bundle.Css()
+            .Add(@Url.Content("~/Content/css/custom.css"))
+            .Add(@Url.Content("~/Content/css/sgohome.css"))
+            .Render("/Content/themes/Constellation/css/SGOAdminReview_combined_#.css"))*@
+@*@MvcHtmlString.Create(
+        Bundle.JavaScript()
+            .Add("/Scripts/knockout-3.0.0.js")
+            .Add("/Content/themes/TestMaker/ckeditor_utils.js")
+            .Render("/Content/themes/Constellation/js/SGOAdminReview_combined_#.js")
+        )*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleSGOManageAdminReviewBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptSGOManageAdminReviewBundle()
+
+ @model LinkIt.BubbleSheetPortal.Web.ViewModels.SGOObjectViewModel
+<article class="container_12" id="idTopNavigation">
+    @Html.Action("LoadNavigation", "SGOManage", new { sgoId = @Model.SGOId })
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form">
+                <input type="hidden" id="sgoId" value="@Model.SGOId" />
+                <h1>
+                    Admin Review
+                </h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success"></ul>
+                <fieldset class="grey-bg sgo-fieldset">
+                    <div class="columns sgo-columns">
+                        @Html.Raw(Model.AdminReviewDirections)
+                    </div>
+                </fieldset>
+                <div class="clear"></div>
+
+                
+                <fieldset>
+                    <legend>Feedback</legend>
+                    <div class="columns">
+                        <textarea id="idtareaFeedback" rows="10" spellcheck="true" style="width: 100%" onchange=" DisableMessage(); ">@Html.Raw(Html.Encode(Model.Feedback))</textarea>
+                    </div>
+                </fieldset>
+
+                @Html.Action("LoadSGONote", "SGOManage", new { sgoId = Model.SGOId, pageName = LinkIt.BubbleSheetPortal.Models.SGO.SGOPageNameConstant.AdminReview })
+
+                <div class="clear"></div>
+                <div class="float-right">
+                    <button id="btnAdminReviewApprove" type="button">Approve</button>
+                    <button id="btnAdminReviewDeny" type="button">Deny</button>
+                    <button id="btnAdminReviewAuthorizeRevision" type="button">Authorize Revision</button>
+                </div>
+                <div class="clear"></div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script>
+    $(function() {
+        $('.stats').addClass('current');
+        $('#rpSGOManager').addClass('current');
+
+        @*var feedback = htmlDecode('@Model.Feedback');
+        feedback = feedback.replace(/<br>/g, '\n');*@
+        @*$('#idtareaFeedback').val(htmlDecode('@Model.Feedback'));*@
+        //$('#idtareaFeedback').html((feedback));
+        initNavigationTabs(6, @Model.SGOId);
+
+        if (@Model.PermissionAccess != 3) //Full Update
+        {
+            LockAllUI();
+        }
+        
+        @*if ('@Model.IsReviewer' === 'True') {
+            $('#btnAdminReviewAuthorizeRevision').removeAttr('disabled');
+        }*@
+
+        $('#btnAdminReviewAuthorizeRevision').removeAttr('disabled');
+    });
+
+    $('#btnAdminReviewAuthorizeRevision').click(function() {
+        DisableMessage();
+        var alertMessage = '<div class="text-left">Are you sure, you want authorize revision?</div>';
+        popupAlertMessage('confirm', alertMessage, 390, 500);
+    });
+
+    $('#btnAdminReviewDeny').click(function() {
+        ShowBlock($('#idTopNavigation'), "Process");
+        DisableMessage();
+        var sgoId = @Model.SGOId;
+        //var vfeedback = htmlEncode ($('#idtareaFeedback').val().trim());
+        var vfeedback =  $('#idtareaFeedback').val() ;
+        if (vfeedback.length == 0) {
+            $('#error-messages').html('<li>Please enter reason.</li>');
+            $('#error-messages').show();
+            $('#idTopNavigation').unblock();
+        } else {
+            $.post('@Url.Action("SGODeny", "SGOManage")', { sgoId: sgoId, strFeedback: vfeedback }, function (response) {
+                if (!response) {
+                    $('#error-messages').html('<li>Have a error, Please try again.</li>');
+                    $('#error-messages').show();
+                } else {
+                    var url = "/SGOManage/Index";
+                    window.location.href = url;
+                }
+                $('#idTopNavigation').unblock();
+            }).always(function() {
+                $('#idTopNavigation').unblock();
+            });
+        }
+    });
+
+    $('#btnAdminReviewApprove').click(function() {
+        ShowBlock($('#idTopNavigation'), "Process");
+        DisableMessage();
+        var sgoId = @Model.SGOId;
+        //var strFeedback =  htmlEncode ($('#idtareaFeedback').val().trim());
+        var strFeedback =   $('#idtareaFeedback').val() ;
+        $.post('@Url.Action("SGOApprove", "SGOManage")', { sgoId: sgoId, strFeedback: strFeedback }, function(response) {
+            if (!response) {
+                $('#error-messages').html('<li>Have a error, Please try again.</li>');
+                $('#error-messages').show();
+            } else {
+                var url = "/SGOManage/Index";
+                window.location.href = url;
+            }
+            $('#idTopNavigation').unblock();
+        }).always(function() {
+            $('#idTopNavigation').unblock();
+        });
+    });
+
+    function DisableMessage() {
+        $('#error-messages').hide();
+        $('#success-message').hide();
+    }
+
+    function LockAllUI() {
+        $('#idTopNavigation :input').attr('disabled', true);
+        $('#idTopNavigation :button').attr('disabled', true);
+        $('#txtSGONote').removeAttr('disabled');
+        $('#btnSaveNote').removeAttr('disabled');
+    }
+
+    function YesConfirmPopup(e) {
+        ShowBlock($('#idTopNavigation'), "Authorize Revision");
+        var $self = $(e);
+        $self.parents('.ui-dialog').remove();
+        var strFeedback =   $('#idtareaFeedback').val() ;
+        $.post('@Url.Action("AuthorizeRevision", "SGOManage")', { sgoId: @Model.SGOId, strFeedback: strFeedback }, function (response) {
+            var url = "/SGOManage/Index";
+            window.location.href = url;
+            $('#idTopNavigation').unblock();
+        }).always(function() {
+            $('#idTopNavigation').unblock();
+        });
+    }
+
+    function htmlEncode(value) {
+        //create a in-memory div, set it's inner text(which jQuery automatically encodes)
+        //then grab the encoded contents back out.  The div never exists on the page.
+        return $('<div/>').text(value).html();
+    }
+
+    function htmlDecode(value) {
+        return $('<div/>').html(value).text();
+    }
+    function supportNavigationSaveAndRedirect(param) {
+        //SaveStudentPopulation(0,param);
+    }
+</script>

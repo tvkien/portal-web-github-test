@@ -1,0 +1,702 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.EditPassageViewModel
+@{
+    ViewBag.Title = "Edit Passage";
+}
+<style>
+
+    #audioPassage {
+        border: none;
+        box-shadow: 0 0 0;
+    }
+
+    .addAudio {
+        height: 30px;
+        width: 70px;
+        line-height: 30px;
+    }
+
+    .btnSave {
+        margin-right: 10px;
+    }
+
+    .bubbleSheetSelector select {
+        max-width: 305px;
+    }
+
+    button {
+        margin-left: 10px;
+    }
+
+    .notSelectedTR td {
+        background-color: #fdd252 !important;
+    }
+
+    #divSummary p {
+        margin-bottom: 10px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        position: absolute;
+        right: 7px;
+        top: -8px;
+    }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    .ui-dialog-titlebar-close {
+        z-index: 100;
+    }
+
+    .ckbutton {
+        font-size: 12px !important;
+        font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook !important;
+    }
+
+    .form-control {
+        width: 295px;
+        color: #333333;
+        font-size: 1em;
+        padding: 0.417em;
+        border: 1px solid #89bad3;
+        -moz-border-radius: 0.417em;
+        -webkit-border-radius: 0.417em;
+        -webkit-background-clip: padding-box;
+        border-radius: 0.417em;
+    }
+</style>
+<script type="text/javascript">
+    //Build custom alert window message
+    function customAlert(message) {
+
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div style="width:340px; word-break:break-all">' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $('.ui-widget-overlay:last').remove();//only the second overlay
+                    $(this).remove();
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+
+    function closeAlert() {
+        $('#alertDialog').dialog('close');
+    }
+
+    function showModalDialogBG() {
+        var height = $('#custom-footer').offset().top + 10;
+        var win = $('body');
+        if (height < win.height()) {
+            height = win.height();
+        }
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + 1200 + 'px; z-index: 1001;"></div>');
+    }
+</script>
+<div class="block-border">
+    <div class="block-content form">
+        <h1>@Model.Name</h1>
+        <div id="divPassageDetail">
+            <div id="divPassageEdit" class="bubbleSheetSelector" style="margin-top: 0px">
+                @if (string.IsNullOrEmpty(Model.Name))
+                {
+                    <h1>Edit Passage - [unnamed]</h1>
+                }
+                else
+                {
+                    <h1>Edit Passage - @Model.Name</h1>
+                }
+
+                <ul style="display: none" id="error-messages-edit" class="message error"></ul>
+                <ul style="display: none" id="success-message-edit" class="message success">
+                    <li>Passage successfully updated.</li>
+                </ul>
+                @using (Html.BeginForm("Edit", "PassageEditor", FormMethod.Post, new { id = "editPassageForm", @class = "form" }))
+                {
+                    <div id="notification"></div>
+                    <fieldset>
+                        <legend>Passage Properties</legend>
+                        <div class="columns">
+                            <input type="hidden" id="qtiRefObjectId" name="QtiRefObjectId" value="@Model.QtiRefObjectId" />
+                            @*<input type="hidden" id="xmlContent" name="XmlContent" value="@Model.XmlContent" />*@
+                            @Html.TextArea("xmlContentPassage", Model.XmlContentPassage, new { @style = "display:none" })
+                            <div class="colx2-left">
+                                <p>
+                                    <label>Name</label>
+                                    <input id="txtNameEdit" name="Name" class="form-control" value="@Model.Name" />
+                                </p>
+                                <p>
+                                    <label>@LabelHelper.GradeLabel</label>
+                                    <select id="selectPassageGradeEdit" name="GradeId" data-bind='options: PassageGrades, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select @LabelHelper.GradeLabel", value: PassageGradeId' style="width: 305px"></select>
+                                </p>
+                                <p>
+                                    <label>@LabelHelper.Subject</label>
+                                    <select id="selectPassageSubjectEdit" name="Subject" data-bind='options: PassageSubjects, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Passage Subject", value: PassageSubjectText' style="width: 305px"></select>
+                                </p>
+                            </div>
+                            <div class="colx2-right">
+                                <p>
+                                    <label>Text Type</label>
+                                    <select id="selectTextTypeEdit" name="TextTypeId" data-bind='options: TextTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Type", value: TextTypeId' style="width: 305px"></select>
+                                </p>
+                                <p>
+                                    <label>Text Sub Type</label>
+                                    <select id="selectTextSubTypeEdit" name="TextSubTypeId" data-bind='options: TextSubTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Sub Type", value: TextSubTypeId' style="width: 305px"></select>
+                                </p>
+                                <p>
+                                    <label>Flesch Kincaid</label>
+                                    <select id="selectFleschKincaidIdsEdit" name="FleschKincaidId" data-bind='options: FleschKincaidIds, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Flesch Kincaid", value: FleschKincaidId' style="width: 305px"></select>
+                                </p>
+                            </div>
+                        </div>
+                    </fieldset><div class="editorArea">
+                        <fieldset>
+                            <legend>Passage Content</legend>
+                            <div class="topMenu">
+                                <div id="topSpacePassage"></div>
+                                <div class="questionType" id="questionType">
+                                    <ul>
+                                        <li>
+                                            <div class="audio js-audio" id="audioPassage">
+                                                <div class="audioRemove" id="audioRemovePassage">
+                                                    <img alt="Play audio" class="bntPlay" src="../../Content/themes/TestMaker/images/small_audio_play.png" title="Play audio" />
+                                                    <img alt="Stop audio" class="bntStop" src="../../Content/themes/TestMaker/images/small_audio_stop.png" title="Stop audio" />
+                                                    <input type="button" value="Remove audio" class="ckbutton removeAudio cke_toolgroup" />
+                                                    <span class="audioRef"></span>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                    <div class="clear"></div>
+                                </div>
+                            </div>
+                            <div class="clear"></div>
+                            <div class="qContent">
+                                <div class="clear"></div>
+                                <textarea cols="80" id="passageContent" name="editor1" rows="10"></textarea>
+                            </div>
+                        </fieldset>
+                        <div class="clear10"></div>
+                    </div><div class="divBotButton">
+
+                        <button id="btnCancelPassage" type="button" class="grey float-right" data-dialog="close" onclick="cancelAlertPassage()">Cancel</button>
+
+                        <button id="btnSubmit" type="button" class="float-right btnSave" onclick="submitEditPassage()">Save</button>
+                    </div>
+                    <div class="clear"></div>
+                    <input type="hidden" id="SubjectText" name="SubjectText" />
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remember filter -->
+<input type="hidden" id="hdNameSearch" name="hdNameSearch" />
+<input type="hidden" id="hdSubject" name="hdSubject" />
+<input type="hidden" id="hdSearchBox" name="hdSearchBox" />
+
+<script type="text/javascript">
+    // Replace the <textarea id="editor"> with an CKEditor
+    // instance, using default configurations.
+    MKEditor = {
+        isPassageEditor:true,
+        imgUrl: "../../Content/themes/TestMaker/",
+        audioUrl: '@Url.Action("AudioUpload","PassageEditor")',
+        videoUrl: '@Url.Action("VideoUpload","PassageEditor")',
+        objectId: '@Model.QtiRefObjectId',
+        loadAudioUrl: window.location.protocol + "//" + window.location.hostname + '@Url.Action("GetAudio","PassageEditor")',
+        imgUpload: '@Url.Action("ImageUpload","PassageEditor")',
+        GetViewReferenceImg: window.location.protocol + "//" + window.location.hostname + '/TestAssignmentRegrader/GetViewReferenceImg?imgPath=', //This is config for view image on test maker
+        UseS3Content: true, // this variable use to download to applition(  server) or S3
+        S3PassageMedia: '',
+        GetViewReferenceImgS3: ''
+    };
+    @if (Model.MediaModel != null)
+    {
+        <text>MKEditor.S3PassageMedia = '@Model.MediaModel.PassageMediaFolderPath';</text>
+        <text>MKEditor.GetViewReferenceImg = '@Model.MediaModel.TestMediaFolderPath';</text>
+        <text>MKEditor.GetViewReferenceImgS3 = '@Model.MediaModel.TestMediaFolderPath';</text>
+        <text>MKEditor.UseS3Content = true;</text>
+    }
+
+    CKEDITOR.replace('passageContent', {
+        customConfig: window.location.protocol + "//" + window.location.hostname + '/Content/themes/TestMaker/myconfig.js',
+        extraPlugins: 'mathjax,sharedspace,multiplechoice,mathfraction,imageupload,indent,dialog,contextmenu,liststyle,boxedtext,pastefromword,video,glossary,tabspaces,leaui_formula',
+        alphaBeta: alphabet,
+        playAudio: loadAudioUrl,
+        qtiSchemeID: 1,
+        height: 400,
+        toolbar: [
+            ['JustifyLeft', 'JustifyCenter', 'JustifyRight', '-', 'NumberedList', 'BulletedList'], ['Bold', 'Italic', 'Underline'], ['Sameline'], ['FontSize', 'Subscript', 'Superscript', '-', 'RemoveFormat'],
+            ['Link', 'Unlink', 'Table', 'AudioUpload', 'ImageUpload', 'VideoUpload', 'SpecialChar', 'Mathjax', 'LeauiFormula', 'Glossary'], ['Indent','Outdent','Tabspaces'], ['BoxedText']
+        ],
+        sharedSpaces:
+            {
+                top: 'topSpacePassage',
+                bottom: 'bottomSpacePassage'
+            },
+        extraAllowedContent: 'span[stylename]; span(smallText,normalText,largeText,veryLargeText);'
+    });
+
+    CKEDITOR.on('instanceReady', function (ev) {
+        $(document).scrollTop(0);
+    });
+
+    if (CKEDITOR.env.ie && CKEDITOR.env.version == 8)
+        document.getElementById('ie8-warning').className = 'warning';
+
+    $(document).ready(function () {
+        if('@Model.FileNotFound'==='True') {
+            customAlert("File Not Found!<br>" + decodeURIComponent('@Model.FileName'));
+        }
+
+        ckID = "passageContent";
+
+        //$('#xmlContent').val('<passage toolName="linkitTLF" xmlUnicode="true" toolVersion="1.0"><div class="passage" styleName="passage">daffadfda<img class="imageupload" drawable="false" percent="2" src="RO/RO_4411_media/no-image.png" style="" contenteditable="false" height="38.6" width="53.800000000000004"> dfgh fdhdgh<span class="largeText" styleName="largeText">etyertyetv te<span class="veryLargeText" styleName="veryLargeText">et ytryryte<span class="smallText" styleName="smallText">et ytrryr<span class="sub" styleName="sub">ertytyr</span><span class="sup" styleName="sup">rtytryryr</span></span></span></span> eryyy er yer+-÷·x=≠≤≥°′″√~≈≅±∓∠⊥∥π∞∫¢⟶αβγΔηθκλμρΣστφψΩωℓ ÁÉÍÓÚÜÑ?¿¡!ñüúóíéá<br />gsfgg<p class="center" styleName="center">dgsdgf</p><p class="alignRight" styleName="alignRight">sdgdf</p><list listStylePosition="outside" listStyleType="decimal" paragraphSpaceAfter="12" styleName="passageNumbering"><listMarkerFormat><ListMarkerFormat color="#aaaaaa" paragraphEndIndent="20" /></listMarkerFormat><li>List 1</li><li><span class="bold" styleName="bold">list 2</span></li><li><span class="underline" styleName="underline">list </span>3</li><li><span class="italic" styleName="italic">list 4</span></li><li>list 5</li></list><span><span><span class="math-tex"><math class="simpleFraction" xmlns="http://www.w3.org/1998/Math/MathML"><mstyle displaystyle="true"><mrow class="MJX-TeXAtom-ORD"><mfrac><mn>1</mn><mn>10</mn></mfrac></mrow></mstyle></math></span></span></span><span class="math-tex"><math xmlns="http://www.w3.org/1998/Math/MathML"><mstyle displaystyle="true"><mi>f</mi><mrow><mo>(</mo><mi>a</mi><mo>)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>π</mi><mi>i</mi></mrow></mfrac><msub><mo>∮</mo><mrow><mi>γ</mi></mrow></msub><mfrac><mrow><mi>f</mi><mo>(</mo><mi>z</mi><mo>)</mo></mrow><mrow><mi>z</mi><mo>−</mo><mi>a</mi></mrow></mfrac><mi>d</mi><mi>z</mi></mstyle></math></span></div></passage>');
+        //$('#xmlContent').val('<passage toolName="linkitTLF" xmlUnicode="true" toolVersion="1.0"><div class="passage" styleName="passage">daffadfda<img class="imageupload" drawable="false" percent="2" src="RO/RO_4411_media/no-image.png" style="" contenteditable="false" height="38.6" width="53.800000000000004"> dfgh fdhdgh<span class="largeText" styleName="largeText">etyertyetv te<span class="veryLargeText" styleName="veryLargeText">et ytryryte<span class="smallText" styleName="smallText">et ytrryr<span class="sub" styleName="sub">ertytyr</span><span class="sup" styleName="sup">rtytryryr</span></span></span></span> eryyy er yer+-÷·x=≠≤≥°′″√~≈≅±∓∠⊥∥π∞∫¢⟶αβγΔηθκλμρΣστφψΩωℓ ÁÉÍÓÚÜÑ?¿¡!ñüúóíéá<br />gsfgg<p class="center" styleName="center">dgsdgf</p><p class="alignRight" styleName="alignRight">sdgdf</p><ol><li>List 1</li><li><span class="bold" styleName="bold">list 2</span></li><li><span class="underline" styleName="underline">list </span>3</li><li><span class="italic" styleName="italic">list 4</span></li><li>list 5</li></ol><span><span><span><span class="math-tex"><math class="simpleFraction" xmlns="http://www.w3.org/1998/Math/MathML"><mstyle displaystyle="true"><mrow class="MJX-TeXAtom-ORD"><mfrac><mn>1</mn><mn>10</mn></mfrac></mrow></mstyle></math></span></span></span></span><span><span><span><span class="math-tex"><math xmlns="http://www.w3.org/1998/Math/MathML"><mstyle displaystyle="true"><mi>f</mi><mrow><mo>(</mo><mi>a</mi><mo>)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>π</mi><mi>i</mi></mrow></mfrac><msub><mo>∮</mo><mrow><mi>γ</mi></mrow></msub><mfrac><mrow><mi>f</mi><mo>(</mo><mi>z</mi><mo>)</mo></mrow><mrow><mi>z</mi><mo>−</mo><mi>a</mi></mrow></mfrac><mi>d</mi><mi>z</mi></mstyle></math></span><br /><br />dfgsf<sameline class="nobreak" styleName="nobreak">dgsg </sameline>df gsgsfdg s</span></span></span><br />&nbsp;</div></passage>');
+        xmlPassageImport($('#xmlContentPassage'));
+
+        //Assign search criteria to hidden fields
+        $("#hdNameSearch").val('@Model.NameFilter');
+        $("#hdNameSearch").html('@Model.NameFilter').text();
+        $("#hdNameSearch").val(encodeURIComponent($("#hdNameSearch").text()));
+
+        $("#hdSubject").val('@Model.SubjectFilter');
+        $("#hdSubject").html('@Model.SubjectFilter').text();
+        $("#hdSubject").val(encodeURIComponent($("#hdSubject").text()));
+
+        $("#hdSearchBox").val('@Model.SearchBoxFilter');
+        $("#hdSearchBox").html('@Model.SearchBoxFilter').text();
+        $("#hdSearchBox").val(encodeURIComponent($("#hdSearchBox").text()));
+        if(@Model.QtiRefObjectId == 0) {
+            //Can not find ref object
+            $('#btnSubmit').attr('disabled', 'disabled');
+        }
+        if ('@Model.FromPassageEditor' == 'False') {
+            $('#btnCancelPassage').text('Close');
+        }
+        //stop video
+        $('iframe').filter((idx, e) => e.src?.startsWith(window.location.origin)).contents().find("video").trigger('pause');
+    });
+
+    function backToPassageListEdit() {
+        if ('@Model.FromPassageEditor' == 'True') {
+            var url = '@Url.Action("Index", "PassageEditor")?nameSearch=' + $("#hdNameSearch").val();
+            @if (Model.PassageNumber != null)
+            {
+                <text>
+            url += '&passageNumber=' + @Model.PassageNumber;
+            </text>
+            }
+            url += '&gradeId=' + @Model.GradeIdFilter;
+
+            url += '&subject=' + $("#hdSubject").val();
+            url += '&textTypeId=' + @Model.TextTypeIdFilter;
+            url += '&textSubTypeId=' + @Model.TextSubTypeIdFilter;
+            url += '&fleschKincaidId=' + @Model.FleschKincaidIdFilter;
+            url += '&searchBox=' + $("#hdSearchBox").val();
+            //window.location.replace('@Url.Action("Index", "PassageEditor")');
+            window.location.replace(url);
+        }
+        if ('@Model.FromItemSetEditor' == 'True') {
+            //close this dialog and display the already created passage in the filter
+            SetReloadFilterPasssage('fromItemSetEditor');
+        }
+        if ('@Model.FromItemEditor' == 'True') {
+            //close this dialog and display the already created passage in the filter
+            $("#txtNameEdit").val("");
+            $("#qtiRefObjectId").val("");
+             SetReloadFilterPasssage('fromItemEditor');
+        }
+    }
+
+    function EditPassage(autoClose) {
+        ShowBlock($('#divPreviewOnlinePanel'), 'Saving...');
+        $('#btnSubmit').disableBt();
+        $('#success-message-edit').hide();
+        $("#confirmSubmitDialog").dialog("close");
+
+        $('#xmlContentPassage').val(xmlPassageExport());
+        $('#SubjectText').val( $("#selectPassageSubjectEdit option:selected").text());
+        if ($('#SubjectText').val() === 'Select Passage Subject') {
+            $('#SubjectText').val('');
+        }
+        $.ajax({
+            //url: $('#editPassageForm').target, //sometime $('#editPassageForm').target is undefined
+            url:'@Url.Action("Edit", "PassageEditor")',
+            type: 'POST',
+            data: $('#editPassageForm').serialize(),
+            success: function (response) {
+                if (response.Success == true) {
+                    $('#error-messages-edit').hide();
+                    $('#success-message-edit').show();
+                    $('#divPreviewOnlinePanel').unblock();
+                }
+                else {
+                    addErrorMessages(response);
+                    $('#error-messages-edit').addClass('no-margin');
+                    $('#divPreviewOnlinePanel').unblock();
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+
+    function KeyValuePair(data) {
+        var self = this;
+        self.Text = ko.observable(data.Name);
+        self.Value = ko.observable(data.Id);
+    }
+
+    var vmPassageEdit;
+    var viewModelPassageEdit = function () {
+        var self = this;
+
+        //Grade
+        self.PassageGradeId = ko.observable('');
+        self.PassageGrades = ko.observableArray([]);
+        self.DisplayPassageGrades = ko.computed(function () {
+            var url = '@Url.Action("GetAvailableGrades")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageGrades(mappedObjects);
+                self.PassageGradeId('@Model.GradeId');
+            });
+        });
+
+        //Subject
+        self.PassageSubjectText = ko.observable('');
+        self.PassageSubjects = ko.observableArray([]);
+
+        self.DisplayPassageSubjects = ko.computed(function () {
+            var url = '@Url.Action("GetQtiPassageSubjects", "Passage")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageSubjects(mappedObjects);
+
+                self.PassageSubjectText('@Model.SubjectText');
+                //$("#selectPassageSubjectEdit option:contains(" + '@Html.Raw(Model.SubjectText)' + ")").attr('selected', 'selected');
+                $("#selectPassageSubjectEdit option").each(function() {
+                    if($(this).text() == '@Html.Raw(Model.SubjectText)') {
+                        $(this).attr('selected', 'selected');
+                    }
+                });
+            });
+        });
+
+        //TextType
+        self.TextTypeId = ko.observable('');
+        self.TextTypes = ko.observableArray([]);
+
+        self.DisplayTextType = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PTextType", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.TextTypes(mappedObjects);
+                self.TextTypeId('@Model.TextTypeId');
+            });
+        });
+
+        //TextSubType
+        self.TextSubTypeId = ko.observable('');
+        self.TextSubTypes = ko.observableArray([]);
+
+        self.DisplayTextSubType = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PTextSubType", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.TextSubTypes(mappedObjects);
+                self.TextSubTypeId('@Model.TextSubTypeId');
+            });
+        });
+
+        //FleschKincaid
+        self.FleschKincaidId = ko.observable('');
+        self.FleschKincaidIds = ko.observableArray([]);
+
+        self.DisplayFleschKincaid = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PFleschKincaid", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.FleschKincaidIds(mappedObjects);
+                self.FleschKincaidId('@Model.FleschKincaidId');
+            });
+        });
+
+    };
+
+    $(function () {
+        vmPassageEdit = new viewModelPassageEdit();
+        ko.cleanNode(document.getElementById("divPassageEdit"));
+        ko.applyBindings(vmPassageEdit, document.getElementById("divPassageEdit"));
+        bindEventsEdit();
+        //display subject
+        $('#SubjectText').val('@Html.Raw(Model.SubjectText)');
+
+    });
+
+    function bindEventsEdit() {
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function(e) {
+
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+
+        });
+    }
+
+    function SetReloadFilterPasssage(from) {
+        $('#txtPassageNumber').val($('#qtiRefObjectId').val());
+
+        $('#txtName').val($('#txtNameEdit').val());
+        $('#selectPassageGrade').val($('#selectPassageGradeEdit').val());
+        $('#selectPassageSubject').val($('#selectPassageSubjectEdit').val());
+        $('#selectTextType').val($('#selectTextTypeEdit').val());
+        $('#selectTextSubType').val($('#selectTextSubTypeEdit').val());
+        $('#selectFleschKincaidIds').val($('#selectFleschKincaidIdsEdit').val());
+        if (from == 'fromItemSetEditor') {
+            showPassageFilterFromItemSet($('#txtNameEdit').val(),$('#selectPassageGradeEdit').val(),$('#selectPassageSubjectEdit').val(),
+                $('#selectTextTypeEdit').val(),$('#selectTextSubTypeEdit').val(),$('#selectFleschKincaidIdsEdit').val());//defined in QtiItem/_PassageAssignForm.cshtml
+
+        }
+        if (from == 'fromItemEditor') {
+            showPassageFilterFromItemSet($('#txtNameEdit').val(),$('#selectPassageGradeEdit').val(),$('#selectPassageSubjectEdit').val(),
+                $('#selectTextTypeEdit').val(),$('#selectTextSubTypeEdit').val(),$('#selectFleschKincaidIdsEdit').val());
+            //defined in TestMaker/_PassageAssignForm.cshtml
+            $('#PopupAddReference').prev('.ui-widget-header').css('top', '70px');
+            RecoverTestMakerCKEditorConfig();//defined in Index.cshtml or Edit.cshtml
+        }
+        $('.cke_editor_passageContent_dialog').remove();//clear dialog of image upload ,video upload
+    }
+
+    $(function() {
+        $("#editPassageForm").submit(function(e) {
+            e.preventDefault();
+            return;
+        });
+    });
+
+    function submitEditPassage() {
+        var vName = $('#txtNameEdit').val();
+        if (vName.length > 50) {
+            loadAlertMessage();
+        } else {
+            CheckPassageHasATest(false);
+        }
+    }
+
+    function CheckPassageHasATest(autoClose) {
+        var url = '@Url.Action("CheckVirtualTestsHasRefObject")?qtiRefObjectId=' + '@Model.QtiRefObjectId' + '&virtualTestId=' + '@Model.VirtualTestId';
+        $.ajax({
+            url: url,
+            traditional: true,
+            type: 'GET',
+            data: {},
+            success: function (data) {
+                if (data.NumOfVirtualTest > 0) {
+                    var message = 'This passage is already being used on ' + data.NumOfVirtualTest + ' other test(s), are you sure you want to edit?';
+                    ConfirmUpdatePassage(message, autoClose);
+                } else {
+                    EditPassage(autoClose);
+                }
+            },
+            failure: function (response) {
+                customAlert(response);
+            }
+        });
+    }
+
+    function ConfirmUpdatePassage(message, autoClose) {
+        var yesButton = '<button style="width:63px;" onclick="EditPassage(' + autoClose + ');">Yes</button>';
+        var noBotton = '<button style="width:63px;" onclick="NoClick();">No</button>';
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div> <div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + yesButton + '&nbsp;&nbsp;' + noBotton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "confirmSubmitDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $(this).remove();
+                    $('#generateContent').unblock();
+                    $('#btnSubmit').enableBt();
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+    }
+
+    function NoClick() {
+        $("#confirmSubmitDialog").dialog("close");
+    }
+
+    function loadAlertMessage() {
+        var url = '@Url.Action("LoadAlertPassageName", "PassageEditor")';
+        $.ajax(
+            {
+                url: url, cache: false
+            })
+            .done(function (html) {
+                $("#divPassageEdit").append('<div id="PopupAlertPassageName" class="dialog"></div>');
+                $("#PopupAlertPassageName").append(html);
+                $('#PopupAlertPassageName').dialog({
+                    dialogClass: 'PopupAlertPassageName',
+                    title: "",
+                    open: function () {
+                        //$("body").append('<div class="my-overlay my-overlay-custom" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        var $doc = $(document);
+                        var $body = $('body');
+                        var $overlay = $('<div />');
+                        var $uidialog = $('.ui-dialog');
+                        var zIndexArr = [];
+                        var maxIndex = 0;
+
+                        // Push all zIndex to array
+                        $uidialog.each(function() {
+                            var $self = $(this);
+                            var zIndex = $self.css('z-index').replace('px', '');
+
+                            zIndexArr.push(zIndex);
+                        });
+
+                        // Get max value in array
+                        maxIndex = Math.max.apply(Math, zIndexArr);
+
+                        // Overlay
+                        $overlay
+                            .attr({
+                                'class': 'my-overlay'
+                            })
+                            .css({
+                                'width': $doc.width(),
+                                'height': $doc.height(),
+                                'background-color': '#000',
+                                'opacity': '0.3',
+                                'position': 'absolute',
+                                'top': '0',
+                                'left': '0',
+                                'z-index': maxIndex - 1
+                            });
+
+                        $overlay.appendTo($body);
+
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupAlertPassageName').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+            ('#PopupAlertPassageName').dialog('close');
+        });
+    }
+
+    function cancelAlertPassage() {
+        $("#divPreviewOnlinePanel").dialog("close");
+        $('#divPreviewOnlinePanel').remove();
+    }
+</script>

@@ -1,0 +1,349 @@
+﻿
+@using LinkIt.BubbleSheetPortal.Common.Enum
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using Newtonsoft.Json
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.ACTReport.ACTReportMasterViewModel
+
+<div>
+    @{
+        var sections = Model.SectionTagViewModels.Take(5).ToList();
+        var useNewACT = Model.VirtualTestSubTypeId == (int)VirtualTestSubType.NewACT || Model.UseNewACTStudentFormat;
+        var tableCssClass = "act-table";
+    }
+    @for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
+    {
+        var sectionTag = sections[sectionIndex];
+
+        if (sectionIndex < 4)
+        {
+            <div style="clear:both;" class="non-break-inside">
+                <p class="black-title">
+                    <span>@sectionTag.SectionName.ToUpper()</span>
+                </p>
+
+                @{
+                    var charts = sectionTag.TagCategoryReportViewModels.Where(m => m.PresentationType == ACTPresentationType.CHART).ToList();
+                    var tables = sectionTag.TagCategoryReportViewModels.Where(m => m.PresentationType != ACTPresentationType.CHART).ToList();
+                    var color = "";
+
+                    switch (sectionTag.SectionName.ToUpper())
+                    {
+                        case "ENGLISH":
+                            color = "#0d6671";
+                            break;
+                        case "MATH":
+                            color = "#eb6523";
+                            break;
+                        case "READING":
+                            color = "#5f164d";
+                            break;
+                        case "SCIENCE":
+                            color = "#a42630";
+                            break;
+                        default:
+                            break;
+                    }
+
+                    var chartWidth = 36;
+                    var tableWidth = 62;
+                    var answerHeaderWidth = "40px";
+                    var answerContentWidth = "19px";
+
+                    if (charts.Count == 0 && tables.Count > 0)
+                    {
+                        tableWidth = 100;
+
+                        answerHeaderWidth = "59px";
+                        answerContentWidth = "31px";
+                    }
+                }
+                <div style="width:@chartWidth%;float:left;">
+                    @foreach (var tageCategory in charts)
+                    {
+                        <div style="width:92%;border:1px solid;min-height:100px;padding:10px;margin-bottom:10px;padding-bottom:0;position:relative">
+                            <div style="position: absolute;top: -8px;z-index: 10;background: white;padding: 3px;font-weight: bold;font-size: 8pt;">@tageCategory.TagCategoryName</div>
+                            @foreach (var item in tageCategory.SingleTagReportViewModels)
+                            {
+                                <div class="section-chart"
+                                     data-item-tag="@item.TagName"
+                                     data-correct-answer="@item.CorrectAnswer"
+                                     data-incorrect-answer="@item.IncorrectAnswer"
+                                     data-blank-answer="@item.BlankAnswer"
+                                     data-percent="@item.Percent"
+                                     data-historical-average="@item.HistoricalAverage"
+                                     data-color="@color">
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                <div style="width:@tableWidth%;float:right">
+                    @foreach (var tagCategory in tables)
+                    {
+                        if (string.IsNullOrEmpty(tagCategory.TagCategoryName))
+                        {
+                            continue;
+                        }
+                        var boderHeader = "border-bottom:1px solid";
+
+                        var tableType = "TABLE_TWO";
+
+                        <div style="width:100%;clear:both;">
+                            @if (tagCategory.IsTechniqueCategory)
+                        {
+                                <table class="act-table @tableType">
+                                    <thead>
+                                        <tr style="@boderHeader">
+                                            <th style="text-align:left">
+                                                @tagCategory.TagCategoryName
+                                            </th>
+                                            <th style="width:60px" class="text-center">Incorrect</th>
+                                            <th style="width:36px" class="text-center">Blank</th>
+                                            <th style="width:150px" class="text-center">Incorrectly Answered</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+
+                                        @{
+                                            var indexTable = 0;
+                                        }
+                                        @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                                        {
+                                            ++indexTable;
+                                            var borderNoneBottom = indexTable == tagCategory.SingleTagReportViewModels.Count() ? "border-none-bottom" : "";
+                                            <tr>
+                                                <td style="vertical-align:middle;" class="border-none-left @borderNoneBottom">
+                                                    @singleTag.TagName
+                                                </td>
+                                                <td class="text-center @borderNoneBottom">
+                                                    @singleTag.IncorrectAnswer
+                                                </td>
+                                                <td class="text-center @borderNoneBottom">
+                                                    @singleTag.BlankAnswer
+                                                </td>
+                                                <td class="text-center border-none-right @borderNoneBottom">
+                                                    @string.Join(", ", singleTag.ListAnswerInTag.Where(x => x.PointsEarned != x.PointsPossible && x.WasAnswered).Select(x => x.QuestionOrder.ToString() /* + x.CorrectAnswer + ":" + x.AnswerLetter*/))
+                                                </td>
+                                            </tr>
+
+
+                                        }
+                                    </tbody>
+                                </table>
+                                            }
+                                            else if (Model.TagTableUseAlternativeStyle)
+                                            {
+                                                <table class="act-table @tableType">
+                                                    <thead>
+                                                        <tr style="@boderHeader">
+                                                            <th style="text-align:left">
+                                                                @tagCategory.TagCategoryName
+                                                            </th>
+                                                            <th width="36px">Total</th>
+                                                            <th width="50px">Correct</th>
+                                                            <th width="60px">Incorrect</th>
+                                                            <th width="36px">Blank</th>
+                                                            <th width="150px">Incorrectly Answered or Skipped</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @{
+                                                            var indexTable = 0;
+                                                        }
+                                                        @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                                                        {
+                                                            ++indexTable;
+                                                            var borderNoneBottom = indexTable == tagCategory.SingleTagReportViewModels.Count() ? "border-none-bottom" : "";
+                                                            <tr>
+                                                                <td style="vertical-align:middle;" class="border-none-left @borderNoneBottom">
+                                                                    @singleTag.TagName
+                                                                </td>
+                                                                <td class="text-center @borderNoneBottom">
+                                                                    @singleTag.TotalAnswer
+                                                                </td>
+                                                                <td class="text-center @borderNoneBottom">
+                                                                    @singleTag.CorrectAnswer
+                                                                </td>
+                                                                <td class="text-center @borderNoneBottom">
+                                                                    @singleTag.IncorrectAnswer
+                                                                </td>
+                                                                <td class="text-center @borderNoneBottom">
+                                                                    @singleTag.BlankAnswer
+                                                                </td>
+                                                                <td class="text-center border-none-right @borderNoneBottom">
+                                                                    @string.Join(", ", singleTag.ListAnswerInTag.Where(x => (x.PointsEarned != x.PointsPossible && x.WasAnswered) || !x.WasAnswered).Select(x => x.QuestionOrder.ToString() /* + x.CorrectAnswer + ":" + x.AnswerLetter*/))
+                                                                </td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                                            }
+                                                            else
+                                                            {
+                                                                if (!tagCategory.IsTechniqueCategory)
+                                                                {
+                                                                    <table class="act-table @tableType">
+                                                                        <thead>
+                                                                            <tr style="@boderHeader">
+                                                                                <th class="border-none-left" style="text-align:left">
+                                                                                    @tagCategory.TagCategoryName
+                                                                                </th>
+                                                                                <th width="36px">Total</th>
+                                                                                <th width="40px">Correct</th>
+                                                                                <th width="50px">Incorrect</th>
+                                                                                <th width="36px">Blank</th>
+                                                                                <th width="40px">Percent</th>
+                                                                                <th width="70px">Hist Avg %</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            @{
+                                                                                var indexTable = 0;
+                                                                            }
+                                                                            @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                                                                            {
+                                                                                ++indexTable;
+                                                                                var borderNoneBottom = indexTable == tagCategory.SingleTagReportViewModels.Count() ? "border-none-bottom" : "";
+                                                                                string boldClass = "";
+                                                                                if (Model.BoldZeroPercentScore && singleTag.Percent == 0)
+                                                                                {
+                                                                                    boldClass = "style=\"font-weight: bold;\"";
+                                                                                }
+                                                                                <tr @Html.Raw(boldClass) style="vertical-align:middle;">
+                                                                                    <td class="border-none-left @borderNoneBottom">
+                                                                                        @singleTag.TagName
+                                                                                    </td>
+                                                                                    <td class="text-center @borderNoneBottom">
+                                                                                        @singleTag.TotalAnswer
+                                                                                    </td>
+                                                                                    <td class="text-center @borderNoneBottom">
+                                                                                        @singleTag.CorrectAnswer
+                                                                                    </td>
+                                                                                    <td class="text-center @borderNoneBottom">
+                                                                                        @singleTag.IncorrectAnswer
+                                                                                    </td>
+                                                                                    <td class="text-center @borderNoneBottom">
+                                                                                        @singleTag.BlankAnswer
+                                                                                    </td>
+                                                                                    <td class="text-center @borderNoneBottom">
+                                                                                        @string.Format("{0}%", singleTag.Percent)
+                                                                                    </td>
+                                                                                    <td class="text-center border-none-right @borderNoneBottom">
+                                                                                        @string.Format("{0}%", singleTag.HistoricalAverage)
+                                                                                    </td>
+                                                                                </tr>
+                                                                            }
+                                                                        </tbody>
+                                                                    </table>
+                                                                                    }
+                                                                                }
+                        </div>
+                                                                                }
+
+                    @{
+                        //render answers
+                        const int answerColumnNumber = 20;
+                        int index = 1;
+                        var listAnswer = sectionTag.AnswerSectionViewModels.ToList();
+
+                        while (listAnswer.Any())
+                        {
+                            var marginTop = index == 1 ? "" : "margin-top:-1px";
+
+                            <table style="border:1px solid;font-size:8pt;@marginTop;" class="table-answer">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center" style="width: @answerHeaderWidth;padding-top:3px;padding-bottom:3px">Q#</th>
+                                        @for (int i = 0; i < answerColumnNumber; i++)
+                                        {
+                                            if (i < listAnswer.Count)
+                                            {
+                                                <th class="text-center" style="width: @answerContentWidth">@string.Format("{0}", i + index)</th>
+                                            }
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="question-detail-answer">
+                                        <td class="text-center" style="font-weight:bold;background-color:#d1d2d4;padding-top:3px;padding-bottom:3px">Ans</td>
+                                        @for (int i = 0; i < answerColumnNumber; i++)
+                                        {
+                                            if (i < listAnswer.Count)
+                                            {
+                                                <td class="text-center" style="background-color:#d1d2d4">@listAnswer[i].CorrectAnswer</td>
+                                            }
+                                        }
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center" style="font-weight:bold;padding-top:3px;padding-bottom:3px">Mk</td>
+                                        @for (int i = 0; i < answerColumnNumber; i++)
+                                        {
+                                            if (i < listAnswer.Count)
+                                            {
+                                                <td class="text-center">
+                                                    @if (listAnswer[i].IsCorrected)
+                                                    {
+                                                        @:+
+                                        }
+                                                    else
+                                                    {
+                                                        if (listAnswer[i].IsBlank)
+                                                        {
+                                                            @:-
+                                            }
+                                                        else
+                                                        {
+                                                            @listAnswer[i].AnswerLetter
+                                                        }
+                                                    }
+                                                </td>
+                                            }
+                                        }
+
+                                        @if (answerColumnNumber < listAnswer.Count)
+                                        {
+                                            listAnswer.RemoveRange(0, answerColumnNumber);
+                                            index = answerColumnNumber + index;
+                                        }
+                                        else
+                                        {
+                                            listAnswer.RemoveRange(0, listAnswer.Count);
+                                        }
+                                    </tr>
+                                </tbody>
+                            </table>
+                        }
+                    }
+                </div>
+
+            </div>
+        }
+        if (sectionIndex == 0 && !useNewACT)
+        {
+            <text><div class="page-breaker"></div></text>
+            }
+        }
+</div>
+
+<script>
+
+    var sectionChartElements = $(".section-chart");
+
+    if (sectionChartElements && sectionChartElements.length > 0) {
+        for (var i = 0; i < sectionChartElements.length; i++) {
+            var element = $(sectionChartElements[i]);
+
+            var model = {
+                itemTag: element.attr('data-item-tag'),
+                correctAnswer: element.attr('data-correct-answer'),
+                incorrectAnswer: element.attr('data-incorrect-answer'),
+                blankAnswer: element.attr('data-blank-answer'),
+                percent: element.attr('data-percent'),
+                historicalAverage: element.attr('data-historical-average'),
+                color: element.attr('data-color'),
+            }
+
+            element.html(_actReport.renderSectionChart(model));
+        }
+    }
+</script>

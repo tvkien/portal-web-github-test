@@ -1,0 +1,56 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.UserImpersonationViewModel
+
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Techsupport, "User Impersonation");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<link href="@BundleHelper.Version("~/Content/css/v2/generate-bubble-sheet.css")" rel="stylesheet" type="text/css" />
+<article class="container_12">
+    <section class="grid_12" style="width:70%">
+        <div class="block-border" id="divImpersonate">
+            <div class="form">
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                @using (Html.BeginForm("ImpersonateUser", "Admin", FormMethod.Post, new { id = "userImpersonationForm", @class = "form" }))
+                {
+                    @Html.Partial("v2/_UserImpersonation")
+                }
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        $('#userImpersonationForm').submit(function (e) {
+            e.preventDefault();
+            $.post($(this).attr('action'), $(this).serialize(), function (response) {
+                if (response.Success == false) {
+                    if (response.IsReload == true) {
+                        location.reload();
+                    }
+                    addErrorMessages(response);
+                    $('#error-messages').show();
+                    $(window).scrollTop($('#divImpersonate'));
+                } else {
+                    $('#error-messages').hide();
+                    location.href = response.RedirectUrl;
+                }
+            });
+        });
+    });
+</script>

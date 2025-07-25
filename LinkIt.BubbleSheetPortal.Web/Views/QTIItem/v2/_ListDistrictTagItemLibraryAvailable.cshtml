@@ -1,0 +1,203 @@
+<style>
+    .no-margin {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .block-content .no-margin.last-child {
+        margin-bottom: 0 !important
+    }
+
+    #dataTableDistrictTagAvailable_wrapper .block-controls,
+    #dataTableDistrictTagAvailable_wrapper .block-footer {
+        display: none;
+    }
+
+    #dataTableDistrictTagAvailable {
+        display: block;
+        max-height: 250px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+        #dataTableDistrictTagAvailable tbody {
+            border-collapse: collapse;
+            width: 100%;
+            display: table;
+        }
+
+        #dataTableDistrictTagAvailable thead {
+            width: 100%;
+            position: sticky;
+            top: 0;
+            z-index: 12;
+            border-collapse: collapse;
+            display: table;
+        }
+
+        #dataTableDistrictTagAvailable tbody tr td:first-child {
+            width: 92px !important;
+            text-align: center !important;
+        }
+
+        #dataTableDistrictTagAvailable thead tr th {
+            border-bottom: none;
+        }
+</style>
+<div class="form">
+    <div class="toggle mb-4">
+        <p class="title-large" style="font-size: 1.125rem !important">Filtered Tag(s)</p>
+    </div>
+
+    <table id="dataTableDistrictTagAvailable" class="datatable table dataTableDistrictTagAvailableStyle">
+        <thead>
+            <tr>
+                <th scope="col">
+                    Actions
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Tag
+                </th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+<script type="text/javascript">
+    var oTableDistrictTagAvailable;
+    $(function () {
+        LoadDistrictTagAvailableToTable();
+    });
+
+    function LoadDistrictTagAvailableToTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceForDistrictTagAvailable(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+
+                }
+
+            },
+            bFilter: false,
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'ItemTagID', bSearchable: false, bSortable: false, sWidth: '92px' },
+                { sType: 'string', sName: 'Name', bSearchable: false, bSortable: true  }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityDistrictTagAvailable(aData[0]));
+
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableDistrictTagAvailable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableDistrictTagAvailable').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        $("#dataTableDistrictTagAvailable").data("options", options);
+        initializeDataTable($("#dataTableDistrictTagAvailable"));
+        oTableDistrictTagAvailable = $('#dataTableDistrictTagAvailable').dataTable();
+    }
+
+    function getAjaxSourceForDistrictTagAvailable() {
+        var itemTagCategoryId = $("#ddlCategory").val();//ddlCategory is defined in _Tag
+        if (itemTagCategoryId == null) {
+            itemTagCategoryId = 0;
+        }
+        if (itemTagCategoryId == 'select') {
+            itemTagCategoryId = 0;
+        }
+        var tag = $('#txtTextToSearch').val();
+        tag = encodeURIComponent(htmlEncode(tag));
+        var textToSearch = $('#txtTextToSearch').val(); //txtTextToSearch is defined in _Tag
+        //return '@Url.Action("SearchItemTag","ItemTag")?itemTagCategoryId=' + itemTagCategoryId + '&textToSearch=' + encodeURIComponent(textToSearch);
+        return '@Url.Action("SearchItemTag","ItemTag")?itemTagCategoryId=' + itemTagCategoryId + '&textToSearch=' + tag;
+
+    }
+
+    function ReloadDistrictTagAvailable() {
+        $("#dataTableDistrictTagAvailable").dataTable().fnReloadAjax(getAjaxSourceForDistrictTagAvailable());
+    }
+    function setIconVisibilityDistrictTagAvailable(id) {
+        var mutualItemTagIdString = $('#MutualItemTagIdString').val();
+        var result = '';
+        if (mutualItemTagIdString.indexOf(',-' + id + '-') >= 0) {
+            deleteDisplayed = 'inline-block';
+            var deleteIcon = '<span class="icon fa-solid fa-circle-minus icon-red"></span>';
+            var deleteTitle = "<p style='font-size: 12px;'>Remove Tag</p>";
+            result = '<a id="iconDelete_' + id + '" href="javascript:void(0)" onclick="RemoveDistrictTag(this);" title="' + deleteTitle + '" operation="1"  class="with-tip" style="display:' + deleteDisplayed + '">' + deleteIcon + '</a>';
+        } else {
+            addDisplayed = 'inline-block';
+            var addIcon = '<span class="icon fa-solid fa-circle-plus icon-green"></span>';
+            var addTitle = "<p style='font-size: 12px;'>Assign Tag</p>";
+            result = '<a id="iconAdd_' + id + '" href="javascript:void(0)" onclick="AssignDistrictTag(this);" title="' + addTitle + '"  class="with-tip" style="display:' + addDisplayed + '">' + addIcon + '</a>';
+        }
+
+        return result;
+
+    }
+    function AssignDistrictTag(control) {
+        var self = $(control);
+        var id = self.attr('id');
+        var tagId = id.split('_')[1];
+
+        ShowBlock($("#dataTableDistrictTagAvailable"), "Adding");
+
+        $.post('@Url.Action("AssignDistrictTagForManyQtiItems", "QTIItemTag")', { qtiItemIdString: '@ViewBag.QtiItemIdString',tagIdString:tagId }, function (response) {
+             $("#dataTableDistrictTagAvailable").unblock();
+             if (response.Success == 'Success') {
+                 //clear all assigned tag
+                 LinkIt.success('#divLinkitDefaultTagNotifications', 'Tag Assigned');
+
+                 var idString = '';
+                 idString = $('#MutualItemTagIdString').val();
+                 if (idString == null) {
+                     idString = '';
+                 }
+                 idString = idString + ",-" + tagId + "-";
+                 $('#MutualItemTagIdString').val(idString);
+                 $("#iconAdd_" + tagId).hide();
+                 $("#iconDelete_" + tagId).show();
+
+                 ReloadDistrictTagAvailable();
+                 //reload assigned list
+                 ReloadDistrictTagAssigned();//defined in _ListDistrictTagAssigned.cshtml
+
+
+             } else {
+                 CustomAlert(response.errorMessage);
+             }
+         });
+    }
+</script>

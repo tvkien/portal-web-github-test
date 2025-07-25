@@ -1,0 +1,523 @@
+@using LinkIt.BubbleSheetPortal.Models
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestBranchingViewModel
+@{
+    VirtualSectionQuestionQtiItem currentItem = null;
+    string currentQuestionConfigBranching = string.Empty;
+    foreach (var section in Model.VirtualSectionList)
+    {
+        foreach (var item in section.SectionQuestionQtiItemList)
+        {
+            if (item.VirtualQuestionID == Model.VirtualQuestionId)
+            {
+                if (section.VirtualSectionId > 0)
+                {
+                    currentQuestionConfigBranching = string.IsNullOrEmpty(section.Title) ? "Section " + section.Order : section.Title ;
+                    currentQuestionConfigBranching = currentQuestionConfigBranching + " - ";
+                }
+                currentItem = item;
+                if (item.QuestionGroupID > 0)
+                {
+                    currentQuestionConfigBranching = currentQuestionConfigBranching + "Grouped Questions #" + item.GroupOrder;
+                }
+                else
+                {
+                    currentQuestionConfigBranching = currentQuestionConfigBranching + "Question #" + item.DisplayOrder;
+                }
+            }
+        }
+    }
+
+    var isMcVariable = currentItem != null && currentItem.QTISchemaID == 37 && currentItem.XmlContent.IndexOf("cardinality=\"multiple\"", System.StringComparison.Ordinal) > -1;
+}
+<style>
+    /*#divVirutalSectionQuestionBranching .VirtualSectionLable:hover {
+        cursor: pointer;
+    }*/
+
+    #divVirutalSectionQuestionBranching ol {
+        list-style-type: decimal;
+        padding-left: 22px;
+    }
+
+    #divVirutalSectionQuestionBranching ul li {
+        padding: 0.75rem;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid var(--blue3);
+    }
+
+    #divVirutalSectionQuestionBranching ul li:hover {
+        background-color: var(--blue1);
+        cursor: pointer;
+    }
+
+    #divVirutalSectionQuestionBranching ul li.selected {
+        background-color: var(--blue7);
+        /*cursor: pointer;*/
+    }
+
+    #divVirutalSectionQuestionBranching ul li.group-header {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: 48px;
+        padding: 0.25em 0 0.25em 0.75em;
+        background-color: var(--yellow1);
+    }
+
+    #divVirutalSectionQuestionBranching ul .ui-sortable-placeholder {
+        border: solid 1px #4298E3;
+        min-height: 70px;
+        background-color: #F5FAFF !important;
+        visibility: visible !important;
+    }
+
+    #divVirutalSectionQuestionBranching {
+        max-height: 350px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    #tableAnswer tr td:hover {
+        background-color: var(--blue1) !important;
+        cursor: pointer;
+    }
+
+    #tableAnswer tr td.selected {
+        background-color: var(--blue3) !important;
+    }
+
+    .multichoice-active {
+        background-color: #4298E3 !important;
+    }
+
+    #portal-v2-containter #tableAnswer {
+        border: 0;
+        border-collapse: collapse;
+    }
+
+    #portal-v2-containter #tableAnswer thead td {
+        color: var(--navyColor);
+        font-weight: 700;
+        text-align: center;
+        background-color: var(--blue1) !important;
+    }
+
+    #portal-v2-containter #tableAnswer tr td {
+        background: unset;
+        text-shadow: unset;
+        box-shadow: unset;
+        border: 1px solid var(--blue3);
+    }
+
+    #portal-v2-containter .chkAutoListItem {
+        margin-right: 0.5rem;
+    }
+
+    #portal-v2-containter .autoTestSection .numAutoList {
+        float: none;
+        padding: 0;
+    }
+
+    #portal-v2-containter .autoTestSection .autoTestHeader {
+        display: flex;
+        align-items: center;
+    }
+
+    #portal-v2-containter .autoTestSection .VirtualSectionLable {
+        margin: 0;
+    }
+</style>
+<div class="block-border" id="divContentTestSettingTestPropertyTop" style="position: static; z-index: 1002">
+    <div id="divContentTestSettingTestProperty" class="block-content form bubbleSheetSelector p-4" style="z-index: 1002;">
+        <fieldset class="p-0" style="z-index: 1002">
+            <p class="title-large mb-4">Branching Configuration</p>
+            <label class="mb-3 fw-bold">@currentQuestionConfigBranching</label>
+            <ul style="display: none; margin-bottom: 10px;" id="success-message" class="message success"></ul>
+            <div class="accordion-scroll p-0 mb-4 row">
+                <div class="col-6">
+                    <div id="accordion-assignment-setting" class="" >
+                        <div class="accordion-content active">
+                            <form id="frmTestBranching">
+                                @Html.HiddenFor(m => m.VirtualQuestionId)
+                                @Html.HiddenFor(m => m.VirtualTestId)
+                                <table id="tableAnswer" class="table">
+                                    <thead>
+                                        <tr>
+                                            <td class="table-accordion-title" style="width: 300px">
+                                                Answer Choice
+                                            </td>
+                                            <td class="table-accordion-title">
+                                                Next Question
+                                            </td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (currentItem != null && currentItem.QuestionGroupID == null)
+                                        {
+                                            var listAnswer = new List<string> { "" };
+                                            var isComplexType = false;
+                                            if (currentItem.QTISchemaID == 1 || currentItem.QTISchemaID == 3 || currentItem.QTISchemaID == 8 || currentItem.QTISchemaID == 37)
+                                            {
+                                                listAnswer.AddRange(currentItem.AnswerIdentifiers.Split(';').ToList());
+                                            }
+                                            else if ((currentItem.QTISchemaID == 9 && currentItem.XmlContent.IndexOf("method=\"manual\"", System.StringComparison.Ordinal) == -1)
+                                                     || currentItem.QTISchemaID == 30
+                                                     || currentItem.QTISchemaID == 31
+                                                     || currentItem.QTISchemaID == 32
+                                                     || currentItem.QTISchemaID == 33
+                                                     || currentItem.QTISchemaID == 34
+                                                     || currentItem.QTISchemaID == 35
+                                                     || currentItem.QTISchemaID == 36
+                                                    )
+                                            {
+                                                isComplexType = true;
+                                                listAnswer.AddRange(("C;I;P").Split(';').ToList());
+                                            }
+
+                                            foreach (var s in listAnswer)
+                                            {
+                                                var answer = Model.VirtualQuestionBranchingList.FirstOrDefault(v => v.AnswerChoice == s);
+                                                <tr>
+                                                    <td name="tdAnswer" data-answer="@s" data-schema-id="@currentItem.QTISchemaID" data-question-id="@(answer != null ? answer.TargetVirtualQuestionID : -1)">
+                                                        @if (s == "")
+                                                        {
+                                                            <text>Default</text>
+                                                        }
+                                                        else if (isComplexType && s == "C")
+                                                        {
+                                                            <text>Correct</text>
+                                                        }
+                                                        else if (isComplexType && s == "I")
+                                                        {
+                                                            <text>Incorrect</text>
+                                                        }
+                                                        else if (isComplexType && s == "P")
+                                                        {
+                                                            <text>Partial</text>
+                                                        }
+                                                        else
+                                                        {
+                                                            <text>@s</text>
+                                                        }
+                                                    </td>
+                                                    <td name="tdTargetQuestion" data-answer="@s"></td>
+                                                </tr>
+                                            }
+                                        }
+                                        else if (currentItem != null && currentItem.QuestionGroupID != null)
+                                        {
+                                            <tr>
+                                                <td name="tdAnswer" data-answer="" data-schema-id="@currentItem.QTISchemaID" data-question-id="-1">
+                                                    Default
+                                                </td>
+                                                <td name="tdTargetQuestion" data-answer=""></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </form>
+                            @if (currentItem != null && (currentItem.QTISchemaID == 3 || isMcVariable))
+                            {
+                                <label style="margin: 8px 0 0 0 !important">Exists branching setting</label>
+                                <div id="dvMultichoice"></div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6">
+                    <div>
+                        <div class="autoTestSection" id="divVirutalSectionQuestionBranching">
+                            <div class="groupSection">
+                                <div class="autoTestHeader">
+                                    <p class="VirtualSectionLable">End Test</p>
+                                </div>
+                                <ul class="autoListUL" style="min-height: 33px !important">
+                                    <li name="liVirtualQuestionBranching">
+                                        <div class="chkAutoListItem">
+                                            <input type="checkbox" readonly="readonly" name="chkVirtualQuestionBranching" value="0" data-order="0" />
+                                        </div>
+                                        <div class="numAutoList" style="display: inline-block; vertical-align: top;"></div>
+                                        <div class="QtiItemDetail m-0">End Test</div>
+                                    </li>
+                                </ul>
+                            </div>
+                            @foreach (var section in Model.VirtualSectionList)
+                            {
+                                <div class="groupSection">
+                                    <div class="autoTestHeader">
+                                        <p class="VirtualSectionLable">@(section.Title)</p>
+                                    </div>
+                                    <ul class="autoListUL">
+                                        @foreach (var item in section.SectionQuestionQtiItemList)
+                                        {
+                                            string strSectionName = section.VirtualSectionId > 0 ? string.IsNullOrEmpty(section.Title) ? "Section " + section.Order + " - #" : section.Title + " - #" : string.Empty;
+                                            if ((currentItem.QuestionGroupID == null && item.VirtualQuestionID != Model.VirtualQuestionId)
+                                                                        || (currentItem.QuestionGroupID != null && item.QuestionGroupID != currentItem.QuestionGroupID)
+                                               )
+                                            {
+                                                if (item.QuestionGroupID != null)
+                                                {
+                                                    if (item.DisplayOrder.EndsWith("a"))
+                                                    {
+                                                        <li name="liVirtualQuestionBranching" class="group-header">
+                                                            <div class="chkAutoListItem">
+                                                                <label>
+                                                                    <input type="checkbox" readonly="readonly" name="chkVirtualQuestionBranching" value="@item.VirtualQuestionID" data-order="@(strSectionName + item.DisplayOrder)" />
+
+                                                                </label>
+                                                            </div>
+                                                        </li>
+                                                    }
+                                                    <li name="liVirtualQuestionBranching" class="group-item" data-questiongroupid="@item.QuestionGroupID">
+                                                        <div class="numAutoList" style="display: inline-block; vertical-align: top;">@(item.DisplayOrder).</div>
+                                                        <div class="QtiItemDetail QtiItemDetailBranching">@item.XmlContent</div>
+                                                    </li>
+                                                }
+                                                else
+                                                {
+                                                    <li name="liVirtualQuestionBranching">
+                                                        <div class="chkAutoListItem">
+                                                            <input type="checkbox" readonly="readonly" name="chkVirtualQuestionBranching" value="@item.VirtualQuestionID" data-order="@(strSectionName + item.DisplayOrder)" />
+                                                        </div>
+                                                        <div class="numAutoList" style="display: inline-block; vertical-align: top;">@(item.DisplayOrder).</div>
+                                                        <div class="QtiItemDetail QtiItemDetailBranching">@item.XmlContent</div>
+                                                        <div class="clear"></div>
+                                                    </li>
+                                                }
+                                            }
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-component-footer mx-n4">
+                <div slot="footer">
+                    <button class=" mgright10 w70" id="btnTestBranchingCancel" type="button">Cancel</button>
+                    <button class="" id="btnTestBranchingSave" type="button">Save</button>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+</div>
+<input id="hdVirtualQuestionBranchingList" type="hidden" value="@Json.Encode(Model.VirtualQuestionBranchingList)" />
+<input id="hdIsChange" value="0" type="hidden" />
+<script type="text/javascript">
+    var virtualQuestionBranchingList = null;
+
+    $(document).ready(function () {
+        virtualQuestionBranchingList = JSON.parse($('#hdVirtualQuestionBranchingList').val());
+
+        renderAnswerChoice();
+
+        $('td[name="tdAnswer"]').click(function (e) {
+            var schemaId = $(this).attr('data-schema-id');
+            var answer = $(this).attr('data-answer');
+
+            if ((schemaId == '3' || '@isMcVariable.ToString()' == 'True') && answer != '') {
+                $('td[name="tdAnswer"][data-answer=""]').removeClass('selected');
+                if (!$(this).hasClass('selected')) {
+                    $(this).addClass('selected');
+                } else {
+                    $(this).removeClass('selected');
+                }
+
+                if ($('td[name="tdAnswer"].selected').length == 0) {
+                    $('td[name="tdAnswer"][data-answer=""]').addClass('selected');
+                }
+
+                setQuestionBranching();
+            } else {
+                if (!$(this).hasClass('selected')) {
+                    $('td[name="tdAnswer"]').each(function () {
+                        $(this).removeClass('selected');
+                    });
+                    $(this).addClass('selected');
+
+                    setQuestionBranching();
+                }
+            }
+        });
+
+        $('input[name="chkVirtualQuestionBranching"]').click(function () {
+            $('#hdIsChange').val(1);
+            var checkbox = $(this);
+            var answerChoice;
+            if (checkbox.prop('checked')) {
+                $('input[name="chkVirtualQuestionBranching"]').each(function () {
+                    $(this).prop('checked', false);
+                });
+                checkbox.prop('checked', true);
+
+                answerChoice = setAnswerChoice(parseInt(checkbox.val()));
+            } else {
+                answerChoice = setAnswerChoice(-1);
+            }
+
+            renderAnswerChoice();
+
+            $('input[name="btMultichoice"]').removeClass('multichoice-active');
+            $('input[name="btMultichoice"][data-answer="' + answerChoice + '"]').addClass('multichoice-active');
+        });
+
+        $('.QtiItemDetailBranching').each(function (index, ctrl) {
+            var xmlContent = $(ctrl).text();
+            var html = DisplayQTIItemContent(xmlContent);
+            $(ctrl).html(html);
+            loadContentNumberLineHotspot('.QtiItemDetailBranching');
+            loadContentImageHotSpot('.QtiItemDetailBranching');
+            loadContentDragAndDrop('.QtiItemDetailBranching');
+        });
+
+        $('#btnTestBranchingCancel').click(function () {
+            $(".dialog").dialog("close");
+        });
+
+        $('#btnTestBranchingSave').click(function () {
+            $('#hdIsChange').val(0);
+            var jsonString = JSON.stringify(virtualQuestionBranchingList);
+
+            ShowBlock($('#divContentTestSettingTestProperty'), 'Saving');
+            var url = '@Url.Action("SaveTestBranching")';
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: { jsonString: jsonString },
+                success: function (response) {
+                    $('#divContentTestSettingTestProperty').unblock();
+                },
+                failure: function (response) {
+                    $('#divContentTestSettingTestProperty').unblock();
+                }
+            });
+        });
+
+        $('#accordion-assignment-setting .accordion-title').on('click', function () {
+            var $self = $(this);
+            var $accordionContent = $self.next();
+
+            if ($self.hasClass('active')) {
+                $self.removeClass('active');
+                $accordionContent.slideUp();
+            } else {
+                $self.addClass('active');
+                $accordionContent.slideDown();
+            }
+        });
+    });
+
+    function setQuestionBranching() {
+        $('input[name="chkVirtualQuestionBranching"]').each(function () {
+            $(this).prop('checked', false);
+        });
+
+        $('input[name="btMultichoice"]').removeClass('multichoice-active');
+
+        if ($('td[name="tdAnswer"].selected').length == 0) {
+            return;
+        }
+
+        var arrAnswer = new Array();
+        $('td[name="tdAnswer"].selected').each(function () {
+            arrAnswer.push($(this).attr('data-answer'));
+        });
+
+        var answerChoice = arrAnswer.join(',');
+
+        $('input[name="btMultichoice"][data-answer="' + answerChoice + '"]').addClass('multichoice-active');
+
+        var targetQuestionId = -1;
+        for (var i = 0; i < virtualQuestionBranchingList.length; i++) {
+            if (virtualQuestionBranchingList[i].AnswerChoice == answerChoice) {
+                targetQuestionId = virtualQuestionBranchingList[i].TargetVirtualQuestionID;
+                break;
+            }
+        }
+
+        var chkVirtualQuestionBranching = $('input[name="chkVirtualQuestionBranching"][value="' + targetQuestionId + '"]');
+        if (chkVirtualQuestionBranching.length > 0) {
+            chkVirtualQuestionBranching.prop('checked', true);
+            var offset = chkVirtualQuestionBranching.offset();
+            var container = $('#divVirutalSectionQuestionBranching');
+            container.animate({ scrollTop: offset.top - container.offset().top + container.scrollTop() }, 300);
+        }
+    }
+
+    function setAnswerChoice(targetQuestionId) {
+        if ($('td[name="tdAnswer"].selected').length == 0) {
+            return "";
+        }
+
+        var arrAnswer = new Array();
+        $('td[name="tdAnswer"].selected').each(function () {
+            arrAnswer.push($(this).attr('data-answer'));
+        });
+
+        var answerChoice = arrAnswer.join(',');
+
+        var hasAnswer = false;
+        for (var i = 0; i < virtualQuestionBranchingList.length; i++) {
+            if (virtualQuestionBranchingList[i].AnswerChoice == answerChoice) {
+                virtualQuestionBranchingList[i].TargetVirtualQuestionID = targetQuestionId;
+                hasAnswer = true;
+                break;
+            }
+        }
+
+        if (!hasAnswer) {
+            var virtualQuestionId = $('#VirtualQuestionId').val();
+            var virtualTestId = $('#VirtualTestId').val();
+
+            var object = {
+                'VirtualQuestionID': parseInt(virtualQuestionId),
+                'VirtualTestID': parseInt(virtualTestId),
+                'TargetVirtualQuestionID': targetQuestionId,
+                'AnswerChoice': answerChoice
+            };
+
+            virtualQuestionBranchingList.push(object);
+        }
+
+        return answerChoice;
+    }
+
+    function renderAnswerChoice() {
+        if ($('#dvMultichoice').length > 0) {
+            $('#dvMultichoice').html('');
+        };
+
+        for (var i = 0; i < virtualQuestionBranchingList.length; i++) {
+            var answerChoice = virtualQuestionBranchingList[i].AnswerChoice;
+            var targetQuestionId = virtualQuestionBranchingList[i].TargetVirtualQuestionID;
+            if (targetQuestionId == -1) {
+                $('td[name="tdTargetQuestion"][data-answer="' + answerChoice + '"]').text("");
+            } else {
+                var order = $('input[name="chkVirtualQuestionBranching"][value="' + targetQuestionId + '"]').attr('data-order');
+                order = $.trim(order);
+                if ($('td[name="tdTargetQuestion"][data-answer="' + answerChoice + '"]').length > 0) {
+                    $('td[name="tdTargetQuestion"][data-answer="' + answerChoice + '"]').text(order === '0' ? 'End Test' : order);
+                } else if ($('#dvMultichoice').length > 0) {
+                    $('#dvMultichoice').append('<input style="width: 200px; margin-top: 5px; text-align: left" type="button" name="btMultichoice" onclick="clickMultichoice(this)" data-answer="' + answerChoice + '" data-order="' + order + '" value="' + answerChoice + ' => ' + (order === '0' ? 'End Test' : 'Question #' + order) + '" /></br>');
+                }
+            }
+        }
+    }
+
+    function clickMultichoice(el) {
+        $('input[name="btMultichoice"]').removeClass('multichoice-active');
+        $(el).addClass('multichoice-active');
+        $('td[name="tdAnswer"]').removeClass('selected');
+
+        var answers = $(el).attr('data-answer').split(',');
+        for (var i = 0; i < answers.length; i++) {
+            $('td[name="tdAnswer"][data-answer="' + answers[i] + '"]').addClass('selected');
+        }
+
+        setQuestionBranching();
+    }
+</script>

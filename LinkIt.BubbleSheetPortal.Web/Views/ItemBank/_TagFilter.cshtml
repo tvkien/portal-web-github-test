@@ -1,0 +1,313 @@
+﻿<style type="text/css">
+    .ui-widget-header {
+        top: 70px;
+        right:0px !important
+    }
+</style>
+<article class="container_12" style="width: 100%">
+    <section class="grid_12">
+        <div class="block-border" id="divTagFilter">
+            <div class="block-content form">
+                <div class="bubbleSheetSelector" style="margin-top:0px">
+                    <h1>Add Tag</h1>
+                    <p style="height: 5px">
+                        <div id="divLinkitDefaultTagNotifications"></div>
+                    </p>
+                    <fieldset>
+                        <div class="columns">
+                            <div class="colx2-left">
+                                <p>
+                                    <input id="radioLinkitDefaultCategories" type="radio" name="QtiItemTagCategory" checked="checked" class="QtiItemTagCategory"/>
+                                    <label for="radioLinkitDefaultCategories">Linkit Default Category</label>
+                                    <input id="radioDistrictCategories" type="radio" name="QtiItemTagCategory" class="QtiItemTagCategory"/>
+                                    <label for="radioDistrictCategories">@LabelHelper.DistrictLabel Category</label>
+                                </p>
+                            </div>
+                            <div class="colx2-right">
+                            </div>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <div class="columns" id="divLinkitDefaultTagFilter">
+                            <div class="colx2-left">
+                                <p>
+                                    <label>Linkit default category</label>
+                                    <select id="linkitDefaultCategorySelect">
+                                        <option value="1" selected="selected"> Topic</option>
+                                        <option value="2"> Skill</option>
+                                        <option value="3"> Other</option>
+                                    </select>
+                                
+                                </p>
+                            </div>
+                            <div class="colx2-right">
+                                <p>
+                                    <label>Tag</label>
+                                    <input type="text" id="txtTag" class="full-width"/>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="columns" id="divDistrictFilter">
+                            @if(ViewBag.IsPublisher)
+                            {
+                                <div class="colx2-left">
+                                    <p>
+                                        <label>State</label>
+                                        <select id="selectState"  style="min-width: 350px; max-width: 350px"></select>
+                                    </p>
+                                    <p>
+                                        <label>Category</label>
+                                        <select id="selectCategory" style="min-width: 350px; max-width: 350px"></select>
+                                    </p>
+                                    
+                           
+                                </div>
+                                <div class="colx2-right">
+                                    <p>
+                                        <label>@LabelHelper.DistrictLabel</label>
+                                        <select id="selectDistrict" style="min-width: 350px; max-width: 350px" onchange="loadDistrictCategory()"></select>
+                                    </p>
+                                    <p>
+                                        <label>Tag/Description</label>
+                                        <input type="text" id="txtTextToSearch" style="min-width: 350px; max-width: 350px"/>
+                                    </p>
+                                </div>
+                            }
+                            else if(ViewBag.IsDistrictAdmin)
+                            {
+                                <div class="colx2-left">
+                                    <p>
+                                        <label>Category</label>
+                                        <select id="selectCategory" style="min-width: 350px; max-width: 350px"></select>
+                                    </p>
+                                </div>
+                                 <div class="colx2-right">
+                                    <p>
+                                        <label>Tag/Description</label>
+                                        <input type="text" id="txtTextToSearch" style="min-width: 350px; max-width: 350px"/>
+                                    </p>
+                                </div>
+                            }
+                        </div>
+                    </fieldset>
+                    <br />
+                    <button id="setFilterTag" class="float-right" type="button">Apply Filters</button>
+                    <button id="clearFilterTag" class="float-right grey" style="margin-right: 5px" type="button">Clear Filters</button>
+                    <div class="clear"></div>
+                </div>
+                <div class="clear-25"></div>
+                <div style="float: left; width: 100%">
+                    <div id="divTagAvailable" style="float: left; width: 48%;padding-right: 2px;">
+                    </div>
+                    <div id="divTagAssigned" style="float: left;width: 50%;padding-left: 2px">
+                    </div>
+                </div>
+                <div style="clear: both"></div>
+                <div class="no-margin last-child" style="padding-left: 17px">
+                    <button id="btnCloseUserClick" type="button" class="grey classProgramButton" data-dialog="close">Close</button>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</article>
+<script type="text/javascript">
+    $(function () {
+        if ($('#radioLinkitDefaultCategories').is(':checked')) {
+            LoadLinkitDefaultTag();
+        }
+        if ($('#radioDistrictCategories').is(':checked')) {
+            LoadDistrictTag();
+        }
+        
+    });
+    
+    $('.QtiItemTagCategory').die('click');
+    $('.QtiItemTagCategory').live("click", function (e) {
+        if ($('#radioLinkitDefaultCategories').is(':checked')) {
+            LoadLinkitDefaultTag();
+        }
+        if ($('#radioDistrictCategories').is(':checked')) {
+            LoadDistrictTag();
+        }
+    });
+    
+    $('#setFilterTag').die('click');
+    $('#setFilterTag').live("click", function (e) {
+        if ($('#radioLinkitDefaultCategories').is(':checked')) {
+            encryptedByteStringSearchText = '';
+            var tag = $('#txtTag').val();
+            tag = tag.trim();
+            $.get('@Url.Action("EncryptByteString","QTIItemTag")', { str: encodeURI(tag) }, function (response) {
+                encryptedByteStringSearchText = response.EncryptString;
+                ReloadLinkitDefaultTagAvailable();//defined in _ListLinkitDefaultTagAvailable
+            });
+            
+            
+        }
+        if ($('#radioDistrictCategories').is(':checked')) {
+            ReloadDistrictTagAvailable();//defined in _ListDistrictTagAvailable
+        }
+    });
+    $('#selectCategory').die('change');
+    $('#selectCategory').change(function () {
+        $('#setFilterTag').attr('disabled', 'disabled');
+        var category = $('#selectCategory').val();
+        if (category != null && category != '' && category != 'select') {
+            $('#setFilterTag').removeAttr('disabled');
+        }
+
+    });
+    $('#clearFilterTag').die('click');
+    $('#clearFilterTag').live("click", function (e) {
+        if ($('#radioLinkitDefaultCategories').is(':checked')) {
+            $('#linkitDefaultCategorySelect').val(1);
+            $('#txtTag').val('');
+        }
+        if ($('#radioDistrictCategories').is(':checked')) {
+            @if (ViewBag.IsPublisher)
+            {
+                 <text>
+                    $('#selectDistrict').val(0);
+                </text>
+            }
+            $('#selectCategory').val(0);
+            $('#txtTextToSearch').val('');
+        }
+    });
+    $("#selectState").die("change");
+    $('#selectState').change(function () {
+        if ($('#selectState').val() != 'select') {
+            $('#selectDistrict').empty();
+            var stateValue = $('#selectState').val();
+            if (stateValue != 'select') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select All');
+                });
+            }
+        }
+    });
+    function loadDistrictCategory() {
+        var districtId = $('#selectDistrict').val();
+        if (districtId == 'select' || districtId=='undefined') {
+            districtId = 0;
+        }
+
+        var dropdownSelector = '#selectCategory';
+        $.ajax({
+            url: '@Url.Action("GetAllDistrictCategory", "ItemTag")?\districtId=' + districtId,
+             dataType: 'json',
+             async: false,
+             success: function (data) {
+                 addDefaultOption($(dropdownSelector), "All");
+                 addSelectListWithDefaultValue($(dropdownSelector), data, 0);
+             },
+             beforeSend: function () {
+             },
+             complete: function () {
+
+             }
+         });
+    }
+    function LoadLinkitDefaultTag() {
+        $('#divLinkitDefaultTagFilter').show();
+        $('#divDistrictFilter').hide();
+        $('#setFilterTag').removeAttr('disabled');
+        
+        var url = '@Url.Action("LoadListLinkitDefaultTagAvailableFilterPartialView", "ItemBank")';
+        $.ajax({
+            url: url,
+            cache: false
+        })
+            .done(function (html) {
+                $('#divTagAvailable').html(html);
+            });
+
+        //reload assigned tags
+        
+        var url = '@Url.Action("LoadListLinkitDefaultTagSelectedFilterPartialView", "ItemBank")';
+        $.ajax({
+            url: url,
+            cache: false
+        })
+            .done(function(html) {
+                $('#divTagAssigned').html(html);
+            });
+
+    }
+    
+    function LoadDistrictTag() {
+        $('#divLinkitDefaultTagFilter').hide();
+        $('#divDistrictFilter').show();
+        $('#setFilterTag').attr('disabled', 'disabled');
+        @if (ViewBag.IsPublisher)
+        {
+              <text>
+              //load state for publisher
+              $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                  AddSelectListItems($('#selectState'), states, 'Select State');
+
+              });
+              </text>
+        }
+        else
+        {
+            <text>
+            loadDistrictCategory();
+            </text>
+        }
+        
+        
+@*        var dropdownSelector = '#selectDistrict';
+        $.ajax({
+            url: '@Url.Action("GetAllDistrict", "Admin")',
+                    dataType: 'json',
+                    async: false,
+                    success: function (districts) {
+                        addDefaultOption($(dropdownSelector), "All");
+                        addSelectListWithDefaultValue($(dropdownSelector), districts, 0);
+                    },
+                    beforeSend: function () {
+                    },
+                    complete: function () {
+
+                    }
+        });*@
+        
+        var url = '@Url.Action("LoadDistrictTagAvailableFilterPartialView", "ItemBank")';
+        $.ajax({
+            url: url,
+            cache: false
+        })
+            .done(function (html) {
+                $('#divTagAvailable').html(html);
+            });
+
+        //load assigned tags
+        url = '@Url.Action("LoadDistrictTagSelectedFilterPartialView","ItemBank")?';
+        $.ajax({
+            url: url,
+            cache: false
+        })
+            .done(function (html) {
+                $('#divTagAssigned').html(html);
+            });
+    }
+</script>
+<script type="text/javascript">
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+
+</script>      

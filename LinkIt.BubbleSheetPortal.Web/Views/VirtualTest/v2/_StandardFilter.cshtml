@@ -1,0 +1,237 @@
+<div class="columns" id="divStateStandards">
+    <div class="colx2-left">
+        <label class="virtualtest-header-section">Standard Criteria</label>
+        <br>
+        <p>
+            <label>Standard State</label>
+            <select id="selectStateStandard"></select>
+        </p>
+        <p>
+            <label>Standard Subject</label>
+            <select id="selectSubjectStandard"></select>
+        </p>
+        <p>
+            <label>Standard @LabelHelper.GradeLabel</label>
+            <select id="selectGradeStandard"></select>
+        </p>
+    </div>
+    <div class="colx2-right">
+        <p>
+            <label>Standard(s)</label>
+            <div id="dvStandardTreeViewContainer">
+                <div style="height: 200px; overflow: auto; background-color: var(--white); padding: 0 10px 0 20px">
+                    <div id="dvStandardTreeView"></div>
+                </div>
+            </div>
+        </p>
+    </div>
+</div>
+<input type="hidden" id="hiddenSelectedMasterStandardName" />
+<script type="text/javascript">
+    var oTable;
+
+    $(function () {
+        sessionStorage.cacheGetStateURL = null;
+        PopulateSate();
+
+        loadStandardTreeView(false);
+    });
+
+    function loadStandardTreeView(reset) {
+        var url = getAjaxSourceForMasterStandard(reset);
+        if (sessionStorage.getAjaxSourceForMasterStandard == url) return;
+        sessionStorage.getAjaxSourceForMasterStandard = url;
+
+        ShowBlock($('#dvStandardTreeViewContainer'), "Loading");
+        $.ajax({
+            url: url,
+            cache: false,
+            success: function (html) {
+                $('#dvStandardTreeView').html(html);
+                $('#dvStandardTreeViewContainer').unblock();
+            }
+        });
+    }
+    function PopulateSate() {
+        var qti3p = false;
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            qti3p = true;
+        }
+
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+
+        var districtSearch = $('#radioDistrictItemLibrary').is(':checked');
+        var qti3pSourceId = $('#selectSource').val();
+        if (qti3pSourceId == null || qti3pSourceId == '' || qti3pSourceId == 'select' || qti3pSourceId == 'undefined') {
+            qti3pSourceId = -1;
+        }
+
+        var url = '@Url.Action("GetStateStandardWithCCForFilter", "PopulateStateDistrict")/?qti3p=' + qti3p + '&personal=' + personal + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + districtSearch;
+
+        if (sessionStorage.cacheGetStateURL == url) return;
+        sessionStorage.cacheGetStateURL = url;
+
+        ShowBlock($('#divStateStandards'), 'Loading');
+        $.ajax({
+            url: url,
+            dataType: 'json',
+            async: true,
+            type: 'get',
+            cache: false,
+            success: function (data) {
+                addDefaultOption($('#selectStateStandard'), "All");
+                addSelectListWithDefaultValue($('#selectStateStandard'), data, 0);
+                $('#divStateStandards').unblock();
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+                var option = $('#selectStateStandard option[value="select"]');
+                if (option != null) {
+                    option.text('All');
+                }
+            }
+        });
+    }
+
+    $('#selectStateStandard').die('change');
+    $('#selectStateStandard').change(function () {
+        $('#selectSubjectStandard').empty();
+        $('#selectGradeStandard').empty();
+        $('#dvStandardTreeView').empty();
+
+        if ($('#selectStateStandard').val() == 'select') {
+            return;
+        }
+        var qti3p = false;
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            qti3p = true;
+        }
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+        var districtSearch = $('#radioDistrictItemLibrary').is(':checked');
+        var qti3pSourceId = $('#selectSource').val();
+        if (qti3pSourceId == 'select' || qti3pSourceId == 0 || qti3pSourceId == ''||qti3pSourceId == 'undefined') {
+            qti3pSourceId = -1;
+        }
+        ShowBlock($('#divStateStandards'), 'Loading');
+        $.ajax({
+            url: '@Url.Action("GetStateStandardSubjectByState", "ItemBank")/?stateId=' + $('#selectStateStandard').val() + '&qti3p=' + qti3p + '&personal=' + encodeURI(personal) + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + encodeURI(districtSearch),
+            dataType: 'json',
+            async: true,
+            type: 'get',
+            cache: false,
+            success: function (data) {
+                $('#divStateStandards').unblock();
+                addDefaultOption($('#selectSubjectStandard'), "All");
+                addSelectListWithDefaultValue($('#selectSubjectStandard'), data, 0);
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+                //rename Select All -> All
+                var option = $('#selectSubjectStandard option[value="select"]');
+                if (option != null) {
+                    option.text('All');
+                }
+            }
+        });
+
+    });
+
+    $('#selectSubjectStandard').die('change');
+    $('#selectSubjectStandard').change(function () {
+        $('#selectGradeStandard').empty();
+        $('#dvStandardTreeView').empty();
+
+        if ($('#selectSubjectStandard').val() == 'select') {
+            return;
+        }
+        var qti3p = false;
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            qti3p = true;
+        }
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+        var districtSearch = $('#radioDistrictItemLibrary').is(':checked');
+        var subject = $("#selectSubjectStandard option:selected").text();
+
+        var qti3pSourceId = $('#selectSource').val();
+        if (qti3pSourceId == 'select' || qti3pSourceId == 0 || qti3pSourceId == '' || qti3pSourceId == 'undefined') {
+            qti3pSourceId = -1;
+        }
+
+        ShowBlock($('#divStateStandards'), 'Loading');
+        $.ajax({
+            url: '@Url.Action("GetStateStandardGradeByStateAndSubject", "ItemBank")/?stateId=' + $('#selectStateStandard').val() + '&subjectName=' + encodeURIComponent(subject) + '&qti3p=' + qti3p + '&personal=' + encodeURI(personal) + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + encodeURI(districtSearch),
+            dataType: 'json',
+            async: true,
+            type: 'get',
+            cache: false,
+            success: function (data) {
+                $('#divStateStandards').unblock();
+                addDefaultOption($('#selectGradeStandard'), "All");
+                addSelectListWithDefaultValue($('#selectGradeStandard'), data, 0);
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+                //rename Select All -> All
+                var option = $('#selectGradeStandard option[value="select"]');
+                if (option != null) {
+                    option.text('All');
+                }
+            }
+        });
+
+    });
+
+    $('#selectGradeStandard').die('change');
+    $('#selectGradeStandard').change(function () {
+        $('#dvStandardTreeView').empty();
+        if ($("#selectGradeStandard option:selected").text() != null && $("#selectGradeStandard").val() != 'select') {
+            loadStandardTreeView(false);
+        }
+    });
+
+    function getAjaxSourceForMasterStandard(reset) {
+        $('#chkAllStandard').removeAttr('checked');
+        var qti3p = false;
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            qti3p = true;
+        }
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+        var districtSearch = $('#radioDistrictItemLibrary').is(':checked');
+        var qti3pSourceId = $('#selectSource').val();
+        if (qti3pSourceId == 'select' || qti3pSourceId == 0 || qti3pSourceId == '' || qti3pSourceId == 'undefined') {
+            qti3pSourceId = -1;
+        }
+
+        if (reset) {
+            return '@Url.Action("GetStateStandardsForItemLibraryFilterTopLevel", "MasterStandard")/?stateId=0&subject=0&grade=0&qti3p=' + qti3p + '&personal=' + personal + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + encodeURI(districtSearch);
+        } else {
+            var stateId = $('#selectStateStandard').val();
+            var subject = $("#selectSubjectStandard option:selected").text();
+            var grade = $("#selectGradeStandard option:selected").text();
+            if (stateId != null && stateId != 'select' && subject != null && grade != null && $('#selectGradeStandard').val() != 'select') {
+                return '@Url.Action("GetStateStandardsForItemLibraryFilterTopLevel", "MasterStandard")/?stateId=' + stateId + '&subject=' + encodeURI(subject) + '&grade=' + encodeURI(grade) + '&qti3p=' + qti3p + '&personal=' + personal + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + encodeURI(districtSearch);
+            } else {
+                return '@Url.Action("GetStateStandardsForItemLibraryFilterTopLevel", "MasterStandard")/?stateId=0&subject=0&grade=0&qti3p=' + qti3p + '&personal=' + personal + '&qti3pSourceId=' + qti3pSourceId;
+            }
+        }
+    }
+</script>
+<script type="text/javascript">
+    function getSelectedStandardIds() {
+        var standardIds = '';
+        $('INPUT[name="chkStandard"][type=checkbox]:checked').each(function (i, e) {
+            standardIds += $(e).val() + ',';
+        });
+        return standardIds.substr(0, standardIds.length - 1);
+    }
+    function getSelectedStandardNames() {
+        var standardNames = '';
+        $('INPUT[name="chkStandard"][type=checkbox]:checked').each(function (i, e) {
+            standardNames += $(e).attr('data-name') + ', ';
+        });
+        return standardNames.substr(0, standardNames.length - 2);//remove the last ','
+    }
+</script>

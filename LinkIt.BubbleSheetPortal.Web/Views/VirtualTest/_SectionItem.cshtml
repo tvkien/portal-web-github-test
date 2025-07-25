@@ -1,0 +1,236 @@
+﻿@model  LinkIt.BubbleSheetPortal.Models.ListItem
+<style type="text/css">
+    .imageHotspotInteraction img {
+        max-width: none;
+    }
+</style>
+<p style="color: gray;font-style: italic; font-weight: bold; padding-left: 4px">
+    @Model.Name
+</p>
+<table id='virtualSection-@Model.Id' class="datatable table no-margin sectionTable" width="100%">
+    <thead>
+        <tr>
+            <th scope="col" style="text-align: center;">
+                <span class="column-sort">
+                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                </span>
+                Order
+            </th>
+            <th scope="col" style="text-align: center;">
+                <span class="column-sort">
+                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                </span>
+                Content
+            </th>
+            <th scope="col" style="text-align: center;">
+                <span class="column-sort">
+                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                </span>
+
+            </th>
+            <th style="display: none"></th>
+            <th style="display: none"></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="height: 60px;"></td>
+        </tr>
+    </tbody>
+</table>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        LoadSectionItemsToTable('@Model.Id');
+    });
+
+    var oTableQtiItem;
+
+    function LoadSectionItemsToTable(virtualSectionId) {
+        var virtualTestId = $('#hiddenVirtualTestId').val();// hiddenVirtualTestId is defined in _ListItemsFromLibrary.cshtml
+        var options = {
+            bServerSide: true,
+            bFilter: false,
+            sServerMethod: "POST",
+            bDestroy: true,
+            bProcessing: false,
+            sAjaxSource: '@Url.Action("GetSectionItem")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "VirtualSectionId", value: virtualSectionId },
+                    { name: "virtualTestId", value: virtualTestId }
+                );
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'iDisplayLength') {
+                        item.value = 10000;
+                    }
+                }
+            },
+            iDisplayLength: 1000,
+            bPaginate: false,
+            aoColumns: [
+                { sType: 'string', sName: 'Order', bSearchable: true, bSortable: false, bVisible: true, sWidth: '30px' },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: false, bVisible: true, sWidth: '260px' },
+                { sType: 'string', sName: 'QtiItemId', bSearchable: true, bSortable: false, bVisible: false, sWidth: '56px' },
+                { sType: 'string', sName: 'QuestionOrder', bSearchable: true, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'SectionOrder', bSearchable: true, bSortable: false, bVisible: false }
+            ],
+
+            aaSorting: [[0, "asc"]],
+            fnRowCallback: function (nRow, aData) {
+                var title = '';
+                $(aData[1]).find('.itemBody, itemBody, itembody').each(function () {
+                    var itemBody = $(this);
+                    itemBody.find("videolinkit").replaceWith(function () {
+                        return $('');
+                    });
+
+                    if ($(aData[1]).find("responsedeclaration").attr("partialgrading") == "1") {
+                        itemBody.find("sourcetext").each(function () {
+                            if ($(this).attr("pointvalue") > 0) {
+                                $(this).addClass("marker-correct");
+                            }
+                        });
+                    } else {
+                        $(aData[1]).find("correctResponse").each(function () {
+                            var id = $(this).attr("identifier");
+                            itemBody.find("sourcetext[identifier=\"" + id + "\"]").addClass("marker-correct");
+                        });
+                    }
+
+                    title = itemBody.html();
+                });
+                title = title.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+                var divTitle = '<div style="max-height:60px; overflow:hidden;max-width:345px">' + title + '</div>';
+                $('td:eq(1)', nRow).html(divTitle);
+                $('td:eq(1)', nRow).attr("onclick", 'showQtiItemPopupSectionItem(' + aData[2] + ',1)');
+                if(aData[4] > 1) //not the first section
+                {
+                    //Add the (QuestionOrder)
+                    $('td:eq(0)', nRow).html(aData[0] + ' (' + aData[3] + ')');
+                    $('td:eq(0)', nRow).addClass('sectionRow');
+                }
+                $('td:eq(1)', nRow).addClass("cursor-pointer");
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#virtualSection-' + virtualSectionId), 'Loading');
+            },
+            fnDrawCallback: function () {
+                $('#virtualSection-' + virtualSectionId).unblock();
+                $('.with-tip').tip();
+                var tableId = 'virtualSection-' + virtualSectionId;
+                $('#' + tableId + '_wrapper .block - controls').css('marginTop', '100px');
+
+                MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+                LoadImages('#' + tableId);
+
+                //fraction is broken in new line
+                $('#' + tableId).find('span[class="math-tex"]').each(function (index, value) {
+                    var span = $(value);
+                    //add display:inline-block
+                    span.css('display', 'inline-block');
+                });
+
+                loadContentImageHotSpot('#' + tableId);
+                loadContentNumberLineHotspot('#' + tableId);
+                loadContentDragAndDrop('#' + tableId);
+
+                calculatorSequenceWidth('#' + tableId + ' partialsequence');
+            },
+        };
+        $('#virtualSection-' + virtualSectionId).data("options", options);
+        initializeDataTable($('#virtualSection-' + virtualSectionId));
+        oTableQtiItem = $('#virtualSection-' + virtualSectionId).dataTable();
+    }
+    function parseXmlContentSectionItem(xmlContent) {
+        var title = '';
+        $(xmlContent).find('.itemBody, itemBody, itembody').each(function () {
+            var itemBody = $(this);
+            itemBody.find("videolinkit").replaceWith(function () {
+                var videoLink = $(this);
+                videoLink.removeAttr("autoplay");
+                videoLink.removeAttr("controls");
+                videoLink.attr("preload", "none");
+                return $(videoLink.outerHTML());
+            });
+
+            title = itemBody.html();
+        });
+
+        title = title.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+        var divTitle = '<div style="max-height:60px; overflow:hidden;max-width:345px">' + title + '</div>';///LNKT-5785
+        return divTitle;
+    }
+    function showQtiItemPopupSectionItem(qtiItemId, showPassage) {
+        $.ajax({
+            url: '@Url.Action("CheckQtiItemExists", "ItemBank")',
+            data: { qtiItemId: qtiItemId },
+            type: 'get',
+            cache: false
+        }).done(function (response) {
+            if (response.Exists == 'False') {
+                alert(response.errorMessage);
+                return;
+            } else {
+
+                //Show popup
+                var tableId = 'virtualSection -' + '@Model.Id';
+                ShowBlock($('#' + tableId), "Opening Item");
+                var worker = $('<div />');
+                worker
+                    .addClass("dialog EditQtiItemPopUpDialogCSS")
+                    .attr("id", "editQtiItemDialog")
+                    .appendTo("body")
+                    .load('@Url.Action("ShowEditQtiItemItem","ItemBank")\?qtiItemId=' + +qtiItemId + '&showPassage=' + showPassage, function () {
+                worker.dialog({
+                    title: $(this).attr("Standard"),
+                    open: function() {
+                        //a new overlay will be generated when opening an dialog
+                        //set zindex of new overlay to make it cover Filter Item From Library Popup
+                        var z_index = $("#addNewItemFromLibraryPopup").parent().css('z-index');
+                        $('.ui-widget-overlay:last').css('z-index', parseInt(z_index) + 1);
+                        $("#editQtiItemDialog").parent().css('z-index', parseInt(z_index) + 2);
+                        $("#editQtiItemDialog").prev().css('top', '30px');
+                        $('.ui-widget-overlay:last').height(2000);
+                        $('#' + tableId).unblock();
+                        AdjustQtiItemDetail(); //declared in _QtiItemDetail.cshtml
+
+                        var qtiItemHTML = $('#divQtiItemDetail').html();
+                        qtiItemHTML = qtiItemHTML.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+                        $('#divQtiItemDetail').html(qtiItemHTML);
+
+                        // Load content in file qtiItemLoadMedia.js
+                        loadContentNumberLineHotspot('#divQtiItemDetail');
+                        loadContentImageHotSpot('#divQtiItemDetail');
+                        loadContentDragAndDrop('#divQtiItemDetail');
+                        loadContentGlossary('#divQtiItemDetail', '#glossaryMessage');
+                        $('#divQtiItemDetail').find('video').trigger('play');
+                    },
+                    close: function() {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+
+                        // Stop text to speech
+                        if (!!responsiveVoice) {
+                            responsiveVoice.cancel();
+                        }
+                    },
+                    modal: false,
+                    width: 480,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+            }
+        }).error(function (request) {
+        });
+
+    }
+</script>

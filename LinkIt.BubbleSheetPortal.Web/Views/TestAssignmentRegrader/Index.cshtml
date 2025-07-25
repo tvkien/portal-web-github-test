@@ -1,0 +1,3169 @@
+@model LinkIt.BubbleSheetPortal.Web.Models.TestAssignmentRegrader.TeacherReviewerIndexModel
+
+@*@MvcHtmlString.Create(
+            Bundle.Css()
+                .Add(@Url.Content("~/Content/themes/AssignmentRegrader/css/bootstrap.css"))
+                .Add(@Url.Content("~/Content/themes/AssignmentRegrader/css/popup.css"))
+                .Add(@Url.Content("~/Content/css/linkitStyleSheet.css"))
+                .Add(@Url.Content("~/Content/themes/AssignmentRegrader/css/tooltipster.css"))
+                .Render("/Content/themes/Constellation/css/assignment_regrader_combined_#.css")
+             )*@
+
+@*@MvcHtmlString.Create(
+    Bundle.JavaScript()
+        .Add("/Content/themes/AssignmentRegrader/js/css_browser_selector.js")
+        .Add("/Scripts/knockout-3.0.0.js")
+        .Add("/Scripts/imagesloaded.pkgd.js")
+        .Add("/Scripts/Linkit/LinkitUtils.js")
+        .Add("/Scripts/Linkit/LinkitQuestion.js")
+        .Add("/Content/themes/TestMaker/ckeditor_utils.js")
+        .Add("/Scripts/TeacherReviewer/Reviewer.js")
+        .Add("/Scripts/TeacherReviewer/Questions/OpenEnded.js")
+        .Add("/Scripts/TeacherReviewer/Questions/SimpleChoice.js")
+        .Add("/Scripts/TeacherReviewer/Questions/MultipleChoice.js")
+        .Add("/Scripts/TeacherReviewer/Questions/MultipleChoiceVariable.js")
+        .Add("/Scripts/TeacherReviewer/Questions/InlineChoice.js")
+        .Add("/Scripts/TeacherReviewer/Questions/TextEntry.js")
+        .Add("/Scripts/TeacherReviewer/Questions/ComplexItem.js")
+        .Add("/Scripts/TeacherReviewer/Questions/DragDropStandard.js")
+        .Add("/Scripts/TeacherReviewer/Questions/DragDropSequence.js")
+        .Add("/Scripts/TeacherReviewer/Questions/TextHotspot.js")
+        .Add("/Scripts/TeacherReviewer/Questions/ImgHotspot.js")
+        .Add("/Scripts/TeacherReviewer/Questions/Numberline.js")
+        .Add("/Scripts/TeacherReviewer/Questions/TableHotspot.js")
+        .Add("/Scripts/TeacherReviewer/Questions/DragDropNumerical.js")
+        .Add("/Scripts/qtiItemLoadMedia.js")
+        .Add("/Content/themes/TestMaker/mediaelement-and-player.min.js")
+        .Add("/Scripts/TeacherReviewer/Questions/jquery.selectbox.js")
+        .Add("/Content/themes/TestMaker/jquery.tooltipster.min.js")
+        .Add("/Scripts/TeacherReviewer/Questions/Glossary.js")
+        .Add("/Scripts/TeacherReviewer/Questions/Rationale.js")
+        .Render("/Content/themes/Constellation/js/assignment_regrader_combined_#.js")
+    )*@
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleTestAssignmentRegraderBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptTestAssignmentRegraderBundle()
+
+<script>
+
+    (function($) {
+        // Add scrollbar for safari on teacher reviewer popup
+        var $popupContent = $('#popup_content');
+        var browserUserAgent = navigator.userAgent.toString().toLowerCase();
+        var isSafari = (browserUserAgent.indexOf('safari') != -1) && (browserUserAgent.indexOf('chrome') == -1);
+
+        if (isSafari) {
+            $popupContent
+                .find('.popup_body')
+                .find('.table_student, .wrapper-table, .SectionInstruction, .QuestionDetails')
+                .addClass('scrollbar-safari');
+        }
+    })(jQuery);
+
+    function AlertMessage(message) {
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 2.833em;"><div>' + message +
+            '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+    }
+
+    function SuccessMessage(options, yesCallBack) {
+        var n = new Date().getTime();
+        var yesButtonID = 'ConfirmYesButton_' + n;
+        var yesButtonHtml = '<button id="' + yesButtonID + '" style="width:63px;">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 240 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + options.Message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + yesButtonHtml + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "confirmSubmitDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: false,
+                width: 300,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        $('#' + yesButtonID).click(function () {
+            $("#confirmSubmitDialog").dialog("close");
+            if (typeof yesCallBack === "function") yesCallBack(options);
+        });
+    }
+    
+    function ConfirmSubmitTest(options, yesCallBack, noCallBack) {
+        var n = new Date().getTime();
+        var yesButtonID = 'ConfirmYesButton_' + n;
+        var noButtonID = 'ConfirmNoButton_' + n;
+        var yesButtonHtml = '<button id="' + yesButtonID + '" style="width:63px;">Yes</button>';
+        var noButtonHtml = '<button id="' + noButtonID + '" style="width:63px;">No</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + options.Message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + yesButtonHtml + '&nbsp;&nbsp;' + noButtonHtml + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "confirmSubmitDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+                dialogClass: "noclose",
+                open: function () {
+                    if (options.HideCloseButton == 1) $('.noclose').find(".ui-dialog-titlebar-close").hide();
+                }
+            });
+
+        $('#' + yesButtonID).click(function () {
+            $("#confirmSubmitDialog").dialog("close");
+            if (typeof yesCallBack === "function") yesCallBack(options);
+        });
+
+        $('#' + noButtonID).click(function () {
+            $("#confirmSubmitDialog").dialog("close");
+            if (typeof noCallBack === "function") noCallBack(options);
+        });
+    }
+
+    function ShowPassageOnPopup(html, answerImage, refObjectID, refObjectData) {
+        $("<div></div>")
+            .addClass("dialog")
+            .attr("id", "roPopup")
+            .append(html)
+            .appendTo("body")
+            .dialog({
+                title: "",
+                close: function () {
+                    var $this = $(this);
+                    $(".my-overlay[popup-id=" + $this.attr("id") + "]").remove();
+                    $this.remove();
+                },
+                open: function (event, ui) {
+                    $("body .ui-widget-overlay:last").hide();
+                    //Create overlay for popup
+                    $("body").append('<div class="my-overlay" popup-id="' + $(this).attr("id") + '" style="z-index: ' + ($(this).parent(".ui-dialog").css("z-index") - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                modal: false,
+                width: 600,
+                resizable: false,
+                position: { my: "center top", at: "center center", of: ".table_respones" }
+            });
+
+        //This function build for glossary to open popup
+        $("#ROPanel").on("click", "span.glossary", function (e) {
+            var $self = $(this);
+            var glossary_text = $self.html();
+            var glossary_content = $self.attr("glossary")
+                .replace(/&lt;br\/&gt;/gi, "<br/>")
+                .replace(/&gt;/g, ">")
+                .replace(/&lt;/g, "<");
+            $("#glossaryMessage .glossary_text").html(glossary_text);
+            $("#glossaryMessage .glossary_define").html(glossary_content);
+            var win = $(document);
+            var z_index = parseInt($self.parents(".ui-dialog").css("z-index"));
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index:' + (z_index + 1) + ';"></div>');
+            $("#glossaryMessage").dialog({
+                modal: false,
+                width: 480,
+                resizable: false,
+                open: function (dialog) {
+                    $("#glossaryMessage").prev().css('top', '37px');
+                },
+                close: function () {
+                    $('.ui-widget-overlay:first').remove();
+                }
+            });
+
+        }).on({
+            mouseenter: function () {
+                var currentID = $(this).attr("glossary_id");
+                $("#ROPanel").find("span.glossary[glossary_id=" + currentID + "]").addClass("glossary-hover");
+            },
+            mouseleave: function () {
+                var currentID = $(this).attr("glossary_id");
+                $("#ROPanel").find("span.glossary[glossary_id=" + currentID + "]").removeClass("glossary-hover");
+            }
+        }, "span.glossary");
+
+        $('#ROPanel').find("img").each(function () {
+            var image = $(this);
+            var float = image.attr('float');
+            var imageUrl = image.attr("src");
+            if (!Reviewer.IsNullOrEmpty(refObjectData)) {
+                var imagePath = refObjectData.substring(0, refObjectData.lastIndexOf('/'));
+                imagePath = imagePath.substring(0, imagePath.lastIndexOf('/'));
+                if (imageUrl.indexOf('http') != 0) {
+                    imageUrl = imageUrl.substring(imageUrl.indexOf('/') + 1);
+                    imageUrl = imagePath + '/' + imageUrl;
+                }
+            } else {
+                if (imageUrl == null) {
+                    imageUrl = '';
+                }
+                if (imageUrl.indexOf('http') != 0) {
+                   // imageUrl = 'TestAssignmentRegrader/GetViewReferenceImgFullPath?imgPath=' + imageUrl;
+                }
+            }
+
+            image.attr("src", imageUrl);
+            image.css('float', float);
+        });
+        var index = 0;
+        var $imgs = $('#ROPanel img');
+        $imgs.imagesLoaded(function () {
+            $imgs.each(function () {
+                var image = $(this);
+                if (image.attr('drawable') == 'true') {
+                    image.unbind('load');
+                    image.attr('index', index);
+                    ShowDrawImage('passage', image, answerImage, refObjectID);
+                    index++;
+                }
+            });
+        });
+
+        MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+    }
+
+    function ShowDrawImage(type, image, drawAnswer, refObjectID) {
+        var index = image.attr('index');
+        var typeSelector = '[Type="' + type + '"]';
+        var indexSelector = '[Index="' + index + '"]';
+        var drawImageSelector = 'DrawImg' + typeSelector + indexSelector;
+        if (refObjectID && refObjectID != '') drawImageSelector = drawImageSelector + '[RefObjectID="' + refObjectID + '"]';
+
+        //Correct image incase image has width or height is NaN
+        var newHeight = image.height();
+        var newWidth = image.width();
+        if (image.attr('height') == undefined || image.attr('height').toString() == "NaN") {
+            if (image.attr('percent') != undefined) {
+                newHeight = (newHeight * parseInt(image.attr('percent').toString() + "0")) / 100;
+                image.attr({ 'height': newHeight });
+            } else {
+                image.attr({ 'height': newHeight });
+            }
+        }
+        if (image.attr('width') == undefined || image.attr('width').toString() == "NaN") {
+            if (image.attr('percent') != undefined) {
+                newWidth = (newWidth * parseInt(image.attr('percent').toString() + "0")) / 100;
+                image.attr({ 'width': newWidth });
+            } else {
+                image.attr({ 'width': newWidth });
+            }
+        }
+
+        var canvasID = type + 'Canvas' + index;
+        if (!($('#' + canvasID).length > 0)) {
+            var margin = "margin: 0px;";
+            if (image.parent() != undefined && image.parent().hasClass("center")) {
+                margin = " margin: 0px auto;";
+            }
+            image.wrap("<div class='divdraw' style='width: " + image.width() + "px; height: " + image.height() + "px; " + margin + "position:relative;'></div>");
+            var canvas = $('<canvas width="' + image.width() + '" height="' + image.height() + '"></canvas>');
+
+            canvas.attr('id', canvasID);
+            image.after(canvas);
+        }
+
+        canvas = document.getElementById(canvasID);
+        var context = canvas.getContext('2d');
+        var emptyImg = context.createImageData(canvas.width, canvas.height);
+        context.putImageData(emptyImg, 0, 0);
+
+        if (drawAnswer == '') return;
+        var drawImageData = '';
+        $(drawAnswer).find(drawImageSelector).each(function () {
+            drawImageData = $(this).attr('Data');
+        });
+
+        if (drawImageData == '') return;
+
+        var drawImageElement = new Image();
+        drawImageElement.onload = function () {
+            context.drawImage(drawImageElement, 0, 0);
+        };
+        drawImageElement.src = drawImageData;
+        $('extendedtextinteraction[notreviewed="true"]').find('canvas').addClass('red-border');
+        $('extendedtextinteraction[notreviewed="false"]').find('canvas').removeClass('red-border');
+        //for complex-item
+        $('.box-answer').each(function (i, val) {
+
+            var countRevied = $(val).find('img[isreviewed="true"]').length;
+
+            if (countRevied > 0) {
+                $(val).find('canvas').removeClass('red-border');
+            }
+
+            var countUnrevied = $(val).find('img[isreviewed="false"]').length;
+
+            if (countUnrevied > 0) {
+                $(val).find('canvas').addClass('red-border');
+            }
+
+
+        });
+    }
+
+</script>
+<script>
+
+    function ConfirmBulkSubmitTest(message) {
+        var yesButton = '<button style="width:63px;" onclick="YesBulkClick();">Yes</button>';
+        var noButton = '<button style="width:63px;" onclick="NoBulkClick();">No</button>';
+        var cancelButton = '<button style="width:63px;" onclick="CancelBulkClick();">Cancel</button>';
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + yesButton + '&nbsp;&nbsp;' + noButton + '&nbsp;&nbsp;' + cancelButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "confirmSubmitDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+    }
+
+    function YesBulkClick() {
+        $("#confirmSubmitDialog").dialog("close");
+        viewModel.IsBulkGrading(true);
+        viewModel.PostSubmitTestData();
+    }
+
+    function NoBulkClick() {
+        $("#confirmSubmitDialog").dialog("close");
+        viewModel.IsBulkGrading(false);
+        viewModel.PostSubmitTestData();
+    }
+
+    function CancelBulkClick() {
+        $("#confirmSubmitDialog").dialog("close");
+    }
+
+</script>
+<style>
+    .table tbody tr.selected td {
+        background-color: #8ed4f8;
+    }
+
+    .table tbody tr:hover th, .table tbody tr:hover .th, .table tbody tr:hover td {
+        background: #8ed4f8;
+    }
+
+
+    .divdraw {
+        position: relative;
+    }
+
+    .divdraw canvas {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+    }
+
+        .passage {
+            font-size: 14px;
+			font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook;
+			line-height: 1.57143em;
+        }
+
+    .table_respones .SectionInstruction {
+        max-height: 100px;
+        overflow: auto;
+        font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook;
+        margin-bottom: 10px;
+        line-height: 18px;
+        padding-bottom: 0px;
+    }
+
+    .QuestionDetails {
+        min-height: 354px;
+        overflow: auto;
+    }
+
+    img[isMathAlt="true"] {
+        display: none;
+    }
+
+    .textHotSpot,
+    sourceObject,
+    .sourceObjectText,
+    destinationObject,
+    .partialDestinationObject {
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        -webkit-box-sizing: border-box;
+    }
+
+    .textHotSpot, sourceObject {
+        border: 1px solid #bebebe;
+        background-color: #eeeeee;
+        cursor: pointer;
+        display: inline-block;
+        min-width: 30px;
+        min-height: 20px;
+        overflow: hidden;
+    }
+    .textHotSpot,
+    sourceObject[type=text] {
+        padding: 2px 4px 2px 4px;
+        color: #000000;
+        margin: 2px 0px;
+        background-color: #eeeeee;
+        border: 1px solid #0088cc;
+        color: #1c94c4;
+        font-weight: bold;
+        line-height: 20px;
+    }
+    .sourceObjectText {
+        padding: 2px 4px 2px 4px;
+        color: #000000;
+        margin: 2px 0px;
+        background-color: #eeeeee;
+        border: 1px solid #0088cc;
+        color: #1c94c4;
+        font-weight: bold;
+        line-height: 20px;
+        overflow: hidden;
+    }
+    destinationObject{
+        display: inline-block;
+        position: relative;
+    }
+    destinationObject[type=text] {
+        border-radius: 6px;
+        border: solid 1px #bebebe;
+        padding: 2px;
+        display: inline-block;
+        font-style: italic;
+        min-width: 50px;
+        min-height: 20px;
+        color: #ccc;
+        margin: 2px 0px;
+        vertical-align: middle;
+    }
+    .partialDestinationObject{
+        display: inline-block;
+        position: relative;
+    }
+    .partialDestinationObject[type=text]{
+        border-radius: 6px;
+        border: solid 1px #bebebe;
+        padding: 2px;
+        display: inline-block;
+        font-style: italic;
+        min-width: 50px;
+        min-height: 20px;
+        margin: 2px 5px;
+        vertical-align: middle;
+    }
+    .partialDestinationObject .sourceObjectText,
+    .partialDestinationObject .textHotSpot {
+        margin: 0;
+        height: 100%;
+        width: 100%;
+    }
+    .grading {
+        display: table;
+        margin-bottom: 8px;
+        background: #E6E6E6;
+        padding-left: 10px;
+        padding-top: 4px;
+        /*padding-right: 125px;*/
+        margin-top: -7px;
+    }
+
+    .grading label {
+        font-size: 12px;
+        display: inline-block;
+        padding-right: 20px;
+    }
+
+    .grading input[type=radio] {
+        vertical-align: top;
+        margin-right: 10px;
+        outline: none;
+    }
+    .grading input[type=checkbox] {
+        vertical-align: top;
+        margin-right: 10px;
+        outline: none;
+    }
+    #divQuestionDetails img {
+        vertical-align: middle;
+    }
+    #divQuestionDetails .box-answer {
+        padding-top: 0px;
+    }
+    #divQuestionDetails itembody > div[responseidentifier] {
+        margin-top: 10px;
+    }
+    #divQuestionDetails .mainBody {
+        padding-top: 0px;
+        margin-bottom: 10px;
+        margin-left: 30px;
+    }
+    #divQuestionDetails .mainBody .input {
+        margin-top: 15px;
+        display: inline-block;
+    }
+    #divQuestionDetails .mainBody .correctAnswers {
+        color: red;
+        font-size: 12px;
+        margin-top: 10px;
+        display: inline-block;
+    }
+    #divQuestionDetails .mainBody select[responseidentifier] {
+        margin-top: 15px;
+        margin-bottom: 15px;
+        font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook;
+    }
+
+    .mainBody
+    {
+        font-size: 14px;
+        font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook;
+        line-height: 1.57143em;
+    }
+    #divQuestionDetails .alignRight {
+        text-align: right;
+    }
+
+	.math-tex {
+		display: inline-block;
+		vertical-align: middle;
+	}
+    #divQuestionMenu table tbody tr td {
+        word-wrap: break-word;
+        font-size: 11px;
+    }
+     #divQuestionMenu div, #divQuestionMenu span, #divQuestionMenu p, #divQuestionMenu label {
+         font-size: 11px;
+     }
+    #divQuestionMenu .mainBody {
+        width: 225px;
+    }
+    .mainBody ol{
+        padding: 0;
+        margin: 8px;
+        margin-left: 25px;
+        margin-right: 0;
+        width: 100%;
+        list-style-position: outside;
+        list-style-type: decimal;
+    }
+
+    .BaseVirtualQuestion td{
+        background: none repeat scroll 0 0 #a8b2b9 !important;
+    }
+     .passage ol[liststyletype="decimal"]{
+        list-style-type: decimal;
+    }
+     #divTotalPoint {
+         text-align: right;
+         padding-bottom: 17px;
+     }
+     .red-border {
+         border-color: red;
+         -webkit-appearance: initial;
+         border-radius: 7px;
+         box-shadow: 0 0 2px 2px rgba(255,0,0,1);
+		 border-width: 0px
+     }
+
+   #divQuestionDetails .numberLineItem {
+        display: none;
+    }
+    #divQuestionDetails .numberLineItem.selected {
+        display: block;
+    }
+
+    .no-border {
+        border: none !important;
+    }
+    .label-feedback-history {
+        font-size: 10px;
+        font-style: italic;
+        height: 12px;
+    }
+    .teacher-feedback {
+        width: 520px;
+        padding-top: 10px;
+    }
+    .teacher-feedback .divTest .divCol1 {
+        float: left;
+        width: 100px;
+        margin-top: -10px;
+    }
+    .teacher-feedback .divTest .divCol1 label {
+        font-size: 12px;    
+        padding-top: 5px;
+    }
+    .teacher-feedback .divTest .divCol2 {
+        float: left;
+        width: 420px;
+    }
+    .teacher-feedback .divTest .divCol2 textarea {
+        width: 405px;
+        margin-bottom: 5px;
+        border: 1px solid #89bad3 !important;
+        height: 18px; 
+        line-height: 18px;
+    }
+    .teacher-feedback .divCol2 .label-feedback-history {
+        text-align: left;   
+        padding: 0px 0px 5px 0px;
+        margin-bottom: 0px;
+        line-height: 13px;
+        display: inline-block;
+    }
+    .teacher-feedback-overall-test-feedback {
+        height: 54px !important;
+    }
+</style>
+<div id="popup_content">
+    <div class="popup_content_inside">
+        <div data-bind="text: VirtualTestID, visible: false"></div>
+        <div class="grading" style="width: 730px">
+            <span>Grade by: </span><label for="single" title="Grade by Student enables the test grader to cycle through and grade all of the manually gradable items on an individual student's test before moving on to the next student's test."><input type="radio" id="single" name="grading" value="single" data-bind="checked: GradingType"/>Student</label>
+            <label for="bulk" title="Grade by Item enables the test grader to cycle through all students' responses to same item before moving on to the next item."><input type="radio" id="bulk" name="grading" value="bulk" data-bind="checked: GradingType"/>Item</label>
+            <label style="padding-left: 45px"> <input type="checkbox" id="ckbManuallyGradedOnly" data-bind="checked: ManuallyGradedOnly, click: ManuallyGradedOnlyClickHandler"> Manually Graded Only</label>
+            <label style="padding-left: 0px; display: none"> <input type="checkbox" id="ckbPrintGuidance" data-bind="checked: PrintGuidance"> Print Guidance</label>
+            <button style="margin-bottom: 5px;" data-bind="click: PrintTestOfStudent, enable: PrintTestOfStudentVisible">Print</button>
+        </div>
+        <div class="popup_body">
+            <div class="bgtable_student">
+                <form class="form">
+                    <fieldset>
+                        <legend>Students</legend>
+                        <div class="table_student">
+                            <table class="table table-bordered">
+                                <thead>
+                                <tr>
+                                    <th data-bind="click:StudentNameSort, css:StudentNameSortDirection" style="width: 70px;">Student</th>
+                                    <th data-bind="click:StudentStatusSort">Status</th>
+                                </tr>
+                                </thead>
+                                <tbody data-bind="foreach: Students, visible: Students().length > 0">
+                                <tr data-bind="attr: { QTIOnlineTestSessionID: QTIOnlineTestSessionID, StudentID: StudentID },click: $parent.StudentClick, css: SelectedCSS">
+                                    <td><span data-bind="text: StudentName"></span></td>
+                                    <td>
+                                        <span data-bind="visible: IsNotStart" style="text-align: center;">
+                                                <img src="@Url.Content("~/Content/themes/AssignmentRegrader/images/icon-paper.png")" alt="" title="Not started">
+                                            </span>
+                                        <span data-bind="visible: InProgress" style="text-align: center;">
+                                                <img src="@Url.Content("~/Content/themes/AssignmentRegrader/images/clock2.png")" alt="" title="In progress">
+                                            </span>
+                                        <span data-bind="visible: Paused" style="text-align: center;">
+                                                <img src="@Url.Content("~/Content/themes/AssignmentRegrader/images/clock.png")" alt="" title="Paused">
+                                            </span>
+                                        <span data-bind="visible: IsComplete" style="text-align: center;">
+                                                <img src="@Url.Content("~/Content/themes/AssignmentRegrader/images/icon-check.png")" alt="" title="Completed">
+                                            </span>
+                                            <span data-bind="visible: PendingReviewVisible" style="text-align: center;">
+                                                <img src="@Url.Content("~/Content/themes/AssignmentRegrader/images/icon-pencil.png")" alt="" title="Pending review">
+                                            </span>
+                                        <span data-bind="visible: CanBulkGrading" style="text-align: center;">
+                                                <img src="@Url.Content("~/Content/themes/AssignmentRegrader/images/icon-bulk-grading.png")" alt="" title="Ready to Submit">
+                                            </span>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            <div class="clearfix"></div>
+                        </div>
+                    </fieldset>
+                </form>
+            </div>
+            <div class="bg_testquestion">
+                <form class="form">
+                    <fieldset>
+                        <legend>Test Questions</legend>
+                        <div class="table_question">
+                            <div id="divQuestionMenu" class="wrapper-table">
+                                <table class="table">
+                                    <tbody data-bind='template: { name: QuestionDisplayMode,foreach: Questions, afterRender: QuestionsRendered}'></tbody>
+                                </table>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="clearfix"></div>
+                            <div class="wrapper-notice">
+                                <span class="notice"><i class="answered"></i>Answered</span> <span class="notice"><i class="unanswered"></i>Unanswered</span> <span class="notice"><i class="reviewable"></i>Reviewable</span>
+                                <div class="clearfix"></div>
+                            </div>
+                        </div>
+                    </fieldset>
+                </form>
+            </div>
+            <div class="table_respones opacity" id="answersBox">
+                <form class="form">
+                    <fieldset>
+                        <legend>Answers</legend>
+                        <div class="wrapper-response">
+                            <div id="divSectionInstruction" class="SectionInstruction" data-bind='template: { name: "SectionInstructionTemplate",data: SectionInstruction, afterRender : ResizeSectionInstruction }'></div>
+                            <div id="divQuestionDetails" class="QuestionDetails" data-bind='template: {name: "QuestionDetailsPanel", data: Respones, afterRender: AfterRenderQuestionDetails}'></div>
+                            <div id="wrapper-answer" class="wrapper-notice-answer">
+                                <div data-bind='html: BottomMessages' style="margin-bottom: 3px; margin-left: 10px;"></div>
+                                <div data-bind='foreach: RefObjects'>
+                                    <button data-bind="click: $parent.ViewReference, visible: $parent.HasViewReference, enable: $parent.IsStart" type="button">View Reference #<span data-bind="text: $index() + 1"></span></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="glossaryMessage">
+                            <section>
+                                <div class="block-border">
+                                    <div class="block-content form glossary-content">
+                                        <div class="glossary_text"></div>
+                                        <div class="glossary_define"></div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                        <div id="showCorrectAnswer"></div>
+                    </fieldset>
+                </form>
+            </div>
+            <div class="clearfix"></div>
+            <div style="float: left">
+                <form class="form" style="margin-top: 3px">
+                    <fieldset>
+                        <legend>Teacher feedback</legend>
+                        <div style="margin-top: -12px;">
+                            <button data-bind="enable: FeedBackFormVisible" type="button" id="btnSaveFeedback" class="float-right" style="margin-right: 7px">Save Feedback</button>
+                        </div>
+                        <div class="table_grading opacity">
+                            <div class="teacher-feedback">
+                                <div class="divTest">
+                                    <div class="divCol1"><label>Overall Test Feedback: </label>
+                                    </div>
+                                    <div class="divCol2">
+                                        <textarea data-bind="enable: FeedBackFormVisible" rows="3" id="txtfeedbackTest" class="no-border teacher-feedback-overall-test-feedback" cols="55" tabindex="6" maxlength="4000" spellcheck="true"></textarea>
+                                        <label id="lblTestFeedbackHistory" class="label-feedback-history"></label>
+                                    </div>
+                                    <div class="clear"></div>
+                                </div>
+                                <div class="clear"></div>
+                                <div class="divTest">
+                                    <div class="divCol1"><label>Selected Item Feedback: </label>
+                                    </div>
+                                    <div class="divCol2">
+                                        <textarea data-bind="enable: FeedBackFormVisible" rows="1" id="txtfeedbackItem" class="no-border" cols="55" tabindex="6" maxlength="4000"></textarea>
+                                        <label id="lblItemFeedbackHistory" class="label-feedback-history"></label>
+                                    </div>
+                                    <div class="clear"></div>
+                                </div>
+                                <div class="clear"></div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                </form>
+            </div>
+            <form class="form">
+                <div id="divGrading" style="display: none; margin-top: 3px; margin-left: 2px;">
+                    <fieldset>
+                        <legend>Grading</legend>
+                        <div class="table_grading opacity">
+                            <div class="wrapper-grading" style="margin-top: 0px">
+                                <div id="divTotalPoint">
+                                    <p><strong>Total Test Score: </strong><strong class="totalPoint" data-bind="text: TotalPointsEarned"></strong>
+                                        <strong>out of</strong><strong class="totalPoint" data-bind="text: TotalPointsPossible"></strong>
+                                    </p>
+                                </div>
+                                <div class="wrapper_points">
+                                    <a data-bind="click: Plus, enable: GradeButtonCss" href="#" class="btn_point_up buttons"></a>
+                                    <a data-bind="click: Minus, enable: GradeButtonCss" href="#" class="btn_point_down buttons"></a>
+                                    <input data-bind='value: PointsEarned, enable: GradeButtonCss, valueUpdate: "afterkeydown",event: { keyup: PointsEarned_Keyup }, attr: {signature: CanGradingForceUIRefreshSignature}' name="" type="text" class="width-point onlyNumber PointsEarned"/>
+                                </div>
+                                <div class="textoutof">Out of <span data-bind="text: PointsPossible"></span>
+                                    <div data-bind="visible: OverriddenVisible" style="margin-left: -66px; padding-top: 24px;">
+                                        <div>Updated by: <span data-bind="text: UpdatedBy"></span></div>
+                                        <div>Updated date: <span data-bind="text: UpdatedDate"></span></div>
+                                    </div>
+                                </div>
+                                <button data-bind="click: UpdateAsnswerPointsEarned, enable: GradeButtonCss, attr: {signature: CanGradingForceUIRefreshSignature}" type="button" class="float-right">Apply Grade</button>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="clearfix"></div>
+
+                        </div>
+                    </fieldset>
+                    <div class="wrapper-footer-response">
+                        <div data-bind="with: Rubric">
+                            <button data-bind="click: $parent.DownloadRubricFile, visible: Success" type="button" class="blue rubric">View Rubric</button>
+                        </div>
+                        <button data-bind="click: SubmitTest, enable: SubmitTestButtonCss, attr: {signature: SubmitTestForceUIRefreshSignature}" type="button" class="blue">Submit Test</button>
+                        @*<div class="clearfix"></div>*@
+                    </div>
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+        <div class="clearfix"></div>
+        
+</div>
+
+<div id="divPrintTestOfStudentPanel" class="dialog" style="display: none">
+    @Html.Partial("_PrintTestOfStudent")
+</div>
+
+<script type="text/html" id="QuestionDetailsPanel">
+    <div data-bind="html : $data, visible: $parent.QuestionDetailsVisible"></div>
+</script>
+<script type="text/html" id="SectionInstructionTemplate">
+    <div data-bind="html : $data"></div>
+</script>
+<script type="text/html" id="1">
+    <tr data-bind="click: $parent.DisplaySimpleChoice, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType1' }"></td>
+    </tr>
+</script>
+<script type="text/html" id="10">
+    <tr data-bind="click: $parent.DisplayOpenEnded, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType10' }" style="word-wrap: break-word;"></td>
+    </tr>
+</script>
+
+<script type="text/html" id="8">
+    <tr data-bind="click: $parent.DisplayInlineChoice, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType8' }"></td>
+    </tr>
+</script>
+
+<script type="text/html" id="9">
+    <tr data-bind="click: $parent.DisplayTextEntry, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType9' }"></td>
+    </tr>
+</script>
+
+<script type="text/html" id="21">
+    <tr data-bind="click: $parent.DisplayComplextItem, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType21' }"></td>
+    </tr>
+</script>
+
+<script type="text/html" id="3">
+    <tr data-bind="click: $parent.DisplayMultipleChoice, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType3' }"></td>
+    </tr>
+</script>
+<script type="text/html" id="37">
+    <tr data-bind="click: $parent.DisplayMultipleChoiceVariable, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType37' }"></td>
+    </tr>
+</script>
+<script type="text/html" id="30">
+    <tr data-bind="click: $parent.DisplayDragDropStandard, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType30' }"></td>
+    </tr>
+</script>
+<script type="text/html" id="36">
+    <tr data-bind="click: $parent.DisplayDragDropSequence, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType32' }"></td>
+    </tr>
+</script>
+<script type="text/html" id="31">
+    <tr data-bind="click: $parent.DisplayTextHotspot, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType31' }"></td>
+    </tr>
+</script>
+<script type="text/html" id="32">
+    <tr data-bind="click: $parent.DisplayImgHotspot, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType32' }"></td>
+    </tr>
+</script>
+<script type="text/html" id="33">
+    <tr data-bind="click: $parent.DisplayTableHotspot, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType33' }"></td>
+    </tr>
+</script>
+<script type="text/html" id="34">
+    <tr data-bind="click: $parent.DisplayNumberline, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType32' }"></td>
+    </tr>
+</script>
+<script type="text/html" id="35">
+    <tr data-bind="click: $parent.DisplayDragDropNumerical, css: MenuItemQuestionCSS, visible: VisibleQuestion">
+        <td data-bind="template: { name: 'AnswerState' }"></td>
+        <td data-bind="template: { name: 'ItemType35' }"></td>
+    </tr>
+</script>
+<script type="text/html" id="AnswerState">
+    <span data-bind="visible: Answered" class="icon-anwser">
+        <img notremove="true" src="@Url.Content("~/Content/themes/AssignmentRegrader/images/icon-anwser.png")" alt="" title="Answered">
+    </span>
+    <span data-bind="visible: Unanswered" class="icon-anwser">
+        <img notremove="true" src="@Url.Content("~/Content/themes/AssignmentRegrader/images/icon-question.jpg")" alt="" title="Unanswered">
+    </span>
+    <span data-bind="visible: NotYetReviewCSS" class="icon-anwser">
+        <img notremove="true" src="@Url.Content("~/Content/themes/AssignmentRegrader/images/icon-review.png")" alt="" title="Reviewable">
+    </span>
+    <span data-bind="visible: ReviewedCSS" class="icon-anwser">
+        <img notremove="true" src="@Url.Content("~/Content/themes/AssignmentRegrader/images/icon-reviewed.png")" alt="" title="Reviewable">
+    </span>
+</script>
+
+<script type="text/html" id="ItemType1">
+
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+
+</script>
+
+<script type="text/html" id="ItemType10">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+
+</script>
+
+<script type="text/html" id="ItemType9">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+
+</script>
+
+<script type="text/html" id="ItemType8">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+
+</script>
+
+<script type="text/html" id="ItemType21">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+
+</script>
+
+<script type="text/html" id="ItemType3">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+
+</script>
+
+<script type="text/html" id="ItemType30">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+</script>
+
+<script type="text/html" id="ItemType31">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+</script>
+
+<script type="text/html" id="ItemType32">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+</script>
+<script type="text/html" id="ItemType33">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+</script>
+<script type="text/html" id="ItemType34">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+</script>
+<script type="text/html" id="ItemType35">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+</script>
+<script type="text/html" id="ItemType36">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+</script>
+<script type="text/html" id="ItemType37">
+    <div data-bind="text: QTIItemID" style="display: none;"></div>
+    <strong data-bind="text: QuestionOrderDisplay" style="float: left; margin-right: 5px;"></strong>
+    <div data-bind="html: QuestionMenuItems" style="text-align: left;"></div>
+</script>
+<script type="text/javascript" language="javascript">
+
+    function ReplaceTag(string, oldTagName, newTagName) {
+        var tree = $('<div>' + string + '</div>');
+        tree.find(oldTagName)
+            .replaceWith(function () {
+                var result = $('<' + newTagName + '></' + newTagName + '>');
+                var element = $(this);
+                var attrs = element.prop("attributes");
+                $.each(attrs, function (index, attribute) {
+                    result.attr(attribute.name, attribute.value);
+                });
+                result.addClass(element.prop("tagName"));
+                result.html(element.html());
+                return $(result.outerHTML());
+            });
+        return tree.html();
+    }
+
+    function CopyAttributes(from, to) {
+        var attrs = from.prop("attributes");
+        $.each(attrs, function (index, attribute) {
+            to.attr(attribute.name, attribute.value);
+        });
+    }
+
+</script>
+
+<script>
+    var viewModel;
+
+    // Replaces all instances of the given substring.
+    String.prototype.replaceAll = function (
+        strTarget, // The substring you want to replace
+        strSubString // The string you want to replace in.
+    ) {
+        var strText = this;
+        var intIndexOfMatch = strText.indexOf(strTarget);
+
+        // Keep looping while an instance of the target string
+        // still exists in the string.
+        while (intIndexOfMatch != -1) {
+            // Relace out the current instance.
+            strText = strText.replace(strTarget, strSubString);
+
+            // Get the index of any next matching substring.
+            intIndexOfMatch = strText.indexOf(strTarget);
+        }
+
+        // Return the updated string with ALL the target strings
+        // replaced out with the new substring.
+        return (strText.toString());
+    };
+    jQuery.fn.outerHTML = function (s) {
+        return (s)
+            ? this.before(s).remove()
+            : jQuery("<p>").append(this.eq(0).clone()).html();
+    };
+
+    String.prototype.endsWith = function (suffix) {
+        return this.indexOf(suffix, this.length - suffix.length) !== -1;
+    };
+
+    (function ($) {
+        $.fn.imagesLoaded = function (callback) {
+            var elems = this.filter('img'),
+                len = elems.length,
+                // data uri bypasses webkit log warning (thx doug jones (cjboco))
+                blank = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+            elems.bind('load', function () {
+                // check image src to prevent firing twice (thx doug jones (cjboco))
+                if (--len <= 0 && this.src !== blank) {
+                    callback.call(elems, this);
+                }
+            }).each(function () {
+                // cached images don't fire load sometimes, so we reset src.
+                if (this.complete || this.complete === undefined) {
+                    var src = this.src;
+                    // webkit hack from http://groups.google.com/group/jquery-dev/browse_thread/thread/eee6ab7b2da50e1f
+                    this.src = blank;
+                    this.src = src;
+                }
+            });
+        };
+    }(jQuery));
+
+    function Rubric(data) {
+        var self = this;
+        self.Success = ko.observable(data.Success);
+        self.VirtualTestFileKey = ko.observable(data.VirtualTestFileKey);
+        self.VirtualTestFileName = ko.observable(data.VirtualTestFileName);
+    }
+
+    function Student(data) {
+        var self = this;
+        self.QTIOnlineTestSessionID = ko.observable(data.QTIOnlineTestSessionID);
+        self.StudentID = ko.observable(data.StudentID);
+        self.StudentName = ko.observable(data.StudentName);
+        self.TestName = ko.observable(data.TestName);
+        self.IsComplete = ko.observable(data.IsComplete);
+        self.IsPendingReview = ko.observable(data.IsPendingReview);
+        self.InProgress = ko.observable(data.InProgress);
+        self.IsNotStart = ko.observable(data.IsNotStart);
+        self.Paused = ko.observable(data.Paused);
+        self.SelectedCSS = ko.observable('');
+        self.QTOStatusID = ko.observable(data.QTOStatusID);
+        self.TimeOver = ko.observable(data.TimeOver);
+        self.StartDate = ko.observable(data.StartDate);
+        self.CanBulkGrading = ko.observable(data.CanBulkGrading);
+
+        self.PendingReviewVisible = ko.computed(function () {
+            var result = !self.CanBulkGrading() && self.IsPendingReview();
+            return result;
+        });
+
+        self.Status = ko.computed(function () {
+            if (self.IsComplete()) return 'Completed';
+            if (self.IsPendingReview()) return 'Pending Review';
+            if (self.InProgress()) return 'Created';
+            if (self.Paused()) return 'Paused';
+            return 'NotStarted';
+        });
+        self.TestFeedbackId = ko.observable('');
+        self.FeedbackContent = ko.observable('');
+        self.LastUserUpdatedFeedback = ko.observable('');
+        self.LastDateUpdatedFeedback = ko.observable('');
+    }
+
+    function CreateQuestionMenuItem(html) {
+        var jHtml = $(html);
+
+        var replaces = [{ from: 'inlinechoiceinteraction', to: '<select class="teacher-review-inline-choice"></select>' },
+            { from: 'textentryinteraction', to: '<input type="text" class="teacher-review-fill-in-blank"></input>' },
+            { from: 'choiceinteraction', to: '' },
+            { from: 'sourceobject', to: '' },
+            { from: 'destinationobject', to: '' },
+            { from: 'imagehotspot', to: '' },
+            { from: 'numberline', to: '' }
+        ];
+        ko.utils.arrayForEach(replaces, function (replace) {
+            jHtml.find(replace.from).each(function () {
+                html = html.replace(this.outerHTML, replace.to);
+            });
+        });
+
+        var tree = $(html);
+        tree.find('videolinkit').replaceWith(function () {
+            return $('');
+        });
+        tree.find('table.tableHotspotInteraction').replaceWith(function () {
+            return $('');
+        });
+
+        return tree.outerHTML();
+    }
+
+    function RefObject(refObject) {
+        var self = this;
+
+        self.RefObjectID = ko.observable('');
+        self.RefObjectData = ko.observable('');
+
+        if (refObject) {
+            self.RefObjectID($(refObject).attr('refobjectid'));
+            self.RefObjectData($(refObject).attr('data'));
+        }
+    }
+
+    function Question(data) {
+        var self = this;
+        //Replace for old inline choice before show on teacher review
+        data.XmlContent = correctInlineChoice(data.XmlContent);
+
+        self.QTIItemID = ko.observable(data.QTIItemID);
+        self.QTIItemSchemaID = ko.observable(data.QTIItemSchemaID);
+        self.VirtualQuestionID = ko.observable(data.VirtualQuestionID);
+        self.QuestionOrder = ko.observable(data.QuestionOrder);
+        self.ResponseProcessingTypeID = ko.observable(data.ResponseProcessingTypeID);
+
+        self.PointsPossible = ko.observable(data.PointsPossible);
+        self.SectionInstruction = ko.observable(data.SectionInstruction);
+        self.SelectedCSS = ko.observable('');
+        self.XmlContent = ko.observable(data.XmlContent);
+        self.DataXmlContent = ko.observable(data.XmlContent);
+
+
+        self.Answered = ko.observable(data.Answered);
+        self.Unanswered = ko.observable(data.Unanswered);
+        self.Reviewable = ko.observable(data.Reviewable);
+        self.IsReviewed = ko.observable(false);
+
+        self.BaseVirtualQuestionID = ko.observable(data.BaseVirtualQuestionID);
+        self.IsBaseVirtualQuestion = ko.observable(data.IsBaseVirtualQuestion);
+        self.IsGhostVirtualQuestion = ko.observable(data.IsGhostVirtualQuestion);
+        self.ManuallyGradedOnly = ko.observable(false);
+        self.CorrectAnswer = ko.observable(data.CorrectAnswer);
+        self.CorrectAnswerHTML = ko.observable(data.CorrectAnswer);
+        self.AnswerOrder = ko.observable(0);
+        self.VisibleQuestion = ko.computed(function () {
+            if (viewModel.VirtualTestSubtypeID() !== '5' || !viewModel.BranchingTest()) {
+                return !self.ManuallyGradedOnly() || self.Reviewable();
+            } else {
+                var result = self.Answered();
+                if (self.ManuallyGradedOnly()) result = result && self.Reviewable();
+                return result;
+            }
+        });
+
+        self.IsAssignForStudent = ko.computed(function () {
+            if (!Reviewer.IsNullOrEmpty(self.ResponseProcessingTypeID()) && self.ResponseProcessingTypeID() == 3) return false;
+            if (viewModel.VirtualTestSubtypeID() !== '5' || !viewModel.BranchingTest()) {
+                return true;
+            } else {
+                return self.Answered();
+            }
+        });
+
+        self.QuestionOrderDisplay = ko.computed(function () {
+            if (viewModel.VirtualTestSubtypeID() == '5' && viewModel.BranchingTest()) return self.AnswerOrder();
+            return self.QuestionOrder();
+        });
+        self.MenuItemQuestionCSS = ko.computed(function () {
+            var questionCss = '';
+            if (self.IsBaseVirtualQuestion()) questionCss = 'BaseVirtualQuestion';
+            if (!Reviewer.IsNullOrEmpty(self.SelectedCSS())) questionCss = questionCss + ' ' + self.SelectedCSS();
+            return questionCss;
+        });
+
+        self.NotYetReviewCSS = ko.computed(function () {
+            return self.Reviewable() && !self.IsReviewed();
+        });
+
+        self.ReviewedCSS = ko.computed(function () {
+            return self.Reviewable() && self.IsReviewed();
+        });
+
+        self.RefObjects = ko.observable([]);
+
+        self.MainBody = ko.computed(function () {
+            var mainContent = $(self.XmlContent()).find('div').filter(function () {
+                if (this.className != undefined)
+                    return this.className.toLowerCase() == 'mainbody';
+            });
+            if (mainContent != undefined && mainContent.length > 0) return mainContent.get(0).outerHTML;
+            return "";
+        });
+
+        self.Identifier = ko.observable('');
+        self.ItemBody = ko.computed(function () {
+            var tree = $(self.XmlContent());
+
+            tree.find('list').replaceWith(function () {
+                var list = $(this);
+                var newList = $('<ol></ol>');
+                list.find('li').each(function () {
+                    var li = $(this);
+                    var newLi = $('<li></li>');
+                    newLi.html(li.outerHTML());
+                    newLi.css('style-list', 'none outside none');
+                    newList.append(newLi);
+                });
+
+                return newList;
+            });
+
+            var result = '';
+            tree.find('itembody').each(function () {
+                var itemBody = $(this);
+                if ($(self.DataXmlContent()).find("responsedeclaration").attr("partialgrading") == "1") {
+                    itemBody.find("sourcetext").each(function () {
+                        if ($(this).attr("pointvalue") > 0) {
+                            $(this).addClass("marker-correct");
+                        }
+                    });
+                } else {
+                    $(self.DataXmlContent()).find("correctResponse").each(function () {
+                        var id = $(this).attr("identifier");
+                        itemBody.find("sourcetext[identifier=\"" + id + "\"]").addClass("marker-correct");
+                    });
+                }
+                result = $(this).outerHTML();
+            });
+
+            return result;
+        });
+
+        self.QuestionMenuItems = ko.observable(CreateQuestionMenuItem(self.ItemBody()));
+
+        var refObjectElements = $(self.ItemBody()).find('object').filter(function () {
+            return this.className.toLowerCase() == 'referenceobject';
+        });
+
+        if (refObjectElements && refObjectElements.length > 0) {
+            var mappedObjects = $.map(refObjectElements, function (item) {
+                return new RefObject(item);
+            });
+            self.RefObjects(mappedObjects);
+        }
+
+        var countResponse = $(data.XmlContent).find('responsedeclaration').length;
+
+        var countValue = $(data.XmlContent).find('correctResponse').find('value').length;
+        if (countResponse <= 1 && countValue <= 1) {
+            self.CorrectResponse = $.trim($(data.XmlContent).find('correctResponse').text());
+        }
+        else {
+            var dict = [];
+            $(data.XmlContent).find('responsedeclaration').each(function () {
+                var responseIdentifier = $(this).attr('identifier');
+                $(this).find('correctresponse').each(function () {
+                    var valueArray = [];
+                    var i = 0;
+                    $(this).find('value').each(function () {
+                        valueArray[i] = $(this).text();
+                        i++;
+                    });
+                    dict.push({
+                        key: responseIdentifier,
+                        value: valueArray
+                    });
+                });
+            });
+            self.CorrectResponse = dict;
+        }
+
+        self.StyleReference = ko.observable('');
+    }
+
+    function TestOnlineSessionAnswer(data) {
+        var self = this;
+        self.Expired = ko.observable(data.Expired);
+        self.QTIOnlineTestSessionAnswerID = ko.observable(data.QTIOnlineTestSessionAnswerID);
+        self.AnswerID = ko.observable(data.AnswerID);
+        self.QTIOnlineTestSessionID = ko.observable(data.QTIOnlineTestSessionID);
+        self.VirtualQuestionID = ko.observable(data.VirtualQuestionID);
+        self.AnswerChoice = ko.observable(data.AnswerChoice);
+        self.Answered = ko.observable(data.Answered);
+        self.AnswerImage = ko.observable(data.AnswerImage);
+        self.AnswerText = ko.observable(data.AnswerText);
+        self.AnswerOrder = ko.observable(data.AnswerOrder);
+
+        self.HighlightQuestion = ko.observable(data.HighlightQuestion);
+        self.HighlightPassage = ko.observable(data.HighlightPassage);
+        self.AnswerTemp = ko.observable(data.AnswerTemp);
+
+        self.PointsEarned = ko.observable(Reviewer.IsNullOrEmpty(data.PointsEarned) ? 0 : data.PointsEarned);
+        self.IsReviewed = ko.observable(data.IsReviewed);
+        self.ResponseProcessingTypeID = ko.observable(data.ResponseProcessingTypeID);
+        self.TestOnlineSessionAnswerSubs = ko.observable([]);
+        if (data.TestOnlineSessionAnswerSubs != null) {
+            var mappedObjects = $.map(data.TestOnlineSessionAnswerSubs, function (item) {
+                return new TestOnlineSessionAnswerSub(item);
+            });
+            self.TestOnlineSessionAnswerSubs(mappedObjects);
+        }
+
+        self.Overridden = ko.observable(data.Overridden);
+        self.AnswerOfBaseQuestion = ko.observable(false);
+        self.UpdatedBy = ko.observable(data.UpdatedBy);
+        self.UpdatedDate = ko.observable(data.UpdatedDate);
+        //Teacher feedback for item
+        self.ItemFeedbackID = ko.observable(data.ItemFeedbackID);
+        self.ItemAnswerID = ko.observable(data.ItemAnswerID);
+        self.Feedback = ko.observable(data.Feedback);
+        self.UserUpdatedFeedback = ko.observable(data.UserUpdatedFeedback);
+        self.DateUpdatedFeedback = ko.observable(data.DateUpdatedFeedback);
+
+    }
+
+    function TestOnlineSessionAnswerSub(data) {
+        var self = this;
+        self.QTIOnlineTestSessionAnswerSubID = ko.observable(data.QTIOnlineTestSessionAnswerSubID);
+        self.QTIOnlineTestSessionAnswerID = ko.observable(data.QTIOnlineTestSessionAnswerID);
+        self.VirtualQuestionSubID = ko.observable(data.VirtualQuestionSubID);
+        self.QTISchemaID = ko.observable(data.QTISchemaID);
+        self.AnswerChoice = ko.observable(data.AnswerChoice);
+        self.Answered = ko.observable(data.Answered);
+        self.AnswerText = ko.observable(data.AnswerText);
+        self.AnswerImage = ko.observable(data.AnswerImage);
+        self.IsReviewed = ko.observable(data.IsReviewed);
+        self.PointsPossible = ko.observable(data.PointsPossible);
+        self.ResponseIdentifier = ko.observable(data.ResponseIdentifier);
+        self.ResponseProcessingTypeID = ko.observable(data.ResponseProcessingTypeID);
+
+        var pointsEarned = data.PointsEarned == null ? 0 : data.PointsEarned;
+        self.PointsEarned = ko.observable(pointsEarned);
+
+        self.AnswerTemp = ko.observable(data.AnswerTemp);
+        self.Overridden = ko.observable(data.Overridden);
+        self.UpdatedBy = ko.observable(data.UpdatedBy);
+        self.UpdatedDate = ko.observable(data.UpdatedDate);
+    }
+
+    function TestAssignmentRegraderViewModel() {
+        var self = this;
+
+        self.VirtualTestID = ko.observable(@Model.VirtualTestID);
+        self.TestName = ko.observable('@Model.VirtualTestName');
+        self.Students = ko.observableArray([]);
+        self.Questions = ko.observableArray([]);
+        self.VirtualTestSubtypeID = ko.observable('@Model.VirtualTestSubtypeID');
+        self.TestOnlineSessionAnswers = ko.observableArray([]);
+        self.Respones = ko.observable('');
+        self.Respones.extend({ notify: 'always' });
+
+        self.QuestionDetailsVisible = ko.computed(function () {
+            var question = ko.utils.arrayFirst(self.Questions(), function (item) {
+                return item.VisibleQuestion();
+            });
+            return question != null;
+        });
+
+        self.SectionInstruction = ko.observable('');
+        self.SectionInstruction.extend({ notify: 'always' });
+        self.ResponseProcessingTypeID = ko.observable('');
+        self.Mode = ko.observable('@Model.TutorialMode');
+        self.FeedBackFormVisible = ko.computed(function () {
+            return self.Mode() != '2';
+        });
+
+        self.QuestionsRendered = function () {
+            var $divQuestionMenu = $('#divQuestionMenu');
+            calculatorSequenceWidth($divQuestionMenu.find('partialsequence'));
+        };
+
+        self.AfterRenderQuestionDetails = function () {
+            var $divQuestionDetails = $('#divQuestionDetails')
+            calculatorSequenceWidth($divQuestionDetails.find('partialsequence'));
+        };
+
+        self.ResizeSectionInstruction = function () {
+            var newHeight = $("#divSectionInstruction").parent().outerHeight() - $("#divSectionInstruction").outerHeight(true) - $("#wrapper-answer").outerHeight(true);
+            $("#divQuestionDetails").css({ "min-height": newHeight, "height": newHeight });
+        };
+        self.PointsPossible = ko.observable('');
+        
+        self.PointsEarned = ko.observable('');
+        self.OldPointsEarned = ko.observable('');
+        self.QTIOnlineTestSessionID = ko.observable('');
+        self.AnswerID = ko.observable('');
+        self.AnswerSubID = ko.observable('');
+        self.AnswerImage = ko.observable('');
+        self.QTIItemSchemaID = ko.observable('');
+        self.SelectedQuestion = ko.observable('');
+        self.IsComplete = ko.observable('');
+        self.IsPendingReview = ko.observable('');
+        self.IsNotStart = ko.observable('');
+        self.Paused = ko.observable('');
+        self.InProgress = ko.observable('');
+        self.RefObjects = ko.observable([]);
+        self.IsGraded = ko.observable(false);
+        self.SelectedStudent = ko.observable('');
+        self.NextStudent = ko.observable('');
+        self.Rubric = ko.observable({ Success: false });
+        self.StudentNameSortDirection = ko.observable('');
+        self.StudentStatusSortDirection = ko.observable('');
+        self.OverrideAutoGraded = ko.observable(false);
+        self.OverrideItems = ko.observableArray([]);
+        self.Expired = ko.observable('');
+        self.BranchingTest = ko.observable('');
+        self.MultipleChoiceClickMethod = ko.observable('');
+        self.ScoreRaw = ko.observable('');
+        self.SubtractFrom100PointPossible = ko.observable(0);
+        self.GradingType = ko.observable("single");
+
+        self.UpdateManuallyGradedOnlyOfAllQuestion = function (manuallyGradedOnly) {
+            ko.utils.arrayForEach(self.Questions(), function (item) {
+                item.ManuallyGradedOnly(manuallyGradedOnly);
+            });
+        }
+        
+        self.ChooseSelectedQuestion = function () {
+            if (self.Questions().length <= 0) return;
+            if (Reviewer.IsNullOrEmpty(self.SelectedQuestion()) || !self.SelectedQuestion().VisibleQuestion()) {
+                var firstVisibleQuestion = ko.utils.arrayFirst(self.Questions(), function (question) {
+                    return question.VisibleQuestion();
+                });
+                if (!Reviewer.IsNullOrEmpty(firstVisibleQuestion)) {
+                    self.DisplayQuestion(firstVisibleQuestion);
+                } else {
+                    self.DisplayQuestion(null);
+                }
+            } else if (self.SelectedQuestion().VisibleQuestion()) {
+                self.DisplayQuestion(self.SelectedQuestion());
+            }
+        }
+
+        self.ManuallyGradedOnly = ko.observable(false);//Init unchecked
+        self.ManuallyGradedOnlyClickHandler = function (item) {
+            self.UpdateManuallyGradedOnlyOfAllQuestion(item.ManuallyGradedOnly());
+            self.ChooseSelectedQuestion();
+            return true;
+        };
+
+        self.AutoSelectFirstPendingTestSession = ko.observable('@ViewBag.SelectFirstStudentForReview' == 'True');
+        self.ManuallyGradedOnly(self.AutoSelectFirstPendingTestSession());
+
+        self.IsBulkGrading = ko.observable(false);
+        self.UpdatedBy = ko.observable("");
+        self.ItemFeedbackBeforeApplyGrade = '';
+        self.UpdatedDate = ko.observable("");
+        self.Overridden = ko.observable(false);
+        self.PrintGuidance = ko.observable(false);//Init unchecked
+
+        self.OverriddenVisible = ko.computed(function () {
+            return self.Overridden() && !Reviewer.IsNullOrEmpty(self.UpdatedBy()) && !Reviewer.IsNullOrEmpty(self.UpdatedDate());
+        });
+        self.IsStart = ko.computed(function () {
+            if (!Reviewer.IsNullOrEmpty(self.IsNotStart())) return !self.IsNotStart();
+            return false;
+        });
+        self.BottomMessages = ko.observable('');
+
+        self.HasViewReference = ko.computed(function () {
+            return self.RefObjects() && self.RefObjects().length > 0;
+        });
+
+        self.HasAnswerAttachments = ko.computed(function() {
+            return self.AnswerAttachments() && self.AnswerAttachments().length > 0;
+        });
+
+        self.CanGrading = ko.computed(function () {
+            if (Reviewer.IsNullOrEmpty(self.QTIOnlineTestSessionID())) return false;
+            if (self.Mode() == '2') return false;
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && self.SelectedQuestion().IsBaseVirtualQuestion()) return false;
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && (self.QTIItemSchemaID() == 9 || self.QTIItemSchemaID() == 10) && self.SelectedQuestion().ResponseProcessingTypeID() == 3) return false;
+            if ((self.QTIItemSchemaID() == 9 || self.QTIItemSchemaID() == 10) && self.ResponseProcessingTypeID() == 3) return false;
+            var result = self.QTIOnlineTestSessionID() > 0 && self.AnswerID() > 0 && self.PointsEarned() >= 0;
+            if (self.IsPendingReview() || ((self.Paused() || self.InProgress()) && self.Expired())) {
+                result = result && self.QTIItemSchemaID() == 9 && (self.OverrideAutoGraded() || self.ResponseProcessingTypeID() == '2');
+                result = result || (self.QTIItemSchemaID() == 10 && self.ResponseProcessingTypeID() != 3);
+                return result;
+            } else if (self.InProgress()) {
+                return false;
+            } else if (self.IsComplete()) {
+                if (!self.OverrideAutoGraded()) return false;
+
+                var existItem = false;
+                ko.utils.arrayForEach(self.OverrideItems(), function (item) {
+                    if (self.QTIItemSchemaID() == item) {
+                        existItem = true;
+                        return;
+                    }
+                });
+
+                if (self.QTIItemSchemaID() == 21 && (Reviewer.IsNullOrEmpty(self.AnswerID()) || Reviewer.IsNullOrEmpty(self.AnswerSubID()))) return false;
+
+                result = result && existItem;
+            }
+            //if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && self.SelectedQuestion().IsBaseVirtualQuestion()) return false;
+            return result;
+        });
+
+        self.CanGradingForceUIRefreshSignature = ko.observable("CanGradingForceUIRefresh");
+        self.CanGradingForceUIRefresh = function () {            
+            var $signature = $('[signature="' + self.CanGradingForceUIRefreshSignature() + ']');
+
+            if (self.CanGrading()) {
+                $signature.prop('disabled', false);
+            } else {
+                $signature.prop('disabled', true);
+            }
+        }
+
+        self.GradeInputCss = ko.computed(function () {
+            return false;
+        });
+
+        self.GradeButtonCss = ko.computed(function () {
+            return self.CanGrading();
+        });
+        self.IsNextStudent = ko.observable(false);
+
+        self.SubmitTestButtonCss = ko.computed({
+            read: function () {
+                if (self.IsNextStudent()) {
+                    return false;
+                }                
+                if (Reviewer.IsNullOrEmpty(self.QTIOnlineTestSessionID()) || self.QTIOnlineTestSessionID() <= 0) return false;
+                if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && self.SelectedQuestion().IsBaseVirtualQuestion()) return false;               
+                var result = true;
+                if (self.IsPendingReview() || ((self.Paused() || self.InProgress()) && self.Expired())) {
+                    ko.utils.arrayFirst(self.TestOnlineSessionAnswers(), function (testOnlineSessionAnswer) {
+                        if (self.VirtualTestSubtypeID() == '5' && self.BranchingTest() && !testOnlineSessionAnswer.Answered()) return false;
+                        if (!testOnlineSessionAnswer.IsReviewed() && !testOnlineSessionAnswer.AnswerOfBaseQuestion()) {
+                            result = false;
+                            return true;
+                        }                        
+                        ko.utils.arrayFirst(testOnlineSessionAnswer.TestOnlineSessionAnswerSubs(), function (testOnlineSessionAnswerSub) {
+                            if (!testOnlineSessionAnswerSub.IsReviewed()) {
+                                result = false;
+                                return true;
+                            }
+
+                            return false;
+                        });
+
+                        return false;
+                    });
+
+                    return result;
+                }
+
+                return false;
+            },
+            write: function (value) {
+                self.IsNextStudent(true);
+            }, owner: self
+        });
+
+        self.TotalPointsEarned = ko.computed(function () {
+            var testScoreMethodID = '@Model.TestScoreMethodID';
+            var total = 0;
+            var totalPointsPossible = 0;
+            ko.utils.arrayForEach(self.TestOnlineSessionAnswers(), function (testOnlineSessionAnswer) {
+                var curQuestion = ko.utils.arrayFirst(self.Questions(), function (question) {
+                    return question.IsAssignForStudent() && question.VirtualQuestionID() == testOnlineSessionAnswer.VirtualQuestionID();
+                });
+                if (!Reviewer.IsNullOrEmpty(curQuestion)) {
+                    total += testOnlineSessionAnswer.PointsEarned();
+                }
+            });
+
+            ko.utils.arrayForEach(self.Questions(), function (question) {
+                if (question.IsAssignForStudent()) totalPointsPossible += question.PointsPossible();
+            });
+
+            if (self.IsComplete()) return self.ScoreRaw();
+
+            if (testScoreMethodID == '2') {
+                total = total + 100 - totalPointsPossible;
+                total = total < 0 ? 0 : total;
+            }
+
+            return total;
+        });
+        self.TotalPointsPossible = ko.computed(function () {
+
+            var totalPointsPossible = 0;
+
+            ko.utils.arrayForEach(self.Questions(), function (question) {
+                if (question.IsAssignForStudent()) totalPointsPossible += question.PointsPossible();
+            });
+            var testScoreMethodID = '@Model.TestScoreMethodID';
+            if (testScoreMethodID == 2) // Subtract From 100
+            {
+                if (self.SubtractFrom100PointPossible() >= 0) {
+                    totalPointsPossible = self.SubtractFrom100PointPossible();
+                } else {
+                    if (totalPointsPossible < 100) {
+                        totalPointsPossible = 100;
+                    }
+                }
+            }
+            return totalPointsPossible;
+        });
+
+        self.QuestionDisplayMode = function (question) {
+            return question.QTIItemSchemaID() + '';
+        };
+
+        self.ViewReference = function (refObject) {
+            var testOnlineSessionAnswer;
+            ko.utils.arrayForEach(self.TestOnlineSessionAnswers(), function (item) {
+                if (self.SelectedQuestion() && self.SelectedQuestion().VirtualQuestionID() == item.VirtualQuestionID()) {
+                    testOnlineSessionAnswer = item;
+                }
+            });
+
+            var highlightPassages = '';
+            if (!Reviewer.IsNullOrEmpty(testOnlineSessionAnswer) && !Reviewer.IsNullOrEmpty(testOnlineSessionAnswer.HighlightPassage())) {
+                highlightPassages = testOnlineSessionAnswer.HighlightPassage();
+            }
+
+            var answerImage = self.AnswerImage();
+            var refObjectID = refObject.RefObjectID();
+            var refObjectData = refObject.RefObjectData();
+            if (refObjectID == undefined) refObjectID = '';
+            if (refObjectData == undefined) refObjectData = '';
+
+            var highlightPassage = '';
+            $(highlightPassages).find('Passage').each(function () {
+                var passage = $(this);
+                passage.find('RefObjectID').each(function () {
+                    var refObjectElement = $(this);
+                    if (refObjectElement.text() == refObjectID || refObjectElement.text() == refObjectData) {
+                        passage.find('PassageContent').each(function () {
+                            var passageContent = $(this);
+                            highlightPassage = passageContent.text();
+                        });
+                    }
+                });
+            });
+
+            if (Reviewer.IsNullOrEmpty(highlightPassages) || Reviewer.IsNullOrEmpty(highlightPassage)) {
+                var url = '@Url.Action("GetViewReferenceContent")' + '?refObjectID=' + refObjectID + '&data=' + refObjectData;
+                if ($('#roPopup').length == 0)
+                    $.ajax({
+                        url: url,
+                        cache: false,
+                        data: { refObjectID: refObjectID, data: refObjectData }
+                    }).done(function (content) {
+                        ShowPassageOnPopup(content, answerImage, refObjectID, refObjectData);
+                    });
+            } else {
+                var html = '<section class="grid_5"><div class="block-border" style="width: 540px;"><div class="block-content form" style="padding-bottom: 2.833em;"><div id="ROPanel">'
+                    + $(highlightPassage).html()
+                    + '</div></div></div></section>';
+                ShowPassageOnPopup(html, answerImage, refObjectID, refObjectData);
+            }
+        };
+
+        self.ViewAnswerAttachment = function(answerAttachment) {
+            self.ReviewerWidget.ReviewerWidget(
+                'ViewAttachment',
+                answerAttachment.DocumentGuid,
+                self.QTIOnlineTestSessionID()
+            );
+        };
+
+        self.LoadImagesSelector = function (selector) {
+            var drawableIndex = 0;
+            var $selector = $(selector);
+
+            $selector.find("img").each(function () {
+                var image = $(this);
+
+                var floatVal = image.attr("float");
+                if (Reviewer.IsNullOrEmpty(floatVal)) floatVal = '';
+                image.css("float", floatVal);
+
+                var imageUrl = image.attr("src");
+                if (Reviewer.IsNullOrEmpty(imageUrl)) {
+                    imageUrl = image.attr("source");
+                }
+
+                if (Reviewer.IsNullOrEmpty(imageUrl)) imageUrl = '@Url.Content("~/Content/images/emptybg.png")';
+
+                if (imageUrl.charAt(0) == '/') imageUrl = imageUrl.substring(1);
+
+                image.attr("source", '');
+                image.attr("src", imageUrl);
+
+
+                if (imageUrl && imageUrl.toLowerCase().indexOf("itemset") >= 0 && imageUrl.toLowerCase().indexOf("http") < 0
+                    && imageUrl.toLowerCase().indexOf("getviewreferenceimg") < 0) {
+                    imageUrl = 'TestAssignmentRegrader/GetViewReferenceImg?imgPath=' + imageUrl;
+                    image.attr("src", imageUrl);
+                }
+            });
+
+            var $imgs = $selector.find('img');
+            $imgs.imagesLoaded(function () {
+                $imgs.each(function () {
+                    var image = $(this);
+                    if (image.attr('drawable') == 'true') {
+                        image.unbind('load');
+                        image.attr('index', drawableIndex);
+                        ShowDrawImage('question', image, self.AnswerImage(), null);
+                        drawableIndex++;
+                    }
+
+                });
+            });
+        };
+
+        self.LoadImages = function () {
+            self.LoadImagesSelector('#divQuestionDetails');
+        };
+
+        self.RequireApplyGrade = function () {
+            return false;
+            //return self.PointsEarned() != self.OldPointsEarned();
+        };
+
+        self.RequireSubmitTest = ko.computed(function () {
+            return !self.IsComplete() && self.IsGraded();
+        });
+
+        self.DownloadRubricFile = function () {
+            var key = self.Rubric().VirtualTestFileKey();
+            var url = '@Url.Action("DownloadRubricFile", "Notification")' + '?key=' + key;
+            var rubricEl = document.createElement('a');
+            rubricEl.setAttribute('href', url);
+            rubricEl.setAttribute('target', '_blank');
+            rubricEl.click();
+
+            //window.location = url;
+        };
+
+        self.StudentNameSort = function () {
+            if (self.StudentNameSortDirection() == 'asc') {
+                self.StudentNameSortDirection('desc');
+                self.Students(self.Students().sort(function (left, right) {
+                    return left.StudentName().toLowerCase() == right.StudentName().toLowerCase() ? 0 : (left.StudentName().toLowerCase() < right.StudentName().toLowerCase() ? 1 : -1);
+                }));
+            } else {
+                self.StudentNameSortDirection('asc');
+                self.Students(self.Students().sort(function (left, right) {
+                    return left.StudentName().toLowerCase() == right.StudentName().toLowerCase() ? 0 : (left.StudentName().toLowerCase() > right.StudentName().toLowerCase() ? 1 : -1);
+                }));
+            }
+        };
+
+        self.BranchingTestSort = function () {
+            self.Questions(self.Questions().sort(function (left, right) {
+                return left.QuestionOrderDisplay() == right.QuestionOrderDisplay() ? 0 : (left.QuestionOrderDisplay() > right.QuestionOrderDisplay() ? 1 : -1);
+            }));
+        };
+
+        self.StudentStatusSort = function () {
+            self.StudentNameSortDirection('');
+            if (self.StudentStatusSortDirection() == 'asc') {
+                self.StudentStatusSortDirection('desc');
+                self.Students(self.Students().sort(function (left, right) {
+                    return left.Status().toLowerCase() == right.Status().toLowerCase() ? 0 : (left.Status().toLowerCase() < right.Status().toLowerCase() ? 1 : -1);
+                }));
+            } else {
+                self.StudentStatusSortDirection('asc');
+                self.Students(self.Students().sort(function (left, right) {
+                    return left.Status().toLowerCase() == right.Status().toLowerCase() ? 0 : (left.Status().toLowerCase() > right.Status().toLowerCase() ? 1 : -1);
+                }));
+            }
+        };
+
+        self.StudentClick = function (student) {
+
+            self.NextStudent(student);
+            if (student != self.SelectedStudent()) {
+                //DisplayTestFeedback(0, 0, '', '', '');
+                //DisplayItemFeedback(0, 0, 0, 0, '', '', '', 'self.StudentClick');
+            }
+            $('#divGrading').show();
+            if (self.RequireApplyGrade()) {
+                AlertMessage('The points has been changed. You must apply grade.');
+                return;
+            }
+
+            if (self.RequireSubmitTest() && self.SelectedStudent() != self.NextStudent() && self.GradingType() == 'single') {
+                var options = { Message: '' };
+                if (Reviewer.IsNullOrEmpty(self.SelectedStudent())) return;
+                if (self.SelectedStudent().CanBulkGrading()) {
+                    options.Message = 'You have graded all questions but have not submitted the test. Would you like to submit it now?';
+                    ConfirmSubmitTest(options, function () {
+                        viewModel.IsGraded(false);
+                        viewModel.PostSubmitTestData();
+                        viewModel.StudentClick(viewModel.NextStudent());
+                    }, function () {
+                        viewModel.IsGraded(false);
+                        viewModel.StudentClick(viewModel.NextStudent());
+                    });
+                } else {
+                    options.Message = 'You have not graded all questions for this student. Are you sure you want to proceed?';
+                    ConfirmSubmitTest(options, function () {
+                        viewModel.IsGraded(false);
+                        viewModel.StudentClick(viewModel.NextStudent());
+                    }, function () {
+                        viewModel.IsGraded(true);
+                    });
+                }
+
+                return;
+            }
+
+            ShowBlock($('#PopupTestAssignmentRegrader'), 'Loading');
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '@Url.Action("GetRubricByVirtualTest", "Rubric")',
+                data: { virtualTestID: '@Model.VirtualTestID' },
+                success: function(data) {
+                    self.Rubric(new Rubric(data));
+                    if (self.IsNotStart()) {
+                        $('#PopupTestAssignmentRegrader').unblock();
+                    }
+                },
+                error: function() {
+                    var errorData = { Success: false };
+                    self.Rubric(new Rubric(errorData));
+                    $('#PopupTestAssignmentRegrader').unblock();
+                }
+            });
+
+            self.IsGraded(false);
+            self.IsComplete(student.IsComplete());
+            self.IsPendingReview(student.IsPendingReview());
+            self.IsNotStart(student.IsNotStart());
+            self.Paused(student.Paused());
+            self.InProgress(student.InProgress());
+            self.TestName(student.TestName());
+            self.SelectedStudent(student);
+            self.HightLightSelectedStudent(student);
+
+            self.QTIOnlineTestSessionID(student.QTIOnlineTestSessionID());
+            if (Reviewer.IsNullOrEmpty(student.QTIOnlineTestSessionID())) {
+                ko.utils.arrayForEach(self.Questions(), function(item) {
+                    item.Answered(false);
+                    item.Unanswered(false);
+                    item.Reviewable(false);
+                    self.PointsEarned(0);
+                    self.OldPointsEarned(0);
+                });
+
+                ko.utils.arrayForEach(self.TestOnlineSessionAnswers(), function(testOnlineSessionAnswer) {
+                    testOnlineSessionAnswer.PointsEarned(0);
+                    testOnlineSessionAnswer.IsReviewed(false);
+                    testOnlineSessionAnswer.AnswerText('');
+                    testOnlineSessionAnswer.Answered(false);
+                    testOnlineSessionAnswer.AnswerChoice('');
+                    testOnlineSessionAnswer.AnswerImage('');
+                    testOnlineSessionAnswer.HighlightQuestion('');
+                    testOnlineSessionAnswer.HighlightPassage('');
+                    ko.utils.arrayForEach(testOnlineSessionAnswer.TestOnlineSessionAnswerSubs(), function(testOnlineSessionAnswerSub) {
+                        testOnlineSessionAnswerSub.PointsEarned(0);
+                        testOnlineSessionAnswerSub.IsReviewed(false);
+                        testOnlineSessionAnswerSub.AnswerText('');
+                        testOnlineSessionAnswerSub.Answered(false);
+                        testOnlineSessionAnswerSub.AnswerChoice('');
+                    });
+                });
+               
+                self.ChooseSelectedQuestion();
+
+                $('#btnSaveFeedback').attr('disabled', 'disabled');
+                AlertMessage(student.StudentName() + ' does not have any test data');
+                return;
+            } else {
+                $('#btnSaveFeedback').prop("disabled", false);
+            }
+            $.getJSON('@Url.Action("GetTestOnlineSessionAnswers", "TestAssignmentRegrader")',
+                {
+                    qtiOnlineTestSessionID: student.QTIOnlineTestSessionID(),
+                    qtiTestClassAssignmentID: '@Model.QTITestClassAssignmentID',
+                    startDate: student.StartDate()
+                },
+                function (allData) {
+                    var unsavedStudentAnswer = { UnSaved: false, Question: null, Answer: null, AnswerSub: null };
+
+                    var mappedObjects = $.map(allData.data, function (item) {
+                        return new TestOnlineSessionAnswer(item);
+                    });
+                    self.TestOnlineSessionAnswers(mappedObjects);
+                    self.Expired(allData.expired);
+                    self.BranchingTest(allData.branchingTest);
+                    self.MultipleChoiceClickMethod(allData.multipleChoiceClickMethod);
+                    self.ScoreRaw(allData.scoreRaw);
+
+                    self.SubtractFrom100PointPossible(allData.subtractFrom100PointPossible);
+                    //DisplayTestFeedback(student.QTIOnlineTestSessionID(), allData.testFeedbackId, allData.feedbackContent, allData.lastUserUpdatedFeedback, allData.lastDateUpdatedFeedback);
+                    student.TestFeedbackId(allData.testFeedbackId);
+                    student.FeedbackContent(allData.feedbackContent);
+                    student.LastUserUpdatedFeedback(allData.lastUserUpdatedFeedback);
+                    student.LastDateUpdatedFeedback(allData.lastDateUpdatedFeedback);
+                    self.SelectedStudent(student);
+                    self.HightLightSelectedStudent(student);
+                    self.DisplayTestFeedback(student);
+                    ko.utils.arrayForEach(self.Questions(), function (item) {
+                        //Reset Question
+                        item.Answered(false);
+                        item.Unanswered(!item.Answered());
+                        item.Reviewable(false);
+                        item.IsReviewed(false);
+                        item.AnswerOrder(0);
+
+                        ko.utils.arrayForEach(self.TestOnlineSessionAnswers(), function (testOnlineSessionAnswer) {
+                            if (item.VirtualQuestionID() == testOnlineSessionAnswer.VirtualQuestionID()) {
+                                testOnlineSessionAnswer.AnswerOfBaseQuestion(item.IsBaseVirtualQuestion());
+                                var questionReviewable = false;
+                                item.Answered(testOnlineSessionAnswer.Answered());
+                                item.Unanswered(!testOnlineSessionAnswer.Answered());
+                                item.AnswerOrder(testOnlineSessionAnswer.AnswerOrder());
+                                if (item.QTIItemSchemaID() == 10 && testOnlineSessionAnswer.ResponseProcessingTypeID() != 3) {
+                                    questionReviewable = true;
+                                    if (self.Expired() && !Reviewer.IsNullOrEmpty(testOnlineSessionAnswer.AnswerTemp())) {
+                                        unsavedStudentAnswer.UnSaved = true;
+                                        unsavedStudentAnswer.Question = item;
+                                        unsavedStudentAnswer.Answer = testOnlineSessionAnswer;
+                                    }
+                                } else if (item.QTIItemSchemaID() == 9) {
+                                    questionReviewable = testOnlineSessionAnswer.ResponseProcessingTypeID() == 2;
+                                } else if (item.QTIItemSchemaID() == 21) {
+                                    ko.utils.arrayForEach(testOnlineSessionAnswer.TestOnlineSessionAnswerSubs(), function (testOnlineSessionAnswerSub) {
+                                        var reviewable = false;
+                                        if (testOnlineSessionAnswerSub.QTISchemaID() == 10 && testOnlineSessionAnswerSub.ResponseProcessingTypeID() == 1) {
+                                            reviewable = true;
+                                            if (self.Expired() && !Reviewer.IsNullOrEmpty(testOnlineSessionAnswerSub.AnswerTemp())) {
+                                                unsavedStudentAnswer.UnSaved = true;
+                                                unsavedStudentAnswer.Question = item;
+                                                unsavedStudentAnswer.Answer = testOnlineSessionAnswer;
+                                                unsavedStudentAnswer.AnswerSub = testOnlineSessionAnswerSub;
+                                            }
+                                        } else if (testOnlineSessionAnswerSub.QTISchemaID() == 9 && testOnlineSessionAnswerSub.ResponseProcessingTypeID() == 2) {
+                                            reviewable = true;
+                                        }
+                                        if (reviewable) questionReviewable = true;
+                                        if ((self.IsPendingReview() || ((self.Paused() || self.InProgress()) && self.Expired())) && testOnlineSessionAnswerSub.IsReviewed() == false) {
+                                            testOnlineSessionAnswerSub.IsReviewed(!reviewable);
+                                        }
+                                    });
+                                }
+
+                                item.Reviewable(questionReviewable);
+
+                                if ((self.IsPendingReview() || ((self.Paused() || self.InProgress()) && self.Expired())) && testOnlineSessionAnswer.IsReviewed() == false) {
+                                    testOnlineSessionAnswer.IsReviewed(!item.Reviewable());
+                                }
+                                item.IsReviewed(testOnlineSessionAnswer.IsReviewed());
+                            }
+                        });
+                    });
+
+                    self.UpdateManuallyGradedOnlyOfAllQuestion(self.ManuallyGradedOnly());
+                    self.ChooseSelectedQuestion();
+                    self.IsNextStudent(false);
+                    $('#PopupTestAssignmentRegrader').unblock();
+
+                    //Counting width of Answers box after the popup opened
+                    var widthFieldset = parseInt($("#answersBox fieldset").css("padding-right").replace("px", "")) + parseInt($("#answersBox fieldset").css("padding-left").replace("px", "")) + parseInt($("#answersBox fieldset").css("border-left-width").replace("px", "")) + parseInt($("#answersBox fieldset").css("border-right-width").replace("px", ""));
+                    $(".wrapper-response").width($("#answersBox").width() - widthFieldset);
+
+                    if (unsavedStudentAnswer.UnSaved) {
+                        self.WarningUnsavedAnswer(unsavedStudentAnswer);
+                    }
+
+                    self.BranchingTestSort();
+                });
+        };
+
+        self.WarningUnsavedAnswer = function (unsavedStudentAnswer) {
+            if (!unsavedStudentAnswer.UnSaved) return;
+            var options = {
+                Message: 'There are unsaved changes to question ' + unsavedStudentAnswer.Question.QuestionOrder() + '. Would you like to keep them?',
+                HideCloseButton: 1
+            };
+            ConfirmSubmitTest(options, function () {
+                self.UpdateAnswerText(unsavedStudentAnswer, true);
+            }, function () {
+                self.UpdateAnswerText(unsavedStudentAnswer, false);
+            });
+        };
+
+        self.UpdateAnswerText = function (unsavedStudentAnswer, saved) {
+            var answerID = unsavedStudentAnswer.Answer == null ? null : unsavedStudentAnswer.Answer.QTIOnlineTestSessionAnswerID();
+            var answerSubID = unsavedStudentAnswer.AnswerSub == null ? null : unsavedStudentAnswer.AnswerSub.QTIOnlineTestSessionAnswerSubID();
+            $.ajax(
+                {
+                    type: 'POST',
+                    data: { answerID: answerID, answerSubID: answerSubID, saved: saved },
+                    async: false,
+                    dataType: 'json',
+                    url: '@Url.Action("UpdateAnswerText")'
+                })
+                .success(function (result) {
+                    if (!saved) return;
+                    if (unsavedStudentAnswer.AnswerSub != null) {
+                        unsavedStudentAnswer.AnswerSub.AnswerText(unsavedStudentAnswer.AnswerSub.AnswerTemp());
+                        unsavedStudentAnswer.AnswerSub.Answered(true);
+                    } else if (unsavedStudentAnswer.Answer != null) {
+                        unsavedStudentAnswer.Answer.AnswerText(unsavedStudentAnswer.Answer.AnswerTemp());
+                        unsavedStudentAnswer.Answer.Answered(true);
+                    }
+
+                    if (unsavedStudentAnswer.Question != null) {
+                        unsavedStudentAnswer.Question.Answered(true);
+                        unsavedStudentAnswer.Question.Unanswered(false);
+                    }
+                })
+                .error(function (error) {
+
+                });
+        };
+
+        self.PrintTestOfStudentVisible = ko.computed(function () {
+            if (!self.IsComplete() && !self.IsPendingReview() && !self.InProgress()) return false;
+            var result = !Reviewer.IsNullOrEmpty(self.TestName()) && self.Mode() != 2;
+            return result;
+        });
+
+        self.PrintTestOfStudent = function () {
+            if (!self.CheckFeedbackDirtyBeforePrinting()) {
+                return;
+            }
+
+            $('#divPrintTestOfStudentPanel').show();
+            $('#divPrintTestOfStudentPanel').dialog({
+                title: "",
+                open: function () {
+
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+
+                    //Create overlay for popup
+                    $("body").append('<div class="my-overlay-1" style="z-index: ' + ($('.ui-dialog').css("z-index")) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $(this).dialog("destroy");
+                    $('#divPrintTestOfStudentPanel').hide();
+                    $("body .my-overlay-1").remove();
+                },
+                modal: false,
+                width: 600,
+                resizable: false
+            });
+
+            var manuallyGradedOnlyQuestionIds = '';
+            ko.utils.arrayForEach(self.Questions(), function (item) {
+                if (item.Reviewable()) {
+                    //get manually Graded Only questions
+                    manuallyGradedOnlyQuestionIds += item.VirtualQuestionID() + ',';
+                }
+            });
+
+            var studentName = '';
+            if (!Reviewer.IsNullOrEmpty(self.SelectedStudent())) studentName = self.SelectedStudent().StudentName();
+
+            $('input[name="QTIOnlineTestSessionID"]').val(self.QTIOnlineTestSessionID());
+            $('input[name="TestName"]').val(self.TestName());
+            $('input[name="StudentName"]').val(studentName);
+               
+            if ($('#ckbManuallyGradedOnly').is(':checked')) {
+                $('input[name="ManuallyGradedOnly"]').attr('checked', 'checked');
+            } else {
+                $('input[name="ManuallyGradedOnly"]').removeAttr('checked');
+            }
+
+            $('input[name="TotalPointsEarned"]').val(self.TotalPointsEarned());
+            $('input[name="TotalPointsPossible"]').val(self.TotalPointsPossible());
+            $('input[name="ManuallyGradedOnlyQuestionIds"]').val(manuallyGradedOnlyQuestionIds);
+            $('input[name="PrintGuidance"]').val(self.PrintGuidance());
+            $('input[name="QTITestClassAssignmentID"]').val('@Model.QTITestClassAssignmentID');
+        };
+
+        self.DisplayQuestion = function (question) {
+            if (Reviewer.IsNullOrEmpty(question)) return;
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+
+            if (question.QTIItemSchemaID() == 1) self.DisplaySimpleChoice(question);
+            if (question.QTIItemSchemaID() == 8) self.DisplayInlineChoice(question);
+            if (question.QTIItemSchemaID() == 9) self.DisplayTextEntry(question);
+            if (question.QTIItemSchemaID() == 10) self.DisplayOpenEnded(question);
+            if (question.QTIItemSchemaID() == 21) self.DisplayComplextItem(question);
+            if (question.QTIItemSchemaID() == 3) self.DisplayMultipleChoice(question);
+            if (question.QTIItemSchemaID() == 37) self.DisplayMultipleChoiceVariable(question);
+            if (question.QTIItemSchemaID() == 30) self.DisplayDragDropStandard(question);
+            if (question.QTIItemSchemaID() == 31) self.DisplayTextHotspot(question);
+            if (question.QTIItemSchemaID() == 32) self.DisplayImgHotspot(question);
+            if (question.QTIItemSchemaID() == 33) self.DisplayTableHotspot(question);
+            if (question.QTIItemSchemaID() == 34) self.DisplayNumberline(question);
+            if (question.QTIItemSchemaID() == 35) self.DisplayDragDropNumerical(question);
+            if (question.QTIItemSchemaID() === 36) self.DisplayDragDropSequence(question);
+        };
+
+        self.InnitView = function () {
+            if (self.Students().length > 0) {
+                $("#titleHeader").html(self.Students()[0].TestName());
+
+                if (self.AutoSelectFirstPendingTestSession()) {
+                    var firstPendingReviewStudent = ko.utils.arrayFirst(self.Students(), function (student) {
+                        return student.PendingReviewVisible() || student.CanBulkGrading();
+                    });
+                    if (firstPendingReviewStudent != null) self.StudentClick(firstPendingReviewStudent);
+                }
+            }
+        };
+
+        self.HightLightSelectedQuestion = function (question) {
+            ko.utils.arrayForEach(self.Questions(), function (item) {
+                item.SelectedCSS('');
+            });
+
+            question.SelectedCSS('selected');
+        };
+
+        self.HightLightSelectedStudent = function (student) {
+            ko.utils.arrayForEach(self.Students(), function (item) {
+                item.SelectedCSS('');
+            });
+
+            student.SelectedCSS('selected');
+        };
+
+        self.DisplayOpenEnded = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+
+            PreQuestionClickHandler(self, question);
+
+            var baseVirtualQuestionID = question.BaseVirtualQuestionID();
+            var baseVirtualQuestionOrder = '';
+            if (question.IsBaseVirtualQuestion()) {
+                baseVirtualQuestionID = question.VirtualQuestionID();
+            }
+
+            if (baseVirtualQuestionID != null) {
+                var index = 0;
+                var ghostVirtualQuestions = '';
+                ko.utils.arrayForEach(self.Questions(), function (item) {
+                    if (baseVirtualQuestionID == item.BaseVirtualQuestionID()) {
+                        index++;
+                        if (index > 1) ghostVirtualQuestions = ghostVirtualQuestions + ', ';
+                        ghostVirtualQuestions = ghostVirtualQuestions + item.QuestionOrder();
+                    } else if (baseVirtualQuestionID == item.VirtualQuestionID()) {
+                        baseVirtualQuestionOrder = item.QuestionOrder();
+                    }
+                });
+                self.BottomMessages('Points earned for question ' + baseVirtualQuestionOrder + ' should be applied using question(s) ' + ghostVirtualQuestions);
+            }
+
+            $('body').OpenEnded('Display', self, question);
+        };
+
+        self.ShowHightLight = function (highlightQuestion, question) {
+            if (Reviewer.IsNullOrEmpty(highlightQuestion)) {
+                question.XmlContent(question.DataXmlContent());
+                return;
+            }
+
+            var responseDeclarationSelector = 'responsedeclaration, responseDeclaration';
+            var tree = $("<div>" + highlightQuestion + "</div>");
+            tree.find(responseDeclarationSelector)
+                .replaceWith(function () { return $(''); });
+            highlightQuestion = tree.html();
+
+            var correctResponseContent = '';
+            $(question.DataXmlContent()).find(responseDeclarationSelector).each(function () {
+                var correctResponseElement = $(this);
+                correctResponseContent = correctResponseContent + correctResponseElement.outerHTML();
+            });
+
+            tree = $("<div>" + highlightQuestion + "</div>");
+            tree.find('itembody, itemBody')
+                .replaceWith(function () {
+                    return $(correctResponseContent + $(this).outerHTML());
+                });
+            highlightQuestion = tree.html();
+            question.XmlContent(highlightQuestion);
+        };
+
+        self.DisplaySimpleChoice = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+            PreQuestionClickHandler(self, question);
+            $('body').SimpleChoice('Display', self, question);
+        };
+
+        self.DisplayMultipleChoice = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+            PreQuestionClickHandler(self, question);
+            $('body').MultipleChoice('Display', self, question);
+        };
+        self.DisplayMultipleChoiceVariable = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+            PreQuestionClickHandler(self, question);
+            $('body').MultipleChoiceVariable('Display', self, question);
+
+        };
+
+        self.UpdateAsnswerPointsEarned = function () {
+            self.ItemFeedbackBeforeApplyGrade = $('#txtfeedbackItem').val();
+            if (!(self.IsPendingReview() || self.IsComplete() || ((self.Paused() || self.InProgress()) && self.Expired())) || Reviewer.IsNullOrEmpty(self.QTIOnlineTestSessionID())) {
+
+                self.ItemFeedbackBeforeApplyGrade = '';
+                return;
+            }
+            if (self.QTIOnlineTestSessionID() > 0 && self.AnswerID() > 0 && self.PointsEarned() >= 0) {
+                self.PointsEarned(parseInt(self.PointsEarned()));
+                ShowBlock($('#PopupTestAssignmentRegrader'), 'Loading');
+                $.post('@Url.Action("UpdateAnswerPointsEarned")', { qtiOnlineTestSessionID: self.QTIOnlineTestSessionID(), answerID: self.AnswerID(), answerSubID: self.AnswerSubID(), pointsEarned: self.PointsEarned() }, function (response) {
+                    $('#PopupTestAssignmentRegrader').unblock();
+                    if (!response.success) {
+                        self.StudentClick(self.SelectedStudent());
+                        self.CanGradingForceUIRefresh();
+                        return;
+                    }
+                    if (self.IsComplete()) {
+                        self.IsGraded(true);
+                        //Reload data to get test result score
+                        self.StudentClick(self.SelectedStudent());
+                        return;
+                    }
+
+                    if (!self.IsComplete() || self.QTIItemSchemaID() != 9 || !self.OverrideAutoGraded()) {
+                        self.IsGraded(true);
+                    }
+
+                    self.SelectedQuestion().IsReviewed(true);
+                    ko.utils.arrayForEach(self.TestOnlineSessionAnswers(), function (testOnlineSessionAnswer) {
+                        if (testOnlineSessionAnswer.QTIOnlineTestSessionAnswerID() == self.AnswerID()) {
+                            if (!Reviewer.IsNullOrEmpty(self.AnswerSubID())) {
+                                ko.utils.arrayForEach(testOnlineSessionAnswer.TestOnlineSessionAnswerSubs(), function (testOnlineSessionAnswerSub) {
+                                    if (testOnlineSessionAnswerSub.QTIOnlineTestSessionAnswerSubID() == self.AnswerSubID()) {
+                                        var answerPointsEarned = testOnlineSessionAnswer.PointsEarned() - testOnlineSessionAnswerSub.PointsEarned() + self.PointsEarned();
+                                        if (answerPointsEarned < 0) answerPointsEarned = 0;
+                                        testOnlineSessionAnswer.PointsEarned(answerPointsEarned);
+                                        testOnlineSessionAnswerSub.PointsEarned(self.PointsEarned());
+                                        testOnlineSessionAnswerSub.IsReviewed(true);
+                                    }
+                                });
+                            } else {
+                                testOnlineSessionAnswer.PointsEarned(self.PointsEarned());
+                            }
+
+                            self.OldPointsEarned(self.PointsEarned());
+                            testOnlineSessionAnswer.IsReviewed(true);
+                            self.DisplayQuestion(self.SelectedQuestion());
+                        }
+                    });
+
+                    if (self.SubmitTestButtonCss()) {
+                        if (!Reviewer.IsNullOrEmpty(self.SelectedStudent())) self.SelectedStudent().CanBulkGrading(true);
+                    }
+                });
+            }
+        };
+
+        self.QTIOnlineTestSessionIDBulks = ko.computed(function () {
+            var result = [];
+            ko.utils.arrayForEach(self.Students(), function (student) {
+                if (student.CanBulkGrading()) {
+                    result.push(student);
+                }
+            });
+            return result;
+        });
+
+        self.PostSubmitTestData = function () {
+            ShowBlock($('.bgtable_student'), 'Waiting');
+
+            var sessionIDs = '';
+            if (self.IsBulkGrading()) {
+                ko.utils.arrayForEach(self.QTIOnlineTestSessionIDBulks(), function (student) {
+                    sessionIDs = sessionIDs + ',' + student.QTIOnlineTestSessionID();
+                });
+            } else {
+                if (!Reviewer.IsNullOrEmpty(self.SelectedStudent())) {
+                    sessionIDs = self.SelectedStudent().QTIOnlineTestSessionID();
+                }
+            }
+
+            $.ajax(
+                {
+                    type: 'POST',
+                    data: { qtiOnlineTestSessionIDs: sessionIDs },
+                    async: false,
+                    dataType: 'json',
+                    url: '@Url.Action("SubmitTest")'
+                })
+                .success(function (result) {
+                    self.ScoreRaw(self.TotalPointsEarned());
+                    if (!Reviewer.IsNullOrEmpty(self.SelectedStudent())) {
+                        self.SelectedStudent().IsPendingReview(false);
+                        self.SelectedStudent().InProgress(false);
+                        self.SelectedStudent().IsNotStart(false);
+                        self.SelectedStudent().Paused(false);
+                        self.SelectedStudent().IsComplete(true);
+                        self.SelectedStudent().CanBulkGrading(false);
+                    }
+
+                    self.IsPendingReview(false);
+                    self.InProgress(false);
+                    self.IsNotStart(false);
+                    self.Paused(false);
+                    self.IsComplete(true);
+                    self.IsGraded(false);
+
+                    if (self.IsBulkGrading()) {
+                        ko.utils.arrayForEach(self.QTIOnlineTestSessionIDBulks(), function (student) {
+                            student.IsPendingReview(false);
+                            student.InProgress(false);
+                            student.IsNotStart(false);
+                            student.Paused(false);
+                            student.IsComplete(true);
+                            student.CanBulkGrading(false);
+                        });
+                    }
+                    self.IsBulkGrading(false);
+                    $('.bgtable_student').unblock();
+
+                })
+                .error(function (error) {
+                    self.IsBulkGrading(false);
+                    $('.bgtable_student').unblock();
+                });
+        };
+
+        self.SubmitTestForceUIRefreshSignature = ko.observable("SubmitTestForceUIRefresh");
+        self.SubmitTestForceUIRefresh = function () {
+            var $signature = $('[signature="' + self.SubmitTestForceUIRefreshSignature() + '"]');
+
+            if (self.SubmitTestButtonCss()) {
+                $signature.prop('disabled', false);
+            } else {
+                $signature.prop('disabled', true);
+            }
+        }
+
+        self.SubmitTest = function () {
+            self.SubmitTestForceUIRefresh();
+            if (!self.SubmitTestButtonCss()) return;
+            if (self.RequireApplyGrade()) {
+                AlertMessage('The points has been changed. You must apply grade.');
+                return;
+            }
+            self.IsBulkGrading(false);
+            if (self.GradingType() == 'bulk' && self.QTIOnlineTestSessionIDBulks().length > 1) {
+                var count = self.QTIOnlineTestSessionIDBulks().length - 1;
+                var messege = '';
+                if (count == 1)
+                    messege = "is " + count + " student";
+                else
+                    messege = "are " + count + " student(s)";
+                ConfirmBulkSubmitTest("There " + messege + " with changed grades that have not been submitted. Do you want to submit their tests as well?");
+                return;
+            }
+
+            self.PostSubmitTestData();
+        };
+
+        self.Plus = function () {
+            if (!self.CanGrading()) return;
+            self.PointsEarned(Reviewer.ParseInt(self.PointsEarned()));
+            if (self.PointsEarned() >= 0 && self.PointsPossible() >= 0 && self.PointsEarned() < self.PointsPossible()) {
+                self.PointsEarned(parseInt(self.PointsEarned()) + 1);
+            }
+        };
+
+        self.Minus = function () {
+            if (!self.CanGrading()) return;
+            self.PointsEarned(Reviewer.ParseInt(self.PointsEarned()));
+            if (self.PointsEarned() > 0 && self.PointsPossible() >= 0) {
+                self.PointsEarned(parseInt(self.PointsEarned()) - 1);
+            }
+        };
+
+        self.DisplayInlineChoice = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+            PreQuestionClickHandler(self, question);
+            $('body').InlineChoice('Display', self, question);
+        };
+
+        self.DisplayTextEntry = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+            PreQuestionClickHandler(self, question);
+            $('body').TextEntry('Display', self, question);
+        };
+
+        self.DisplayComplextItem = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+            PreQuestionClickHandler(self, question);
+            $('body').ComplexItem('Display', self, question);
+        };
+
+        $.getJSON('@Url.Action("GetOverrideAutoGradedOfAssignment", "TestPreference")', { qtiTestClassAssignmentID: '@Model.QTITestClassAssignmentID' },
+            function (result) {
+                self.OverrideAutoGraded(result.OverrideAutoGraded);
+                self.OverrideItems(result.OverrideItems);
+            });
+
+        $.getJSON('@Url.Action("GetStudentsForAssignment", "TestAssignmentRegrader")',
+            { qtiTestClassAssignmentID: '@Model.QTITestClassAssignmentID', QTITestStudentAssignmentID: '@ViewBag.QTITestStudentAssignmentID' },
+            function (students) {
+
+                var mappedStudents = $.map(students, function (item) { return new Student(item); });
+                self.Students(mappedStudents);
+               
+                $.getJSON('@Html.Raw(Url.Action("GetQuestionsForAssignment", "TestAssignmentRegrader", new { virtualTestID = Model.VirtualTestID, qtiTestClassAssignmentID = Model.QTITestClassAssignmentID }))', function (allData) {
+                    var mappedQuestions = $.map(allData, function (item) { return new Question(item); });
+                    self.Questions(mappedQuestions);
+                    $('#divQuestionMenu').find("img").each(function () {
+                        var image = $(this);
+                        if (image.attr('notremove') != 'true') image.remove();
+
+                    });
+
+                    self.InnitView();
+
+
+                });
+            });
+
+        self.DisplayDragDropStandard = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+            PreQuestionClickHandler(self, question);
+            $('body').DragDropStandard('Display', self, question);
+        };
+
+        self.DisplayDragDropSequence = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+            PreQuestionClickHandler(self, question);
+            $('body').DragDropSequence('Display', self, question);
+        };
+
+        self.DisplayTextHotspot = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+            PreQuestionClickHandler(self, question);
+            $('body').TextHotspot('Display', self, question);
+        };
+
+        self.DisplayImgHotspot = function (question) {
+            if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && question.VirtualQuestionID() != self.SelectedQuestion().VirtualQuestionID()) {
+                //new question,check edit feedback
+                if (!self.CheckFeedbackDirtyBeforeLeavingItem()) {
+                    return;
+                }
+            }
+            PreQuestionClickHandler(self, question);
+            $('body').ImgHotspot('Display', self, question);
+        };
+        self.DisplayTableHotspot = function (question) {
+            PreQuestionClickHandler(self, question);
+            $('body').TableHotspot('Display', self, question);
+        };
+
+        self.DisplayDragDropNumerical = function (question) {
+            PreQuestionClickHandler(self, question);
+            $('body').DragDropNumerical('Display', self, question);
+        };
+
+        self.DisplayItemFeedback = function (hasAnswer, testOnlineSessionAnswers) {
+            if (!hasAnswer) {
+                //Actually this question has been assigned to the test after student has completed the test, so there is no record either table QtiOnlineTestSessionAnswer or Answer
+                $('#lblItemFeedbackHistory').html('Can not give feedback for this question because this question <br/> has been added to the test after student had completed the test.');
+                $('#txtfeedbackItem').val('');
+                if (self.ItemFeedbackBeforeApplyGrade != null && self.ItemFeedbackBeforeApplyGrade != '') {
+                    $('#txtfeedbackItem').val(self.ItemFeedbackBeforeApplyGrade);
+                    self.ItemFeedbackBeforeApplyGrade = null;
+                }
+                $("#txtfeedbackItem").prop("disabled", true);
+                return;
+            }
+
+            //student has answered this question
+            $("#txtfeedbackItem").prop("disabled", false);
+            var historyUpdated = '';
+            if (!Reviewer.IsNullOrEmpty(testOnlineSessionAnswers) && testOnlineSessionAnswers.UserUpdatedFeedback() != null) {
+                historyUpdated += testOnlineSessionAnswers.UserUpdatedFeedback();
+            }
+            if (!Reviewer.IsNullOrEmpty(testOnlineSessionAnswers) && testOnlineSessionAnswers.DateUpdatedFeedback() != null && testOnlineSessionAnswers.DateUpdatedFeedback().trim().length > 0) {
+                historyUpdated += ' on ' + testOnlineSessionAnswers.DateUpdatedFeedback();
+            }
+            $('#lblItemFeedbackHistory').text(historyUpdated);
+
+            if (!Reviewer.IsNullOrEmpty(testOnlineSessionAnswers)) $('#txtfeedbackItem').val(testOnlineSessionAnswers.Feedback());
+
+            if (self.ItemFeedbackBeforeApplyGrade != null && self.ItemFeedbackBeforeApplyGrade != '') {
+                $('#txtfeedbackItem').val(self.ItemFeedbackBeforeApplyGrade);
+                self.ItemFeedbackBeforeApplyGrade = null;
+            }
+
+        };
+        self.DisplayTestFeedback = function (student) {
+            var historyUpdated = '';
+            if (student.LastUserUpdatedFeedback() != null) {
+                historyUpdated += student.LastUserUpdatedFeedback();
+            }
+            if (student.LastDateUpdatedFeedback() != null && student.LastDateUpdatedFeedback().trim().length > 0) {
+                historyUpdated += ' on ' + student.LastDateUpdatedFeedback();
+            }
+            $('#lblTestFeedbackHistory').text(historyUpdated);
+            $('#txtfeedbackTest').val(student.FeedbackContent());
+        };
+
+        self.SaveItemFeedback = function () {
+            var answerOfStudentForSelectedQuestion; //get then answer of the current selected question
+            ko.utils.arrayForEach(self.TestOnlineSessionAnswers(), function (testOnlineSessionAnswer) {
+                if (self.SelectedQuestion().VirtualQuestionID() === testOnlineSessionAnswer.VirtualQuestionID()) {
+                    answerOfStudentForSelectedQuestion = testOnlineSessionAnswer;
+                }
+            });
+
+            if (Reviewer.IsNullOrEmpty(answerOfStudentForSelectedQuestion)) return;
+
+            var itemFeedbackContent = $('#txtfeedbackItem').val();
+            ShowBlock($('#PopupTestAssignmentRegrader'), 'Loading');
+            $.post('@Url.Action("SaveItemFeedback")', {
+                itemFeedbackId: answerOfStudentForSelectedQuestion.ItemFeedbackID(),
+                qtiOnlineTestSessionAnswerId: answerOfStudentForSelectedQuestion.QTIOnlineTestSessionAnswerID(),
+                answerId: answerOfStudentForSelectedQuestion.AnswerID(),
+                feedbackContent: encodeURIComponent(itemFeedbackContent),
+                VirtualQuestionID: answerOfStudentForSelectedQuestion.VirtualQuestionID(),
+                QTIOnlineTestSessionID: answerOfStudentForSelectedQuestion.QTIOnlineTestSessionID()
+            }, function (response) {
+                if (response.success == true) {
+                    if (response.hasChanged) {
+                        var historyUpdated = '';
+                        if (response.lastUserUpdatedFeedback != null) {
+                            historyUpdated += response.lastUserUpdatedFeedback;
+                        }
+                        if (response.lastDateUpdatedFeedback != null && response.lastDateUpdatedFeedback.trim().length > 0) {
+                            historyUpdated += ' on ' + response.lastDateUpdatedFeedback;
+                        }
+
+                        $('#lblItemFeedbackHistory').text(historyUpdated);
+                        //update to model
+                        answerOfStudentForSelectedQuestion.ItemFeedbackID(response.itemFeedbackID);
+                        answerOfStudentForSelectedQuestion.Feedback(itemFeedbackContent);//no encoded uri
+                        answerOfStudentForSelectedQuestion.UserUpdatedFeedback(response.lastUserUpdatedFeedback);
+                        answerOfStudentForSelectedQuestion.DateUpdatedFeedback(response.lastDateUpdatedFeedback);
+
+                    }
+                    $('#PopupTestAssignmentRegrader').unblock();
+                } else {
+                    $('#PopupTestAssignmentRegrader').unblock();
+                    alert(response.message);
+                }
+            });
+        };
+        self.SaveTestFeedback = function () {
+            //get the selected student
+            var student = self.SelectedStudent();
+            var testFeedbackContent = $('#txtfeedbackTest').val();
+            ShowBlock($('#PopupTestAssignmentRegrader'), 'Loading');
+            $.post('@Url.Action("SaveTestFeedback")', {
+                testFeedbackId: student.TestFeedbackId(),
+                qtiOnlineTestSessionId: student.QTIOnlineTestSessionID(),
+                feedbackContent: encodeURIComponent(testFeedbackContent)
+            }, function (response) {
+                $('#btnSaveFeedback').prop("disabled", false);
+                if (response.success == true) {
+                    if (response.hasChanged) {
+                        var historyUpdated = '';
+                        if (response.lastUserUpdatedFeedback != null) {
+                            historyUpdated += response.lastUserUpdatedFeedback;
+                        }
+                        if (response.lastDateUpdatedFeedback != null && response.lastDateUpdatedFeedback.trim().length > 0) {
+                            historyUpdated += ' on ' + response.lastDateUpdatedFeedback;
+                        }
+                        student.TestFeedbackId(response.testFeedbackID);
+                        student.FeedbackContent(testFeedbackContent);
+                        student.LastUserUpdatedFeedback(response.lastUserUpdatedFeedback);
+                        student.LastDateUpdatedFeedback(response.lastDateUpdatedFeedback);
+
+                        $('#lblTestFeedbackHistory').text(historyUpdated);
+
+                    }
+                    $('#PopupTestAssignmentRegrader').unblock();
+                } else {
+                    $('#PopupTestAssignmentRegrader').unblock();
+                    alert(response.message);
+                }
+            });
+        };
+
+
+        self.CheckFeedbackDirtyBeforeLeavingItem = function () {
+
+            //check to alert if user do not save feedback before printing
+            //get the selected student
+            var student = self.SelectedStudent();
+            if (Reviewer.IsNullOrEmpty(student)) {
+                return true;//no need to check if no student is selected
+            }
+            var feedbackContent = student.FeedbackContent();
+            if (feedbackContent == null) {
+                feedbackContent = '';
+            }
+            if (feedbackContent != $('#txtfeedbackTest').val()) {
+                alert('Please save Overall Test Feedback before leaving this item.');
+                return false;
+            }
+            feedbackContent = '';
+            var answerOfStudentForSelectedQuestion; //get then answer of the current selected question
+            ko.utils.arrayForEach(self.TestOnlineSessionAnswers(), function (testOnlineSessionAnswer) {
+                if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && self.SelectedQuestion().VirtualQuestionID() == testOnlineSessionAnswer.VirtualQuestionID()) {
+                    answerOfStudentForSelectedQuestion = testOnlineSessionAnswer;
+                    feedbackContent = answerOfStudentForSelectedQuestion.Feedback();
+                }
+            });
+
+            if (feedbackContent == null) {
+                feedbackContent = '';
+            }
+            if (feedbackContent != $('#txtfeedbackItem').val()) {
+                alert('Please save Selected Item Feedback before leaving this item.');
+                return false;
+            }
+            return true;
+        }
+        self.CheckFeedbackDirtyBeforePrinting = function () {
+            //check to alert if user do not save feedback before printing
+            var student = self.SelectedStudent();
+            if (student == '') {
+                return true;//no need to check if no student is selected
+            }
+            var feedbackContent = student.FeedbackContent();
+            if (feedbackContent == null) {
+                feedbackContent = '';
+            }
+            if (feedbackContent != $('#txtfeedbackTest').val()) {
+                alert('Please save Overall Test Feedback before leaving this item.');
+                return false;
+            }
+            var answerOfStudentForSelectedQuestion; //get then answer of the current selected question
+            answerOfStudentForSelectedQuestion = null;
+            ko.utils.arrayForEach(self.TestOnlineSessionAnswers(), function (testOnlineSessionAnswer) {
+                if (!Reviewer.IsNullOrEmpty(self.SelectedQuestion()) && self.SelectedQuestion().VirtualQuestionID() === testOnlineSessionAnswer.VirtualQuestionID()) {
+                    answerOfStudentForSelectedQuestion = testOnlineSessionAnswer;
+                }
+            });
+            if (answerOfStudentForSelectedQuestion != null) {
+                feedbackContent = answerOfStudentForSelectedQuestion.Feedback();
+            } else {
+                feedbackContent = '';
+            }
+
+            if (feedbackContent == null) {
+                feedbackContent = '';
+            }
+            if (feedbackContent != $('#txtfeedbackItem').val()) {
+                alert('Please save Selected Item Feedback before leaving this item.');
+                return false;
+            }
+            return true;
+        }
+
+        self.DisplayNumberline = function (question) {
+            PreQuestionClickHandler(self, question);
+            $('body').Numberline('Display', self, question);
+        };
+
+        self.PointsEarned_Keyup = function (viewModel, event) {
+            var pointsEarned = $('.PointsEarned').val();
+            if (pointsEarned.length > 0) {
+                if (pointsEarned.length > viewModel.PointsPossible().toString().length) {
+                    //not allow to input more
+                }
+
+                pointsEarned = parseInt(pointsEarned);
+                if (pointsEarned > viewModel.PointsPossible()) {
+                    pointsEarned = viewModel.PointsPossible();
+                }
+                viewModel.PointsEarned(pointsEarned);
+            }
+
+            return true;
+        }
+
+
+        //build html type message guidance, rationale
+        self.CreateGraphicGuidance = function (itemMessage, typeMessage, typeQuesiton) {
+            var typeMessageContent = '';
+            var itemMessageAudioRef = itemMessage.audioRef;
+            var itemMessageValueContent = itemMessage.valueContent;
+            var wContent = 415;
+            var hContent = 200;
+
+            switch (typeQuesiton) {
+                case 'inlinechoice':
+                    if (typeMessage === 'rationale' || typeMessage === 'guidance_rationale') {
+                        if (itemMessageAudioRef === '' || itemMessageAudioRef === undefined) {
+                            typeMessageContent += '<div class="' + typeMessage + '" typemessage="' + typeMessage + '">';
+                            typeMessageContent += '<div class="guidance-content">' + itemMessageValueContent + '</div>';
+                        } else {
+                            typeMessageContent += '<div class="' + typeMessage + '" typemessage="' + typeMessage + '">';
+                            typeMessageContent += '<div class="audioIcon">';
+                            typeMessageContent += '<img alt="Play audio" class="imageupload bntPlay" src="../../Content/themes/TestMaker/images/small_audio_play.png" title="Play audio">';
+                            typeMessageContent += '<img style="display: none;" alt="Stop audio" class="bntStop" src="../../Content/themes/TestMaker/plugins/multiplechoice/images/small_audio_stop.png" title="Stop audio">';
+                            typeMessageContent += '<span style="display: none;" class="audioRef">' + itemMessageAudioRef + '</span></div>';
+                            typeMessageContent += '<div class="guidance-content">' + itemMessageValueContent + '</div>';
+                        }
+                    }
+                    break;
+                case 'simpleChoice':
+                case 'textEntryInteraction':
+                    if (itemMessageAudioRef === '' || itemMessageAudioRef === undefined) {
+                        typeMessageContent += '<div identifier_responseidentifier="' + itemMessage.identifier + '_' + itemMessage.responseidentifier + '" class="hide ' + typeMessage + '" typemessage="' + typeMessage + '">';
+                        typeMessageContent += '<div class="guidance">';
+                        typeMessageContent += '<div class="guidance-content">' + itemMessageValueContent + '</div>';
+                        typeMessageContent += '</div>';
+                    } else {
+                        typeMessageContent += '<div identifier_responseidentifier="' + itemMessage.identifier + '_' + itemMessage.responseidentifier + '" class="hide ' + typeMessage + '" typemessage="' + typeMessage + '">';
+                        typeMessageContent += '<div class="guidance">';
+                        typeMessageContent += '<div class="audioIcon">';
+                        typeMessageContent += '<img alt="Play audio" class="imageupload bntPlay" src="../../Content/themes/TestMaker/images/small_audio_play.png" title="Play audio">';
+                        typeMessageContent += '<img style="display: none;" alt="Stop audio" class="bntStop" src="../../Content/themes/TestMaker/plugins/multiplechoice/images/small_audio_stop.png" title="Stop audio">';
+                        typeMessageContent += '<span style="display: none;" class="audioRef">' + itemMessageAudioRef + '</span></div>';
+                        typeMessageContent += '<div class="guidance-content">' + itemMessageValueContent + '</div>';
+                        typeMessageContent += '</div>';
+                    }
+                    break;
+            }
+
+
+            typeMessageContent += '</div>';
+            return typeMessageContent;
+
+        };
+        //build html guidance, rationale for inline choice
+        self.buildGuidanceInlineChoice = function (listObjTypeMessages, responseidentifier) {
+            var htmlContent = '';
+            var isRationale = false;
+
+            htmlContent += '<div class="guidance">';
+            htmlContent += '<div class="guidance-heading">Rationale</div>';
+
+            for (var i = 0, lenlistObjTypeMessages = listObjTypeMessages.length; i < lenlistObjTypeMessages; i++) {
+                var item = listObjTypeMessages[i];
+                var htmlItem = '';
+
+                for (var j = 0, lenArrMessage = item.arrMessage.length; j < lenArrMessage; j++) {
+                    var objItemType = item.arrMessage[j];
+
+                    if (objItemType.typeMessage === 'rationale' ||
+                        objItemType.typeMessage === 'guidance_rationale') {
+
+                        htmlItem = self.CreateGraphicGuidance(objItemType, objItemType.typeMessage, 'inlinechoice');
+                        htmlContent += '<div class="guidance-label">' + item.value + '</div>';
+                        htmlContent += htmlItem;
+
+                        isRationale = true;
+                        htmlItem = '';
+                    }
+                }
+            }
+
+            htmlContent += '</div>';
+
+            if (htmlItem === '' && !isRationale) {
+                htmlContent = '';
+            }
+            return htmlContent;
+        };
+    }
+
+    viewModel = new TestAssignmentRegraderViewModel();
+    ko.applyBindings(viewModel);
+
+</script>
+
+<script>
+    var loadAudioUrl = window.location.protocol + "//" + window.location.hostname + "/TestMaker/GetAudio";
+    function NewItemClick(target, answerID, answerSubID, pointsEarned, pointsPossible, qtiSchemaID, updatedBy, updatedDate, overridden) {
+        $('.border_0C5FA5').removeClass('border_0C5FA5');
+        $(target).addClass('border_0C5FA5');
+        viewModel.AnswerID(answerID);
+        viewModel.AnswerSubID(answerSubID);
+        viewModel.PointsEarned(pointsEarned);
+        viewModel.OldPointsEarned(pointsEarned);
+        viewModel.PointsPossible(pointsPossible);
+        viewModel.QTIItemSchemaID(qtiSchemaID);
+        viewModel.UpdatedBy(updatedBy);
+        viewModel.UpdatedDate(updatedDate);
+        viewModel.Overridden(overridden);
+        if (qtiSchemaID == 9 || qtiSchemaID == 10) {
+            ko.utils.arrayForEach(viewModel.TestOnlineSessionAnswers(), function(testOnlineSessionAnswer) {
+                if (testOnlineSessionAnswer.QTIOnlineTestSessionAnswerID() == answerID) {
+                    viewModel.ResponseProcessingTypeID(testOnlineSessionAnswer.ResponseProcessingTypeID());
+                    if (testOnlineSessionAnswer.TestOnlineSessionAnswerSubs().length > 0) {
+                        ko.utils.arrayForEach(testOnlineSessionAnswer.TestOnlineSessionAnswerSubs(), function(testOnlineSessionAnswerSub) {
+                            if (testOnlineSessionAnswerSub.QTIOnlineTestSessionAnswerSubID() == answerSubID) {
+                                viewModel.ResponseProcessingTypeID(testOnlineSessionAnswerSub.ResponseProcessingTypeID());
+                            }
+                        });
+                    }
+                }
+            });
+        } else {
+            viewModel.ResponseProcessingTypeID('');
+        }
+    }
+
+    function PostProcessQuestionDetails(questionDetails) {
+        var $tree = $('<div/>');
+
+        $tree.html(questionDetails);
+
+        // Change video of guidance
+        $tree.find('div[identifier_responseidentifier] videolinkit, div[idreponse] videolinkit').replaceWith(function(){
+            var $videolinkit = $(this);
+            var $newVideoLinkit = $('<guidancevideolinkit/>');
+            CopyAttributes($videolinkit, $newVideoLinkit);
+            $newVideoLinkit.html($videolinkit.html());
+            return $newVideoLinkit;
+        });
+
+        $tree.find('div[identifier_responseidentifier] sourcelinkit, div[idreponse] sourcelinkit').replaceWith(function(){
+            var $sourcelinkit = $(this);
+            var $newSourcelinkit = $('<guidancesourcelinkit/>');
+            CopyAttributes($sourcelinkit, $newSourcelinkit);
+            $newSourcelinkit.html($sourcelinkit.html());
+            return $newSourcelinkit;
+        });
+
+        questionDetails = $tree.outerHTML();
+
+        questionDetails = questionDetails.replace(/<videolinkit/g, '<video')
+                                        .replace(/<\/videolinkit>/g, '</video>')
+                                        .replace(/<sourcelinkit /g, '<source ')
+                                        .replace(/<\/sourcelinkit>/g, '</source>');
+        return questionDetails;
+    }
+
+    function PreQuestionClickHandler(self, question) {
+        self.UpdatedBy('');
+        self.BottomMessages('');
+        ko.utils.arrayForEach(viewModel.TestOnlineSessionAnswers(), function(testOnlineSessionAnswer) {
+            if (testOnlineSessionAnswer.VirtualQuestionID() == question.VirtualQuestionID()) {
+                self.UpdatedBy(testOnlineSessionAnswer.UpdatedBy());
+                self.UpdatedDate(testOnlineSessionAnswer.UpdatedDate());
+                self.Overridden(testOnlineSessionAnswer.Overridden());
+            }
+        });
+    }
+
+    // Create Functions for controls audio player
+    function vnsAudio(source) {
+
+        var iniConfig = source;
+        //var src = iniConfig.src;
+        var id = 'vnsAudio';
+
+        this.init = function () {
+            var me = this;
+
+            if (!iniConfig.src) {
+                alert('URL for Audio should be defined');
+                return;
+            }
+
+            if (!$('#' + id).length) {
+                // Adding DOM
+                var player = $('<audio/>', {
+                    id: id,
+                    src: iniConfig.src
+                }).appendTo('body');
+
+
+            } else {
+                $('#' + id).attr('src', iniConfig.src);
+            }
+
+            // Apply Player
+            this.audio = new MediaElement(id, {
+                success: function (me) {
+                    me.play();
+                    var emptyFn = function () { };
+                    // Add Listeners
+                    me.addEventListener('play', (iniConfig.onPlay || emptyFn), false);
+                    me.addEventListener('pause', (iniConfig.onPause || emptyFn), false);
+                    me.addEventListener('ended', (iniConfig.onEnded || emptyFn), false);
+                }, error: function (eee) {
+                    console.log(eee);
+                }
+            });
+
+            //$('#vnsAudio')[0].play();
+        };
+
+        this.play = function () {
+            if (this.audio == undefined) this.init();
+            this.audio.setCurrentTime(0);
+            this.audio.play();
+        };
+        this.pause = function () {
+            if (this.audio == undefined) return;
+
+            this.audio.pause();
+        };
+        this.isPaused = function () {
+            return this.audio.paused;
+        };
+        this.showMess = function (msg) {
+            var dom = document.getElementById('status');
+            dom.innerHTML = dom.innerHTML + msg + "<br/>";
+        };
+
+        this.init();
+    };
+    function playVNSAudio(item) {
+        
+        $(".bntPlay").show();
+        $(".bntStop").hide();
+        
+        var me = item;
+        $(me).next().show();
+        $(me).hide();
+
+        var audioUrl = $(item).parent().find(".audioRef").text();
+        var newAudioUrl = "/" + audioUrl.replace(/\//g, '|').substring(1);
+        //audioUrl = audioUrl.substring(0, audioUrl.lastIndexOf("/")) + "|" + audioUrl.substring(audioUrl.lastIndexOf("/") + 1, audioUrl.length);
+
+        if (window.playsound != undefined) {
+            window.playsound.pause();
+        }
+        
+        var newSrc = '';
+        if (audioUrl.indexOf('http') >= 0) {//direct link from S3
+            newSrc = audioUrl;
+        } else {
+            newSrc = loadAudioUrl + newAudioUrl;
+        }
+        window.playsound = new vnsAudio({
+            //src: loadAudioUrl + newAudioUrl,
+            src: newSrc,
+            onEnded: function () {
+                $(me).next().hide();
+                $(me).show();
+            }
+        });
+    }
+    function stopVNSAudio(item) {
+        $(item).prev().show();
+        $(item).hide();
+        if (window.playsound != undefined) {
+            window.playsound.pause();
+        }
+    }
+    $(document).ready(function () {
+
+        //attach keypress to input
+        $('.onlyNumber').keydown(function(event) {
+            // Allow special chars + arrows
+            if (event.keyCode == 46 || event.keyCode == 8 || event.keyCode == 9
+                || event.keyCode == 27 || event.keyCode == 13
+                || (event.keyCode == 65 && event.ctrlKey === true)
+                || (event.keyCode >= 35 && event.keyCode <= 39)) {
+                return;
+            } else {
+                // If it's not a number stop the keypress
+                if (event.shiftKey || (event.keyCode < 48 || event.keyCode > 57) && (event.keyCode < 96 || event.keyCode > 105)) {
+                    event.preventDefault();
+                }
+            }
+        });
+
+        $('body').OpenEnded({ OpenEndedUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').SimpleChoice({ SimpleChoiceUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').MultipleChoice({ MultipleChoiceUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').MultipleChoiceVariable({ MultipleChoiceUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').InlineChoice({ InlineChoiceUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').TextEntry({ TextEntryUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').ComplexItem({ ComplexItemUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').DragDropStandard({ DragDropStandardUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').DragDropSequence({ DragDropSequenceUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').ImgHotspot({ ImgHotspotUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').TextHotspot({ TextHotspotUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').TableHotspot({ TableHotspotUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').Numberline({ NumberlineUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+        $('body').DragDropNumerical({ DragDropStandardUtil: Reviewer, PostProcessQuestionDetails: PostProcessQuestionDetails });
+    });
+</script>
+<script type="text/javascript">
+    
+    $("#btnSaveFeedback").click(function () {
+        if (viewModel.SelectedStudent() == '') {
+            alert('Please select a student');
+            return;
+        }
+        $('#btnSaveFeedback').attr('disabled', 'disabled');
+        viewModel.SaveItemFeedback();
+        viewModel.SaveTestFeedback();
+    });
+    
+    function ShowCorrectAnswer() {
+        var selectedQuestion = viewModel.SelectedQuestion();
+        var schemaId = selectedQuestion.QTIItemSchemaID();
+
+        if (selectedQuestion == null) {
+            return;
+        }
+
+        if (schemaId == 30) {
+            // Show popup correct answer drag and drop
+            $('body').DragDropStandard('ShowCorrectAnswer', viewModel, selectedQuestion);
+        } else if (schemaId == 31) {
+            // Show popup correct answer text hot spot
+            $('body').TextHotspot('ShowCorrectAnswer', viewModel, selectedQuestion);
+        } else if (schemaId == 32) {
+            // Show popup correct answer image hot spot
+            $('body').ImgHotspot('ShowCorrectAnswer', viewModel, selectedQuestion);
+        } else if (schemaId == 33) {
+            // Show popup correct answer table hot spot
+            $('body').TableHotspot('ShowCorrectAnswer', viewModel, selectedQuestion);
+        } else if (schemaId == 34) {
+            // Show popup correct answer number line hot spot
+            $('body').Numberline('ShowCorrectAnswer', viewModel, selectedQuestion);
+        }
+    }
+   
+</script>

@@ -1,0 +1,129 @@
+﻿@model int
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog-draggable.css")" rel="stylesheet" type="text/css" />
+
+<style>
+    .center {
+        text-align: center !important;
+    }
+</style>
+
+<article class="container_12" style="margin-top: 2px; width: 700px;">
+    <section class="grid_9">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>
+                    Published @LabelHelper.DistrictLabels
+                    @if (ViewBag.IsPublisher || ViewBag.IsNetworkAdmin)
+                    {
+                        <text>
+                            <a id="shareNewDistrict" href="#" onclick="displayShareNewDistrictView(event)">
+                                <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                                Share to new @LabelHelper.DistrictLabel
+                            </a>
+                        </text>
+                    }
+                </h1>
+                <div id="notification">
+                    @if (!ViewBag.IsPublisher)
+                    {
+                        <ul style="display: none" id="success-message" class="message success">
+                            <li>The template has been published to the @LabelHelper.DistrictLabel.</li>
+                        </ul>
+                    }
+                </div>
+                <p style="height: 5px"></p>
+                <div class="no-margin last-child">
+                    <table id="dataTablePublishedDistrict" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="black-cell"><span class="loading"></span></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.DistrictLabel Name
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbodys></tbodys>
+                    </table>
+                    <button id="btnCloseUserClick" type="button" class="grey classProgramButton" data-dialog="close">Close</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            bFilter: true,
+            bPaginate: true,
+            sAjaxSource: '@Url.Action("GetPublishedDistricts")?templateId=@Model',
+            bAutoWidth: false,
+            aLengthMenu: [10, 25, 50],
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'int', sName: 'TemplateDatalockerDistrictId', bSearchable: false, bSortable: false, sWidth: '40px', sClass: 'alignRight' },
+                { sType: 'string', sName: 'DistrictName', bSearchable: true, bSortable: true }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTablePublishedDistrict'), "Loading");
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).addClass('center');
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+            },
+            fnDrawCallback: function () {
+                $('#dataTablePublishedDistrict').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        function setIconVisibility(templateDistrictId) {
+            var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+            var deleteIconHtml = '<a href="#" id="btn' + templateDistrictId + '" title="Remove" class="with-tip" onclick="depublishDistrict(event,' + templateDistrictId + ')"><img src="' + deleteIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+            return deleteIconHtml;
+        }
+
+        $("#dataTablePublishedDistrict").data("options", options);
+        initializeDataTable($("#dataTablePublishedDistrict"));
+    });
+
+    function depublishDistrict(event, templateDistrictId) {
+        event.preventDefault();
+        if (confirm("Do you want to remove this @LabelHelper.DistrictLabel?")) {
+            $("#btn" + templateDistrictId).hide();
+
+            $.post('@Url.Action("DepublishDistrict")', { templateDistrictId: templateDistrictId }, function (response) {
+                if (response == true) {
+                    LinkIt.success('#notification', '@LabelHelper.DistrictLabel is removed');
+                    ui.dataTablePublishedDistrict.fnDraw();
+                } else {
+                    alert('An error has occured. Please try again.');
+                }
+            });
+        }
+    }
+
+    function displayShareNewDistrictView(event) {
+        event.preventDefault();
+        $('#listDistrictDiv').hide();
+        $('#shareDistrictDiv').show();
+        $('#shareDistrictDiv').empty();
+        $('#shareDistrictDiv').load('@Url.Action("LoadPublishToDistrict")?templateId=@Model', function () {
+        });
+    }
+
+    $('#btnCloseUserClick').live("click", function (e) {
+        $(".dialog").dialog("close");
+    });
+</script>

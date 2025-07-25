@@ -1,0 +1,699 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.GenerateBubbleSheetViewModel
+@*<section class="grid_10">
+    <div class="block-border">
+        <div class="block-content form">
+            <div class="last-child">
+                <table id="dataTable" class="datatable table" width="100%">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 35px">
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up">
+                                </a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                                Group Name
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody style="cursor: pointer">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>*@
+<div class="row" style="margin-top: 2em;">
+    <p id="selectedPrintingGroupContainer" style="float: left; margin-bottom: -10px; visibility: hidden">
+        <strong style="color: var(--navyColor)">Currently Selected Row: </strong><span id="currentlySelectedPrintingGroup"></span>
+    </p>
+    <div class="">
+        <table id="dataTable" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 7em">
+                        Actions
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Group Name
+                    </th>
+                </tr>
+            </thead>
+            <tbody style="cursor: pointer">
+            </tbody>
+        </table>
+    </div>
+</div>
+<div id="divMessagePrintingPopup">
+</div>
+<style type="text/css">
+    #dataTable thead tr th {
+        padding: 16px !important;
+    }
+
+    #TestAssignmentForm #dataTable tbody tr td {
+        padding: 16px !important
+    }
+
+    #dataTable .actionIcon {
+        width: 16px;
+        height: 16px;
+        display: inline-block;
+        margin-right: 1rem;
+        padding-left: 0;
+    }
+
+    #dataTable_wrapper {
+        margin-left: 0.5em;
+        margin-top: 1em;
+    }
+
+    #dataTable_length select {
+        border: 1px solid var(--blue3) !important;
+        border-radius: 0;
+    }
+
+    tr.even.row_selected td {
+        background-color: var(--blue3) !important;
+    }
+
+    tr.odd.row_selected td {
+        background-color: var(--blue3) !important;
+    }
+
+    #dataTable_filter input {
+        padding: 8px !important;
+        border: 1px solid var(--blue3) !important;
+        width: 256px;
+    }
+
+    .block-controls {
+        padding: 0px;
+        margin: 0px;
+    }
+
+    .deletePrintingGroup i, .Edit i {
+        color: var(--selectColor);
+    }
+
+    .sorting_asc, sorting_desc {
+        cursor: pointer !important;
+    }
+
+    .sorting_asc .fa-chevron-up {
+        transition: .3s transform ease-in-out;
+        transform: rotate(0);
+    }
+
+    .sorting_desc .fa-chevron-up:not(p) {
+        transition: .3s transform ease-in-out;
+        transform: rotate(180deg);
+    }
+
+    #dataTable_wrapper .icon-red {
+        color: var(--red);
+    }
+
+    #dataTable_wrapper tbody td:first-child:not(:empty) {
+        text-align: center;
+    }
+
+    #portal-v2-containter #ConfirmItemUpdateDialog .btn-container-popup {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        height: 70px;
+    }
+</style>
+<script type="text/javascript">
+    var oTable;
+
+    function isGenerateBubbleSheetPage() {
+        return $('#divMultiClass') && $('#divMultiClass').attr('data-currentPage') == 'generateBubbleSheetPage';
+    }
+
+    $(function () {
+        $('#dataTable tbody').click(function (event) {
+            $(oTable.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+            $(event.target.parentNode).addClass('row_selected');
+            $('#selectedPrintingGroupContainer')[0].style.visibility = 'visible';
+            $('#currentlySelectedPrintingGroup').html(event.target.innerHTML);
+
+            if ($('#hdfTestAssignmentPage').val() == 'TestAssignmentPage') {
+                //TODO: for Assignment Page
+                CheckValidToAssign();
+            }
+
+            if (isGenerateBubbleSheetPage()) {
+                // TODO: for Generate Bubble Sheet Page
+                CheckValidToAssign();
+            }
+            LoadSettingDefault();
+        });
+
+        @if (Model.IsPublisher || Model.IsAdmin || Model.IsNetworkAdmin)
+        {
+            <text>
+        var districtid = $('#selectDistrict').val();
+        if (districtid == null)
+        {
+            districtid = 0;
+        }
+        if ($('#selectState').val() == null || $('#selectState').val() == 'select' || $('#selectState').val() <= 0)
+        {
+            districtid = 0;
+        }
+        var ajaxSource = '@Url.Action("GetPrintingGroup")/' + districtid;
+
+            </text>
+        }
+        else
+        {
+        <text>
+        var ajaxSource = '@Url.Action("GetPrintingGroup")';
+        </text>
+        }
+        var options =
+            {
+                bDestroy: true,
+                bServerSide: true,
+                sAjaxSource: ajaxSource,
+                bAutoWidth: false,
+                iDisplayLength: 50,
+                aLengthMenu: [10, 25, 50, 100],
+                aaSorting: [[1, "asc"]],
+                aoColumns: [
+                    { sType: 'integer', sName: 'Id', bSearchable: false, bSortable: false, sWidth: '60px' },
+                    { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true }
+                ],
+                fnRowCallback: function (nRow, aData) {
+                    $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+                    $('td:eq(0)', nRow).parent().attr('Id', aData[0]);
+                    return nRow;
+                },
+                fnPreDrawCallback: function () {
+                    ShowBlock($('#dataTable'), "Loading");
+                    return true;
+                },
+                fnDrawCallback: function (oSettings, json) {
+                    $('#dataTable').unblock();
+                    $('#currentlySelectedPrintingGroup').html('');
+                    $('#btnSubmit').attr("disabled", "disabled");
+                    //var string = '<span> <div><span></span></div></span>';
+                    //var select = $('#dataTable_length  select[name="dataTable_length"]');
+                    //string = $(string).append(select);
+                    //$('<label>Show </label>').appendTo($('#dataTable_length'));
+                    //$(string).appendTo($('#dataTable_length'));
+                    //$('<label>entries </label>').appendTo($('#dataTable_length'));
+
+                    if (selectGroupPrintingRow != "") {
+                        $('#' + selectGroupPrintingRow).addClass('row_selected');
+                    }
+                    portalV2SkinCheckBox();
+                    portalV2AddPluginSelect();
+                    $('.with-tip').tip();
+                },
+                fnInitComplete: function () {
+                    var elSearchLabel = $('#dataTable_filter label');
+                    var elSearchInput = elSearchLabel.find('input');
+
+                    elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                    elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+
+                    elSearchLabel.replaceWith(elSearchInput);
+                    $('#dataTable_filter').addClass('data-search');
+
+                    var elCurrentlyLabel = $('#selectedPrintingGroupContainer');
+                    elCurrentlyLabel.css({ position: 'absolute', marginTop: '10px', visibility: 'hidden', left: '24px' });
+                    $('.block-custom-header').prepend(elCurrentlyLabel);
+
+                    portalV2SkinCheckBox();
+                    portalV2AddPluginSelect();
+                }
+            };
+        $("#dataTable").data("options", options);
+        initializeDataTable($("#dataTable"));
+        oTable = $('#dataTable').dataTable();
+        $('#dataTable_length  select[name="dataTable_length"]').marquee();
+        @if(Model.IsPublisher || Model.IsAdmin||Model.IsNetworkAdmin)
+        {
+        <text>
+        $('#selectDistrict').change(function (event) {
+            var districtid = $('#selectDistrict').val();
+            if (districtid == null) {
+                districtid = 0;
+            }
+            if ($('#selectState').val() == null || $('#selectState').val() == 'select' || $('#selectState').val() <= 0) {
+                districtid = 0;
+            }
+            ajaxSource = '@Url.Action("GetPrintingGroup")/' + districtid;
+            var oTable = $("#dataTable").dataTable();
+            oTable.fnReloadAjax(ajaxSource);
+        });
+        </text>
+        }
+    });
+
+    function setIconVisibility(groupId) {
+        var deleteString = '<a style="margin-right: 0"  href="javascript:void(0)" title="Delete" printinggroupId="' + groupId + '" class="with-tip deletePrintingGroup actionIcon"><i class="icon fa-solid fa-circle-xmark icon-red"></i></a>';
+        var editUrl = '@Url.Action("AddEditPrintingGroup")';
+        editUrl += '?groupId=' + groupId;
+        @if(Model.IsPublisher || Model.IsAdmin || Model.IsNetworkAdmin)
+        {
+            <text>
+                editUrl += '&districtId=' + $('#selectDistrict').val();
+            </text>
+        }
+        var editString = '<a class="openDialog with-tip Edit actionIcon" data-dialog-id="printingGroupDialog" data-dialog-title="" title="Edit" href="' + editUrl + '"><i class="icon fa-solid fa-pencil icon-grey"></i></a>';
+
+        return editString + deleteString;
+    }
+
+    $('.deletePrintingGroup').live('click', function () {
+        ConfirmItemUpdate("Are you sure you want to delete this group?", this);
+    });
+
+    function pingServerToKeepAlive() {
+        $.get('@Url.Action("KeepAlive", "Home")', function (response) {
+            ;
+        });
+    }
+
+    function checkProgressStatus(id) {
+        var response_data;
+        $.ajax({
+            url: '@Url.Action("CheckPrintGroupStatus")',
+            type: 'GET',
+            data: { id: id },
+            async: false,
+            success: function (response) {
+                //path = response.Path;
+                //if (response.IsBubbleSheetOutsideCropMark != null && response.IsBubbleSheetOutsideCropMark == true) {
+                //    path = true;
+                //}
+                response_data = response;
+            }
+        });
+        return response_data;
+    }
+
+    $('#btnGroupPrintingSubmit').die('click');
+    $('#btnGroupPrintingSubmit').live('click', function (e) {
+        e.preventDefault();
+        //clear error message
+        $("#error-messages").html('');
+        $("#error-messages").hide();
+        $('#btnSubmit').disableBt();
+        ShowBlock($('#generateContent'), "Generating Bubble Sheet");
+
+        var bubbleFormat = $('#selectBubbleFormat').val();
+        if ($('#testType').val() == 'ACT')
+            bubbleFormat = '1'; // Alternating Style (ABCD - FGHJ)
+
+        var vdata = GetAssignmentGroupData(bubbleFormat);
+
+        $.ajax({
+            url: '@Url.Action("CheckAssignSameTest")',
+            traditional: true,
+            type: 'POST',
+            data: vdata,
+            success: function (data) {
+                if (data.Success == false && data.Errors && data.Errors.length) {
+                    return;
+                }
+                if (data.IsMultipleTestResult)
+                    AssignTest();
+                else if (data.StudentOnlineTest > 0 || data.StudentBBS > 0) {
+                    var urlBBS = '@Url.Action("TempAssignSameTest","GenerateBubbleSheet")';
+                    urlBBS += '?IsGenericBubbleSheet=true';
+                    urlBBS += '&StudentIdList=' + vdata.StudentIdList;
+                    urlBBS += '&TestId=' + vdata.TestId;
+                    urlBBS += '&GroupId=' + vdata.GroupId;
+                    urlBBS += '&ClassId=' + vdata.ClassId;
+                    urlBBS += '&IsGroupPrinting=true';
+
+                    var urlOnlineTest = '@Url.Action("TempAssignSameTest", "TestAssignment")';
+                    urlOnlineTest += '?StudentIds=' + vdata.StudentIdList;
+                    urlOnlineTest += '&TestId=' + vdata.TestId;
+                    urlOnlineTest += '&DistrictID=' + vdata.DistrictId;
+                    urlOnlineTest += '&GroupID=' + vdata.GroupId;
+                    urlOnlineTest += '&ClassId=' + vdata.ClassId;
+
+                    var message = 'This test has already been assigned to';
+                    if (data.StudentOnlineTest > 0)
+                        message += ' <a style="color: var(--lightBlue)" href="' + urlOnlineTest + '" target="_blank"> ' + data.StudentOnlineTest + ' student(s) for Online testing</a>';
+                    if (data.StudentBBS > 0) {
+                        if (data.StudentOnlineTest > 0)
+                            message += ' and ';
+                        message += ' <a style="color: var(--lightBlue)" href="' + urlBBS + '" target="_blank"> ' + data.StudentBBS + ' student(s) for Bubble Sheet testing</a>';
+                    }
+
+                    message += '. Any existing test results will be overridden if the test is submitted again. Are you sure you want to proceed?';
+                    ConfirmAssignGroupTest(message);
+                } else {
+                    AssignGroupTest();
+                }
+            },
+            failure: function (response) {
+                CustomAlert(response);
+            }
+        });
+
+        return;
+    });
+
+    function GetAssignmentGroupData(bubbleFormat) {
+
+        var paginationOption = 0;
+        var paginationQuestionIds = '';
+        var paginationSectionIds = '';
+        if ($('#testType').val() == 'Non-ACT') {
+            paginationOption = $('#selectPaginationOption').val();
+
+            if (paginationOption == 2) {
+                $('#selectQuestionPage').find('option').each(function () {
+                    paginationQuestionIds += $(this).val() + ';';
+                });
+
+                if (paginationQuestionIds == '')
+                    paginationOption = 0;
+                else
+                    paginationQuestionIds = paginationQuestionIds.substring(0, paginationQuestionIds.length - 1); // remove last ; character
+            }
+
+            if (paginationOption == 3) {
+                $('#selectSectionPage').find('option').each(function () {
+                    paginationSectionIds += $(this).val() + ';';
+                });
+
+                if (paginationSectionIds == '')
+                    paginationOption = 0;
+                else
+                    paginationSectionIds = paginationSectionIds.substring(0, paginationSectionIds.length - 1); // remove last ; character
+            }
+        }
+
+        var vdata =
+        {
+            DistrictId: $('#selectDistrict').val(),
+            GradeId: $('#selectGrade').val(),
+            SubjectId: $('#selectSubject').val() != 'select' ? 1 : 0,
+            BankId: $('#selectBank').val(),
+            TestId: $('#selectTest').val(),
+            SheetStyleId: $('#selectSheetStyle').val(),
+            BubbleSizeId: $('#selectBubbleSize').val(),
+            SelectSheetStyle: $('#selectSheetStyle').val(),
+            GroupId: $('.row_selected').attr('Id'),
+            IsGridStype: $('#radioBubbleGrid').is(':checked'),
+            BubbleFormat: bubbleFormat,
+            IsGenericBubbleSheet: $('#radioGenericSheet').is(':checked'),
+            IsLargeClass: !$('#radioLargeClass').is(':checked'),
+            NumberOfGenericSheet: $('#numberGenericSheet').val(),
+            PrintStudentIDs: $('#isPrintStudentIDs').is(':checked'),
+            IsIncludeShading: false,
+            IsIncludeEssayPage: $('#isIncludeEssayPage').is(':checked'),
+            PaginationOption: paginationOption,
+            PaginationQuestionIds: paginationQuestionIds,
+            PaginationSectionIds: paginationSectionIds,
+            TimezoneOffset: new Date().getTimezoneOffset(),
+            IsIncludeExtraPages: $('#radioExtraPages').is(':checked'),
+            NumberOfGraphExtraPages: $('#selectNumberGraph').val(),
+            NumberOfPlainExtraPages: $('#selectNumberPlain').val(),
+            NumberOfLinedExtraPages: $('#selectNumberLined').val(),
+            IsPrintExtraPageOnly: $('#radioExtraPages').is(':checked') && $('#radioPrintExtraOnly').is(':checked'),
+            BubbleSheetPreference: JSON.stringify({
+                testExtract_gradebook: $('input[name="testExtract_gradebook"]:checked').length > 0 ? '1' : '0',
+                testExtract_studentRecord: $('input[name="testExtract_studentRecord"]:checked').length > 0 ? '1' : '0',
+                testExtractExportRawScore: $('input[name="testExtractExportRawScore"]:checked').val() === 'true' ? '1' : '0',
+                questiongrouplabelschema: $('#hdQuestionGroupLabelSchema').val(),
+                isNumberQuestions: $('#hdIsNumberQuestions').val(),
+            }),
+            NumberOfPrimaryExtraPages: $('#selectNumberPrimary').val()
+        };
+
+        return vdata;
+    }
+
+    function ConfirmAssignGroupTest(message) {
+        // remove for previous call
+        if ($("#confirmSubmitDialog")) {
+            $("#confirmSubmitDialog").remove();
+        }
+
+        var yesButton = '<button class="btn-red" style="width:63px;" onclick="GroupYesClick();">Yes</button>';
+        var noBotton = '<a class="button-custom-new-skin grey-btn" style="width:63px;" onclick="GroupNoClick();">Cancel</a>';
+        var note = '<div style="font-size: 11px; line-height: 14px;padding-top:10px; font-weight: bold;">Note: If you are trying to assign this test as a post-test, please have the original test author create a duplicate copy of the test under Test Design --> Test.</div>';
+        var strHtml = '<section>' +
+            '<div class="block-border" style="padding: 24px">' +
+            '<div class="form" style="font-weight: bold"><div>' + message +
+            '</div>' + note + '</div></div></section>' +
+            '<div class="foot-content">' + noBotton + '&nbsp;&nbsp;' + yesButton + '</div>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "confirmSubmitDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $(this).remove();
+                    $('#btnSubmit').enableBt();
+                    if ($('#generateContent').length > 0)
+                        $('#generateContent').unblock();
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+    }
+
+    function GroupNoClick() {
+        $('#generateContent').unblock();
+        $('#btnSubmit').enableBt();
+        $("#confirmSubmitDialog").dialog("close");
+    }
+
+    function GroupYesClick() {
+        $("#confirmSubmitDialog").dialog("close");
+        AssignGroupTest();
+    }
+
+    function AssignGroupTest() {
+        var bubbleFormat = $('#selectBubbleFormat').val();
+        if ($('#testType').val() == 'ACT')
+            bubbleFormat = '1'; // Alternating Style (ABCD - FGHJ)
+
+        var vdata = GetAssignmentGroupData(bubbleFormat);
+
+        if (vdata.TestId == "select") {
+            CustomAlert("Please select a Test");
+            $('#generateContent').unblock();
+            $('#btnSubmit').enableBt();
+            return;
+        }
+        $.ajax({
+            url: '@Url.Action("PrintGroup", "GroupPrinting")',
+            type: 'POST',
+            data: vdata,
+            //timeout: 3600000, //set timeout to 1 hour
+            success: function (response) {
+                if (response.Success != false) {
+                    $('#error-messages').hide();
+                    var randomId = response.Id;
+
+                    var interval = setInterval(function() {
+                        var path = checkProgressStatus(randomId);
+
+                        if (path.IsBubbleSheetOutsideCropMark != null && path.IsBubbleSheetOutsideCropMark == true) {
+                            if (response.ErrorList == null || response.ErrorList == '') {
+                                clearInterval(interval);
+                                var errorMessage = "One or more bubbles on the bubble sheet are outside the readable bubble sheet area.<br /><br /> Please try one of the following:<br /><br />";
+                                errorMessage += "1. Create multi-page bubble sheets using the <b>'Pagination Option'</b> drop-down menu on the bottom right corner of the Create New Bubble Sheets tab.<br /><br />";
+                                errorMessage += "Please use this bubble sheet preview to help you make a selection:<br /><br />";
+                                errorMessage += "<b>Automatic</b> - LinkIt! will automatically generate the bubble sheets and allocate as many questions on a page as possible given the bubble size selected.<br /><br />";
+                                errorMessage += "<b>By Last Question</b> - This option allows for specific questions to be included on each page of the bubble sheets. Please enter the last question to appear on each page. (This can be useful for creating a separate page for extended response questions that are grouped towards the end of the test and require teacher grading.)<br /><br />";
+                                errorMessage += "<b>By Last Section</b> - When the test is designed in sections, each section of questions will be included on a separate bubble sheet.<br /><br />";
+                                errorMessage += "<b>Note: All pages of the bubble sheet for a student must be scanned and graded for a test score to be generated.</b><br /><br />";
+                                errorMessage += "2. Alternatively, reduce the size of the bubbles when generating bubble sheets by choosing Small or Extra Small from the <b>'Bubble Size'</b> drop-down menu under the 'Create New Bubble Sheets' tab.<br /><br />";
+                                errorMessage += "<div style='text-align:center;width:100%'><a href='" + path.SnapshotUrl + "' target='_blank'><img src='" + path.SnapshotUrl + "' width='300px'/></a></div>";
+                                //alert(errorMessage);
+                                $("<section><div class='block-border'><div class='block-content'><p class='title-large'>Bubbles outside of crop marks</h1><p>" + errorMessage + ".</p></div></div></section>")
+                                .appendTo("article")
+                                .dialog({
+                                    title: $(this).attr("data-dialog-title"),
+                                    close: function () {
+                                        $(this).remove();
+                                        $('#generateContent').unblock();
+                                        $('#btnSubmit').enableBt();
+                                    },
+                                    modal: true,
+                                    width: 700,
+                                    resizable: false
+                                })
+                                .load(this.href, function () { });
+                                return;
+                            }
+                            else {
+                                var errorMessage = "";
+                                var header = "";
+                                if (response.ErrorList == 'Invalid ACT Test Format') {
+                                    errorMessage = "1. Bubble sheet must have 5 sections.<br /><br />";
+                                    errorMessage += "2. Section 5 must have 2 open-ended tests.<br /><br />";
+                                }
+                                else if (response.ErrorList == 'Invalid SAT Test Format') {
+                                    errorMessage = "1. Each section must have no more than 40 bubble sheet questions or 10 student-produced responses question.<br /><br />";
+                                    errorMessage += "2. Essay section must have 2 open-ended questions, or no open-ended questions.<br /><br />";
+                                }
+                                $("<section><div class='block-border'><div class='block-content'><h1>" + response.ErrorList + "</h1><p>" + errorMessage + "</p></div></div></section>")
+                                .appendTo("section")
+                                .dialog({
+                                    title: $(this).attr("data-dialog-title"),
+                                    close: function () {
+                                        $(this).remove();
+                                        $('#generateContent').unblock();
+                                        $('#btnSubmit').enableBt();
+                                    },
+                                    modal: true,
+                                    width: 700,
+                                    resizable: false
+                                })
+                                .load(this.href, function () { });
+                                return;
+                            }
+                        }
+
+                        if (path.Success == false) {
+                            // Remove this item in session
+                            $.ajax({
+                                    type: "POST",
+                                    url: '@Url.Action("RemoveErrorDownloadLink","BubbleSheet")',
+                                })
+                                .done(function(e) {
+                                });
+
+
+                            clearInterval(interval);
+                            addErrorMessages(path);
+                            $('#generateContent').unblock();
+                            $('#btnSubmit').enableBt();
+                            return;
+                        }
+
+                        if (path.Path != '' && path.Path != null) {
+                            if (path.Path.indexOf('/BubbleSheet/Print') > -1) {
+                                $.ajax({
+                                    type: "GET",
+                                    url: path.Path,
+                                })
+                                    .done(function (printResponse) {
+                                        $("#divBubbleSheetPrint").html(printResponse);
+										if (ReplaceLocalTime != undefined) {
+                                            ReplaceLocalTime();
+                                        }
+
+                                        $('#generateContent').unblock();
+                                        $('#btnSubmit').enableBt();
+                                    });
+                            } else {
+                                location.href = path.Path;
+                            }
+
+                            clearInterval(interval);
+                        }
+                    }, 5000);
+
+                } else {
+                    if (response.ExistUnsupportedQuestionList != null && response.ExistUnsupportedQuestionList == true) {
+                        if (response.UnsupportedList.length > 0) {
+                            var questionStr = '';
+                            $.each(response.UnsupportedList, function (i, value) {
+                                if (i < response.UnsupportedList.length - 1) {
+                                    questionStr += '#' + value + ', ';
+                                } else {
+                                    questionStr = questionStr.substr(0, questionStr.length - 2);
+                                    if (response.UnsupportedList.length == 1) {
+                                        questionStr += '#' + value;
+                                    } else {
+                                        questionStr += ' and #' + value;
+                                    }
+                                }
+                            });
+
+                            var vMessage = 'Bubble sheets cannot be generated because questions ' + questionStr + ' are not compatible with bubble sheet testing.';
+                            response.ErrorList = [{ "ErrorMessage": vMessage }];
+                            $("html, body").animate({ scrollTop: 0 }, 200);
+                        }
+                    }
+
+                    addErrorMessages(response);
+                    $("html, body").animate({ scrollTop: 0 }, 200);
+                    $('#generateContent').unblock();
+                    $('#btnSubmit').enableBt();
+                }
+            },
+            failure: function (response) {
+                CustomAlert(response);
+            }
+        });
+    }
+
+    //For TestAssignment
+
+    function GetCurrentGroupSelected() {
+        return $('.row_selected').attr('Id');
+    }
+
+    function ConfirmItemUpdate(message, element) {
+        var printinggroupId = $(element).attr('printinggroupId');
+
+        var cancelBtn = '<button id="btnCancel" class="btn-cancel" type="button" name="cancel" onclick="ConfirmItemUpdateCancellick()">Cancel</button>';
+        var yesButton = '<button id="btnOk" class="btn-accept" type="button" name="ok" onclick="ConfirmItemUpdateOkClick(' + printinggroupId + ')">OK</button>';
+
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section>' +
+            '<div class="block-border">' +
+            '<div class="block-content form" style="padding: 24px 32px;">' +
+            '<div style="font-size: 16px; font-weight:700; text-align: center;">' + message +'</div></div>' +
+            '<div style="background: var(--navyColor);height:70px;"><div class="btn-container-popup">' +
+            cancelBtn + yesButton + '</div>' +
+            '</div></section >';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "ConfirmItemUpdateDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 454,
+                maxheight: 100,
+                resizable: false
+            });
+
+        $(".ui-dialog").css("height", hbody);
+
+    }
+
+    function ConfirmItemUpdateOkClick(printinggroupId) {
+        $('#btnOk').attr('disabled', 'disabled');
+
+        $.post('@Url.Action("DeletePrintingGroup")', { printinggroupId: printinggroupId }, function(response) {
+            if (response.Success == true) {
+                ui.dataTable.fnDraw();
+            } else {
+                alert(response.message);
+            }
+
+            $(".dialog").dialog("close");
+        });
+    }
+
+    function ConfirmItemUpdateCancellick() {
+        $(".dialog").dialog("close");
+    }
+</script>

@@ -1,0 +1,95 @@
+﻿@{
+    ViewBag.Title = "Help Resources";
+}
+
+@*@MvcHtmlString.Create(
+    Bundle.Css()
+        .Add(@Url.Content("~/Content/themes/HelpResource/HelpResourceCss.css"))
+        .Render("/Content/themes/Constellation/css/helpresource_combined_#.css")
+)*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleHelpResourceBundle()
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="selectFilters">
+            <div id="divFilterTestAssignments" class="block-content form bubbleSheetSelector">
+                <h1>Filter Help Resources</h1>
+                @Html.Partial("_Filter")
+                <button id="filterSheets" class="float-right u-m-l-10" type="button">Apply Filters</button>
+                <button id="clearFilter" class="float-right grey u-m-l-10" type="button" data-bind="click: ClearFilter">Clear Filter</button>
+                <button class="float-right u-m-l-10" type="button" data-bind="click: SelectNone">Select None</button>
+                <button class="float-right u-m-l-10" type="button" data-bind="click: SelectAll">Select All</button>
+                <div class="clear"></div>
+            </div>
+        </div>
+        <br />
+        <br />
+
+        @Html.Partial("_SearchResult")
+    </section>
+</article>
+@*@MvcHtmlString.Create(
+    Bundle.JavaScript()
+        .Add("/Scripts/knockout-3.4.2.js")
+        .Add("/Scripts/HelpResource/ShowDiaglog.js")
+        .Add("/Scripts/HelpResource/KnockModel.js")
+        .Add("/Scripts/HelpResource/SearchResultCallBackPublish.js")
+        .Add("/Scripts/HelpResource/SearchResultPublish.js")
+        .Render("/Content/themes/Constellation/js/helpresource_publish_combined_#.js")
+)*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptHelpResourceBundle()
+
+<script type="text/javascript">
+
+    var viewModel = new HelpResourceViewModel();
+    var tableSelector = "#helpResourceDataTable";
+
+    $(function () {
+        viewModel.PostAjax('@Url.Action("GetHelpResourceCategories", "HelpResource")', null, function (allData) {
+            var isOnlyOneCat = allData.length === 1;
+            var mappedObjects = $.map(allData, function (item) {
+                return new Category(item, isOnlyOneCat);
+            });           
+            viewModel.Categories(mappedObjects);
+            if (isOnlyOneCat) {
+                var dataTable = $(tableSelector).dataTable();
+                dataTable.fnDraw();
+            }
+        }, null);
+
+        viewModel.PostAjax('@Url.Action("GetHelpResourceTypes", "HelpResource")', null, function (allData) {
+            var mappedObjects1 = $.map(allData, function (item) {
+                return new HelpResourceType(item);
+            });
+            viewModel.HelpResourceTypes(mappedObjects1);
+        }, null);
+
+        ko.applyBindings(viewModel);
+
+        $(tableSelector).data("options", BuildSearchResultDataTable(tableSelector));
+
+        $('#filterSheets').click(function () {
+            var dataTable = $(tableSelector).dataTable();
+            dataTable.fnDraw();
+        });
+
+    });
+
+    $(tableSelector).on('click', '.jsOpenHelpResource', function (event) {
+        var $self = $(this);
+        var helpresourcefiletypeid = $self.attr('helpresourcefiletypeid');
+        var helpresourcefilepath = $self.attr('helpresourcefilepath');
+        var helpresourcelink = $self.attr('helpresourcelink');
+
+        if (helpresourcefiletypeid != null && helpresourcefiletypeid == 2) {
+            window.open(helpresourcelink, '_blank');
+        } else {
+            var url = '@Url.Action("Download", "HelpResourceUpload")' + '?filePath=' + helpresourcefilepath;
+            window.open(encodeURI(url), '_blank');
+        }
+
+    });
+
+</script>

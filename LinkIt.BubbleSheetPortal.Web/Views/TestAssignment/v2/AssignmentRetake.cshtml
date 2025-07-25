@@ -1,0 +1,486 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.AssignmentRetake.AssignmentRetakeViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Common
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Onlinetesting, "Test Retake");
+    var cookie = Request.Cookies[Constanst.LKARCookie];
+    var token = string.Empty;
+    if (cookie != null) { token = cookie.Value; }
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<script src="@Url.Content("~/Scripts/jquery.listSplitter.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/FeLibs/jquery-coolfieldset/js/jquery.coolfieldset.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/moment.min.js")" type="text/javascript"></script>
+<script src="@BundleHelper.Version("~/Scripts/TestDesign/v2/testSchedulePreV2.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/constants.js")" type="text/javascript"></script>
+<link href="@BundleHelper.Version("~/Content/css/v2/test-schedule.css")" rel="stylesheet" type="text/css" />
+<link href="@BundleHelper.Version("~/Content/css/v2/dialog-custom.css")" rel="stylesheet" type="text/css" />
+<script src="@BundleHelper.Version("~/Scripts/TestPreferences/v2/testPreferences.js")" type="text/javascript"></script>
+<script src="@BundleHelper.Version("~/Scripts/DialogNewSkin/index.js")" type="text/javascript"></script>
+<link href="@BundleHelper.Version("~/Content/css/v2/test-assignment.css")" rel="stylesheet" type="text/css" />
+<link href="@BundleHelper.Version("/Content/css/v2/test-assignment.css")" rel="stylesheet" type="text/css" />
+
+
+
+<link href="@BundleHelper.Version("/Content/css/v2/AssignmentRetake.css")" rel="stylesheet" type="text/css" />
+
+<style>
+    :root {
+        --fontSizeLabel: 1rem;
+    }
+</style>
+
+<article class="container_12">
+    <section class="grid_12">
+        <div id="generateContent" class="block-border">
+            @using (Html.BeginForm("AssignmentRetake", "TestAssignment", FormMethod.Post, new { id = "TestRetakeForm", @class = "form bubbleSheetSelector" }))
+            {
+                <div class="block-content">
+                    <h1>Assign @(Model.RetakeType) Retake</h1>
+                    <ul style="display: none" id="error-messages" class="message error"></ul>
+                    <h2 class="header">@LocalizeHelper.Localized("AssignOnlineTest.SelectTest")</h2>
+                    <div class="row g-3">
+                        <div class="col-3">
+                            <div class="margin-bottom-dropdown">
+                                <label>@LocalizeHelper.Localized("AssignOnlineTest.Grade")</label>
+                                <div class="block-text-name" style="width: 100%;">
+                                    <select id="selectGrade">
+                                        <option selected>@Model.GradeName</option>
+                                    </select>
+                                    <div class="box-select" style="width: 100%;">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="margin-bottom-dropdown">
+                                <label>@LocalizeHelper.Localized("AssignOnlineTest.Subject")</label>
+                                <div class="block-text-name" style="width: 100%;">
+                                    <select id="selectSubject">
+                                        <option selected>@Model.SubjectName</option>
+                                    </select>
+                                    <div class="box-select" style="width: 100%;">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="margin-bottom-dropdown">
+                                <label>@LocalizeHelper.Localized("AssignOnlineTest.Bank")</label>
+                                <div class="block-text-name" style="width: 100%;">
+                                    <select id="selectBank">
+                                        <option selected>@Model.BankName</option>
+                                    </select>
+                                    <div class="box-select" style="width: 100%;">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <label>@LocalizeHelper.Localized("AssignOnlineTest.Test")</label>
+                            <div class="block-text-name test-name" style="width: 100%;">
+                                <select id="selectTest">
+                                    <option selected>@Model.TestName</option>
+                                </select>
+                                <div class="box-select" style="width: 100%;">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 block-content" id="fsStudentSelect">
+                    <h2 class="header">@LocalizeHelper.Localized("AssignOnlineTest.SelectStudents")</h2>
+                    <div id="studentContent">
+                        @Html.Partial("v2/_AssigmentRetakeStudentTable")
+                    </div>
+                </div>
+                <fieldset class="mt-4 block-content fs-content coolfieldset default-setting-retake" id="fsSelectOption">
+                    <legend class="legend-header" onclick="handleShowViewPreference()" style="text-transform: capitalize;" id="lgSelectOption">
+                        Preferences in Effect
+                    </legend>
+                    <input type="hidden" id="hdfChangedDefaultSetting" value="0" />
+                    <div class="columns" id="divButtonOption" style="display: block;">
+                        <p>
+                            <a id="aDistrictSetting" style="width: auto" class="openDialog addGroupButton LinkitStypeButton big-button btn-blue w-auto" data-dialog-id="SettingsDialog" data-dialog-title="" title="Change">Change</a>
+                            <button id="btnChangeSettingGray" disabled="disabled" style="display: none; margin-top: 10px; float: right;">Change Assignment Settings</button>
+                        </p>
+                    </div>
+                    <div id="divDefaultSetting"></div>
+                </fieldset>
+                <div class="mt-4 block-content" style="min-height: 105px">
+                    @*<a class="float-right btn-blue me-2" style="z-index: 2; display:none" id="btnSubmitAssignmentRetake" type="submit">@LocalizeHelper.Localized("AssignOnlineTest.AssignRetake")</a>*@
+                    <div id="divPopupTestResult"></div>
+                </div>
+                <input type="hidden" value="0" id="hdfLoadExistAssingment" />
+                <input type="hidden" value="" id="hdfPreferenceLevel" />
+                <input type="hidden" value="TestAssignmentPage" id="hdfTestAssignmentPage" />
+            }
+        </div>
+    </section>
+</article>
+
+<script>
+    var dictrictId = @Model.DistrictId;
+    var virtualTestId = @Model.OriginalVirtualTestID;
+    var testPreferenceModel = null;
+    var testExtractOptions = null;
+    var testSchedule = new testSchedule('@ViewBag.DateFormat');
+    var studentsSelected = [];
+    var assignmentsSelected = [];
+    var $studentsTable = $('#studentsDataTable');
+    var $studentsTableContainer = $('.table-container');
+    var isPartialRetake = '@Model.RetakeType' == '@LinkIt.BubbleSheetPortal.Models.Constants.AssignmentRetakeConstants.RETAKE_TYPE_PARTIAL';
+    var studentIds = '@Model.RetakeStudentIds';
+    var guid = '@Model.GUID';
+</script>
+<script>
+    $(document).ready(function () {
+        $('#selectTest').marquee();
+        $('#selectBank').marquee();
+        $('#selectTest').change();
+        $('#selectBank').change();
+
+        $('#selectSubject').marquee();
+        $('#selectGrade').marquee();
+        $('#selectSubject').change();
+        $('#selectGrade').change();
+
+        $('#divDefaultSetting').load('@Url.Action("DefaultSettings", "TestAssignment")', { districtId: dictrictId, testId: virtualTestId, isPartialRetake, guid, studentIds }, function (response) {
+            ShowBlock($('#fsSelectOption'), 'Loading')
+            $('#lgSelectOption').html('Preferences in Effect <i class="fa-solid fa-chevron-up ml-5"></i>');
+            if (response == false) {
+                addErrorMessages(response);
+            }
+            $('#fsSelectOption').unblock();
+        });
+        $('#fsSelectOption').coolfieldset({ collapsed: true });
+        @if ((bool)ViewBag.HasPrintResultRetake)
+        {
+            <text>LoadAssignmentResult();</text>
+        }
+
+        });
+</script>
+<script>
+    $(document).ready(function () {
+        initStudentTable();
+        $('#TestRetakeForm').on('submit', handleFormSubmit);
+        $(".openDialog").on("click", handleOpenPreferences);
+
+        $("#lgSelectOption").click(function () {
+            $('.cb__sectionLevel').hide()
+        })
+    });
+</script>
+<script>
+    function handleShowViewPreference() {
+        $('.cb__sectionLevel').hide()
+    }
+    function handleSelectAllStudents() {
+        var allStudents = [];
+        _.forEach($studentsTable.find('tbody tr'), function (item) {
+            if ($(item).data('student-id')) {
+                allStudents.push({
+                    studentId: $(item).data('student-id'),
+                    classId: $(item).data('class-id')
+                });
+            }
+        });
+        studentsSelected = allStudents;
+        selectStudents();
+    }
+    function handleSelectNoneStudents() {
+        studentsSelected = [];
+        selectStudents();
+    }
+    function handleInvertSelectedStudents() {
+        var notSelectStudents = [];
+        _.forEach($studentAssignTable.find('tbody tr input.select-student').not(':checked'), function (item) {
+            var tr = $(item).closest('tr');
+            if (tr.data('id')) {
+                notSelectStudents.push({
+                    studentId: tr.data('id'),
+                })
+            }
+        });
+        studentsSelected = notSelectStudents;
+        selectStudents();
+    }
+    function handleCheckAll() {
+        if ($(this).is(':checked')) {
+            var allStudent = [];
+            _.forEach($studentsTable.find('tbody tr'), function (item) {
+                if ($(item).data('student-id')) {
+                    allStudent.push({
+                        studentId: $(item).data('student-id'),
+                        classId: $(item).data('class-id')
+                    })
+                }
+            });
+            studentsSelected = allStudent;
+        } else {
+            studentsSelected = [];
+        }
+        selectStudents();
+    }
+    function handleCheckSingle() {
+        var $checkbox = $(this);
+        var studentId = $checkbox.closest('tr').data('student-id');
+        var classId = $checkbox.closest('tr').data('class-id');
+        if ($checkbox.is(':checked')) {
+            studentsSelected.push({ studentId: studentId, classId: classId });
+        } else {
+            studentsSelected = studentsSelected.filter(function (stu) { return stu.studentId != studentId; });
+        }
+        studentsSelected = _.union(studentsSelected);
+        selectStudents();
+        portalV2SkinCheckBox();
+    }
+    function setActiveDeactiveButton() {
+        if (assignmentsSelected && assignmentsSelected.length) {
+            $('#btnDeactiveTestClassAssignment').attr('disabled', false)
+        }
+        else {
+            $('#btnDeactiveTestClassAssignment').attr('disabled', true)
+        }
+        portalV2SkinCheckBox();
+    }
+
+    function setActiveAssignmentRetake() {
+        const studentSlected = $('.select-student[disabled]');
+        const allStudent = $('.select-student')
+        if (studentSlected.length != allStudent.length) {
+            $('#btnSubmitAssignmentRetake').attr('disabled', false)
+        }
+        else {
+            $('#btnSubmitAssignmentRetake').attr('disabled', true)
+        }
+    }
+
+    function selectAssignments() {
+        $('#tableStudentAssign').find('input.select-assignment').attr('checked', false);
+        assignmentsSelected.forEach(function (item) {
+            $('#tableStudentAssign').find('tr[data-assignment-id="' + item + '"] input.select-assignment').attr('checked', true);
+        });
+        var isCheckAll = assignmentsSelected.length > 0 && assignmentsSelected.length == $('#tableStudentAssign').find('tbody tr[data-assignment-id]').length;
+        $('#tableStudentAssign').find('input#chkAllAssignments').attr('checked', isCheckAll);
+
+        setActiveDeactiveButton();
+    }
+    function handleAssignmentCheckAll(checkInput) {
+        var allAssignment = [];
+
+        if ($(checkInput).is(':checked')) {
+            var allAssignment = [];
+            _.forEach($('#tableStudentAssign').find('tbody tr'), function (item) {
+                if ($(item).attr('data-assignment-id')) {
+                    allAssignment.push($(item).attr('data-assignment-id'));
+                }
+            });
+            assignmentsSelected = allAssignment;
+        } else {
+            assignmentsSelected = [];
+        }
+        selectAssignments();
+    }
+    function handleAssignmentCheckSingle(checkInput) {
+        var $checkbox = $(checkInput);
+        var assignmentId = $checkbox.closest('tr').attr('data-assignment-id');
+        if ($checkbox.is(':checked')) {
+            assignmentsSelected.push(assignmentId);
+        } else {
+            assignmentsSelected = assignmentsSelected.filter(function (assignment) { return assignment != assignmentId; });
+        }
+        assignmentsSelected = _.union(assignmentsSelected);
+
+        selectAssignments()
+        portalV2SkinCheckBox()
+    }
+    function handleFormSubmit(ev) {
+        ev.preventDefault();
+        if (studentsSelected.length == 0) {
+            CustomAlert("Please select at least a student.");
+            return;
+        }
+        var deadlineValue;
+        $.each(testPreferenceModel.OptionTags, function (index, tag) {
+            if (tag.Key == 'deadline') {
+                deadlineValue = tag.Value;
+            }
+        });
+        var today = new Date();
+        deadlineValue = deadlineValue == '0' ? '' : deadlineValue;
+        var deadline = new Date(deadlineValue);
+        if (deadline < today) {
+            CustomAlert('The time limit preference set for this assignment shows that the deadline for test taking has expired. You must adjust or remove the deadline prior to assigning the test. This expired deadline is likely a date that had been established as your default preference sometime in the past, but is no longer applicable. You should check your default preferences to make the proper updates.', true);
+            return;
+        }
+        ShowBlock($('#generateContent'), 'Assign retake');
+        var vAssignmentDatadata = getAssignmentData();
+        $.ajax({
+            url: '@Url.Action("AssignmentRetake")',
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: vAssignmentDatadata,
+            cache: false,
+            success: function (response) {
+                $('#generateContent').unblock();
+                $('#btnSubmit').enableBt();
+                //TODO: Replace UTCTime to LocalTime
+                if (response.error) {
+                    CustomAlert(response.error);
+                }
+                LoadAssignmentResult();
+                LoadStudenTable();
+                portalV2SkinCheckBox()
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                if (XMLHttpRequest.status === 504) {
+                    CustomAlert("This assignment will continue to generate. Please allow a few minutes for the process to complete.");
+                }
+                else {
+                    CustomAlert(errorThrown);
+                }
+                $('#generateContent').unblock();
+            },
+            failure: function (response) {
+                CustomAlert(response);
+            }
+        })
+    }
+    function handleOpenPreferences(e) {
+        e.preventDefault();
+        $("<div></div>")
+            .addClass("dialog")
+            .attr("id", $(this)
+                .attr("data-dialog-id"))
+            .appendTo("body")
+            .dialog({
+                title: $(this).attr("data-dialog-title"),
+                close: function () {
+                    $(this).remove();
+                    $("body .my-overlay").remove();
+                },
+                open: function (event, ui) {
+                    //Create overlay for Jquery dialog
+                    $(this).dialog({ position: 'top' });
+                    $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:100%;height:' + $('body').height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                modal: false,
+                width: 1000,
+                resizable: false
+            })
+            .load(this.href, function () { });
+    }
+</script>
+<script>
+    function ReplaceLocalTime() {
+        //Set Local Time
+        $('.toLocalTime').each(function () {
+            var element = $(this);
+            var currentValue = element.attr('data-value');
+            if (!currentValue) {
+                currentValue = element.text().trim();
+                element.attr('data-value', currentValue);
+            }
+            var localTimeUtc = moment.utc(currentValue).toDate();
+            element.html(displayDateWithFormat(localTimeUtc.valueOf(), true));
+        });
+    }
+
+    function DisplayRate(rate) {
+        if (rate === '0.8')
+            return 'Normal';
+        if (rate === '0.7')
+            return 'Slow';
+        return '';
+    }
+
+    function DisplayVolume(volume) {
+        return volume * 10;
+    }
+    function selectStudents() {
+        $studentsTable.find('input.select-student').attr('checked', false);
+        studentsSelected.forEach(function (item) {
+            $studentsTable.find('tr[data-student-id="' + item.studentId + '"] input.select-student').attr('checked', true);
+        });
+        var isCheckAll = studentsSelected.length > 0 && studentsSelected.length == $studentsTable.find('tbody tr[data-student-id]').length;
+        $studentsTable.find('input#chkAllStudents').attr('checked', isCheckAll);
+        $('#btnSubmitAssignmentRetake').attr('disabled', studentsSelected.length == 0);
+        portalV2SkinCheckBox()
+    }
+    function BuildDistrictSettings() {
+        var urlDistrictSetting = '@Url.Action("TestSettings")?districtId=' + dictrictId + '&virtualTestID=' + virtualTestId + '&isPartialRetake=' + isPartialRetake;
+        $("#aDistrictSetting").attr("href", urlDistrictSetting);
+        $("#aDistrictSetting").show();
+    }
+    function getAssignmentData() {
+        var vdata = {
+            TestName: '@Html.Raw(Model.TestName.Replace("'", "\\'"))',
+            SubjectName: '@Model.SubjectName',
+            GradeName: '@Model.GradeName',
+            DistrictId: dictrictId,
+            StudentList: studentsSelected,
+            TestId: @Model.CurrentVirtualTestID,
+            OriginalTestId: @Model.OriginalVirtualTestID,
+            AssignmentType: 2, // assign student
+            TestRetakeNumber: testRetakeNumber || '@Model.TestRetakeNumber',
+                RetakeType: '@Model.RetakeType',
+                    GUID: '@Model.GUID',
+        };
+    var dataReturn = JSON.stringify({ data: vdata, testPreferenceModel: testPreferenceModel });
+    return dataReturn;
+    }
+
+    function LoadAssignmentResult() {
+        var $divPopupTestResult = $('#divPopupTestResult');
+        ShowBlock($divPopupTestResult, 'Loading');
+        $.get('@Url.Action("LoadExistAssignmentForRetake", "TestAssignment", new { guid = Model.GUID })', function (html) {
+
+            $divPopupTestResult.show();
+            $divPopupTestResult.html(html);
+            $divPopupTestResult.unblock();
+            ReplaceLocalTime();
+            portalV2SkinCheckBox()
+        });
+    }
+    function LoadStudenTable() {
+        var $studentContent = $('#studentContent');
+        ShowBlock($studentContent, 'Loading');
+        $.get('@Url.Action("GetAssignmentRetakeStudentTable", "TestAssignment", new { guid = Model.GUID })', function (html) {
+
+            $studentContent.html(html);
+            initStudentTable();
+            $studentContent.unblock();
+            ReplaceLocalTime();
+            portalV2SkinCheckBox()
+        });
+    }
+
+    function initStudentTable() {
+        studentsSelected = [];
+        $studentsTable = $('#studentsDataTable');
+        $studentsTable.on('click', '#chkAllStudents', handleCheckAll);
+        $studentsTable.on('click', '.select-student', handleCheckSingle);
+        handleSelectAllStudents();
+    }
+</script>

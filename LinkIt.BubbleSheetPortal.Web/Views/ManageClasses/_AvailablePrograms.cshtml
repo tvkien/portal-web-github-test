@@ -1,0 +1,85 @@
+@model LinkIt.BubbleSheetPortal.Models.Student
+
+<section class="grid_5">
+    <div class="block-border">
+        <div class="block-content form">
+            <h1>Available Programs</h1>
+            <p style="height: 5px"></p>
+            <div class="no-margin last-child">
+                <table id="dataTableProgram" class="datatable table no-margin" width="100%">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 35px">
+                                Actions
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Program Name
+                            </th>            
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <button id="btnCloseProgram" type="button" class="grey classProgramButton">Close</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    $(function () {
+        var optionsProgram =
+        {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetAvailableProgramsByStudentId")?studentId=@Model.Id',
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            oLanguage: {
+                sLengthMenu: "Show _MENU_"
+            },
+            aoColumns: [
+                { sType: 'integer', sName: 'Id', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableProgram'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableProgram').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        function setIconVisibility(programId) {
+            var addIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")';
+            return '<a href="javascript:void(0)" title="Add to student" programId="' + programId + '" class="with-tip program"><img src="' + addIcon + '" width="16" height="16"></a>';
+        }
+
+        $("#dataTableProgram").data("options", optionsProgram);
+        initializeDataTable($("#dataTableProgram"));
+        
+        $('#dataTableProgram').on('click', '.program', function () {
+            if (confirm("Do you want to add this program to this student?")) {
+                var programId = $(this).attr('programId');
+                $.post('@Url.Action("AddProgramToStudent")', { programId: programId, studentId: '@Model.Id' }, function(response) {
+                    if (response == true) {
+                        ui.dataTableProgram.fnDraw();
+                        ui.dataTableStudentProgram.fnDraw();
+                        $('.with-tip').tip().hideTip();
+                    } else {
+                        alert('An error has occured. Please try again.');
+                    }
+                });
+            }
+        });
+    });
+</script>

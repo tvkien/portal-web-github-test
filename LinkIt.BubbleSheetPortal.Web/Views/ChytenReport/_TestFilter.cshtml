@@ -1,0 +1,388 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestFilterViewModel
+<fieldset>
+    <div class="columns" id="divParentFilter">
+        @if (Model.IsPublisher)
+        {
+            <p>
+                <label>
+                    @LabelHelper.DistrictLabel
+                </label>
+                <span class="relative">
+                    <select id="districtSelect" style="width: 60%"></select>
+                </span>
+            </p>
+        }
+        else
+        {
+            @Html.Hidden("CurrentDistrictId", Model.DistrictId);
+        }
+        <p>
+            <label>
+                Test Bank
+            </label>
+            <span class="relative">
+                <select id="testBankSelect" style="width: 60%"></select>
+            </span>
+        </p>
+    </div>
+</fieldset>
+<fieldset id="fdChildrenFilter" style="margin-bottom: 15px">
+    <legend>Filter by</legend>
+    <div class="columns" id="divChildrenFilter">
+        <div style="width: 45%; float: left;">
+            <p id="pftSchoolSelect">
+                <label>
+                    School
+                </label>
+                <span class="relative">
+                    <select id="ftSchoolSelect"></select>
+                </span>
+            </p>
+            <p id="pftTeacherSelect">
+                <label>
+                    Teacher
+                </label>
+                <span class="relative">
+                    <select id="ftTeacherSelect"></select>
+                </span>
+            </p>
+            <p id="pftTermSelect">
+                <label>
+                    @LabelHelper.Term
+                </label>
+                <span class="relative">
+                    <select id="ftTermSelect"></select>
+                </span>
+            </p>
+        </div>
+        <div style="width: 45%; margin-left: 68px; float: left" class="groupSelect">
+            <p id="pftClassSelect">
+                <label>
+                    Class
+                </label>
+                <span class="relative">
+                    <select id="ftClassSelect"></select>
+                </span>
+            </p>           
+        </div>
+    </div>
+</fieldset>
+<style>
+    .groupSelect select {
+        width: 390px !important;
+    }
+
+    .form select {
+        width: 390px;
+    }
+</style>
+<script type="text/javascript">
+    $(function () {
+        @if (Model.IsPublisher)
+        {
+            <text> InitData(); </text>
+        }
+        else
+        {
+            <text>
+                var districtId = $('#CurrentDistrictId').val();
+                if (districtId != -1) {
+                    ShowBlock($('#stDistrict'), "Load Data");
+                    LoadTestBank(districtId);
+                    $('#stDistrict').unblock();
+                }
+            </text>
+        }
+    });
+    function InitData() {
+        $.get('@Url.Action("GetAllDistrict", "ChytenReport")', function (districts) {
+            AddSelectListItems($('#districtSelect'), districts, 'Select @LabelHelper.DistrictLabel');
+        });
+    }
+
+    $('#districtSelect').change(function () {
+        HideMessage();
+        HideResultContent();
+        $("#testBankSelect").empty();
+        $("#ftSchoolSelect").empty();
+        $("#ftTeacherSelect").empty();
+        $("#ftTermSelect").empty();
+        $("#ftClassSelect").empty();
+        var districtId = $('#districtSelect').val();
+        if (districtId != -1) {
+            ShowBlock($('#stDistrict'), "Load Data");
+            LoadTestBank(districtId);
+            $('#stDistrict').unblock();
+        }
+        CurrentPageShowHideReviewButton(0);
+    });
+    function HideMessage() {
+        //alert("Clear Message");
+        $('#success-message').html('');
+        $('#error-messages').html('');
+        $('#success-message').hide();
+        $('#error-messages').hide();
+    }
+    function LoadTestBank(districtId) {
+        
+        $("#testBankSelect").empty();
+
+        ShowBlock($('#stDistrict'), "Load Test Bank");
+        $.get('@Url.Action("GetTestBankByDistrictId", "ChytenReport")', { districtId: districtId }, function (banks) {
+            AddSelectListItems($('#testBankSelect'), banks, 'Select Test Bank');
+            $('#stDistrict').unblock();
+        }).fail(function () {
+            //TODO: end waiting
+            $('#stDistrict').unblock();
+        });
+    }
+    
+    $('#testBankSelect').change(function () {
+        HideMessage();
+        HideResultContent();
+        CurrentPageShowHideReviewButton(1);
+        LoadChildrenFilter();
+    });
+    /// end parent filter
+
+    //Childrent filter
+    function LoadChildrenFilter() {
+        
+        //TODO: clear data on dropdown
+        $("#ftSchoolSelect").empty();      
+        $("#ftTeacherSelect").empty();
+        $("#ftTermSelect").empty();
+        $("#ftClassSelect").empty();
+
+        var testBankSelect = $('#testBankSelect').val();
+
+        if (testBankSelect == -1) {
+            return;
+        }
+        //TODO: GetDistrictId
+        var districtId = GetDistrictId();
+        LoadSchoolFilter(districtId, testBankSelect);
+    }
+    function LoadSchoolFilter(districtId, bankId) {
+        $.ajax({
+            url: '@Url.Action("GetSchoolTestResultDistrict", "ChytenReport")',
+            data: { districtId: districtId, bankId: bankId},
+            type: 'GET',
+            async: false,
+            success: function (data, textStatus, jqXHR) {
+                AddSelectListItems($('#ftSchoolSelect'), data, 'Select School');
+            }
+        }).fail(function () {
+            //TODO: end waiting
+           // $('#stDistrict').unblock();
+        });
+        //$('#stDistrict').unblock();
+    }
+    $('#ftSchoolSelect').change(function () {
+        
+        //ShowBlock($('#stDistrict'), "Loading");
+        HideResultContent();
+        setTimeout(
+            function () {
+                LoadChildrenHierarchy(1);
+            }, 100);
+    });
+    $('#ftTeacherSelect').change(function () {
+        
+        //ShowBlock($('#stDistrict'), "Loading");
+        HideResultContent();
+        setTimeout(
+            function () {
+                LoadChildrenHierarchy(2);
+            }, 100);
+    });
+    $('#ftTermSelect').change(function () {
+        
+        //ShowBlock($('#stDistrict'), "Loading");
+        HideResultContent();
+        setTimeout(
+            function () {
+                LoadChildrenHierarchy(3);
+            }, 100);
+    });
+    
+    function LoadChildrenHierarchy(index) {
+        
+        var bankId = $('#testBankSelect').val();
+        if (bankId == -1) {
+            return;
+        }
+        //TODO: GetDistrictId
+        var districtId = GetDistrictId();
+        
+        //Children Filter
+        var schoolId = 0;
+        if ($('#ftSchoolSelect').val() != null && $('#ftSchoolSelect').val() > 0) {
+            schoolId = $('#ftSchoolSelect').val();
+        }
+        var teacherId = 0;
+        if ($('#ftTeacherSelect').val() != null && $('#ftTeacherSelect').val() > 0) {
+            teacherId = $('#ftTeacherSelect').val();
+        }
+        var termId = 0;
+        if ($('#ftTermSelect').val() != null && $('#ftTermSelect').val() > 0) {
+            termId = $('#ftTermSelect').val();
+        }
+        switch (index) {
+            case 1: //TODO SchoolFilter Selected
+                {
+                    LoadTeacherFilter(districtId, bankId, schoolId);
+                    //LoadTermFilter(districtId, bankId, schoolId, teacherId);
+                    //LoadClassFilter(districtId, bankId, schoolId, teacherId, termId);
+                } break;
+
+            case 2: //TODO TeacherFilter Selected
+                {                    
+                    LoadTermFilter(districtId, bankId, schoolId, teacherId);
+                    //LoadClassFilter(districtId, bankId, schoolId, teacherId, termId);
+                } break;
+            case 3: //TODO TermFilter Selected
+                {                   
+                    LoadClassFilter(districtId, bankId, schoolId, teacherId, termId);
+                } break;
+        }
+    }
+   
+    function LoadTeacherFilter(districtId, bankId, schoolId) {
+        
+        $('#ftTeacherSelect').empty();
+        $("#pftTeacherSelect").show();
+        //ShowBlock($('#stDistrict'), "Load Teacher Filter");
+        ////Show overlay incase ajax is async = false
+        //$(".blockOverlay").css({ "opacity": "0.5" });
+        //$(".blockMsg").css({ "opacity": "1" });
+        
+        $.ajax({
+            url: '@Url.Action("GetTeacherTestResultDistrict", "ChytenReport")',
+            data: { districtId: districtId, bankId: bankId, schoolId: schoolId},
+            type: 'GET',
+            async: false,
+            success: function (data, textStatus, jqXHR) {
+                AddSelectListItems($('#ftTeacherSelect'), data, 'Select Teacher');
+            }
+        }).fail(function () {
+            //TODO: end waiting
+            //$('#stDistrict').unblock();
+        });
+        //$('#stDistrict').unblock();
+    }
+    function LoadTermFilter(districtId, bankId, schoolId, teacherId) {
+                
+        $('#ftTermSelect').empty();
+        $("#pftTermSelect").show();
+        //ShowBlock($('#stDistrict'), "Load Term Filter");
+        ////Show overlay incase ajax is async = false
+        //$(".blockOverlay").css({ "opacity": "0.5" });
+        //$(".blockMsg").css({ "opacity": "1" });
+        $.ajax({
+            url: '@Url.Action("GetTermTestResultDistrict", "ChytenReport")',
+            data: { districtId: districtId, bankId: bankId, schoolId: schoolId, teacherId: teacherId},
+            type: 'GET',
+            async: false,
+            success: function (termTestResults, textStatus, jqXHR) {
+                AddSelectListItems($('#ftTermSelect'), termTestResults, 'Select @LabelHelper.Term');
+            }
+        }).fail(function () {
+            //TODO: end waiting
+            //$('#stDistrict').unblock();
+        });
+        //$('#stDistrict').unblock();
+    }
+    function LoadClassFilter(districtId, bankId, schoolId, teacherId, termId) {        
+        $('#ftClassSelect').empty();        
+        $("#pftClassSelect").show();
+        //ShowBlock($('#stDistrict'), "Load Class Filter");
+
+        ////Show overlay incase ajax is async = false
+        //$(".blockOverlay").css({ "opacity": "0.5" });
+        //$(".blockMsg").css({ "opacity": "1" });
+        
+        $.ajax({
+            url: '@Url.Action("GetClassTestResultDistrict", "ChytenReport")',
+            data: { districtId: districtId, bankId: bankId, schoolId: schoolId, teacherId: teacherId, termId: termId },
+            type: 'GET',
+            async: false,
+            success: function (data, textStatus, jqXHR) {                
+                AddSelectListItems($('#ftClassSelect'), data, 'Select Class');                
+            }
+        }).fail(function () {
+            //TODO: end waiting
+            //$('#stDistrict').unblock();
+        });
+        //$('#stDistrict').unblock();
+    }
+    
+    function GetDistrictId() {
+        
+        var tmp = $('#CurrentDistrictId').val();
+        if (tmp > 0) {
+            return tmp;
+        } else {
+            tmp = $('#districtSelect').val();
+        }
+        return tmp;
+    }
+    
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            //selectList.html('<option>No Results Found</option>');
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                        .attr("value", value.Id)
+                        .text(value.Name));
+        });
+
+    }
+   
+    function ClearAll() {
+        $("#testBankSelect").empty();
+        $("#ftSchoolSelect").empty();
+        $("#ftTeacherSelect").empty();
+        $("#ftTermSelect").empty();
+        $("#ftClassSelect").empty();        
+        $('#btnSubmitSelected').attr("disabled", "disabled");        
+    }
+    
+    function GetTestResultByConditional() {
+        
+        var districtId = GetDistrictId();
+        var bankId = 0;
+        if ($('#testBankSelect').val() != null && $('#testBankSelect').val() > 0) {
+            bankId = $('#testBankSelect').val();
+        }
+
+        var schoolId = 0;
+        if ($('#ftSchoolSelect').val() != null && $('#ftSchoolSelect').val() > 0) {
+            schoolId = $('#ftSchoolSelect').val();
+        }
+        var teacherId = 0;
+        if ($('#ftTeacherSelect').val() != null && $('#ftTeacherSelect').val() > 0) {
+            teacherId = $('#ftTeacherSelect').val();
+        }
+        var termId = 0;
+        if ($('#ftTermSelect').val() != null && $('#ftTermSelect').val() > 0) {
+            termId = $('#ftTermSelect').val();
+        }
+        var classId = 0;
+        if ($('#ftClassSelect').val() != null && $('#ftClassSelect').val() > 0) {
+            classId = $('#ftClassSelect').val();
+        }
+        
+        $('#divTestResultDisplay').empty();
+
+        $('#divTestResultDisplay').load('@Url.Action("LoadTestResultByFilter")', { districtId: districtId, bankId: bankId, classId: classId, schoolId: schoolId, teacherId: teacherId, termId: termId }, function (response) {
+            $('#adminContent').unblock();
+            $('html,body').animate({ scrollTop: $('#divTestResultDisplay').offset().top }, 'slow');
+            //if (typeof (showFooter) === 'function') showFooter();
+        });
+    }
+</script>

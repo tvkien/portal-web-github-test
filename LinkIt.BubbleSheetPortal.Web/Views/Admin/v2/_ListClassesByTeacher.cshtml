@@ -1,0 +1,221 @@
+﻿@model LinkIt.BubbleSheetPortal.Models.User
+<div class="class-title">@Model.LastName</div>
+<article class="container_12">
+    <section class="grid_7">
+        <div class="block-border">
+            <div class="block-content form">
+                <ul style="display: none" id="error-messages-classList" class="message error">
+                </ul>
+                <h1>
+                    Manage Class
+                    <a id="addNewClass" href="javascript:void(0)">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Add new class
+                    </a>
+                </h1>
+                <p style="height: 5px"></p>
+                <table id="dataTable" width="100%" cellspacing="0" class="datatable table no-margin">
+                    <thead>
+                        <tr>
+                            <th class="sorting_disabled" scope="col">
+                                <input type="checkbox" id="chkAllClass"/>
+                            </th>
+                            <th class="table-actions sorting_disabled" scope="col"></th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up"class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>Name
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up"class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>@LabelHelper.Term
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up"class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>Primary Teacher
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <div class="clear-10"></div>
+                <div>
+                    <button id="btnBatchRemoveClass" type="submit" name="Remove" disabled="disabled" onclick="deleteBatchClass()">Remove</button>
+                </div>
+                <div class="clear-10"></div>
+            </div>
+        </div>
+    </section>
+</article>
+<input type="hidden" id="hidClassId" value="" />
+<script type="text/javascript">
+    function LoadClassToTable()
+    {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetClassesByUserId", "ManageClasses")?userID=@Model.Id&schoolID=',
+            bAutoWidth: false,
+            iDisplayLength: 6,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'ID', bVisible: true, bSearchable: false, bSortable: false },
+                { sType: 'integer', sName: 'UserID', bVisible: true, bSearchable: false, bSortable: false, sWidth: "50px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Term', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'PrimaryTeacher', bVisible: false, bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'Locked', bVisible: false, bSearchable: false, bSortable: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBox(aData[0]));
+                $('td:eq(1)', nRow).html(setIconVisibility(aData[0], aData[1]));
+                return nRow;
+            }
+        };
+        $("#dataTable").data("options", options);
+        initializeDataTable($("#dataTable"));
+    }
+
+    function setCheckBox(classID) {
+        var checkboxString = '<input type="checkbox" name="chkClass" value="' + classID + '" />';
+        return checkboxString;
+    }
+
+    function setIconVisibility(classID) {
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a href="javascript:void(0)" title="Edit" classId="' + classID + '" class="with-tip editClass"><img src="' + editIcon + '" width="16" height="16"></a>';
+
+        var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var deleteString = '<a href="javascript:void(0)" title="Delete" classId="' + classID + '" class="with-tip deleteClass" onclick="deleteClass(this)"><img src="' + deleteIcon + '" width="16" height="16"></a>';           
+        
+        return editString + deleteString;
+    }
+
+    $('#uploadCancel').click(function () {
+        $('#upload-block').hide();
+    });
+    
+    function deleteClass (e) {
+        if (confirm('Are you sure you want to delete this class?') == false) return;
+        var classID = $(e).attr('classId');
+        $('#error-messages-classList').hide();
+        $.ajax({
+            url: '@Url.Action("DeleteClass", "ManageClasses")',
+            type: 'POST',
+            data: {classId: classID},
+            success: function (response) {
+                if (response.Success != false) {
+                    LoadClassToTable();
+                    initializeDataTable($("#dataTable"));
+                }
+                else {
+                    addErrorMessagesToList(response, 'error-messages-classList');
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+
+    function deleteBatchClass() {
+        if (confirm('Are you sure you want to delete these classes?') == false) return;
+        var removeClassIds = getSelectedClassIds();
+        $('#error-messages-classList').hide();
+        $.ajax({
+            url: '@Url.Action("DeleteBatchClasses", "ManageClasses")',
+            type: 'POST',
+            data: {listIds: removeClassIds},
+            success: function (response) {
+                if (response.Success != false) {
+                    LoadClassToTable();
+                    initializeDataTable($("#dataTable"));
+                }
+                else {
+                    addErrorMessagesToList(response, 'error-messages-classList');
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+    
+    $('#dataTable').on('click', '.editClass', function () {
+        var classID = $(this).attr('classId');
+        if (classID != undefined) {
+            var url = '@Url.Action("EditClass", "ManageClasses")/' + classID;
+            window.location.href = url;
+        }
+    });
+
+    $('#addNewClass').click(function() {
+        location.href = "/Admin/AddClass";
+    });
+
+    $('INPUT[name="chkClass"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkClass"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllClass').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllClass').attr('checked', 'checked');
+            }
+            setDisabledButtons(false);
+        }
+        else {
+            $('#chkAllClass').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkClass"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                setDisabledButtons(false);
+            }
+            else {
+                setDisabledButtons(true);
+            }
+        }
+    });
+
+    $('#chkAllClass').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkClass"][type=checkbox]').attr('checked', 'checked');
+            setDisabledButtons(false);
+        }
+        else {
+            $('INPUT[name="chkClass"][type=checkbox]').removeAttr('checked');
+            setDisabledButtons(true);
+        }
+    });
+
+    function setDisabledButtons(isDisabled) {
+        if (isDisabled) {
+            $('#btnBatchRemoveClass').attr('disabled', 'disabled');
+        }
+        else {
+            $('#btnBatchRemoveClass').removeAttr('disabled');
+        }
+    }
+
+    function getSelectedClassIds() {
+        var classIds = '';
+        $('INPUT[name="chkClass"][type=checkbox]:checked').each(function (i, e) {
+            classIds += $(e).val() + ',';
+        });
+        return classIds.substr(0, classIds.length - 1);
+    }
+
+    $(function () {
+        LoadClassToTable();
+    });
+</script>

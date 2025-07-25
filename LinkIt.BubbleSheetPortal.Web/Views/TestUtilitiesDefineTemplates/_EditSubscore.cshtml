@@ -1,0 +1,200 @@
+@model LinkIt.BubbleSheetPortal.Models.VirtualTestCustomSubScore
+<div class="columns sgo-columns" id="divEditSubscore_@(Model.VirtualTestCustomSubScoreId)">
+    <div class="coolfieldset fieldset-datapoint " id="editsubscorefs_@(Model.VirtualTestCustomSubScoreId)">
+        <legend class="js-arrangeable custom-js-arrangeable" id="c@(Model.VirtualTestCustomSubScoreId)">
+            <legend class="border-0 p-0 d-flex">
+                <span class="js-arrangeable dnd-arrangeable custom-dnd-arrangeable">
+                    <span class="icon-arrangeable">
+                        <i class="fa-solid fa-grip-vertical icon-grey"></i>
+                    </span>
+                </span>
+                <span class="subscore-name">@Model.Name</span>
+            </legend>
+            <i class="fa-solid fa-chevron-down icon-arrow"></i>
+        </legend>
+
+        <div class="p-3">
+            <div class="row mb-3 align-items-center">
+                <label>Name</label>
+                <div class="col-4">
+                    <div>
+                        <input class="w-100" type="text" maxlength="200" id="SubscoreName_@(Model.VirtualTestCustomSubScoreId)" value="@Model.Name" />
+                    </div>
+                </div>
+                <div class="col-2 text-start">
+                    <div>
+                        <button onclick="updateSubscoreName('@Model.VirtualTestCustomScoreId', '@Model.VirtualTestCustomSubScoreId')" class="btn-accept" type="button">Save Name</button>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="d-flex justify-content-end align-items-center">
+                        <div>
+                            <span onclick="deleteSubscoreName('@Model.VirtualTestCustomScoreId', '@Model.VirtualTestCustomSubScoreId')" class="text-navy fw-bold" type="button">Delete Subscore</span>
+                        </div>
+                        <a href="javascript:void(0)" class="CreateOverallScore-@(Model.VirtualTestCustomSubScoreId) btn btn-link py-0 mr-4">
+                            Add Score Column
+                            <i class="fa-solid fa-plus ms-2"></i>
+                        </a>
+                    </div>
+                    <div class="d-flex justify-content-end align-items-center">
+                        <a href="javascript:void(0)"
+                           id="conversionTableBtn_@(Model.VirtualTestCustomSubScoreId)"
+                           class="btn btn-link btnUploadConversionTable_@(Model.VirtualTestCustomSubScoreId)"
+                           onclick="showUploadConversionTableForSubScorePopup(@Model.VirtualTestCustomSubScoreId)">
+                            Upload Conversion Table
+                        </a>
+                        <a href="javascript:void(0)" class="btn btn-link" onclick="showAddTagPopup(@Model.VirtualTestCustomSubScoreId)">
+                            Generate Subscore by Item Tag
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                @Html.Partial("_SubscoreScoreTypeList")
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    $(function() {
+        $('#editsubscorefs_@(Model.VirtualTestCustomSubScoreId)').coolfieldset({ collapsed: true });
+
+        if ('@Model.HasConversionSet' === 'True') {
+            showReplaceConversionTableBtnForSubScore(@Model.VirtualTestCustomSubScoreId);
+        }
+    });
+
+    function updateSubscoreName(virtualTestCustomScoreId, virtualTestCustomSubScoreId) {
+        if ($('#SubscoreName_' + virtualTestCustomSubScoreId).val().trim().length == 0) {
+            customAlertMessage({ message: 'Please input the name of new subscore.', customClass: 'new-style-popup'});
+            return;
+        }
+        var url = '@Url.Action("SaveSubscoreName")';
+        var subscoreName = $('#SubscoreName_' + virtualTestCustomSubScoreId).val().trim();
+        var data = {
+            VirtualTestCustomScoreId: virtualTestCustomScoreId,
+            VirtualTestCustomSubScoreId: virtualTestCustomSubScoreId,
+            name: encodeURIComponent(subscoreName)
+        };
+        ShowBlock($('#divEditSubscore_' + virtualTestCustomSubScoreId), 'Updating');
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data
+        }).done(function(response) {
+            if (response.success) {
+
+            } else {
+                customAlertMessage({ message: response.error, customClass: 'new-style-popup'});
+            }
+            $('#divEditSubscore_' + virtualTestCustomSubScoreId).unblock();
+            $('#lgSubscoreName_' + virtualTestCustomSubScoreId).text(subscoreName);
+            $('#c' + virtualTestCustomSubScoreId + ' .subscore-name').text(subscoreName);
+        });
+    }
+
+    function deleteSubscoreName(virtualTestCustomScoreId, virtualTestCustomSubScoreId) {
+        var subscoreNameCtrlId = 'SubscoreName_' + virtualTestCustomSubScoreId;
+        var subscoreName = $('#' + subscoreNameCtrlId).val();
+        CustomConfirm({
+            message: 'Are you sure you want to delete ' + subscoreName + '?',
+            textLeft: true,
+            customClass: 'new-style-popup',
+            yes: function() {
+                ShowBlock($('#divEditSubscore_' + virtualTestCustomSubScoreId), "Deleting");
+                $.post('@Url.Action("DeleteSubscore")', { VirtualTestCustomScoreId: virtualTestCustomScoreId, VirtualTestCustomSubScoreId: virtualTestCustomSubScoreId }, function(response) {
+                    $('#divEditSubscore_' + virtualTestCustomSubScoreId).unblock();
+                    if (response.success == true) {
+                        customAlertMessage({ message: 'Subscore has been deleted.', customClass: 'new-style-popup'});
+                        //raise event delete subscore complete
+                        var evt = new CustomEvent('DataLocker_EditSubscore_DeleteSubscoreSucess', { detail: response.subscoreId });
+                        window.dispatchEvent(evt);
+                        delete subScoreColumnForCalculate[subscoreNameCtrlId];
+                        delete listDisableSub[subscoreNameCtrlId];
+                        delete listDisableScore[subscoreNameCtrlId];
+                    } else {
+                        customAlertMessage({ message: response.error, customClass: 'new-style-popup'});
+                    }
+                });
+            },
+            no: function() {
+            },
+            open: function() {
+            },
+            close: function() {
+            }
+        });
+    }
+
+    function showUploadConversionTableForSubScorePopup(virtualTestCustomSubScoreId) {
+        var url = '@Url.Action("ShowUploadConversionTablePopup")?virtualTestCustomScoreId=@Model.VirtualTestCustomScoreId&virtualTestCustomSubScoreId=' + virtualTestCustomSubScoreId;
+
+        var worker = $('<div />');
+        worker
+            .addClass("dialog")
+            .attr("id", "divUploadConversionTablePopup")
+            .appendTo("body")
+            .load(url, function (response, status) {
+                worker.dialog({
+                    title: $(this).attr("Upload Conversion Table"),
+                    close: function () {
+                        $('.ui-widget-overlay').remove();
+                    },
+                    modal: false,
+                    width: 700,
+                    resizable: false
+                });
+            });
+
+        showModalDialogBG();
+    }
+
+    function showAddTagPopup(virtualTestCustomSubScoreId) {
+        var worker = $('<div />');
+        worker
+            .addClass("dialog")
+            .attr("id", "divAddTagPopup")
+            .appendTo("body")
+            .load('@Url.Action("ShowAddTagPopup")?virtualTestCustomSubScoreId=' + virtualTestCustomSubScoreId, function (response, status) {
+                worker.dialog({
+                    title: $(this).attr("Add Tag"),
+                    close: function () {
+                        $('.ui-widget-overlay').remove();
+                    },
+                    modal: false,
+                    width: 700,
+                    resizable: false
+                });
+            });
+
+        showModalDialogBG();
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    function showReplaceConversionTableBtnForSubScore(virtualTestCustomSubScoreId) {
+        var uploadConversionTableBtn = document.getElementById('conversionTableBtn_' + virtualTestCustomSubScoreId);
+        uploadConversionTableBtn.innerHTML = 'Replace Conversion Table';
+
+        $('.CreateOverallScore-' + virtualTestCustomSubScoreId).hide();
+        hasConversionSetSubScore[`${virtualTestCustomSubScoreId}`] = true;
+    }
+</script>
+
+<style>
+    #addTagDialog {
+        padding: 0;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-addTagDialog"] .ui-dialog-titlebar {
+        display: none;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-addTagDialog"] {
+        width: auto !important;
+    }
+</style>

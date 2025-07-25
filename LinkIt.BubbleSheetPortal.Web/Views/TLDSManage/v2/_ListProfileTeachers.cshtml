@@ -1,0 +1,184 @@
+<div>
+    <div  id="divOnTopTeacherProfile">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <p class="title-large">Early Childhood Educator Details</p>
+            <div class="pointer btn btn-link p-0" id="btnCreateProfileTeacher">
+                Add Educator Profile
+                <i class="fa-solid fa-plus ms-2"></i>
+            </div>
+        </div>
+
+        <table id="dataTableProfileTeachers" width="100%" cellspacing="0" class="datatable table no-margin">
+            <thead>
+                <tr>
+                    <th scope="col">Actions</th>
+                    <th scope="col">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Educator Name
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Level of Qualification
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Position
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="height: 60px;"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        var textSearch = sessionStorage.getItem('textSearch') === null ? '' : sessionStorage.getItem('textSearch');
+        var options = {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("ListProfileTeachers")',
+            bInfo: true,
+            oSearch: {
+                sSearch: textSearch
+            },
+            oLanguage: { sSearch: "" },
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'TLDSProfileTeacherID', bSearchable: false, bSortable: false, sWidth: '90px', sClass: 'text-center' },
+                { sType: 'string', sName: 'EducatorName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'TLDSLevelQualificationName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Position', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0], aData));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableProfileTeachers'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableProfileTeachers').unblock();
+                $('.with-tip').tip();
+                searchDelay($("#dataTable_filter input[type='text']"), $("#dataTableProfileTeachers"));
+            },
+            bDestroy: true,
+        };
+
+        $("#dataTableProfileTeachers").data("options", options);
+
+        initializeDataTable($("#dataTableProfileTeachers"));
+
+        function setIconVisibility(tldsProfileTeacherID) {
+            var editIcon = '<i class="custom-icon fa-solid fa-pencil icon-grey me-2"></i>';
+            var editElement = '<a href="javascript:void()" title="Edit" class="with-tip pIcon pointer" onclick="editProfileTeacher(' + tldsProfileTeacherID + ')">' + editIcon + '</a>';
+
+            var deactiveIcon = '<i class="custom-icon fa-solid fa-circle-xmark icon-red"></i>';
+            var iconString = '<a href="javascript:void()" title="Remove" class="with-tip pIcon pointer" onclick="removeTeacherProfle('+tldsProfileTeacherID+')">' + deactiveIcon + '</a>';
+
+            return editElement + '&nbsp;' + iconString;
+        }
+    });
+
+    function editProfileTeacher(profileId) {
+        var data = $('#dataTableProfileTeachers').dataTable().fnGetData();
+        var profile = null;
+        for (var i = 0; i < data.length; i++) {
+            if (data[i][0] == profileId) {
+                profile = {
+                    id: data[i][0],
+                    name: data[i][1],
+                    level: data[i][2],
+                    position: data[i][3]
+                };
+                break;
+            }
+        }
+
+        openProfileTeacherForm(profile);
+    }
+
+    function removeTeacherProfle(teacherProlfieId) {
+        var url = '/TLDSManage/RemoveTeacherProfile?teacherprofileid=' + teacherProlfieId;
+        //ShowBlock($('#dataTableProfileTeachers'), "Loading");
+        $.ajax({
+            url: url,
+        }).done(function (res) {
+            if (res.success) {
+                 var dataTable = $('#dataTableProfileTeachers').dataTable();
+                 dataTable.fnDraw();
+            } else {
+                //$('#dataTableProfileTeachers').unblock();
+                alert(res.message);
+            }
+        });
+    };
+
+    $('#btnCreateProfileTeacher').click(function () {
+        openProfileTeacherForm();
+    });
+
+    function openProfileTeacherForm(profile) {
+        var url = '@Url.Action("CreateProfileTeacher")';
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+
+                $("#divOnTopTeacherProfile").append('<div id="popupCreateProfileTeacher" class="dialog"></div>');
+                $("#popupCreateProfileTeacher").append(html);
+                $('#popupCreateProfileTeacher').dialog({
+                    title: "",
+                    open: function () {
+                        isOpeningLoadCreateProgramDialog = false;
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#dataTableProfileTeachers').dataTable().fnDraw(false);
+                        $('#popupCreateProfileTeacher').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+                if (profile) {
+                    $("#frmAddTeacherProfileTitle").text("Edit Educator Profile");
+                    $("#TLDSProfileTeacherID").val(profile.id);
+                    $("#EducatorName").val(profile.name);
+                    $("#Position").val(profile.position);
+
+                    var levleElements = $("#TLDSLevelQualificationID option");
+                    for (var i = 0; i < levleElements.length; i++) {
+                        if ($(levleElements[i]).text() == profile.level) {
+                            $("#TLDSLevelQualificationID").val($(levleElements[i]).val());
+                        }
+                    }
+                }
+
+            });
+        }
+</script>
+

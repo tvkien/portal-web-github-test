@@ -1,0 +1,678 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.LearningLibrarySearchViewModel
+@{
+    ViewBag.Title = "Filter Learning Resources";
+}
+
+<style type="text/css">
+    html {
+        overflow-x: auto;
+    }
+
+    .plButton {
+        text-align: center;
+        position: relative;
+        top: 47px;
+    }
+
+    #btnOk {
+        width: 79px;
+        margin-right: 10px;
+    }
+</style>
+<style type="text/css">
+    .positionAdd {
+        position: relative;
+        right: -6px;
+        top: 26px;
+    }
+
+    button {
+        margin-left: 30px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        /*top: 100px !important;*/
+        height: auto !important;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    #studentContent {
+        position: relative;
+    }
+
+    .img-center {
+        text-align: center !important;
+    }
+</style>
+<script type="text/javascript">
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results == null) {
+            return;
+        }
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+
+</script>
+
+<script type="text/javascript">
+
+    $(function () {
+
+        $('#filterSheets').unbind('click');
+        $('#filterSheets').click(function () {
+            $('#hdReceiveParameters').val('');//clear keywords parameter whenever user click on Apply Filter button
+            SetupFilters();
+        });
+
+        $('#clearFilter').unbind('click');
+        $('#clearFilter').click(function () {
+            $('input[type=text]').each(function (index) {
+                $(this).val('');
+            });
+
+            var dataTable = $('#lessonDataTable').dataTable();
+            var settings = dataTable.fnSettings();
+            settings.oPreviousSearch.sSearch = '';//TuanVo: clear current search text that user input in Search Box
+            fnResetAllFilters(settings);
+
+            $('#selectProvider').get(0).selectedIndex = 0;
+            $('#selectType').get(0).selectedIndex = 0;
+            $('#selectSubject').get(0).selectedIndex = 0;
+
+            //Reload database
+            SetupFilters();
+        });
+
+
+    });
+
+    function SetupFilters() {
+        SetupFiltersLesson();
+    }
+
+
+    function fnResetAllFilters(oSettings) {
+        for (var iCol = 0; iCol < oSettings.aoPreSearchCols.length; iCol++) {
+            oSettings.aoPreSearchCols[iCol].sSearch = '';
+
+        }
+    }
+
+
+
+</script>
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="selectFilters">
+            <div id="divFilterLessons" class="block-content form bubbleSheetSelector">
+                <h1>Filter Learning Resources</h1>
+
+                <fieldset>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <div class="mb-3">
+                                <label>@LabelHelper.GradeLabel</label>
+                                <input type="text" id="selectGrade" class="full-width with-tip" />
+                            </div>
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>Content Provider</label>
+                                <div class="block-text-name ">
+                                    <select id="selectProvider" class="full-width"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="colx2-right">
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>@LabelHelper.Subject</label>
+
+                                <div class="block-text-name ">
+                                    <select id="selectSubject" class="full-width"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>Type</label>
+
+                                <div class="block-text-name ">
+                                    <select id="selectType" class="full-width"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <button id="filterSheets" class="float-right" type="button">Apply Filters</button>
+                <button id="clearFilter" class="float-right grey" type="button" style="margin-right: 5px;">Clear Filter</button>
+                <div class="clear"></div>
+
+            </div>
+        </div>
+        <br />
+        <br />
+        <div class="block-border" id="divLessons" style="display: none;">
+            <div class="block-content form">
+                <h1>
+                    Learning Resources
+                </h1>
+                <p style="height: 11px"></p>
+                <div id="divTestStudentAssignments" class="no-margin last-child">
+                    <table id="lessonDataTable" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="black-cell"><span class="loading"></span></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Subject
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.GradeLabel
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Resource Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Type
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Content Provider
+                                </th>
+                                <th scope="col" style="display: none"></th><!--Lesson.ProviderThumbnail-->
+                                <th scope="col" style="display: none"></th><!--Lesson.LessonPath-->
+                                <th scope="col" style="display: none"></th><!--Lesson.GuidePath-->
+                                <th scope="col" style="display: none"></th><!--Lesson.Keywords-->
+                                <th scope="col" style="display: none"></th><!--Lesson.StandardGUIDString-->
+                                <th scope="col" style="display: none"></th><!--Lesson.StandardDescriptionString-->
+                                <th scope="col" style="display: none"></th><!--Lesson.StandardSubjectString-->
+                                <th scope="col" style="display: none"></th><!--Lesson.StandardNumberString-->
+
+
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="dialogManualGrading"></div>
+        <input type="hidden" id="hdGUID" />
+        <input type="hidden" id="hdParameterPageLoad" />
+        <input type="hidden" id="hdKeyWords" />
+        <input type="hidden" id="hdSearchType" />
+        <input type="hidden" id="hdGradeSearch" name="hdGradeSearch" />
+
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        //Content Provider is district
+        @* $.get('@Url.Action("GetAllDistrict")', function (data) {
+            AddSelectListItems($('#selectProvider'), data, 'All');
+        });*@
+        //Display parameters
+        //Grade
+        $('#selectGrade').val('@Model.GradeParameter');
+        $('#selectGrade').val($('#selectGrade').html('@Model.GradeParameter').text());
+        $("#hdGradeSearch").val(encodeURI($('#selectGrade').val()));
+        $('#selectProvider').marquee();
+        $('#selectSubject').marquee();
+        $('#selectType').marquee();
+        innitDropdownListDistrict('@Model.CurrentUserDistrictId');
+        PopulateContentTypes('@Model.CurrentUserDistrictId');
+        PopulateSubjects('@Model.CurrentUserDistrictId');
+        if (@Model.SubjectIdParameter > 0)
+        {
+            $('#selectSubject').val(@Model.SubjectIdParameter);
+        }
+        LoadLessonsToTable(@Model.SubjectIdParameter);
+
+
+        @*$.get('@Url.Action("GetLessonContentTypes")', function (data) {
+            AddSelectListItems($('#selectType'), data, 'All');
+        });*@
+
+        @*$.get('@Url.Action("GetLessonSubjects")', function (data) {
+            AddSelectListItems($('#selectSubject'), data, 'All');
+            if(@Model.SubjectIdParameter > 0) {
+                $('#selectSubject').val(@Model.SubjectIdParameter);
+            }
+            LoadLessonsToTable(@Model.SubjectIdParameter);
+
+        });*@
+
+        $('#selectProvider').change(function () {
+            PopulateSubjects();
+            PopulateContentTypes();
+        });
+
+        $.ajaxSetup({ cache: false });
+
+    });
+
+    function PopulateSubjects(providerId) {
+        $('#selectSubject').empty();
+
+        if (providerId === undefined)
+            providerId = $('#selectProvider').val();
+        if (providerId === 'select')
+            providerId = -1;
+
+        $.get('@Url.Action("GetLessonSubjectsByProviderId")', { providerId: providerId}, function (data) {
+            AddSelectListItems($('#selectSubject'), data, 'All');
+        });
+    }
+
+    function PopulateContentTypes(providerId) {
+        $('#selectType').empty();
+        if (providerId === undefined)
+            providerId = $('#selectProvider').val();
+        if (providerId === 'select')
+            providerId = -1;
+
+        $.get('@Url.Action("GetContentTypesByProviderId")', { providerId: providerId}, function (data) {
+            AddSelectListItems($('#selectType'), data, 'All');
+        });
+    }
+
+    $( document ).ready(function() {
+
+        if('@Model.HasParameter'=='True') {
+            $('#divLessons').show();
+        }
+        $('#hdParameterPageLoad').val('Y');//set this hidden field value to 'Y' tell us know that this is the first time search by receiving parameter, after that its value will be reset to empty
+
+        var gradeToolTip = 'To specify grades, use the formats:' + '<br>' +
+            'Range: 8-12' +'<br>' +
+            'Specific grades: 5,7,8' +'<br>' +
+            'Where 9-12 is the actual grade*: “9-12”*' +'<br>' +
+            'Combination: 5,7,8,9-12,”9-12”';
+
+        $("#selectGrade").attr( "title", '<p style="text-transform: none !important;text-align:left;font-size: 11px !important;">' + gradeToolTip + '</p>');
+
+    });
+
+    function innitDropdownListDistrict(selectedDistrictID) {
+        var dropdownSelector = '#selectProvider';
+
+        $.ajax({
+            url: '@Url.Action("GetSharedProviders")',
+            dataType: 'json',
+            async: false,
+            success: function (districts) {
+                addDefaultProviderOption($(dropdownSelector), "All");
+                //reset Select All -> All
+                addSelectListWithDefaultValue($(dropdownSelector), districts, selectedDistrictID);
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+            }
+        });
+    }
+    function LoadLessonsToTable(subjectIdParameter) {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            bProcessing: false,
+            sAjaxSource: '@Url.Action("GetLessons")',
+            cache: false,
+            sServerMethod: "POST",
+            fnServerParams: function (aoData) {
+
+                aoData.push(
+                    { name: "grade", value: $('#hdGradeSearch').val() },
+                    { name: "subjectId", value: $('#selectSubject').val() },
+                    { name: "contentProviderId", value: $('#selectProvider').val() },
+                    { name: "typeId", value: $('#selectType').val() },
+                    { name: "searchType", value: $('#hdSearchType').html('@Model.SearchType').text() },
+                    //{name: "optionalSearch", value: $('#optionalSearch').val()}
+                    { name: "guid", value: '@Model.GUID' }
+                );
+                //TuanVo: When page load, set the sSearch as Keywords parameter to let dataTable search
+                if ($('#hdParameterPageLoad').val().length > 0) {
+                    var item = null;
+                    for (var i = 0; i < aoData.length; i++) {
+                        item = aoData[i];
+                        if (item.name == 'sSearch') {
+                            $("#hdKeyWords").val('@Model.KeywordsParameter');
+                            item.value = $("#hdKeyWords").html('@Model.KeywordsParameter').text();
+                            item.value = encodeURIComponent(item.value);
+                            break;
+                        }
+                    }
+                } else {
+                    var item = null;
+                    for (var i = 0; i < aoData.length; i++) {
+                        item = aoData[i];
+                        if (item.name == 'sSearch') {
+                            if (item.value == null) {
+                                item.value = '';
+                            }
+                            //when passing parameter to searchbox then click on allpy filter, tabase does not recognize parameter, need to assign parameter to searchbox manually
+                            if (item.value.length == 0 && $("input[aria-controls|='lessonDataTable']").val().length > 0) {
+                                item.value = $("input[aria-controls|='lessonDataTable']").val();
+                            }
+
+                            //encode search box, when user input text like <a>abc </a> will issue error
+                            do {
+                                item.value = item.value.replace('""', '"');
+                            } while (item.value.indexOf('""') >= 0)
+
+                            if (item.value == '"') {
+                                item.value = item.value.replace('"', "''");
+                            } else {
+                                item.value = encodeURIComponent(item.value);
+                            }
+
+                            break; //only searchbox
+                        }
+                    }
+                }
+            },
+                iDisplayLength: 25,
+            aaSorting: [[1, "asc"],[2, "asc"], [3, "asc"], [4, "asc"], [5, "asc"]],
+            oLanguage: { "sEmptyTable": "No results found" },
+            aoColumns: [
+                { sType: 'int', sName: 'LessonId', bSearchable: true, bSortable: false, bVisible: true, sWidth: '75px' },
+                { sType: 'string', sName: 'SubjectName', bSearchable: true, bSortable: true, bVisible: true, sWidth: '120px' },
+                { sType: 'string', sName: 'GradeOrderString', bSearchable: true, bSortable: true, bVisible: true, sWidth: '80px', sClass: 'wordwrap' },
+                { sType: 'string', sName: 'LessonName', bSearchable: true, bSortable: true, bVisible: true, sWidth: '400px' },
+                { sType: 'string', sName: 'LessonType', bSearchable: true, bSortable: true, bVisible: true, sWidth: '100px' },
+                { sType: 'string', sName: 'Provider', bSearchable: true, bSortable: true, bVisible: true, sWidth: '150px' },
+                { sType: 'string', sName: 'ProviderThumbnail', bSearchable: false, bSortable: false, bVisible: false, sWidth: '120px' },
+
+
+                { sType: 'string', sName: 'LessonPath', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'GuidePath', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'Keywords', bSearchable: true, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'StandardGUIDString', bSearchable: true, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'StandardDescriptionString', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'StandardSubjectString', bSearchable: true, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'StandardNumberString', bSearchable: true, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'Grade', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'ActivateInstructionContentType', bSearchable: false, bSortable: false, bVisible: false }
+
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).parent().addClass('tableRow');
+                $('td:eq(0)', nRow).html(SetIconVisibilityLesson(aData[0], aData[7], aData[8],aData[15]));//TuanVo
+                $('td:eq(2)', nRow).html(AdjustGrade(aData[14]));
+                $('td:eq(5)', nRow).html(SetIconContentProvider($('td:eq(5)', nRow),aData[5], aData[6]));
+                $('td:eq(3)', nRow).html($('<div/>').text(aData[3]).html());//encode html
+                $('td:eq(4)', nRow).html($('<div/>').text(aData[4]).html());//encode html
+
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                $('#filterSheets').attr("disabled", "disabled");
+                ShowBlock($('#lessonDataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#divLessons').unblock();
+                $('#filterSheets').removeAttr("disabled");
+                $('#lessonDataTable').unblock();
+
+                var searchBoxToolTip = "Words separated by a space will be treated as separate search criteria. " + '<br>' +
+                    "For example, the search argument 'economics linkit' will yield results " + '<br>' +
+                    "with either 'economics' or 'linkit' in subject, @LabelHelper.GradeLabel, name, type, or " + '<br>' +
+                    "keywords associated with the resource."  ;
+
+                $( "input[aria-controls|='lessonDataTable']" ).attr( "title", '<p style="text-transform: none !important;text-align:left;font-size: 11px !important;">' + searchBoxToolTip + '</p>');
+                $( "input[aria-controls|='lessonDataTable']" ).addClass('with-tip');
+                $('.with-tip').tip();
+
+                //After the first loading data from database, display the keyword parameter on Search box and set search box value (set to settings.oPreviousSearch.sSearch)
+                if($('#hdParameterPageLoad').val().length > 0)
+                {
+                    var dataTable = $('#lessonDataTable').dataTable();
+                    var settings = dataTable.fnSettings();
+                    //settings.oPreviousSearch.sSearch = '@Model.KeywordsParameter';
+                    $( "input[aria-controls|='lessonDataTable']" ).val('@Model.KeywordsParameter');//set value for the search box
+                    $( "input[aria-controls|='lessonDataTable']" ).val( $( "input[aria-controls|='lessonDataTable']" ).html('@Model.KeywordsParameter').text());//set value for the search box
+
+                    @*if ('@Model.GUID'.length > 0) {
+                        $( "input[aria-controls|='lessonDataTable']" ).val( $( "input[aria-controls|='lessonDataTable']" ).html('@Model.KeywordsParameter' + ' ' + '@Model.GUID').text());//set value for the search box
+                    }*@
+
+                    $('#hdParameterPageLoad').val('');// reset empty for this value to make sure that this code block can be run only one time when page load ( the first time)
+                }
+
+                return true;
+
+            },
+            fnInitComplete: function () {
+
+            }
+        };
+        $("#lessonDataTable").data("options", options);
+
+    }
+    function displayClassDetailTooltip(e, data) {
+        $(e).attr('title', '<p style="text-align:left;">' + data.split('|').join('<br />') + '</p>');
+    }
+
+    function SetIconVisibilityLesson(lessonId, lessonPath, guidePath, activateInstructionContentType) {
+        var iconString = "&nbsp;&nbsp;&nbsp;";//leave space for the third icon for future use
+
+        var lessonPathIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/download-lesson.png")';
+        //external file start with http:// or https://
+        if (lessonPath != null) {
+            var lessonPathString = '';
+            if (lessonPath.indexOf("http://") == 0 || lessonPath.indexOf("https://") == 0) {
+                //external file
+
+                // If this is not activate instruction resource or external link of activate instruction resource
+                if(activateInstructionContentType == 0 || activateInstructionContentType == 2) {
+                    lessonPathString = '<a href="' + lessonPath + '" title="Launch" class="with-tip" target="_blank"><img src ="' + lessonPathIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+                }else {
+                    lessonPathString = '<a title="Launch" class="with-tip" target="_blank" href="Notification/DownloadLessonActivateInstruction/?filePath=' + encodeURIComponent(lessonPath) + '"><img src ="' + lessonPathIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+                }
+            }
+            else {
+                if (lessonPath.length == 0) {
+                    lessonPathIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/download-lesson-dis.png")';
+                    lessonPathString = '<a title="Launch" class="with-tip" href="javascript:void(0)" ><img src ="' + lessonPathIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+                } else {
+                    //internal file
+                    //alert(lessonPath);
+                    lessonPathString = '<a title="Launch" class="with-tip" target="_blank" href="Notification/DownloadLesson/?filePath=' + encodeURIComponent(lessonPath) + '"><img src ="' + lessonPathIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+                }
+            }
+            iconString += lessonPathString;
+        }
+        else {
+            lessonPathIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/download-lesson-dis.png")';
+            iconString += '<a title="Launch" class="with-tip" href="javascript:void(0)" ><img src ="' + lessonPathIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        }
+
+        var guidePathIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/download-guide.png")';
+        if (guidePath != null) {
+            var guidePathString = '';
+            if (guidePath.indexOf("http://") == 0 || guidePath.indexOf("https://") == 0) {
+                //external file
+                guidePathString = '<a href="' + guidePath + '"    title="Display Reference" class="with-tip" target="_blank"><img src ="' + guidePathIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+            }
+            else {
+                if (guidePath.length == 0) {
+                    guidePathIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/download-guide-dis.png")';
+                    guidePathString = '<a title="Display Reference" class="with-tip" href="javascript:void(0)" ><img src ="' + guidePathIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+                } else {
+                    //internal file
+                    guidePathString = '<a href="Notification/DownloadGuide/?filePath=' + encodeURIComponent(guidePath) + '" title="Display Reference" class="with-tip" target="_blank"><img src ="' + guidePathIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+                }
+            }
+            iconString += guidePathString;
+        } else {
+            guidePathIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/download-guide-dis.png")';
+            iconString += '<a title="Display Reference" class="with-tip" href="javascript:void(0)" ><img src ="' + guidePathIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        }
+
+
+        return iconString;
+    }
+    function SetIconContentProvider(td,providerName, providerThumbnail) {
+        if (providerName == null) {
+            providerName = '';
+        }
+        providerName = $('<div/>').text(providerName).html();//encode html
+        if (providerThumbnail == null) {
+            providerThumbnail = '';
+        }
+        var providerContent =  providerName ;
+        //In the content provider field, display the logo (if it is available) or the name of the content provider (if no logo is available)
+        if (providerThumbnail.length > 0) {
+            var url = providerThumbnail;
+            providerContent = '<img src ="' + url + '" height="30"  style="margin-top: -5px; margin-bottom: -5px; margin-left: 0px; margin-right: 0px">';
+            td.addClass('img-center');
+        }
+
+
+        return providerContent;
+    }
+
+    function AdjustGrade(grade) {
+        if (grade == null)
+            return '';
+        var s = grade;
+        var newGrade = '';
+        var defaultSplitLength = 15;
+        var pos = 0;
+        do {
+            if (s.length > defaultSplitLength) {
+                pos = defaultSplitLength;
+                //find the first ',' before the character index of defaultSplitLength
+                for (var i = defaultSplitLength; i--; i >= 0) {
+                    if(s[i]==',') {
+                        pos = i;
+                        break;
+                    }
+                }
+                newGrade += s.substring(0, pos+1);
+                s = s.substring(pos+1, s.length);
+                if (s.length > 0) {
+                    newGrade += "<br>";
+                }
+                if (s.length < defaultSplitLength) {
+                    newGrade += s;
+                }
+
+            } else {
+                newGrade += s;
+            }
+
+        } while (s.length > defaultSplitLength)
+
+        return newGrade;
+    }
+    function addDefaultProviderOption(selectList, objectText) {
+        selectList.empty();
+        selectList
+            .append($("<option></option>")
+                .attr("value", "select")
+                .text(objectText));
+    }
+</script>
+
+<script type="text/javascript">
+    function SetupFiltersLesson() {
+
+        $('#divLessons').show();
+        ShowBlock($('#divLessons'), 'Loading');
+        //encode grade when grade looks like <a will issue error
+        $("#hdGradeSearch").val(encodeURI($('#selectGrade').val()));
+
+        var dataTable = $('#lessonDataTable').dataTable();
+        var settings = dataTable.fnSettings();
+        fnResetAllFilters(settings);
+        dataTable.fnDraw();
+        dataTable.fnSetFilteringDelay(500);//TuanVo: delay searching when user type in search box to save time of query
+    }
+
+
+</script>
+

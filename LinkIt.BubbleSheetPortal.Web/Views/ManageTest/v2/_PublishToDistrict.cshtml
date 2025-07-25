@@ -1,0 +1,149 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.BankPublishToDistrictViewModel
+
+<article class="container_12 d-flex justify-content-center">
+    <section class="grid_7 m-0">
+        <div class="block-border">
+            <div class="form block-content p-0">
+                @using (Html.BeginForm("PublishToDistrict", "ManageTest", FormMethod.Post, new { id = "publishToDistrictForm", @class = "form" }))
+                {                
+                    <fieldset class="p-4 m-0">
+                        <p class="title-large">Choose @LabelHelper.DistrictLabel</p>
+                        <ul style="display: none" id="error-messages" class="message error my-4"></ul>
+                        <ul style="display: none" id="success-message" class="message success my-4">
+                            <li>The bank has been published to the @LabelHelper.DistrictLabel.</li>
+                        </ul>
+
+                        <div class="column">
+                            <div>
+                                <label>State</label>
+                                @Html.DropDownListFor(x => x.StateId, Model.AvailableStates, new { id = "selectStateOnPopup", @class = "full-width" })
+                            </div>
+                            <div style="margin-top: 16px">
+                                <label>@LabelHelper.DistrictLabel</label>
+                                <div class="block-text-name" style="width: 100% !important">
+                                    @Html.DropDownListFor(x => x.DistrictId, Model.AvailableDistricts, new { id = "selectDistrictOnPopup", @class = "full-width" })
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <input type="hidden" name="BankId" value="@Model.BankId" id="BankId"/>
+                    <div class="btn-wrapper-publish-district">
+                        <button id="btnCancel" type="button" onclick="displayListDistrictView()" class="btn-cancel">Cancel</button>
+                        <button id="btnSubmit" type="submit" name="Save" class="btn-red">Publish</button>
+                    </div>
+                }
+            </div>            
+        </div>
+    </section>
+</article>
+
+<style>
+    .btn-wrapper-publish-district {
+        background: var(--navyColor);
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+    }
+
+    .btn-cancel {
+        display: flex;
+        align-items: center;
+        padding: 11px 32px;
+        font-weight: 900;
+        cursor: pointer;
+        width: fit-content;
+        height: 48px;
+        box-sizing: border-box;
+        border: 0;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        text-decoration: none;
+        color: var(--white) !important;
+    }
+</style>
+
+<script type="text/javascript">
+    $(function () {
+        populateStatesOnPopup();
+        $('#selectStateOnPopup').change(function () {
+            if ($(this).val() != 'select') {
+                populateDistrictsOnPopup($('#selectDistrictOnPopup'));
+            }
+            else {
+                $('#selectDistrictOnPopup').empty();
+            }
+        });
+        $('#notification').html('');
+    });
+
+    function populateStatesOnPopup() {
+        var stateSelect = $('#selectStateOnPopup');
+        stateSelect.empty();
+        $.get('@Url.Action("GetStateByPublisherOrNetworkAdmin", "PopulateStateDistrict")', function (response) {
+            addDefaultOption(stateSelect, "State");
+            addSelectListItems(stateSelect, response);
+        });
+    }
+
+    function populateDistrictsOnPopup(districtSelect) {
+        districtSelect.empty();
+        var stateValue = $('#selectStateOnPopup').val();
+        $.get('@Url.Action("GetUnPublishedDistrictsByState")', { stateId: stateValue,bankId:@Model.BankId }, function (response) {
+            addDefaultOption(districtSelect, "@LabelHelper.DistrictLabel");
+            addSelectListItems(districtSelect, response);
+        });
+    }
+    
+    $('#publishToDistrictForm').submit(function (event) {
+
+        var stateId = $('#selectStateOnPopup').val();
+        if(stateId==null || stateId=='select' || stateId <= 0) {
+            CustomAlert('Please select state.');
+            return;
+        }
+        var districtId = $('#selectDistrictOnPopup').val();
+        if(districtId==null || districtId=='select' || districtId <= 0) {
+            CustomAlert('Please select @LabelHelper.DistrictLabel.');
+            return;
+        }
+
+        event.preventDefault();
+        $('#btnSubmit').disableBt();
+        $('#success-message').hide();
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function (response) {
+                if (response.Success != false) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                    //clearInputFields();
+                    setTimeout(function () { displayListDistrictView(); }, 2000);
+                } else {
+                    addErrorMessages(response.ErrorMessage);
+                    $('#error-messages').addClass('no-margin');
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });    
+
+    function clearInputFields() {
+        $('.full-width').val('');
+    }
+
+    function displayListDistrictView() {
+        $('#shareDistrictDiv').hide();
+        $('#listDistrictDiv').show();
+        ui.dataTablePublishedDistrict.fnDraw();
+    }
+</script>

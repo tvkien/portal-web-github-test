@@ -1,0 +1,494 @@
+@model LinkIt.BubbleSheetPortal.Models.Class
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Manage Students");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleDataLockerTemplateBundle()
+<link href="@BundleHelper.Version("~/Content/css/v2/manage-class.css")" rel="stylesheet" type="text/css" />
+
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/vue-components/vue-modal.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/vue-components/vue-component-manage-class.css")" rel="stylesheet" type="text/css" />
+<script src="@Url.Content("~/Scripts/jquery.listSplitter.js")" type="text/javascript"></script>
+
+<article class="container_12" id="classes-by-teacher-and-school">
+    <section>
+        <div class="block-border">
+            <div class="block-content form">
+                <div class="d-flex justify-content-between">
+                    <h1>@Model.Name</h1>
+                    <a class="btn btn-link d-block p-0" href="@Url.Action("ManageClass", "ManageClasses")">
+                        <i class="fa-solid fa-arrow-left me-2"></i>
+                        Back
+                    </a>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <p class="title-large mb-0">Students</p>
+                    <a class="btn btn-link p-0" id="addNewStudent" href="javascript:void(0)">
+                        Assign student
+                        <i class="fa-solid fa-plus ms-2"></i>
+                    </a>
+                </div>
+
+                <div id="ManageStudentsNotificationContainer"></div>
+
+                <div class="last-child">
+                    <table id="dataTable" class="datatable table manage-current-students center-first-column custom-width-column" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col"><input type="checkbox" id="chkAllStudent" /></th>
+                                <th scope="col" class="actions">Actions</th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Last Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    First Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Middle Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Local ID
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Gender
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.StudentGrade
+                                </th>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td style="height: 60px;"></td></tr>
+                        </tbody>
+                    </table>
+
+                    <div class="justify-content-end manage-student-groupbtn" style="display: none;">
+                        <button class="btn-blue d-block me-3" id="btnRemoveSelected" disabled="disabled">Remove</button>
+                        <button class="btn-blue d-block me-3" id="btnMoveSelected" disabled="disabled">Transfer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <modal-component v-bind:show.sync="isShowModalAssignStudent" v-bind:width="800" style="display: none;">
+        <div slot="header">
+            <a href="#" v-on:click="closeModalAddStudentClass" class="modal-component-close">Close</a>
+        </div>
+        <div slot="body">
+            @Html.Partial("v2/_AvailableStudentsEnhancements")
+        </div>
+        <div slot="footer">
+            <div class="u-text-right">
+                <button v-on:click="closeModalAddStudentClass">Close</button>
+            </div>
+        </div>
+    </modal-component>
+</article>
+<style type="text/css">
+    #dataTable_wrapper {
+        margin: 0 !important;
+    }
+</style>
+<!--[if IE]>
+    <style type="text/css">
+    #dataTable_wrapper {
+        margin-bottom: -48px !important;
+    }
+    .pButton {
+        position: relative;
+        top: 5px !important;
+    }
+</style>
+<![endif]-->
+<link href="@Url.Content("~/Content/css/dialog.css")" rel="stylesheet" type="text/css" />
+<script src=@BundleHelper.Version("/Scripts/ManageClass/App.js")></script>
+<script type="text/javascript">
+    ManageClassModel.getStudentsUrl = '@Url.Action("GetStudentsInDistrictByFilter")/?classid=';
+    ManageClassModel.addStudentsToClassUrl = '@Url.Action("AddManyStudentToClass")';
+    ManageClassModel.getSelectedStudentURL = '@Url.Action("GetSelectedStudentIncaseSelectAll")';
+    var manageStudentDt;
+
+    $(function () {
+        var classId = '@Model.Id';
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            oLanguage: { "sZeroRecords": "Make a selection and click on 'Apply Filters'", sSearch: "" },
+            sAjaxSource: '@Url.Action("GetStudentsInClass")?classID=@Model.Id',
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[2, "asc"]],
+            aoColumns: [
+                { sType: 'int', sName: 'ID', bSearchable: false, bSortable: false },
+                { sType: 'int', sName: 'StudentID', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'LastName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'FirstName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'MiddleName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Code', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Gender', bSearchable: true, bSortable: true, sWidth: '85px' },
+                { sType: 'string', sName: 'Grade', bSearchable: true, bSortable: true, sWidth: '85px' },
+                { sType: 'bool', sName: 'CanAccess', bSearchable: true, bSortable: true, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBox(aData[1]));
+                $('td:eq(1)', nRow).html(setIconVisibility(aData[1], aData[8]));
+                portalV2SkinCheckBox()
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                $('#ManageStudentsNotificationContainer .error').hide();
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+                $('#chkAllStudent').removeClass('input-checked-v2');
+            },
+            fnInitComplete: function () {
+                if ($("#dataTable_wrapper .data-table-action .manage-student-groupbtn").length === 0) {
+                    $("#dataTable_wrapper .data-table-action").prepend($(".manage-student-groupbtn").prop('outerHTML'));
+                    $("#dataTable_wrapper .data-table-action .manage-student-groupbtn").css("display", "inline-flex");
+                }
+                var elSearchLabel = $('#dataTable_filter');
+                var elSearchInput = elSearchLabel.find('input');
+                elSearchInput.attr('style', 'padding-left: 32px !important; position: relative;');
+                $('#dataTable_filter').addClass('data-search');
+            }
+        };
+
+        function setCheckBox(studentId) {
+            var checkboxString = '<input type="checkbox" name="chkStudent" value="' + studentId + '" />';
+            return checkboxString;
+        }
+
+        function setIconVisibility(studentId, canAccess) {
+            var editIcon;
+            var editString;
+            if (canAccess == 'True') {
+                editIcon = '<i class="custom-icon fa-solid fa-pencil icon-grey"></i>';
+                editString = '<a href="/ManageClasses/EditStudent/' + studentId + '" title="Edit Student" class="with-tip me-3">' + editIcon + '</a>';
+            } else {
+                editIcon = '<i class="custom-icon fa-solid fa-pencil icon-grey" style="opacity: 0.5"></i>';
+                editString = '<span title="Edit Student" class="with-tip me-3">' + editIcon + '</span>';
+            }
+
+            var deleteIcon = '<i class="custom-icon fa-solid fa-circle-xmark icon-red"></i>';
+            var deleteString = '<a href="javascript:void(0)" title="Remove" studentId="' + studentId + '" class="with-tip deleteStudent">' + deleteIcon + '</a>';
+
+            var moveIcon = '<i class="custom-icon fa-solid fa-circle-arrow-right icon-green"></i>';
+            var moveString = '<a class="with-tip transferStudent me-3" title="Transfer" studentId="' + studentId + '" href="javascript:void(0)">' + moveIcon + '</a>';
+
+            return editString + moveString + deleteString;
+        }
+
+        $("#dataTable").data("options", options);
+        manageStudentDt = initializeDataTable($("#dataTable"));
+
+        function bindEvents() {
+            $('#addNewStudent').click(function (e) {
+                e.preventDefault();
+
+                // openAddStudentDialog();
+                $.get('@Url.Action("GetAvailableStudentsEnhancement")', { classId: classId })
+                    .done(function (response) {
+                        ManageClassModel.classId = classId;
+                        ManageClassModel.showInactive = false;
+                        ManageClassModel.manageClass.programs = response.Programs;
+                        ManageClassModel.manageClass.grades = response.Grades;
+                        ManageClassModel.isShowModalAssignStudent = true;
+                        ManageClassModel.manageClass.programSelected = [];
+                        ManageClassModel.manageClass.gradesSelected = [];
+                        ManageClassModel.isShowAddNewStudent = response.IsShowAddNewStudent;
+                        displayFilterManageClass();
+                        registerEvent();
+                    });
+            });
+
+            $('.dataadmin').addClass('current');
+            $('#dtaManageClasses').addClass('current');
+
+            $.subscribe('manageClass/studentAssigned', function (event, sender) {
+                ui.dataTable.fnDraw();
+            });
+
+            $.subscribe('manageClass/transferStudentSuccess', function (event, sender) {
+                LinkIt.success('#ManageStudentsNotificationContainer', 'Students successfully transferred to other class.');
+                ui.dataTable.fnDraw();
+            });
+
+            $.subscribe('manageClass/transferStudentError', function (event, errorList) {
+                LinkIt.error('#ManageStudentsNotificationContainer', JSON.parse(errorList));
+                ui.dataTable.fnDraw();
+            });
+        }
+
+        function openAddStudentDialog() {
+            var worker = $('<div />');
+
+            worker
+                .addClass("dialog")
+                .attr("id", "assignStudentsDialog")
+                .appendTo("body")
+                .load('@Url.Action("GetAvailableStudents")/?classId=' + classId, function () {
+                    worker.dialog({
+                        title: $(this).attr("Assign Students"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                        },
+                        modal: false,
+                        width: 650,
+                        resizable: false
+                    });
+                });
+        }
+
+        bindEvents();
+    });
+
+    function ClosePopup(refreshGrid) {
+        $(".dialog").dialog("close");
+        if (refreshGrid == true) {
+            ui.dataTable.fnDraw();
+            $('#chkAllStudent').removeAttr('checked');
+            setDisabledButtons(true);
+        }
+    }
+
+    $('#dataTable').on('click', '#chkAllStudent', function () {
+        if (this.checked) {
+            $('INPUT[name="chkStudent"][type=checkbox]').attr('checked', 'checked');
+            setDisabledButtons(false);
+        }
+        else {
+            $('INPUT[name="chkStudent"][type=checkbox]').removeAttr('checked');
+            setDisabledButtons(true);
+        }
+    });
+
+    function setDisabledButtons(isDisabled) {
+        if (isDisabled) {
+            $('#btnRemoveSelected').attr('disabled', 'disabled');
+            $('#btnMoveSelected').attr('disabled', 'disabled');
+        }
+        else {
+            $('#btnRemoveSelected').removeAttr('disabled');
+            $('#btnMoveSelected').removeAttr('disabled');
+        }
+    }
+
+    $('#dataTable').on('click', 'INPUT[name="chkStudent"][type=checkbox]', function () {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkStudent"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllStudent').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllStudent').attr('checked', 'checked');
+            }
+            setDisabledButtons(false);
+        }
+        else {
+            $('#chkAllStudent').removeAttr('checked');
+            $('#chkAllStudent').removeClass('input-checked-v2');
+            var checkedboxes = $('INPUT[name="chkStudent"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                setDisabledButtons(false);
+            }
+            else {
+                setDisabledButtons(true);
+            }
+        }
+    });
+
+    function getSelectedStudentIds() {
+        var studentIds = '';
+        $('INPUT[name="chkStudent"][type=checkbox]:checked').each(function (i, e) {
+            studentIds += $(e).val() + ',';
+        });
+        return studentIds.substr(0, studentIds.length - 1);
+    }
+
+    $('#dataTable').on('click', '.deleteStudent', function () {
+        deleteStudent($(this));
+    });
+
+    $('body').on('click', '#btnRemoveSelected', function () {
+        deleteStudent(null);
+    });
+
+    $('#dataTable').on('click', '.transferStudent', function () {
+        LoadMoveStudentsForm($(this));
+    });
+
+    $('body').on('click', '#btnMoveSelected', function () {
+        LoadMoveStudentsForm(null);
+    });
+
+    @*function deleteStudent(e) {
+        var removedStudentIds = '';
+        var confirmAlert = '';
+        if (e != null) {
+            removedStudentIds = $(e).attr('studentId');
+            confirmAlert = "Are you sure you want to remove this student?";
+        }
+        else {
+            removedStudentIds = getSelectedStudentIds();
+
+            if (removedStudentIds == '') {
+                alert('Please select students to remove');
+                return;
+            }
+
+            confirmAlert = "Are you sure you want to remove selected student(s)?";
+        }
+        if (confirm(confirmAlert)) {
+            setDisabledButtons(true);
+            var classId = '@Model.Id';
+            $.post('@Url.Action("RemoveStudentFromClass")', { classId: classId, removedStudentIds: removedStudentIds }, function (response) {
+                if (response.success == true) {
+                    ui.dataTable.fnDraw();
+                    $('#chkAllStudent').removeAttr('checked');
+                } else {
+                    alert('Student does not exist, please try again.');
+                }
+            });
+        }
+    }*@
+
+    function deleteStudent(e) {
+        var removedStudentIds = '';
+        var message = '';
+        if (e != null) {
+            removedStudentIds = $(e).attr('studentId');
+            message = "Are you sure you want to remove this student?";
+        }
+        else {
+            removedStudentIds = "'" + getSelectedStudentIds() + "'";
+
+            if (removedStudentIds == '') {
+                alert('Please select students to remove');
+                return;
+            }
+
+            message = "Are you sure you want to remove selected student(s)?";
+        }
+
+        confirmMessageV2(
+            {
+                message,
+                cbYesBtnFuncName: 'yesDeleteStudent(' + removedStudentIds + ')',
+                cbCancelBtnFuncName: 'closeDeleteStudent()',
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'deleteClassConfirm'
+                    }
+                }
+            }
+        )
+    }
+    function closeDeleteStudent() {
+         $("#deleteClassConfirm").dialog("close");
+    }
+    function yesDeleteStudent(removedStudentIds) {
+        closeDeleteStudent();
+
+        setDisabledButtons(true);
+        var classId = '@Model.Id';
+        $.post('@Url.Action("RemoveStudentFromClass")', { classId: classId, removedStudentIds: removedStudentIds }, function (response) {
+            if (response.success == true) {
+                ui.dataTable.fnDraw();
+                $('#chkAllStudent').removeAttr('checked');
+                $('INPUT[name="chkStudent"][type=checkbox]').removeAttr('checked');
+            } else {
+                alert('Student does not exist, please try again.');
+            }
+        });
+    }
+
+    function LoadMoveStudentsForm(e) {
+        var data = {};
+        if (e == null) {
+
+            if (getSelectedStudentIds() == '') {
+                alert('Please select students to transfer');
+                return;
+            }
+
+            data = { OldClassId: '@Model.Id', SchoolId: $('#selectSchool').val(), TeacherId: $('#selectTeacher').val(), MovedStudentIDs: getSelectedStudentIds() };
+        }
+        else {
+            var studentId = $(e).attr('studentId');
+            data = { OldClassId: '@Model.Id', SchoolId: $('#selectSchool').val(), TeacherId: $('#selectTeacher').val(), MovedStudentIDs: studentId };
+        }
+
+        $("<div></div>")
+            .addClass("dialog")
+            .attr("id", "moveStudentDialog")
+            .appendTo("body")
+            .dialog({
+                title: $(this).attr("Move Student"),
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 420,
+                resizable: false
+            })
+            .load('@Url.Action("OpenMoveStudentsForm", "Admin")', data, function () { });
+    }
+</script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        breadcrumbDetailPage('.dataadmin', '#dtaManageClasses');
+    })
+</script>

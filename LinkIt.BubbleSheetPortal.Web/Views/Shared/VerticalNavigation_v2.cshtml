@@ -1,0 +1,1545 @@
+@using System.Configuration
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using Permissions = LinkIt.BubbleSheetPortal.Models.Permissions
+@using LinkIt.BubbleSheetPortal.Models
+@using LinkIt.BubbleSheetPortal.Web.Security
+
+@{
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    var menuAccess = HelperExtensions.Clone<MenuAccessItems>(HelperExtensions.GetMenuForDistrict(currentUser));
+
+    string strSSOURL = HelperExtensions.BuildUserGuide(currentUser);
+    var openAllApplicationInSameTab = HelperExtensions.OpenAllApplicationInSameTab;
+
+    var strWhiteLable = string.Empty;
+    var vS3URL = HelperExtensions.GetS3CSSURL();
+    var districtId = 0;
+    if (Request.IsAuthenticated)
+    {
+        districtId = HelperExtensions.GetDistrictIdBySubdomain();
+    }
+    if (!string.IsNullOrEmpty(vS3URL))
+    {
+        strWhiteLable = string.Format("{0}{1}.css", vS3URL, HelperExtensions.LoginDistrict);
+    }
+
+    var isShowIconInfo = HelperExtensions.IsShowIconHelpTextInfo(districtId);
+
+    MenuItemLabel helpResource = null;
+    menuAccess.SubMenuItems.TryGetValue(ContaintUtil.HelpResource, out helpResource);
+}
+
+<link href="@BundleHelper.Version("~/Content/css/v2/vertical-menu.css")" rel="stylesheet" type="text/css" />
+
+<nav class="main-nav-vertical" id="main-nav">
+    <div class="main-nav-vertical__inner">
+        <div onclick="window.location.href = '/'" class="logo">
+        </div>
+
+        <ul class="menu_ul">
+            @foreach (var item in menuAccess.MainMenuItems)
+            {
+                var mainMenuItem = item.Value;
+                if (menuAccess.HasDisplayedItem(item.Key))
+                {
+                    switch (item.Key)
+                    {
+                        case ContaintUtil.Reporting:
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Parent && currentUser.RoleId != (int)Permissions.Student)
+                            {
+                                <li class="stats menu-item short" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon reporting-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="uparrow menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.ReportItemACTReport:
+                                                    {
+                                                        <li><a href="@Url.Action("Index", "SpecializedReport")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ReportingDownloadReport:
+                                                    {
+                                                        <li class="download-specialized-report"><a href="@Url.Action("DownloadSpecializedReport", "PopulateReporting")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ReportItemChytenReport:
+                                                    {
+                                                        <li><a href="@Url.Action("Index", "ChytenReport")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ReportingItemCS:
+                                                    {
+                                                        <li><a href="@ConfigurationManager.AppSettings["CurrentReportingHTMLURL"]" target="_blank" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ReportingItemNew:
+                                                    {
+                                                        <li><a href="@ConfigurationManager.AppSettings["ReportingHTMLURL"]" target="_blank" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ReportItemSGOManager:
+                                                    {
+                                                        <li id="rpSGOManager"><a href="@Url.Action("Index", "SGOManage")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ReportItemTLDSManager:
+                                                    {
+                                                        <li id="rpTLDSManager"><a href="@Url.Action("Index", "TLDSManage")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.NavigatorReportUpload:
+                                                    {
+                                                        <li id="rpNavigatorUpload"><a href="@Url.Action("Upload", "NavigatorReport")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.NavigatorReport:
+                                                    {
+                                                        <li id="rpNavigatorReport"><a href="@Url.Action("Index", "NavigatorReport")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.AblesReport:
+                                                    {
+                                                        <li id="ablesreport"><a href="@Url.Action("Index", "AblesReport")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+                                                case ContaintUtil.ReportingItemVueJS:
+                                                    {
+                                                        <li id="reporting-item-vue-js"><a href="@subMenuItem.Path" target="_blank" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+                                                case ContaintUtil.DataExplorer:
+                                                    {
+                                                        <li id="data-explorer"><a href="@subMenuItem.Path" target="_blank" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.Reporting" id="staff_reporting_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=Reporting,Navigator,Cut-Scores and Growth Metrics" title="@helpResource.Tooltip">Help</a> </li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            if (menuAccess != null && (currentUser.RoleId == (int)Permissions.Student || currentUser.RoleId == (int)Permissions.Parent))
+                            {
+                                <li class="stats menu-item short" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon reporting-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="uparrow menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.ReportingTestResult:
+                                                    if (openAllApplicationInSameTab)
+                                                    {
+                                                        <li>
+                                                            <a href="@ConfigurationManager.AppSettings["StudentTestResultReport"]" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    else
+                                                    {
+                                                        <li>
+                                                            <a href="@ConfigurationManager.AppSettings["StudentTestResultReport"]" target="_blank" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ReportingTestResultCS:
+                                                    if (openAllApplicationInSameTab)
+                                                    {
+                                                        <li>
+                                                            <a href="@subMenuItem.Path" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    else
+                                                    {
+                                                        <li>
+                                                            <a href="@subMenuItem.Path" target="_blank" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.NavigatorReport:
+                                                    {
+                                                        <li id="rpNavigatorReport"><a href="@Url.Action("Index", "NavigatorReport")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.Reporting" id="spp_reporting_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=Reporting,Navigator,Cut-Scores and Growth Metrics" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.InterventionManager:
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Parent && currentUser.RoleId != (int)Permissions.Student)
+                            {
+                                <li class="rti menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon intervention-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="uparrow menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.IMDashboard:
+                                                    {
+                                                        <li id="imdashboard">
+                                                            <a target="_blank" href="/IM/#/dashboard" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.PerformanceCriteria:
+                                                    {
+                                                        <li id="performanceCriteria">
+                                                            <a target="_blank" href="/Content/HtmlModules/studentReport/#/intervention-manager/performance-list" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.GroupingModel:
+                                                    {
+                                                        <li id="groupingModel">
+                                                            <a target="_blank" href="/Content/HtmlModules/studentReport/#/intervention-manager/grouping-list" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.InterventionManager" id="staff_interventionmanager_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=Intervention Manager" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.Onlinetesting:
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Parent && currentUser.RoleId != (int)Permissions.Student)
+                            {
+                                <li class="testing menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon testing-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="uparrow menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.OnlinetestingItem:
+                                                    {
+                                                        <li>
+                                                            @*Assign Online Tests (Old)*@
+                                                            <a href="@Url.Action("AssignTests", "Test", new {id = "testAssignment"})" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.OnlineTestAssignmentRewrite:
+                                                    {
+                                                        <li><a href="@Url.Action("Index", "TestAssignment")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.OnlineTestAssignmentReview:
+                                                    {
+                                                        <li id="test-assignment-review"><a href="@Url.Action("Index", "TestAssignmentReview")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.OnlineTestMonitorTestTaking:
+                                                    {
+                                                        <li><a href="@Url.Action("Index", "MonitoringTestTaking")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.OnlinetestPreference:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Index", "TestPreference")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.OnlinetestLockUnlockBank:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("LockUnlockTestBanks", "TestPreference")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.Onlinetesting" id="staff_onlinetest_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=SISIntegration,Online Testing" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            if (menuAccess != null && (currentUser.RoleId == (int)Permissions.Student || currentUser.RoleId == (int)Permissions.Parent))
+                            {
+                                <li class="testing menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon testing-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="uparrow menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.OnlineTesting:
+                                                    {
+                                                        <li><a href="@Url.Action("Index", "StudentOnlineTesting")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.Onlinetesting" id="spp_onlinetesting_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=SISIntegration,Online Testing" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.Managebubblesheets:
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Student && (currentUser.IsOrginalPublisher || currentUser.IsOrginalNetworkAdmin || (currentUser.RoleId != (int)Permissions.Parent)))
+                            {
+                                <li id="generateTab" class="bubbles menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon sheets-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="rightarrow sub-menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu submenu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.ManagebubblesheetsCreate:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Generate", "GenerateBubbleSheet")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ManagebubblesheetsGrade:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Grade", "BubbleSheet")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ManagebubblesheetsReview:
+                                                    {
+                                                        <li id="managebubblesheetsReview">
+                                                            <a href="@Url.Action("Index", "BubbleSheetReview")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ManagebubblesheetsError:
+                                                    {
+                                                        <li id="errorCorrection">
+                                                            <a href="@Url.Action("ProcessErrors", "ErrorCorrection")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ManagebubblesheetsGimport:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("ImportGroup", "GroupPrinting")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.Managebubblesheets" id="staff_mgmtbubblesheets_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=BubbleSheets" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.ResultsEntryDataLocker:
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Parent && currentUser.RoleId != (int)Permissions.Student)
+                            {
+                                <li class="datalocker menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon data-lock-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="uparrow menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.Definetemplates:
+                                                    {
+                                                        <li id="datalockerDefineTemplate"><a href="@Url.Action("Index", "DataLocker")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.BuildEntryForms:
+                                                    {
+                                                        <li id="datalockerBuildEntryForm"><a href="@Url.Action("Index", "DataLockerEntryForm")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.EnterResults:
+                                                    {
+                                                        <li id="datalockerEnterResult"><a href="@Url.Action("EnterResults", "DataLockerEntryResult")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.DataLockerPreferences:
+                                                    {
+                                                        <li id="datalockerPreferences"><a href="@Url.Action("Index","DataLockerPreferences")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.ResultsEntryDataLocker" id="staff_resultsentrydatalocker_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=DataLocker" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            if (menuAccess != null && (currentUser.RoleId == (int)Permissions.Student || currentUser.RoleId == (int)Permissions.Parent))
+                            {
+                                <li class="datalocker menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon data-lock-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="uparrow menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.AttachmentForStudent:
+                                                    {
+                                                        <li><a href="@Url.Action("AttachmentForStudents", "DataLockerForStudent")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.ResultsEntryDataLocker" id="spp_resultsentrydatalocker_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=DataLocker" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.SurveyModule:
+                            if (menuAccess != null && (currentUser.RoleId == (int)Permissions.Student || currentUser.RoleId == (int)Permissions.Parent))
+                            {
+                                if (!currentUser.IsOrginalPublisher && !currentUser.IsOrginalNetworkAdmin)
+                                {
+                                    <li class="surveymodule menu-item" title="@mainMenuItem.Tooltip">
+                                        <a href="#">
+                                            <span class="menu-icon survey-module-icon"></span>
+                                            <span class="menu-text">
+                                                @mainMenuItem.Label
+                                            </span>
+                                            <span class="uparrow menu-arrow"></span>
+                                        </a>
+                                        <ul class="dropdown-menu" style="display:none">
+                                            @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                            {
+                                                if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                                {
+                                                    continue;
+                                                }
+
+                                                switch (subMenuItem.Code)
+                                                {
+                                                    case ContaintUtil.TakeSurveys:
+                                                        {
+                                                            <li id="liTakeSurveys"><a href="@Url.Action("Index", "TakeSurvey")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                        }
+                                                        break;
+                                                }
+                                            }
+                                        </ul>
+                                    </li>
+                                }
+                            }
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Student && (currentUser.IsOrginalPublisher || currentUser.IsOrginalNetworkAdmin || (currentUser.RoleId != (int)Permissions.Parent)))
+                            {
+                                <li class="surveymodule menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon survey-module-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="rightarrow sub-menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu submenu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.ManageSurveys:
+                                                    {
+                                                        <li id="liManageSurveys"><a href="@Url.Action("Index", "ManageSurvey")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.AssignSurveys:
+                                                    {
+                                                        <li id="liAssignSurveys"><a href="@Url.Action("Index", "AssignSurvey")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ReviewSurveys:
+                                                    {
+                                                        <li id="liReviewSurveys"><a href="@Url.Action("Index", "ReviewSurvey")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TakeSurveys:
+                                                    {
+                                                        <li id="liTakeSurveys"><a href="@Url.Action("Index", "TakeSurvey")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.Testdesign:
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Student && (currentUser.IsOrginalPublisher || currentUser.IsOrginalNetworkAdmin || (currentUser.RoleId != (int)Permissions.Parent)))
+                            {
+                                <li class="write menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon test-design-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="rightarrow sub-menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu submenu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.TestdesignAssessmentItemHTML:
+                                                    {
+                                                        <li id="assesmenItemRewrite">
+                                                            <a href="@Url.Action("Index", "ItemBank")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TestCloneItemBanks:
+                                                    {
+                                                        <li id="assesmenItemRewrite"><a href="@Url.Action("IndexCloneItemBank", "ItemBank")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TestdesignManageTest:
+                                                    {
+                                                        <li id="manageTests"><a href="@Url.Action("Index", "ManageTest")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TestdesignPassageNew:
+                                                    {
+                                                        <li id="passageEditor"><a href="@Url.Action("Index", "PassageEditor")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TestdesignTags:
+                                                    {
+                                                        <li id="qtiItemTags"><a href="@Url.Action("Index", "QTIItemTag")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TestdesignAssementOld:
+                                                    {
+                                                        //Assessment Items (Old)
+                                                        <li><a href="@Url.Action("AssessmentItemsOld", "Test")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TestdesignPassagesOld:
+                                                    {
+                                                        //Passages (Old)
+                                                        <li><a href="@Url.Action("PassagesOld", "Test")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TestdesignTestsOld:
+                                                    {
+                                                        //Tests (Old)
+                                                        <li><a href="@Url.Action("TestsOld", "Test")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TestdesignRubric:
+                                                    {
+                                                        <li><a href="@Url.Action("Index", "Rubric")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ItemBankPublishing:
+                                                    {
+                                                        <li><a href="@Url.Action("Index", "ItemBankPublishing")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ItemLibraryManagement:
+                                                    {
+                                                        <li id="itemLibraryManagementDad"><a href="@Url.Action("Index", "ItemLibraryManagement")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TestdesignManageAuthorGroup:
+                                                    {
+                                                        <li id="manageAuthorGroup">
+                                                            <a href="@Url.Action("AuthorGroupList", "Assessment")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TestdesignUpload3pItemBank:
+                                                    {
+                                                        <li id="Upload3pItemBank">
+                                                            <a href="@Url.Action("Index", "Upload3pItemBank")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.Testdesign" id="staff_testdesign_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=TestDesign" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.Testmanagement:
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Student && (currentUser.IsOrginalPublisher || currentUser.IsOrginalNetworkAdmin || (currentUser.RoleId != (int)Permissions.Parent)))
+                            {
+                                <li class="test-result menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon test-utilities-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="rightarrow sub-menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu submenu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                @*case ContaintUtil.TmgmtEinstructionimport:
+                {
+                    <li>
+                        <a href="@Url.Action("Import", "EInstruction")" title="@subMenuItem.Tooltip">
+                            @subMenuItem.Label
+                        </a>
+                    </li>
+                }
+                break;*@
+
+                                                case ContaintUtil.TmgmtDefineTemplates:
+                                                {
+                                                    <li id="testUtilitiesDefineTemplates">
+                                                        <a href="@Url.Action("Index", "testUtilitiesDefineTemplates")" title="@subMenuItem.Tooltip">
+                                                            @subMenuItem.Label
+                                                        </a>
+                                                    </li>
+                                                }
+                                                break;
+
+                                                case ContaintUtil.TmgmtTestresultremover:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("TestResultRemover", "Admin")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TmgmtTestregrader:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("TestRegrader", "Admin")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TmgmtPurgetest:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("PurgeTest", "Admin")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TmgmtPrinttest:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Index", "PrintTest")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                @*case ContaintUtil.TmgmtCustomAssessments:
+                {
+                    <li>
+                        <a href="@Url.Action("CustomAssessments", "Admin")" title="@subMenuItem.Tooltip">
+                            @subMenuItem.Label
+                        </a>
+                    </li>
+                }
+                break;*@
+
+                                                case ContaintUtil.TmgmtExtractTestResult:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Index", "TestExtract")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TmgmtTestResultTransfer:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Index", "TestResultTransfer")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.TmgmtTestResultExportGenesis:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Index", "TestResultsExport")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                                case ContaintUtil.TmgmtTestLibraryExport:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Index", "TestLibraryExport")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.Testmanagement" id="staff_testmanagement_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=TestManagement" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.DataAdmin:
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Student && (currentUser.IsOrginalPublisher || currentUser.IsOrginalNetworkAdmin || (currentUser.RoleId != (int)Permissions.Parent)))
+                            {
+                                <li class="dataadmin menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon user-management-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="rightarrow sub-menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu submenu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.DadManageuser:
+                                                    {
+                                                        <li id="dtaManageuser">
+                                                            <a href="@Url.Action("ManageUsers", "Admin")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.DadManageSchools:
+                                                    {
+                                                        <li id="dtaManageSchools">
+                                                            <a href="@Url.Action("ManageSchoolAndClass", "ManageClasses")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.DadManageClasses:
+                                                    {
+                                                        <li id="dtaManageClasses">
+                                                            <a href="@Url.Action("ManageClass", "ManageClasses", new { isNewSession = true})" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.StudentLookup:
+                                                    {
+                                                        <li id="studentManagement">
+                                                            <a href="@Url.Action("Index", "StudentLookup")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.ManageParent:
+                                                    {
+                                                        <li id="parentManagement">
+                                                            <a href="@Url.Action("Index", "ManageParent")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.DadManageRegisterClasses:
+                                                    {
+                                                        <li id="dtaRegisterClasses">
+                                                            <a href="@Url.Action("Index", "RegisterClasses")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.DadManageRosters:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("ManageRosters", "Admin")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.DadLumos:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Lumos", "Admin")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.DadManageProgram:
+                                                    {
+                                                        <li id="manageProgramTab">
+                                                            <a href="@Url.Action("Index", "ManageProgram")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.SettingItem:
+                                                    {
+                                                        <li id="gear">@Html.ActionLink(@subMenuItem.Label, "Settings", "Account")</li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.DadManageUserGroup:
+                                                    {
+                                                        <li id="manageUserGroupDad">
+                                                            <a href="@Url.Action("ManageUserGroups", "Admin")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.DadManageSharingGroups:
+                                                    {
+                                                        <li id="manageSharingGroupDad">
+                                                            <a href="@Url.Action("Index", "SharingGroup")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.OnlinetestStudentPreference:
+                                                    {
+                                                        <li id="onlinetestStudentPreference">
+                                                            <a href="@Url.Action("Index", "StudentPreference")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.DataAccessManagement:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Index", "RestrictionAccessRights")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.DataAdmin" id="staff_dataadmin_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=UserClassManagement" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.Lessons:
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Student && (currentUser.IsOrginalPublisher || currentUser.IsOrginalNetworkAdmin || (currentUser.RoleId != (int)Permissions.Parent)))
+                            {
+                                <li class="lessons menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon learning-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="rightarrow sub-menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu submenu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code))
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.LearningLibrarySearch:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Index", "LearningLibrarySearch")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.LearningLibraryResourceAdmin:
+                                                    {
+                                                        <li id="resourceAdminTab">
+                                                            <a href="@Url.Action("Index", "LearningLibraryAdmin")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.Lessons" id="staff_lessons_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=LearningLibrary" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.Help:
+                            if (menuAccess != null && (currentUser.RoleId == (int)Permissions.Student || currentUser.RoleId == (int)Permissions.Parent))
+                            {
+                                if (!currentUser.IsOrginalPublisher && !currentUser.IsOrginalNetworkAdmin)
+                                {
+                                    <li class="settings menu-item" title="@mainMenuItem.Tooltip">
+                                        <a href="#">
+                                            <span class="menu-icon help-icon"></span>
+                                            <span class="menu-text">
+                                                @mainMenuItem.Label
+                                            </span>
+                                            <span class="uparrow menu-arrow"></span>
+                                        </a>
+                                        <ul class="dropdown-menu" style="display:none">
+                                            @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                            {
+                                                <li>
+                                                    <a href="@Url.Action("Index", "HelpResource")" title="@helpResource.Tooltip">
+                                                        @helpResource.Label
+                                                    </a>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </li>
+                                }
+                            }
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Student && (currentUser.IsOrginalPublisher || currentUser.IsOrginalNetworkAdmin || (currentUser.RoleId != (int)Permissions.Parent)))
+                            {
+                                <li class="settings menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon help-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="rightarrow sub-menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu submenu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code) && subMenuItem.Code != ContaintUtil.UploadHelp)
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.HelpResource:
+                                                    {
+                                                        <li class="menu-help-resource" nav="@ContaintUtil.Help"><a href="@Url.Action("Index", "HelpResource")" title="@helpResource.Tooltip"> @helpResource.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.UploadHelp:
+                                                    if (currentUser.RoleId == (int)Permissions.Publisher)
+                                                    {
+                                                        <li class="menu-help-resource" nav="@ContaintUtil.Help"><a href="@Url.Action("Admin", "HelpResource")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.HelpGuide:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Index", "UserGuide")" target="_blank" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.HelpTeachSupport:
+                                                    if (menuAccess.TechSupportUrl != "#")
+                                                    {
+                                                        <li>
+                                                            <a href="@menuAccess.TechSupportUrl" target="_blank" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    else
+                                                    {
+                                                        <li>
+                                                            <a href="#" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.HelpIntroduction:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("Introduction", "Help")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.CustomHelp:
+                                                    if (menuAccess.CustomHelpUrl != "#")
+                                                    {
+                                                        <li>
+                                                            <a href="@menuAccess.CustomHelpUrl" title="@subMenuItem.Tooltip" target="Blank">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    else
+                                                    {
+                                                        <li>
+                                                            <a href="#" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                case ContaintUtil.HelpVideotutorials:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("VideoTutorials", "Help")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                                case ContaintUtil.RiseTech:
+                                                    if (menuAccess.RiseTechSupportUrl != "#")
+                                                    {
+                                                        <li>
+                                                            <a href="@menuAccess.RiseTechSupportUrl" target="_blank" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    else
+                                                    {
+                                                        <li>
+                                                            <a href="#" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                    </ul>
+                                </li>
+                            }
+                            break;
+
+
+                        case ContaintUtil.Techsupport:
+                            if (menuAccess != null && currentUser.RoleId != (int)Permissions.Student && (currentUser.IsOrginalPublisher || currentUser.IsOrginalNetworkAdmin || (currentUser.RoleId != (int)Permissions.Parent)))
+                            {
+                                <li class="techsupport menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="#">
+                                        <span class="menu-icon tech-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                        <span class="rightarrow sub-menu-arrow"></span>
+                                    </a>
+                                    <ul class="dropdown-menu submenu" style="display:none">
+                                        @foreach (var subMenuItem in mainMenuItem.SubMenuItems)
+                                        {
+                                            if (!menuAccess.HasDisplayedItem(subMenuItem.Code) && subMenuItem.Code != ContaintUtil.DataPreview)
+                                            {
+                                                continue;
+                                            }
+
+                                            switch (subMenuItem.Code)
+                                            {
+                                                case ContaintUtil.TechUserImpersonation:
+                                                    {
+                                                        <li><a href="@Url.Action("UserImpersonation", "Admin")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;
+
+                                                @*case ContaintUtil.TechAPILog:
+                                                    {
+                                                        <li><a href="@Url.Action("Index", "APILog")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a></li>
+                                                    }
+                                                    break;*@
+
+                                                case ContaintUtil.DadManageLAC:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("ManageLAC", "Admin")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;
+
+                                                @*case ContaintUtil.DadDistrictReferencedata:
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("DistrictReferenceData", "Admin")" title="@subMenuItem.Tooltip">
+                                                                @subMenuItem.Label
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    break;*@
+
+                                                case ContaintUtil.DataPreview:
+                                                    if (currentUser.IsPublisher)
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Action("index", "PerformanceBandAutomation")" title="@subMenuItem.Tooltip">@subMenuItem.Label</a>
+                                                        </li>
+                                                    }
+                                                    break;
+                                            }
+                                        }
+
+                                        @if (menuAccess.HasDisplayedItem(ContaintUtil.HelpResource))
+                                        {
+                                            <li class="menu-help-resource" nav="@ContaintUtil.HelpResource" id="staff_techsupport_helpresource"><a href="@Url.Action("Index", "HelpResource")?codes=Support" title="@helpResource.Tooltip">Help</a></li>
+                                        }
+
+                                    </ul>
+                                </li>
+                                }
+                                break;
+                            case ContaintUtil.Home:
+                                <li class="home menu-item" title="@mainMenuItem.Tooltip">
+                                    <a href="/">
+                                        <span class="menu-icon home-icon"></span>
+                                        <span class="menu-text">
+                                            @mainMenuItem.Label
+                                        </span>
+                                    </a>
+                                </li>
+                            break;
+                    }
+                }
+            }
+        </ul>
+    </div>
+</nav>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        expandedVerticalNavigation();
+        handleMenuItem();
+        handleCollapsedMenu();
+        itemSubmenuOdd(['.test-result', '.dataadmin', '.write']);
+        addTransitionNav();
+        checkDataAdminRoleTe();
+        handleSubmenuShow();
+        removeEntryResultFilter();
+    });
+
+    function checkDataAdminRoleTe() {
+        var elDataAdmin = $('.dataadmin');
+        var subMenuEl = $(elDataAdmin).find('.dropdown-menu');
+        var subMenuItemLength = $(elDataAdmin).find('li').length;
+        if (!subMenuEl) return;
+        if (subMenuItemLength < 7) {
+            elDataAdmin.addClass('short');
+        }
+    }
+
+    function addTransitionNav() {
+        $('body').addClass('nav-transition');
+    }
+
+    function itemSubmenuOdd(listItemMenu) {
+        if (listItemMenu.length === 0) return;
+        $.each(listItemMenu, function (index, element) {
+            var subMenuEl = $(element).find('.dropdown-menu');
+            var subMenuItemLength = $(element).find('li').length;
+            if (!subMenuEl) return;
+            subMenuEl.removeClass('dropdown-menu-odd');
+            if (subMenuItemLength % 2 !== 0) {
+                subMenuEl.addClass('dropdown-menu-odd');
+            }
+        })
+    }
+
+    function customMenuItemName(item, itemNameCompare, newItemName) {
+        var itemEl = $(item);
+        if (!itemEl) return;
+
+        var linkItemEl = $(itemEl).find('a');
+        if (!linkItemEl) return;
+        if (linkItemEl.html() === itemNameCompare) {
+            itemEl.find('a').html(newItemName);
+        }
+    }
+
+    function expandedVerticalNavigation() {
+        $(".main-nav-vertical")
+            .mouseenter(function () {
+                $(this).parent("body").addClass("vertical-navigation-expanded")
+            }).mouseleave(function () {
+                if ($(this).parent("body").hasClass("vertical-navigation-expanded") && !($(".dropdown-menu").hasClass("clickExpanded"))) {
+                    $(this).parent("body").removeClass("vertical-navigation-expanded");
+                }
+            });
+    };
+
+    function handleMenuItem() {
+        $(".menu-item").click(function () {
+            $(".dropdown-menu").css("display", "none");
+            var linkFirstChild = $(this).find('a[href="#"]');
+            if (linkFirstChild) {
+                linkFirstChild.removeAttr("href");
+            }
+
+            if ($(this).find('ul li').length > 0) {
+                var target = this.getElementsByClassName("dropdown-menu");
+                if (target) {
+                    if (target[0].style.display == "none") {
+                        target[0].style.display = "block";
+                        $("#user-submenu-info").hide();
+                    }
+                    else {
+                        target[0].style.display = "none";
+                    }
+                }
+
+                var display = $(this).find('.dropdown-menu').css("display");
+                if (display === "block") {
+                    $(this).find('.dropdown-menu').addClass('clickExpanded');
+                }
+            }
+        });
+    }
+
+    function handleHoverMenuItem() {
+        $('body').on('hover', '.menu-item', function () {
+            if ($(".dropdown-menu").hasClass("clickExpanded")) {
+                $(".dropdown-menu").css("display", "none");
+
+                if ($(this).find('ul li').length > 0) {
+                    var target = this.getElementsByClassName("dropdown-menu");
+                    if (target) {
+                        if (target[0].style.display == "none") {
+                            target[0].style.display = "block";
+                            $("#user-submenu-info").hide();
+                        }
+                        else {
+                            target[0].style.display = "none";
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+
+    function handleSubmenuShow() {
+        var menuListEl = $('#main-nav .menu_ul > li');
+        var windowHeight = $(window).height();
+
+        if (menuListEl.length <= 0) return;
+
+        $.each(menuListEl, function (index, element) {
+            var _this = $(this);
+            var subMenuEl = _this.find('.dropdown-menu');
+
+            if (!subMenuEl) return;
+
+            var subMenuHeight = subMenuEl.height();
+            var parentItemTop = _this.offset().top;
+            var parentItemHeight = _this.height();
+            var isLargest = parentItemTop + subMenuHeight - windowHeight;
+            var overHeight = 0;
+
+            if (isLargest > 0) {
+                overHeight = isLargest + (parentItemHeight - isLargest % parentItemHeight);
+                overHeight = `-${overHeight}px`;
+                subMenuEl.get(0).style.setProperty("--overHeight", overHeight);
+            }
+        })
+    }
+
+    function handleCollapsedMenu() {
+        $(document).on('click', function (e) {
+            if ($(e.target).closest(".menu-item, .spaced, .main-nav-vertical, #main-nav-header").length === 0) {
+                $(".dropdown-menu").hide();
+                $(".dropdown-menu").removeClass('clickExpanded');
+                $("body").removeClass("vertical-navigation-expanded");
+            }
+        });
+    }
+
+    function removeEntryResultFilter() {
+        $(document).on('click', function (e) {
+            if ($(e.target).closest(".menu-item li:not(#datalockerEnterResult)").length !== 0) {
+                var filter = localStorage.getItem("EntryResultFilter");
+                if (filter != null) {
+                    localStorage.removeItem("EntryResultFilter");
+                }
+            }
+        });
+    };
+
+</script>

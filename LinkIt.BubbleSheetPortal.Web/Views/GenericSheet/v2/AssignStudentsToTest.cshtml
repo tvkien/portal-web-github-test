@@ -1,0 +1,177 @@
+@using DevExpress.Office.Utils
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.GenericSheets.GenericSheetViewModel
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Managebubblesheets, "Assign Students");
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@section stylesheet {
+    <link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/Common.css">
+}
+<link href="@BundleHelper.Version("~/Content/css/v2/review-bubble-sheet.css")" rel="stylesheet" type="text/css" />
+
+<article class="container_12">
+    <div class="block-content mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                @if (Model.HasNoFilesUploaded)
+                {
+                    <p>This test does not have any sheets uploaded. Please visit the <a href="@Url.Action("Grade", "BubbleSheet")">Grade</a> page to upload sheets.</p>
+                }
+                else
+                {
+                    <p>
+                        Once you are done assigning students to sheets,
+                        <a href="@Url.Action("Index", "BubbleSheetReviewDetails", new { id = Model.Ticket, classId = Model.ClassId, test = Model.TestName })">
+                            click here to view the bubble sheet details.
+                        </a>
+                    </p>
+                }
+            </div>
+            <div class="ms-auto">
+                <a href="/BubbleSheetReview" class="btn-reviewbbs-class btn btn-link d-block p-0 position-static">
+                    <i class="fa-solid fa-arrow-left me-2"></i>
+                    Back to Review Bubble Sheets
+                </a>
+            </div>
+        </div>
+    </div>
+    @if (!Model.HasNoFilesUploaded)
+    {
+        <div>
+            <div class="row">
+                <div class="col-5">
+                    <div class="block-content form">
+                        <div id="title-students" style="display: none; position: absolute; margin-top: 10px;">
+                            <p class="title-large m-0">Uploaded Files</p>
+                        </div>
+                        <div class="last-child">
+                            <table id="dataTable" class="datatable table no-margin" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            File Name
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Student
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-7">
+                    <div id="assignStudentContainer" class="h-100"></div>
+                </div>
+            </div>
+        </div>
+    }
+
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        $('#generateTab').addClass('current');
+
+        var options = {
+            sAjaxSource: '@Url.Action("GetBubbleSheets")/?ticket=@Model.Ticket&classId=@Model.ClassId',
+            bAutoWidth: true,
+            iDisplayLength: 25,
+            aaSorting: [[0, "desc"]],
+            oLanguage: {
+                sLengthMenu: "Show entries _MENU_ ",
+                'sSearch': ''
+            },
+            aoColumns: [
+                { sType: 'string', sName: 'InputFileName', bSearchable: true, bSortable: true, },
+                { sType: 'string', sName: 'StudentName', bSearchable: true, bSortable: false, },
+                { sType: 'integer', sName: 'BubbleSheetId', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'integer', sName: 'BubbleSheetFileId', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(1)', nRow).html(createAssignStudentLink(nRow, aData[3]));
+                return nRow;
+            },
+            fnInitComplete: function () {
+                var filterDataTableElement = $('#dataTable_filter');
+                if (filterDataTableElement) {
+                    filterDataTableElement.addClass('data-search')
+                }
+
+                $('#title-students').show();
+            }
+        };
+        $("#dataTable").data("options", options);
+
+        function createAssignStudentLink(row, bubbleSheetFileId) {
+            var currentValue = $('td:eq(1)', row).html();
+            if (currentValue == "") {
+                return '<a href="javascript:void(0);" class="assignStudent" bubbleSheetFileId="' + bubbleSheetFileId + '">Assign and Grade<a/>';
+            }
+            return currentValue;
+        }
+
+        $("#dataTable").on('click', '.assignStudent', function () {
+            $('#assignStudentContainer').load('@Url.Action("AssignAndGradeStudent")', { bubbleSheetFileId: $(this).attr('bubbleSheetFileId') }, function (response, status) {
+                if (status == "error") {
+                    alert('An error has occured. Please refresh the page and try again.');
+                }
+            });
+        });
+
+        $('#assignStudentContainer').on('submit', '#formAssignStudent', function (e) {
+            e.preventDefault();
+            removeErrorMessages('error-messages');
+            ShowBlock($('#blockAssignStudent'), "Submitting Sheet for Grading");
+
+            $.post($(this).attr('action'), $(this).serialize(), function (response) {
+                if (response.success) {
+                    var studentName = response.isAllStudentsSelected ? $('#SelectedAllStudentsId option:selected').text() : $('#SelectedRemainingStudentsId option:selected').text();
+                    $('.assignStudent[bubbleSheetFileId="' + response.bubblesheetFileId + '"]').parent().html(studentName);
+                    $('#assignStudentContainer').html('');
+                } else {
+                    addErrorMessages(response);
+                }
+                $('#blockAssignStudent').unblock();
+            });
+        });
+
+        $('#assignStudentContainer').on('click', '#btnCancelStudentAssignment', function () {
+            $('#assignStudentContainer').html('');
+        });
+
+        $('#assignStudentContainer').on('change', '#chkShowAllStudents', function () {
+            $('#remainingStudentsList').toggle(!this.checked);
+            $('#allStudentsList').toggle(this.checked);
+        });
+    });
+</script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        breadcrumbDetailPage('#generateTab', '#managebubblesheetsReview');
+    })
+</script>

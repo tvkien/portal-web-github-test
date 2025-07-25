@@ -1,0 +1,692 @@
+
+<fieldset>
+    <legend>Select Filter</legend>
+    <div class="columns">
+        <div class="colx2-left">
+            @if ((ViewBag.IsPublisher != null && ViewBag.IsPublisher) || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+            {
+                <div class="mb-3">
+                    <label>State</label>
+                    <select id="selectState" class="full-width"></select>
+                </div>
+            }
+            <div class="mb-3">
+                <label>From Date</label>
+                <input type="text" id="selectFromDate" style="width: 235px" />
+            </div>
+            <div class="mb-3">
+                <label>@LabelHelper.GradeLabel</label>
+                <select id="selectGrade" class="full-width"></select>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Bank</label>
+                <div class="block-text-name">
+                   <select id="selectBank" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>School</label>
+                <div class="block-text-name">
+                    <select id="selectSchool" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Teacher</label>
+
+                <div class="block-text-name">
+                    <select id="selectTeacher" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Student</label>
+                <div class="block-text-name">
+                    <select id="selectStudent" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="colx2-right">
+            @if ((ViewBag.IsPublisher != null && ViewBag.IsPublisher) || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+            {
+                <div class="mb-3 block-content-dropdown-marquee">
+                    <label>@LabelHelper.DistrictLabel</label>
+
+                    <div class="block-text-name">
+                        <select id="selectDistrict" class="full-width"></select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+            <div class="mb-3">
+                <label>To Date</label>
+                <input type="text" id="selectToDate" style="width: 235px" />
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>@LabelHelper.Subject</label>
+
+                <div class="block-text-name">
+                    <select id="selectSubject" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Test</label>
+                <div class="block-text-name">
+                    <select id="selectTest" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="wraptag mb-3" style="width: 250px;">
+                <label>Selected Test</label>
+                <ul id="selectedTestListExtracTest" class="tagit ui-widget ui-widget-content ui-corner-all"></ul>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Class</label>
+
+                  <div class="block-text-name">
+                     <select id="selectClass" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <input id="divDistrictID" type="hidden" value="@ViewBag.DistrictID" />
+    </div>
+</fieldset>
+<fieldset>
+    <legend>Select Template</legend>
+    <div class="tabs-content" style="margin-bottom: 10px;">
+        <div class="columns" id="ExportTemplateTestResult">
+            <ul id="exportsTestResult" class="generate-student-list generate-student-list-custom testResultTemplate student-col"></ul>
+        </div>
+        <div class="clear"></div>
+    </div>
+</fieldset>
+<button id="filterSheets" class="float-right" type="button" disabled="disabled">Apply Filters</button>
+<button id="clearFilter" class="float-right grey" type="button" style="margin-right: 2px;">Clear Filter</button>
+<script type="text/javascript">
+    var selectedTagsDict = {};
+    var orgDtStart;
+    var orgDtEnd;
+    $(function () {
+        ShowBlock($('#divExtractTestResultArea'), 'Loading');
+        LoadListExtractTestResult();
+        $('#selectDistrict').marquee();
+        $('#selectBank').marquee();
+        $('#selectTest').marquee();
+        $('#selectSchool').marquee();
+        $('#selectTeacher').marquee();
+        $('#selectClass').marquee();
+        $('#selectStudent').marquee();
+        $('#selectSubject').marquee();
+        $("#selectedTestListExtracTest").tagit({
+            beforeTagAdded: function (event, ui) {
+                var tagId = $('#selectTest').val();
+                if (tagId != undefined) {
+                    selectedTagsDict[$('#selectTest option:selected').text()] = tagId; //remember Id of selected tag
+                }
+            },
+            beforeTagRemoved: function (event, ui) {
+                //clear the selected tag out of memory
+                delete selectedTagsDict[ui.tagLabel];
+                populateSchools();
+                populateTests();
+            }
+        });
+
+        $('#selectedTestListExtracTest').find('.ui-autocomplete-input').attr('readonly', true); // Disallow to type into selected test tagit
+        $('#selectedTestListExtracTest').find('.tagit-dropdown').hide();
+
+        selectTemplates();
+
+        var dtEnd = new Date();
+        var dtStart = new Date();
+        dtStart.setFullYear(dtStart.getFullYear() - 1);
+        orgDtStart = dtStart;
+        orgDtEnd = dtEnd;
+        displayDateWithFormatDatePicker('selectFromDate', dtStart);
+        displayDateWithFormatDatePicker('selectToDate', dtEnd);
+
+        InitData();
+        $('#selectState').change(function () {
+            $('#selectDistrict').empty();
+            $('#selectGrade').empty();
+            $('#selectSubject').empty();
+            $('#selectBank').empty();
+            $('#selectTest').empty();
+            $('.tagit-choice').hide();
+            selectedTagsDict = {};
+            $('#selectSchool').empty();
+            $('#selectTeacher').empty();
+            $('#selectClass').empty();
+            $('#selectStudent').empty();
+            ClearTemplate();
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+            $('#filterSheets').disableBt();
+        });
+
+        $('#filterSheets').click(function () {
+            $('#btnSubmitSelectedTestResult').attr('disabled', 'disabled');
+            $('#chkAllTestResult').removeAttr('checked');
+            $('#filterSheets').attr('disabled', 'disabled');
+            $('#hdfTrackTestResultIdSelected').val('');
+            $('#hdfAllTestResultIds').val('');
+            SetupFilters();
+        });
+
+        $('#clearFilter').click(function () {
+            $('#btnSubmitSelectedTestResult').attr('disabled', 'disabled');
+            $('#chkAllTestResult').removeAttr('checked');
+            $('input[type=text]').each(function (index) {
+                $(this).val('');
+            });
+            $('#selectGrade').empty();
+            $('#selectSubject').empty();
+            $('#selectBank').empty();
+            $('#selectTest').empty();
+            $("#selectedTestListExtracTest").tagit("removeAll");
+            selectedTagsDict = {};
+            $('#selectSchool').empty();
+            $('#selectTeacher').empty();
+            $('#selectClass').empty();
+            $('#selectStudent').empty();
+            ClearTemplate();
+            SetupFilters();
+        });
+    });
+
+    function SetupFilters() {
+        ShowBlock($('#divExtractTestResultArea'), 'Loading');
+        var dataTable = $('#dataTable').dataTable();
+        var settings = dataTable.fnSettings();
+        fnResetAllFilters(settings);
+        dataTable.fnFilter('');
+        dataTable.fnDraw();
+    }
+
+    function InitTestResultIds() {
+
+        $.get('@Url.Action("GetListTestResultIds", "TestExtract")',
+            {
+                DistrictId: GetDistrictID(),
+                StrStartDate: $('#selectFromDate').val(),
+                StrEndDate: $('#selectToDate').val(),
+                BankdId: $('#selectBank').val(),
+                ListTestIDs: BuildListTestSelected(),
+                StudentId: $('#selectStudent').val(),
+                SchoolId: $('#selectSchool').val(),
+                TeacherId: $('#selectTeacher').val(),
+                ClassId: $('#selectClass').val()
+            }, function (response) {
+                if (response.success == true) {
+                    $('#hdfAllTestResultIds').val(response.data);
+                } else {
+                    $('#hdfAllTestResultIds').val('');
+                }
+            });
+    }
+
+    function InitData() {
+        @if (@ViewBag.IsPublisher == true)
+        {
+            <text>
+                $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                    AddSelectListItems($('#selectState'), states, 'Select State');
+                });
+            </text>
+        }
+        else if (@ViewBag.IsNetworkAdmin == true)
+        {
+            <text>
+                $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                    addDefaultOption($('#selectState'), "State");
+                    addSelectListItems($('#selectState'), states);
+                    $('#selectState').val(@ViewBag.StateId);
+                    $('#selectState').trigger('change');
+                });
+            </text>
+        }
+        else
+        {
+            <text>
+                populateGrades();
+            </text>
+        }
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            if ('@ViewBag.IsNetworkAdmin' == 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+                });
+            } else {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                });
+            }
+        }
+    }
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        //if (results.length == 0) {
+        //    return;
+        //}
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+    }
+
+    $('INPUT[name="chkTemplate"][type=checkbox]').live("click", function (e) {
+        setDisabledButtons();
+    });
+
+    function selectTemplates() {
+        //TODO: Reset All UnSelect
+        $('.student-col').children().css('background-color', "#e0e0e0");
+
+        $.get('@Url.Action("GetDefaultSelect", "TestExtract")', { districtId: GetDistrictID() }, function (listTemplateIDs) {
+            if (listTemplateIDs.length == 0) {
+                return;
+            } else {
+                addListSelectTemplates($('#exportsTestResult'), listTemplateIDs);
+            }
+        });
+    }
+
+    function addListSelectTemplates(el, listTemplate) {
+        var $el = $(el);
+        var listTemplateHtml = [];
+
+        for (var i = 0, len = listTemplate.length; i < len; i++) {
+            var value = listTemplate[i];
+            listTemplateHtml.push('<li id="template' + value.Id + '" templateid="' + value.Id + '" class="student-item testresultTemplateItem" isselected="yes" style="background-color:#82CAFA"><a href="javascript:void(0)">' + value.Name + '</a></li>');
+        }
+
+        $el.html(listTemplateHtml.join(''));
+    }
+
+    $('#selectDistrict').change(function () {
+        $('#selectGrade').empty();
+        $('#selectSubject').empty();
+        $('#selectBank').empty();
+        $('#selectTest').empty();
+        $('.tagit-choice').hide();
+        selectedTagsDict = {};
+        $('#selectSchool').empty();
+        $('#selectTeacher').empty();
+        $('#selectClass').empty();
+        $('#selectStudent').empty();
+        ClearTemplate();
+        var vDistrictId = GetDistrictID();
+        if (vDistrictId > 0) {
+            populateGrades();
+            selectTemplates(); //TODO: Select default template
+        }
+        $('#filterSheets').enableBt();
+    });
+
+    $('#selectGrade').change(function () {
+        $('#selectSubject').empty();
+        $('#selectBank').empty();
+        $('#selectTest').empty();
+        $('#selectSchool').empty();
+        $('#selectTeacher').empty();
+        $('#selectClass').empty();
+        $('#selectStudent').empty();
+        if ($('#selectGrade').val() > 0) {
+            populateSubjects();
+        }
+    });
+
+    $('#selectSubject').change(function () {
+        $('#selectBank').empty();
+        $('#selectTest').empty();
+        $('#selectSchool').empty();
+        $('#selectTeacher').empty();
+        $('#selectClass').empty();
+        $('#selectStudent').empty();
+        if ($('#selectSubject').val() != '-1') {
+            populateBanks();
+        }
+    });
+
+    $('#selectBank').change(function () {
+        $('#selectTest').empty();
+        $('#selectSchool').empty();
+        $('#selectTeacher').empty();
+        $('#selectClass').empty();
+        $('#selectStudent').empty();
+        if ($('#selectBank').val() > 0) {
+            populateTests();
+            populateSchools();
+        }
+    });
+
+    $('#selectTest').change(function () {
+        $('#selectSchool').empty();
+        $('#selectTeacher').empty();
+        $('#selectClass').empty();
+        $('#selectStudent').empty();
+        var testId = $('#selectTest').val();
+        if ($('#selectTest').val() > 0) {
+            $("#selectedTestListExtracTest").tagit("createTag", $('#selectTest option:selected').text());
+            $('#selectTest option:selected').remove();
+
+            populateSchools();
+        }
+    });
+
+    $('#selectSchool').change(function () {
+        $('#selectTeacher').empty();
+        $('#selectClass').empty();
+        $('#selectStudent').empty();
+        if ($('#selectSchool').val() > 0) {
+            populateTeachers();
+        }
+    });
+
+    $('#selectTeacher').change(function () {
+        $('#selectClass').empty();
+        $('#selectStudent').empty();
+        if ($('#selectTeacher').val() > 0) {
+            populateClasses();
+        }
+    });
+
+    $('#selectClass').change(function () {
+        $('#selectStudent').empty();
+        if ($('#selectClass').val() > 0) {
+            populateStudents();
+        }
+    });
+
+    $('#selectStudent').change(function () {
+        if ($('#selectStudent').val() > 0) {
+            //TODO: code here
+        }
+    });
+
+    function populateGrades() {
+        $('#selectGrade').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        if (districtValue > 0) {
+            $.get('@Url.Action("GetGradeHaveTestResult", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue
+                }, function (grades) {
+                    AddSelectListItems($('#selectGrade'), grades, 'Select @LabelHelper.TestGrades');
+                });
+        }
+        $('#filterSheets').enableBt();
+    }
+
+    function populateSubjects() {
+        $('#selectSubject').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        var gradeValue = $('#selectGrade').val();
+        if (gradeValue != '-1') {
+            $.get('@Url.Action("GetSubjectHaveTestResult", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    GradeId: gradeValue
+                }, function (subjects) {
+                    AddSelectListItems($('#selectSubject'), subjects, 'Select @LabelHelper.Subjects');
+                });
+        }
+    }
+
+    function populateBanks() {
+        $('#selectBank').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        var subjectValue = $('#selectSubject').val();
+        var gradeValue = $('#selectGrade').val();
+        if (subjectValue != '-1') {
+            $.get('@Url.Action("GetBankHaveTestResult", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    SubjectName: subjectValue,
+                    GradeId: gradeValue
+                }, function (banks) {
+                    AddSelectListItems($('#selectBank'), banks, 'Select banks');
+                });
+        }
+    }
+    function populateTests() {
+        $('#selectTest').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        var bankValue = $('#selectBank').val();
+        if (bankValue > 0) {
+            $.get('@Url.Action("GetTestHaveTestResult", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    BankdId: bankValue
+                }, function (tests) {
+                    // Remove selected tests out of return list
+                    for (var i = tests.length - 1; i >= 0; i--) {
+                        if (selectedTagsDict[tests[i].Name] != undefined) {
+                            tests.splice(i, 1);
+                        }
+                    }
+                    AddSelectListItems($('#selectTest'), tests, 'Select tests');
+                });
+        }
+    }
+
+    function populateSchools() {
+        $('#selectTeacher').empty();
+        $('#selectClass').empty();
+        $('#selectStudent').empty();
+        $('#selectSchool').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        var bankValue = $('#selectBank').val();
+        var lstTestIDs = BuildListTestSelected();
+        if (bankValue > 0) {
+            $.get('@Url.Action("GetSchoolHaveTestResult", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    BankdId: bankValue,
+                    ListTestIDs: lstTestIDs
+                }, function (schools) {
+                    AddSelectListItems($('#selectSchool'), schools, 'Select Schools');
+                });
+        }
+    }
+
+    function populateTeachers() {
+        $('#selectTeacher').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        var schoolValue = $('#selectSchool').val();
+        var bankValue = $('#selectBank').val();
+        var lstTestIDs = BuildListTestSelected();
+        if (schoolValue > 0) {
+            $.get('@Url.Action("GetTeacherHaveTestResult", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    SchoolId: schoolValue,
+                    BankdId: bankValue,
+                    ListTestIDs: lstTestIDs
+                }, function (teachers) {
+                    AddSelectListItems($('#selectTeacher'), teachers, 'Select Teachers');
+                });
+        }
+    }
+
+    function populateClasses() {
+        $('#selectClass').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        var schoolValue = $('#selectSchool').val();
+        var teacherValue = $('#selectTeacher').val();
+        var bankValue = $('#selectBank').val();
+        var lstTestIDs = BuildListTestSelected();
+        if (teacherValue > 0) {
+            $.get('@Url.Action("GetClassHaveTestResult", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    SchoolId: schoolValue,
+                    TeacherId: teacherValue,
+                    BankdId: bankValue,
+                    ListTestIDs: lstTestIDs
+                }, function (classes) {
+                    AddSelectListItems($('#selectClass'), classes, 'Select classes');
+                });
+        }
+    }
+
+    function populateStudents() {
+        $('#selectStudent').empty();
+        var districtValue = GetDistrictID();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        var schoolValue = $('#selectSchool').val();
+        var teacherValue = $('#selectTeacher').val();
+        var classValue = $('#selectClass').val();
+        var bankValue = $('#selectBank').val();
+        var lstTestIDs = BuildListTestSelected();
+        if (classValue > 0) {
+            $.get('@Url.Action("GetStudentHaveTestResult", "TestExtract")',
+                {
+                    DistrictId: districtValue,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    SchoolId: schoolValue,
+                    TeacherId: teacherValue,
+                    ClassId: classValue,
+                    BankdId: bankValue,
+                    ListTestIDs: lstTestIDs
+                }, function (students) {
+                    AddSelectListItems($('#selectStudent'), students, 'Select Students');
+                });
+        }
+    }
+
+    function BuildListTestSelected() {
+        //var lstTestSelected = $('#selectTest').val();
+        //if (lstTestSelected > 0)
+        //    return lstTestSelected + ',';
+        //return '';
+        var x = '';
+        for (var key in selectedTagsDict) {
+            x += selectedTagsDict[key] + ',';
+        }
+
+        if (x.length > 0)
+            return x.substring(0, x.length - 1);
+        return '';
+
+    }
+
+    $("#selectFromDate").change(function () {
+        DoWhenChangeDate();
+    });
+
+    $("#selectToDate").change(function () {
+        DoWhenChangeDate();
+    });
+
+    function DoWhenChangeDate() {
+        //var fromDate = $('#selectFromDate').val();
+        //var toDate = $('#selectToDate').val();
+        var fromDate = $('#selectFromDate').datepicker("getDate");
+        var toDate = $('#selectToDate').datepicker("getDate");
+
+        var totalDate = days_between(fromDate, toDate);
+        //alert(totalDate);
+        if (totalDate > 366) {
+            alert("Time frame cannot exceed one year.");
+            var resetToDate = new Date(fromDate).addYears(1);
+            //$('#selectToDate').val(resetToDate);
+            displayDateWithFormatDatePicker('selectToDate', resetToDate);
+            orgDtEnd = resetToDate;
+            return;
+        }
+        if (new Date(fromDate) > new Date(toDate)) {
+            alert("To Date should be later than From Date.");
+            //$('#selectFromDate').val(orgDtStart);
+            //$('#selectToDate').val(orgDtEnd);
+            displayDateWithFormatDatePicker('selectFromDate', orgDtStart);
+            displayDateWithFormatDatePicker('selectToDate', orgDtEnd);
+            return;
+        }
+
+        orgDtStart = fromDate;
+        orgDtEnd = toDate;
+    }
+
+    function GetDistrictID() {
+        if ($('#selectDistrict').length) {
+            return $('#selectDistrict').val();
+        }
+        return $('#divDistrictID').val();
+    }
+
+     function ClearTemplate() {
+         $('#exportsTestResult').html('');
+        //  $('#ExportTemplateTestResult').html('<ul id="exportsTestResult" class="generate-student-list testResultTemplate"> </ul>');
+     }
+
+     function CheckSelectTemplates() {
+         var templatesSelected = [];
+         $(".testresultTemplateItem[isSelected=yes]").each(function () {
+             templatesSelected.push($(this).attr('templateid'));
+         });
+         return templatesSelected.length > 0;
+     }
+
+</script>

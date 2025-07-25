@@ -1,0 +1,129 @@
+@using DevExpress.Office.Utils
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.GenericSheets.GenericSheetViewModel
+@{
+    ViewBag.Title = "Assign Students";
+}
+
+@section stylesheet {
+    <link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/Common.css">
+}
+
+<article class="container_12">
+    <section class="grid_5">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Uploaded Files</h1>
+                <div class="block-reviewer block-reviewer-cancel">
+                    <a href="/BubbleSheetReview" class="big-button btn-reviewbbs">Back to Review Bubble Sheets</a>
+                </div>
+                @if (Model.HasNoFilesUploaded)
+                {
+                    <p>This test does not have any sheets uploaded. Please visit the <a href="@Url.Action("Grade", "BubbleSheet")">Grade</a> page to upload sheets.</p>
+                }
+                else
+                {
+                    <p>
+                        Once you are done assigning students to sheets,
+                        <a href="@Url.Action("Index", "BubbleSheetReviewDetails", new { id = Model.Ticket, classId = Model.ClassId })">
+                            click here to view the bubble sheet details.
+                        </a>
+                    </p>
+                    <p style="height: 5px"></p>
+                    <div class="no-margin last-child">
+                        <table id="dataTable" class="datatable table no-margin" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        File Name
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Student
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+    <div id="assignStudentContainer"></div>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        $('#generateTab').addClass('current');
+
+        var options = {
+            sAjaxSource: '@Url.Action("GetBubbleSheets")/?ticket=@Model.Ticket&classId=@Model.ClassId',
+            bAutoWidth: true,
+            iDisplayLength: 25,
+            aaSorting: [[0, "desc"]],
+            oLanguage: {
+                sLengthMenu: "Show _MENU_",
+            },
+            aoColumns: [
+                { sType: 'string', sName: 'InputFileName', bSearchable: true, bSortable: true, },
+                { sType: 'string', sName: 'StudentName', bSearchable: true, bSortable: false, },
+                { sType: 'integer', sName: 'BubbleSheetId', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'integer', sName: 'BubbleSheetFileId', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(1)', nRow).html(createAssignStudentLink(nRow, aData[3]));
+                return nRow;
+            }
+        };
+        $("#dataTable").data("options", options);
+
+        function createAssignStudentLink(row, bubbleSheetFileId) {
+            var currentValue = $('td:eq(1)', row).html();
+            if (currentValue == "") {
+                return '<a href="javascript:void(0);" class="assignStudent" bubbleSheetFileId="' + bubbleSheetFileId + '">Assign and Grade<a/>';
+            }
+            return currentValue;
+        }
+
+        $("#dataTable").on('click', '.assignStudent', function () {
+            $('#assignStudentContainer').load('@Url.Action("AssignAndGradeStudent")', { bubbleSheetFileId: $(this).attr('bubbleSheetFileId') }, function (response, status) {
+                if (status == "error") {
+                    alert('An error has occured. Please refresh the page and try again.');
+                }
+            });
+        });
+
+        $('#assignStudentContainer').on('submit', '#formAssignStudent', function (e) {
+            e.preventDefault();
+            removeErrorMessages('error-messages');
+            ShowBlock($('#blockAssignStudent'), "Submitting Sheet for Grading");
+
+            $.post($(this).attr('action'), $(this).serialize(), function (response) {
+                if (response.success) {
+                    var studentName = response.isAllStudentsSelected ? $('#SelectedAllStudentsId option:selected').text() : $('#SelectedRemainingStudentsId option:selected').text();
+                    $('.assignStudent[bubbleSheetFileId="' + response.bubblesheetFileId + '"]').parent().html(studentName);
+                    $('#assignStudentContainer').html('');
+                } else {
+                    addErrorMessages(response);
+                }
+                $('#blockAssignStudent').unblock();
+            });
+        });
+
+        $('#assignStudentContainer').on('click', '#btnCancelStudentAssignment', function () {
+            $('#assignStudentContainer').html('');
+        });
+
+        $('#assignStudentContainer').on('change', '#chkShowAllStudents', function () {
+            $('#remainingStudentsList').toggle(!this.checked);
+            $('#allStudentsList').toggle(this.checked);
+        });
+    });
+</script>

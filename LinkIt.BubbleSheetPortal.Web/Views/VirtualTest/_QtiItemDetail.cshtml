@@ -1,0 +1,744 @@
+@using LinkIt.BubbleSheetPortal.Common.DataFileUpload
+@using LinkIt.BubbleSheetPortal.Web.ViewModels
+<style>
+    .noPadding {
+        padding-left: 0px;
+        padding-right: 0px;
+        padding-bottom: 0px;
+        padding-top: 0px;
+    }
+
+    #divQtiItemDetailVirtualTest .assessmentItem:before {
+        content: '';
+    }
+
+    #divQtiItemDetailVirtualTest .simpleChoice {
+        list-style: none outside none;
+    }
+
+    #editQtiItemDialog .block-content {
+        padding-top: 10px;
+    }
+
+    .choiceInteraction {
+        counter-reset: my-counter;
+        display: inline-block;
+    }
+
+    .choiceInteraction .simpleChoiceMainBody,
+    .choiceInteraction .answerText {
+        padding: 10px 0px;
+    }
+
+    .choiceInteraction .simpleChoiceMainBody[identifier=V], .choiceInteraction .answerText[identifier=V] {
+        counter-increment: my-counter;
+    }
+
+            .choiceInteraction .simpleChoice:before,
+            .choiceInteraction .simpleChoiceMainBody:before {
+                content: counter(my-counter, upper-latin)'.';
+                counter-increment: my-counter;
+                padding: 0 10px 10px 0;
+                color: #000;
+                font-weight: normal;
+                line-height: 24px;
+            }
+
+            .choiceInteraction .simpleChoiceMainBody:before {
+                left: 0;
+            }
+
+        .choiceInteraction .answerText {
+            display: block;
+            margin: 5px 0;
+        }
+
+    .answerText:before {
+        content: counter(my-counter, upper-latin)'.';
+        counter-increment: my-counter;
+        float: left;
+        padding: 0px 15px 0px 0px;
+        color: #000;
+        font-weight: normal;
+    }
+
+    .answerTextIndent {
+        text-indent: 10px;
+    }
+
+    .answerText2:before {
+        content: counter(my-counter,decimal)'.';
+        counter-increment: my-counter;
+        float: left;
+        text-indent: 10px;
+        color: #000;
+        font-weight: normal;
+    }
+
+    .choiceInteraction .simpleChoice2:before {
+        content: counter(my-counter,decimal)'.';
+        color: #000;
+        font-weight: normal;
+    }
+
+    .choiceInteraction .simpleChoice2MainBody:before {
+        content: counter(my-counter,decimal)'.';
+        float: left;
+        color: #000;
+        font-weight: normal;
+    }
+
+    .answer {
+        line-height: 20px;
+        font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook !important;
+    }
+
+    inlineChoiceInteraction, .inlineChoiceInteraction {
+        margin: 0 5px;
+    }
+
+    textEntryInteraction, .textEntryInteraction {
+        margin: 0 5px;
+        min-width: 90px;
+        width: auto;
+        padding: 0px 2px;
+    }
+
+    .itemBody, .itembody {
+        /*overflow: hidden;*/
+    }
+
+    .partialDestinationObject {
+        display: inline-block;
+        position: relative;
+    }
+
+        .partialDestinationObject[type=text] {
+            border-radius: 6px;
+            border: solid 1px #bebebe;
+            padding: 2px;
+            display: inline-block;
+            font-style: italic;
+            min-width: 50px;
+            min-height: 20px;
+            color: #ccc;
+            margin: 2px 5px;
+        }
+
+    sourceObject[type="text"] {
+        background-color: #eeeeee;
+        border: 1px solid #0088cc;
+        color: #1c94c4;
+        font-weight: bold;
+        margin: 2px 0;
+        padding: 0 4px 2px;
+    }
+
+    sourceObject {
+        background-color: #eeeeee;
+        border: 1px solid #bebebe;
+        cursor: pointer;
+        display: inline-block;
+        min-height: 20px;
+        min-width: 30px;
+    }
+
+    .assessmentItem {
+        width: 100%;
+        border: solid 0px white;
+        padding: 0px;
+    }
+</style>
+<style type="text/css">
+    @Html.Raw(ViewBag.Css)
+</style>
+<style type="text/css">
+    #listReference li {
+        background-color: #F9F9F9;
+        border: 1px solid #DCDCDC;
+        border-radius: 8px;
+        float: left;
+        margin: 5px 5px 5px 0;
+        padding: 2px;
+        cursor: pointer;
+    }
+
+        #listReference li .delReference {
+            background: url("images/delete.gif") no-repeat scroll 0 0 rgba(0, 0, 0, 0);
+            border: 0 solid #FFFFFF;
+            cursor: pointer;
+            height: 24px;
+            width: 24px;
+        }
+
+        #listReference li .viewReference {
+            background: url("images/view.gif") no-repeat scroll 0 0 rgba(0, 0, 0, 0);
+            border: 0 solid #FFFFFF;
+            cursor: pointer;
+            height: 24px;
+            width: 24px;
+        }
+
+    .simpleChoiceMainBody,
+    .simpleChoice2MainBody {
+        clear: both;
+    }
+
+    .choiceInteraction img {
+        margin-top: 0px;
+    }
+
+    #divQtiItemDetailVirtualTestPassage {
+        margin-top: 20px;
+    }
+
+    .referenceButton {
+        float: left;
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+
+        .referenceButton button {
+            margin-left: 0px;
+        }
+
+    .partialDestinationObject[type="text"] .hotSpot {
+        border-width: 0px;
+    }
+
+    .answer img {
+        display: inline-block;
+        vertical-align: top;
+    }
+
+    .answer p {
+        display: inline;
+    }
+
+    .mainBody p {
+        line-height: 1.57143em;
+    }
+</style>
+
+<div id="divEditQtiItem">
+    <input type="hidden" id="qtiItemId" value="@ViewBag.QtiItemId" />
+    <textarea style="display: none" id="xmlContent">@Html.Raw(ViewBag.XmlContent)</textarea>
+    <div id="divQtiItemDetailVirtualTest">
+        @Html.Raw(ViewBag.HtmlContent)
+    </div>
+    <div style="clear: both"></div>
+    <div id="divQtiItemDetailVirtualTestPassage">
+        @for (int i = 0; i < ViewBag.PassageList.Count; i++)
+        {
+            var passage = (PassageViewModel)ViewBag.PassageList[i];
+            @*Linkit passage*@
+            if (passage.QtiRefObjectID > 0)
+            {
+                if (passage.RefNumber > 0)
+                {
+                    <div style="float: left; margin-left: 0px !important">
+                        <button onclick="showPassageDetailPopupOnQtiItemDetail(@passage.QtiRefObjectID, '','@passage.Qti3pPassageID','@passage.Qti3pSourceID','@passage.DataFileUploadPassageID','@passage.DataFileUploadTypeID')" type="button" style="margin-left: 2px !important; margin-bottom: 2px">Reference# @passage.RefNumber: @passage.Name</button>
+                    </div>
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(passage.Data))
+                    {
+                        var displayedLength = 10; //default length
+                        if (passage.Data.Length < displayedLength)
+                        {
+                            displayedLength = passage.Data.Length;
+                        }
+
+                        <div style="float: left; margin-left: 0px !important">
+                            <button onclick="showPassageDetailPopupOnQtiItemDetail(0, '@passage.Data', '@passage.Qti3pPassageID', '@passage.Qti3pSourceID', '@passage.DataFileUploadPassageID', '@passage.DataFileUploadTypeID')" type="button" style="margin-left: 2px !important; margin-bottom: 2px">Reference# @passage.Data.Substring(0, displayedLength) ...</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div style="float: left; margin-left: 0px !important">
+                            <button onclick="showPassageDetailPopupOnQtiItemDetail(@passage.QtiRefObjectID, '','@passage.Qti3pPassageID','@passage.Qti3pSourceID','@passage.DataFileUploadPassageID','@passage.DataFileUploadTypeID')" type="button" style="margin-left: 2px !important; margin-bottom: 2px">Reference# @passage.QtiRefObjectID: @passage.Name</button>
+                        </div>
+                    }
+                }
+
+            }
+            else
+            {
+                @*Qti3p passage -> only use data of the passage, because data is a link on S3*@
+                if (passage.DataFileUploadPassageID > 0)
+                {
+                    var uploadType = string.Empty;
+                    if (passage.DataFileUploadTypeID == (int)DataFileUploadTypeEnum.DataFileUpload)
+                    {
+                        uploadType = "Data File";
+                    }
+                    if (passage.DataFileUploadTypeID == (int)DataFileUploadTypeEnum.DataFileUploadProgressive)
+                    {
+                        uploadType = "Progress";
+                    }
+                    if (passage.DataFileUploadTypeID == (int)DataFileUploadTypeEnum.DataFileUploadCertica)
+                    {
+                        uploadType = "Mastery";
+                    }
+                    <div style="float: left; margin-left: 0px !important">
+                        <button onclick="showPassageDetailPopupOnQtiItemDetail(0, '@passage.Data','@passage.Qti3pPassageID','@passage.Qti3pSourceID','@passage.DataFileUploadPassageID','@passage.DataFileUploadTypeID')" type="button" style="margin-left: 2px !important; margin-bottom: 2px">@uploadType Reference Number# @passage.RefNumber: @passage.Name</button>
+                    </div>
+                }
+                else
+                {
+                    var uploadType = string.Empty;
+                    if (passage.Qti3pSourceID == (int)QTI3pSourceEnum.Mastery)
+                    {
+                        uploadType = "Mastery";
+                    }
+                    if (passage.Qti3pSourceID == (int)QTI3pSourceEnum.Progress)
+                    {
+                        uploadType = "Progress";
+                    }
+                    <div style="float: left; margin-left: 0px !important">
+                        <button onclick="showPassageDetailPopupOnQtiItemDetail(0, '@passage.Data','@passage.Qti3pPassageID','@passage.Qti3pSourceID','@passage.DataFileUploadPassageID','@passage.DataFileUploadTypeID')" type="button" style="margin-left: 2px !important; margin-bottom: 2px">@uploadType Reference# @passage.RefNumber: @passage.Name</button>
+                    </div>
+                }
+            }
+        }
+    </div>
+    <p style="height: 5px"></p>
+    <div class="divBotButton">
+        <button id="btnUpdateItem" class="float-right" style="display: none">Update</button>
+    </div>
+    <div class="clear"></div>
+</div>
+<style type="text/css">
+    .divBotButton {
+        padding-top: 10px;
+    }
+
+        .divBotButton button {
+            margin-left: 10px;
+            font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook;
+        }
+</style>
+<div id="hdDivXmlContnet" style="display: none">
+    @Html.Raw(ViewBag.XmlContent)
+</div>
+<div id="glossaryMessageQtiItemDetail">
+    <section>
+        <div class="block-border">
+            <div class="block-content form glossary-content">
+                <div class="glossary_text"></div>
+                <div class="glossary_define"></div>
+            </div>
+    </section>
+</div>
+<input type="hidden" id="hidTestItemMediaPathOnItemDetail" value="@ViewBag.TestItemMediaPath" />
+<script>
+    var adjustAnswerText = true;
+    var numberAnswer = false;
+    var correctAnswer = '';
+    $(function () {
+        loadContent();
+        LoadImages_QtiItemDetail('#divQtiItemDetailVirtualTest');
+        MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+
+        $("#hdDivXmlContnet").find('.mainbody').each(function () {
+
+            adjustUIforMainBody();
+        });
+        $("#hdDivXmlContnet").find('.mainBody').each(function () {//sometime it's mainBody
+            adjustUIforMainBody();
+        });
+        $("#hdDivXmlContnet").find('div[stylename="answer"] p').each(function () {
+            adjustAnswerText = false;
+        });
+        if (adjustAnswerText == true) {
+            //adjust UI for div answer without p wrap it
+
+            $("#divQtiItemDetailVirtualTest").find('.simpleChoiceMainBody').each(function () {
+                if (numberAnswer) {
+                    $(this).attr("class", "answerText2");
+                    $(this).find('div[stylename="answer"]').first().attr("class", "answerTextIndent");
+                } else {
+                    $(this).attr("class", "answerText");
+                    $(this).find('div[stylename="answer"]').first().attr("class", "answerTextIndent");
+                }
+
+            });
+        }
+
+        $("#divQtiItemDetailVirtualTest").find('span[class="math-tex"]').each(function (index, value) {
+            var span = $(value);
+            //add display:inline-block
+            span.css('display', 'inline-block');
+        });
+        var divQtiItemDetailVirtualTest = $("#divQtiItemDetailVirtualTest");
+        var textEntryInteraction = divQtiItemDetailVirtualTest.find('.textEntryInteraction');
+        if(textEntryInteraction.length) {
+            $.each(textEntryInteraction, function(index, ele) {
+                var width = $(ele).attr('expectedwidth');
+                if (width) {
+                    $(ele).css('min-width', width + 'px');
+                }
+            })
+        }
+        var inlineChoiceInteraction = divQtiItemDetailVirtualTest.find('.inlineChoiceInteraction');
+        if (inlineChoiceInteraction.length) {
+            $.each(inlineChoiceInteraction, function (index, ele) {
+                var width = $(ele).attr('expectedwidth');
+                var visibleDimension = $(ele).attr('visibleDimension');
+                if (width && visibleDimension == 1) {
+                    $(ele).css('min-width', width + 'px');
+                }
+                else {
+                    $(ele).css('max-width', '250px');
+                }
+            })
+        }
+        calculatorSequenceWidth("#divQtiItemDetailVirtualTest partialsequence");
+    });
+
+    function adjustUIforMainBody() {
+        $(".simpleChoice").each(function (index, value) {
+            var divSimpleChoice = value;
+            if (divSimpleChoice != null) {
+                if (divSimpleChoice.attributes["identifier"] != null) {
+                    var identifier = divSimpleChoice.attributes["identifier"];
+                    if (isNumber(identifier.nodeValue))//a number
+                    {
+                        $(divSimpleChoice).addClass("simpleChoice2MainBody");
+                        $(divSimpleChoice).removeClass("simpleChoice2");
+                    } else {
+                        $(divSimpleChoice).addClass("simpleChoiceMainBody");
+                        $(divSimpleChoice).removeClass("simpleChoice");
+                    }
+                }
+            }
+
+        });
+    }
+
+    function loadContent() {
+        // Stop text to speech
+        if (!!responsiveVoice) {
+            responsiveVoice.cancel();
+        }
+
+        $("#hdDivXmlContnet").find('responseDeclaration').each(function () {
+            var identifier = $(this).attr('identifier');
+            $(this).find('correctResponse value').each(function () {
+                correctAnswer += '-' + identifier + ':' + $(this).text() + '-,';
+            });
+
+            if (correctAnswer == null || correctAnswer == '') {
+                $(this).find('correctresponse value').each(function () {//sometime correctResponse is correctresponse
+                    correctAnswer += '-' + identifier + ':' + $(this).text() + '-,';
+                });
+            }
+
+        });
+
+        $(".simpleChoice").each(function (index, value) {
+            var responseidentifier = $(value.parentNode).attr('responseidentifier');
+            if (responseidentifier == null) {
+                responseidentifier = '';
+            }
+            var divSimpleChoice = value;
+            if (divSimpleChoice != null) {
+                if (divSimpleChoice.attributes["identifier"] != null) {
+                    var identifier = divSimpleChoice.attributes["identifier"];
+                    if (isNumber(identifier.nodeValue))//a number answer
+                    {
+                        $(divSimpleChoice).addClass("simpleChoice2");
+                        numberAnswer = true;
+                    } else {
+                        $(divSimpleChoice).addClass("simpleChoice");
+
+                    }
+                }
+
+            }
+
+        });
+
+        // Load content in file qtiItemLoadMedia.js
+        loadContentNumberLineHotspot('#divEditQtiItem');
+        loadContentImageHotSpot('#divEditQtiItem');
+        loadContentDragAndDrop('#divEditQtiItem');
+        loadContentGlossary('#divQtiItemDetailVirtualTest', '#glossaryMessageQtiItemDetail');
+        showCorrectTextHotSpot();
+    }
+
+    function isNumber(n) {
+        try {
+            var x = parseInt(n);
+            return !isNaN(x);
+        }
+        catch (e) {
+            return false;
+        }
+    }
+
+    function AdjustQtiItemDetail() {
+        //sometime the answer has special xmlcontent structure //LNKT-6197
+
+        $("#divQtiItemDetailVirtualTest .answerText").each(function (index, value) {
+            AdjustQtiItemAnswers(value);
+        });
+
+        $(".itemBody li[identifier]").each(function (index, value) {
+            AdjustQtiItemAnswers(value);
+        });
+
+        $(".itemBody li[identifier]").each(function (index, value) {
+            AdjustQtiItemAnswers1(value);
+        });
+
+    }
+
+    function AdjustQtiItemAnswers(item) {
+
+        var divAnswerText = item;
+        //add the image checkbox for each answer
+        var identifier = divAnswerText.attributes["identifier"];
+        var src = '';
+        var responseidentifier = $(item.parentNode).attr('responseidentifier');
+        if (responseidentifier == null) {
+            responseidentifier = '';
+        }
+        if (identifier != null) {
+            var iconCheck = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/square-check-16.png")';
+            var iconUnCheck = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/square-uncheck-16.png")';
+            //var idx = correctAnswer.indexOf('-' + identifier.nodeValue + '-,');
+            var idx = correctAnswer.indexOf('-' + responseidentifier + ':' + identifier.nodeValue + '-,');
+            var img = '';
+            if (idx >= 0) {
+                img = '<img src="' + iconCheck + '" width="14" height="14" style="margin-right: 6px;margin-right:15px">';
+                src = iconCheck;
+            } else {
+                img = '<img src="' + iconUnCheck + '" width="14" height="14" style="margin-right: 6px;margin-right:15px">';
+                src = iconUnCheck;
+            }
+
+            src = src.trim();
+            if (src.length > 1) {
+                src = src.substring(1, src.length); //remove the firt character '/'
+            }
+            var divAnswer = $(divAnswerText).children().first();
+            if (divAnswer != null) {
+                //check if the checkbox is existing or not
+                var $html = $('<div />');
+                var html = divAnswer.html();
+
+                $html.append(html);
+
+                if (html == null) {
+                    html = '';
+                    $html = $('<div />');
+                }
+
+                var imgCheckbox = $html.filter('img[src="' + src + '"]').first();
+
+                if (imgCheckbox.length == 0) {
+                    //sometime src starts with '/', check again to make sure
+                    imgCheckbox = $html.filter('img[src="/' + src + '"]').first();
+                    if (imgCheckbox.length == 0) {
+                        //sometime filter does not work when html is wrapped by tag p
+                        if (html.indexOf(src) < 0) {
+                            html = img + html;
+                            divAnswer.html(html);
+                        }
+                    }
+
+                }
+            }
+        }
+
+    }
+
+    function AdjustQtiItemAnswers1(item) {
+        var divAnswerText = item;
+        //add the image checkbox for each answer
+        var identifier = divAnswerText.attributes["identifier"];
+        var src = '';
+        var responseidentifier = $(item.parentNode).attr('responseidentifier');
+        if (responseidentifier == null) {
+            responseidentifier = '';
+        }
+        if (identifier != null) {
+            var iconCheck = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/square-check-16.png")';
+            var iconUnCheck = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/square-uncheck-16.png")';
+            //var idx = correctAnswer.indexOf('-' + identifier.nodeValue + '-,');
+            var idx = correctAnswer.indexOf('-' + responseidentifier + ':' + identifier.nodeValue + '-,');
+            var img = '';
+            if (idx >= 0) {
+                img = '<img src="' + iconCheck + '" width="14" height="14" style="margin-right: 6px;margin-right:15px">';
+                src = iconCheck;
+            } else {
+                img = '<img src="' + iconUnCheck + '" width="14" height="14" style="margin-right: 6px;margin-right:15px">';
+                src = iconUnCheck;
+            }
+
+            src = src.trim();
+            if (src.length > 1) {
+                src = src.substring(1, src.length); //remove the firt character '/'
+            }
+
+            var $html = $('<div />');
+            var html = $(divAnswerText).html();
+            $html.append(html);
+
+            if (html == null) {
+                html = '';
+                $html = $('<div />');
+            }
+
+            var imgCheckbox = $html.filter('img[src="' + src + '"]').first();
+
+            if (imgCheckbox.length == 0) {
+                //sometime src starts with '/', check again to make sure
+                imgCheckbox = $html.filter('img[src="/' + src + '"]').first();
+                if (imgCheckbox.length == 0) {
+                    //sometime filter does not work when html is wrapped by tag p
+                    if (html.indexOf(src) < 0) {
+                        html = '<div style="float:left;margin-top:5px">' + img + '</div>' + html;
+                        $(divAnswerText).html(html);
+                    }
+                }
+
+            }
+        }
+    }
+    function replaceListByOl() {
+        $("#divQtiItemDetailVirtualTest list[liststyletype='decimal']").each(function (index, value) {
+            //var html = '<ol style="list-style-type:decimal;padding-left:50px">';
+            var html = '<ol style="list-style-type:decimal;">';
+            $(value).find('li').each(function (idx, li) {
+                html += $(li).outerHTML();
+            });
+            html += '</ol>';
+            $(value).html(html);
+        });
+    }
+
+    function LoadImages_QtiItemDetail(containerSelector) {
+        $(containerSelector).find("img").each(function () {
+            var image = $(this);
+            var imageUrl = image.attr("src");
+            if (IsNullOrEmpty(imageUrl)) {
+                imageUrl = image.attr("source");
+            }
+            if (IsNullOrEmpty(imageUrl)) {
+                imageUrl = '';
+            }
+            if (imageUrl.indexOf('http') >= 0) {
+                image.attr("source", '');
+                image.attr("src", imageUrl);
+                return;
+            }
+
+            if (IsNullOrEmpty(imageUrl)) imageUrl = '@Url.Content("~/Content/images/emptybg.png")';
+
+            if (imageUrl.charAt(0) == '/') imageUrl = imageUrl.substring(1);
+
+            image.attr("source", '');
+            image.attr("src", imageUrl);
+            if (imageUrl.toLowerCase().indexOf("http") == 0) return;
+        });
+    }
+
+    function IsNullOrEmpty(value) {
+        return typeof (value) === "undefined" || value == null || $.trim(value) == '';
+    }
+
+    function showPassageDetailPopupOnQtiItemDetail(id, data,qti3pPassageID, qti3pSourceID, dataFileUploadPassageID, dataFileUploadTypeID) {
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassageDetailPopupOnQtiItemDetailCSS")
+            .attr("id", "PassageDetailDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowPassageDetail", "QTIItem")\?refObjectID=' + id + '&data=' + encodeURI(data) + '&qti3pPassageID=' + qti3pPassageID + '&qti3pSourceID=' + qti3pSourceID + '&dataFileUploadPassageID=' + dataFileUploadPassageID + '&dataFileUploadTypeID=' + dataFileUploadTypeID + '&virtualTestId=' + '@ViewBag.VirtualTestId', function () {
+                worker.dialog({
+                    title: $(this).attr("PassageDetail"),
+                    open: function () {
+                        //a new overlay will be generated when opening an dialog
+                        //set zindex of new overlay to make it cover Filter Item From Library
+                        var z_index = $("#editQtiItemDialog").parent().css('z-index');
+                        $('.ui-widget-overlay:last').css('z-index', parseInt(z_index) + 1);
+                        $("#PassageDetailDialog").parent().css('z-index', parseInt(z_index) + 2);
+                        $("#PassageDetailDialog").prev().css('top', '30px');
+                        $('.ui-widget-overlay:last').height(2000);
+
+                        $('#divPassageDetail').find('video').trigger('play');
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+
+                        var z_index = $("#addNewItemFromLibraryPopup").parent().css('z-index');
+                        $('.ui-widget-overlay:last').css('z-index', parseInt(z_index) + 1);
+                        $("#editQtiItemDialog").parent().css('z-index', parseInt(z_index) + 2);
+                        $('.ui-widget-overlay:last').height(2000);
+
+                        if (window.playsound != null) {
+                            window.playsound.pause();
+                        }
+                    },
+                    modal: false,
+                    width: 780,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    function updateItemClick() {
+
+    }
+    //Create event click for delete button
+    $(".delReference").click(function () {
+        $(this).parent().remove();
+    });
+
+    //This function use to show correct of the text hot spot
+    function showCorrectTextHotSpot() {
+        if ($("#hdDivXmlContnet responsedeclaration").attr("partialgrading") == "1") {
+            $("#divQtiItemDetailVirtualTest sourcetext").each(function () {
+                if ($(this).attr("pointvalue") > 0) {
+                    $(this).addClass("marker-correct");
+                }
+            });
+        } else {
+            $("#hdDivXmlContnet correctresponse").each(function () {
+                var id = $(this).attr("identifier");
+                $("#divQtiItemDetailVirtualTest sourcetext[identifier=\"" + id + "\"]").addClass("marker-correct");
+            });
+        }
+    }
+</script>
+<!-- Close PassageDetail-->
+<script type="text/javascript">
+    $('#btnCloseUserClickPassageDetail').die('click');
+    $('#btnCloseUserClickPassageDetail').live("click", function (e) {
+        $('#PassageDetailDialog').dialog("close");
+        if ($('#PassageDetailDialog').parent().length > 0) {
+            $('#PassageDetailDialog').parent().dialog("close");
+        }
+
+        if (window.playsound != null) {
+            window.playsound.pause();
+        }
+    });
+</script>
+<!--Get outer Html-->
+<script type="text/javascript">
+    jQuery.fn.outerHTML = function (s) {
+        return (s)
+            ? this.before(s).remove()
+            : jQuery("<p>").append(this.eq(0).clone()).html();
+    }
+</script>

@@ -1,0 +1,930 @@
+@model int
+
+@{
+    ViewBag.Title = "Establish Student Groups";
+}
+@*@MvcHtmlString.Create(
+            Bundle.Css()
+                .Add(@Url.Content("~/Content/css/custom.css"))
+                    .Add(@Url.Content("~/Content/css/sgohome.css"))
+                .Render("/Content/themes/Constellation/css/SGOEstablishStudentGroup_combined_#.css")
+             )*@
+
+@*@MvcHtmlString.Create(
+    Bundle.JavaScript()
+            .Add("/Content/themes/Constellation/js/common.js")
+            .Add("/Content/themes/TestMaker/ckeditor_utils.js")
+            .Render("/Content/themes/Constellation/js/SGOEstablishStudentGroup_combined_#.js")
+    )*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleSGOManageEstablishStudentBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptSGOManageEstablishStudentBundle()
+
+<article class="container_12" id="idTopNavigation">
+    @Html.Action("LoadNavigation", "SGOManage", new { sgoId = Model })
+    <section class="grid_12">
+        <div id="generateContent" class="block-border form">
+            <div class="block-content form bubblesheetselector">
+                <h1>Establish Student Groups</h1>
+                <fieldset class="grey-bg sgo-fieldset">
+                    <div class="columns sgo-columns">
+                        @Html.Raw(ViewBag.PreparednessGroupDirections)
+                    </div>
+                </fieldset>
+                <div class="clear"></div>                
+                <fieldset>
+                    <legend>Preparedness Groups</legend>
+
+                    <div class="columns">
+                        <div id="divStudentGroupTable">
+
+                        </div>
+                        <div style="float: left;padding-top:50px">
+                            <button id="idbtAddNewStudents" type="button" value="Add New Student">
+                                Add New Students
+                            </button>
+                        </div>
+                        <div style="float: right;padding-top:50px">
+                            <button id="idAutoGroup" type="button" value="Auto Group">
+                                Auto Group
+                            </button>
+                            <button id="idbtnSave" type="button" value="Save and Continue">
+                                Save
+                            </button>
+                            <button id="idbtnSaveAndContinue" type="button" value="Save and Continue">
+                                Save and Continue
+                            </button>
+                            <button id="idbtnContinue" type="button" value="Continue">
+                                Continue
+                            </button>
+                        </div>
+                    </div>
+                </fieldset>
+                @Html.Action("LoadSGONote", "SGOManage", new { sgoId = Model, pageName = LinkIt.BubbleSheetPortal.Models.SGO.SGOPageNameConstant.PreparenessGroup })
+            </div>
+        </div>
+    </section>
+</article>
+<input id="idhfSGOID" value="@Model" type="hidden" />
+<input id="idhfESGPermission" value="@ViewBag.PermissionAccess" type="hidden" />
+<input id="idhdfExistCustomAssessment" value="False" type="hidden" />
+<script>
+    var lastSavedScoreTypes = ''; // Save score types value to track changing data before auto group
+    $(function() {
+        $('.stats').addClass('current');
+        $('#rpSGOManager').addClass('current');
+
+        //init student group table
+        LoadStudentGroupTable(false).then(function() {
+            lastSavedScoreTypes = getCurrentSelectedScoreTypes(); // Save init score types when loading page
+        });
+
+        $('#idbtnSaveAndContinue').click(function() {
+            if (showMessageMoveNewStudent(1) === false) {
+                return;
+            }
+
+            var url = "/SGOScoringPlanTarget/Index?sgoId=" + $('#idhfSGOID').val();
+            SaveStudentGroups(true, true, url);
+        });
+
+        $('#idbtnContinue').click(function() {
+            var url = "/SGOScoringPlanTarget/Index?sgoId=" + $('#idhfSGOID').val();
+            if ($('#idhfESGPermission').val() === "3" || $('#idhfESGPermission').val() === "4") {
+                var isDataChanged = false;
+                var newJSONData = GetJSONDataEstablishStudentGroups();
+
+                if (JSON.stringify(window.oldJSONData) !== JSON.stringify(newJSONData)) {
+                    isDataChanged = true;
+                }
+
+                if (isDataChanged) {
+                    window.paramsDirectPageSGO = url;
+                    //var msg = '<p class="text-center">Please Save Because Page Is Changed</p>';
+                    //popupAlertMessage('alert', msg, 400, 200);
+                    //return;
+                    var msg = '<p class="text-left">Do you want to save your changes before moving to other screen?</p>';
+                    NavigationTabSGO(msg, 400, 200, 'SaveAndRedirectPage', 'RedirectPage');
+                    return false;
+                }
+            }
+            window.location.href = url;
+        });
+
+        $('#idbtnSave').click(function() {
+
+            if (showMessageMoveNewStudent() === false)
+            {
+                return;
+            }
+            SaveStudentGroups(false, true, '');
+            // Get data when save page
+            // GetJSONDataEstablishStudentGroups() from _NavigationTabs.cshtml
+            window.oldJSONData = GetJSONDataEstablishStudentGroups();
+        });
+
+        $('#idAutoGroup').click(function() {
+            if (lastSavedScoreTypes != getCurrentSelectedScoreTypes()) {
+                CustomConfirm({
+                    message: 'The score types have been changed. Do you want to Save before auto-grouping?',
+                    yes: function() {
+                        SaveStudentGroupsAndExecuteAutoGroup();
+                    },
+                    no: function() {
+                        execAutoGroup();
+                    }
+                });
+            } else {
+                execAutoGroup();
+            }
+        });
+
+
+        initNavigationTabs(4, @Model);
+
+        if (@ViewBag.PermissionAccess != 3) {
+            LockAllUI();
+        }
+
+        $('#idbtAddNewStudents').click(function()
+        {
+            LoadAddNewStudents(null, '@Model');
+        });
+    });
+
+    function getCurrentSelectedScoreTypes() {
+        var selectedValues = [];
+        $('select[name="selectScoreType"] option:selected').each(function() {
+            selectedValues.push(this.value);
+        });
+
+        return selectedValues.join(';');
+    }
+
+    function YesConfirmPopup(e) {
+        var $self = $(e);
+        $self.parents('.ui-dialog').remove();
+        AutoGroup();
+    }
+
+    function SaveStudentGroups(isNext, isReloadTable, param) {
+        ShowBlock($('#generateContent'), 'Loading');
+        var data = new Array();
+        $('input[name=studentGroup]').each(function() {
+            var self = $(this);
+            data.push({ 'StudentId': self.attr('studentid'), 'GroupId': self.attr('groupid') });
+        });
+
+        var dataPointScoreType = new Array();
+        $('select[name=selectScoreType]').each(function() {
+            var self = $(this);
+           
+            var subScoreId = 0;
+            var scoreType = self.val();
+            var scoreTypeArr = scoreType.split('_');
+            if (scoreTypeArr.length > 1) {
+                scoreType = scoreTypeArr[0];
+                subScoreId = scoreTypeArr[1];
+            }
+
+            dataPointScoreType.push({ 'DataPointId': self.attr('dpid'), 'ScoreType': scoreType, 'VirtualTestCustomSubScoreId': subScoreId});
+        });
+
+        lastSavedScoreTypes = getCurrentSelectedScoreTypes();
+
+        //console.log(data);
+        $.ajax({
+            url: '@Url.Action("SaveStudentGroup")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ SGOID: $('#idhfSGOID').val(), StudentInGroups: data, DataPointScoreType: dataPointScoreType }),
+            success: function(response) {
+                LogExcludeStudent();
+
+                if (isNext) {
+                    if (response == false) {
+                        $('#generateContent').unblock();
+                        var msg = '<p class="text-left">Please create at least one group.</p>';
+                        popupAlertMessage('alert', msg, 400, 200);
+                        return;
+                    } else {
+                        window.location.href = param;
+
+                    }
+                } else {
+                    if (isReloadTable) {
+                        LoadStudentGroupTable(false);
+                    }
+                }
+            }
+        });
+    }
+
+    function SaveStudentGroupsAndExecuteAutoGroup() {
+        if (showMessageMoveNewStudent() === false)
+        {
+            return;
+        }
+
+        ShowBlock($('#generateContent'), 'Loading');
+        var data = new Array();
+        $('input[name=studentGroup]').each(function() {
+            var self = $(this);
+            data.push({ 'StudentId': self.attr('studentid'), 'GroupId': self.attr('groupid') });
+        });
+
+        var dataPointScoreType = new Array();       
+
+        $('select[name=selectScoreType]').each(function() {
+            var self = $(this);
+
+            var subScoreId = 0;
+            var scoreType = self.val();
+            var scoreTypeArr = scoreType.split('_');
+            if (scoreTypeArr.length > 1) {
+                scoreType = scoreTypeArr[0];
+                subScoreId = scoreTypeArr[1];
+            }
+
+            dataPointScoreType.push({ 'DataPointId': self.attr('dpid'), 'ScoreType': scoreType, 'VirtualTestCustomSubScoreId': subScoreId});
+        });
+
+        lastSavedScoreTypes = getCurrentSelectedScoreTypes();
+        //console.log(data);
+        $.ajax({
+            url: '@Url.Action("SaveStudentGroup")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ SGOID: $('#idhfSGOID').val(), StudentInGroups: data, DataPointScoreType: dataPointScoreType }),
+            success: function(response) {
+                LogExcludeStudent();
+
+                LoadStudentGroupTable(false).then(function() {
+                    execAutoGroup();
+                });
+            }
+        });
+    }
+
+    function execAutoGroup() {
+        //Check CustomAssessment Rule.
+        var alertMessage = '<div class="text-left">Students will be regrouped based upon the current cut scores and weights. Do you want to continue?</div>';
+        $('#idAutoGroup').attr('disabled', 'disabled');
+
+        //TODO: check rule CustomAssessment
+        //1) Get CustomDataPoint Numeric.
+        //2) Get CustomDataPoint Alphanumeric.
+        var hasCustomAss = $('#idhdfExistCustomAssessment').val(); //=== 'True'
+        $.get('@Url.Action("GetCustomAssessmentByRule", "SGOManage")', { sgoId: $('#idhfSGOID').val(), hasCustomAssessment: hasCustomAss }, function(response) {
+
+            $('#idAutoGroup').enable();
+            if (response.success && (response.dtNumeric !== '' || response.dtAlphanumeric !== '' || !response.ValidateDefaultPointBand || response.InvalidDefaultBandHasFilters !== '')) {
+                var vdtNumeric = '';
+                if (response.dtNumeric !== '') {
+                    vdtNumeric = '<p>' + response.dtNumeric +
+                        ' will not be included in the Auto Grouping calculation unless you define the cut scores.</p>';
+                }
+                var vdtAlphanumeric = '';
+                if (response.dtAlphanumeric !== '') {
+                    vdtAlphanumeric = '<p>' + response.dtAlphanumeric +
+                        ' will not be included in the Auto Grouping calculating because that assessment uses an alphanumeric score type.</p>';
+                }
+                var vValidDefaultPointBand = '';
+                if (response.ValidateDefaultPointBand) {
+                    vValidDefaultPointBand = '<p>You should set cut-scores in order for the cluster to be included in the grouping calculation.</p>';
+                }
+
+                var vdtHistoricalDefaultBandHasFilter = '';
+                if (response.InvalidDefaultBandHasFilters !== '') {
+                    vdtHistoricalDefaultBandHasFilter = '<p>Since you selected multiple sub-scores for your ' + response.InvalidDefaultBandHasFilters + ' data point, you must manually set the cut scores if you would like this data point to be included in the auto-grouping calculation.</p>'
+                }
+
+                alertMessage = '<div class="text-left">' + vdtNumeric + vdtAlphanumeric + vValidDefaultPointBand + vdtHistoricalDefaultBandHasFilter
+                    + '<p> Are you sure you want to continue? </p></div>';
+                popupAlertMessage('confirm', alertMessage, 650, 500);
+            } else {
+                popupAlertMessage('confirm', alertMessage, 440, 500);
+            }
+
+        });
+    }
+
+    ///////////////////////////////////////////////////////Group
+    function AutoGroup() {
+        ShowBlock($('#generateContent'), 'Loading');
+        //SaveStudentGroups(false, false);
+        @*$.ajax({
+            url: '@Url.Action("AutoGroup")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ sgoID: $('#idhfSGOID').val(), includeUpdate: false }),
+            success: function (response) {
+                console.log(response);
+                $('#idTopNavigation').unblock();
+                //LoadStudentGroupTable();
+            }
+        });*@
+        LoadStudentGroupTable(false).then(function() { LoadStudentGroupTable(true); });
+
+    }
+
+    function LoadStudentGroupTable(isAutoGroup) {
+        var url = '@Url.Action("ShowStudentGroupTable")?sgoId=' + $('#idhfSGOID').val() + '&isAutoGroup=' + isAutoGroup;
+        var defer = $.Deferred();
+        ShowBlock($('#generateContent'), 'Loading');
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $('#divStudentGroupTable').html(html);
+                $('#generateContent').unblock();
+
+                if (!isAutoGroup) {
+                    // Initialize data when page load done
+                    // GetJSONDataEstablishStudentGroups() from _NavigationTabs.cshtml
+                    window.oldJSONData = GetJSONDataEstablishStudentGroups();
+                } else {
+                    lastAutoGroupJSONData = GetJSONDataEstablishStudentGroups();
+                }
+
+                //Check Permission
+                if (@ViewBag.PermissionAccess != 3) {
+                    LockAllUI();
+                }
+                defer.resolve();
+            });
+        return defer;
+    }
+
+    function SetWithColumn() {
+        //Set CSS Column
+        //$('#dataTableEstablishStudentGroups tr td')
+        @*var v = 2 + @Model.ListDataPoint.Count;*@
+        //var divion = 100 / v;
+
+    }
+
+    function btnClosePopupAddGroup() {
+        $("#PopupSGOCreateGroup").dialog("close");
+    }
+
+    function SaveGroup() {
+        ShowBlock($('#generateContent'), 'Loading');
+        var invalidName = 0;
+        var arr = [];
+        $('#tbCreateGroups > tbody > tr').each(function (index, order) {
+
+            var vNumber = $(this).find('.groupOrder').val();
+            var vName = $(this).find('.clsGroupName').val();
+            //console.log(vName);
+            var vGroupName = htmlEncode (vName);
+            //console.log(vGroupName);
+            if (vGroupName.trim() == '') {
+                invalidName = 1;
+            }
+            var vString = vNumber + '|-|' + vGroupName.trim();
+            arr.push(vString);
+        });
+        if (invalidName == 1) {
+            $('#generateContent').unblock();
+            $('#error-messages').html('<li>Please enter Group Name</li>');
+            $('#error-messages').show();
+            return false;
+        }
+        var vResult = arr.join('-|-');
+        var sgoId = $('#idhfSGOID').val();
+
+        var studentGroupData = new Array();
+        $('input[name=studentGroup]').each(function () {
+            var self = $(this);
+            studentGroupData.push({ 'StudentId': self.attr('studentid'), 'GroupId': self.attr('groupid') });
+        });
+
+        //alert(vResult + '---' + sgoId);
+        //var data = JSON.stringify({ SGOID: sgoId, StrGroups: vResult, StudentInGroups: studentGroupData});
+        var data = { SGOID: sgoId, StrGroups: vResult, StudentInGroups: studentGroupData };
+        var url = '@Url.Action("SaveGroupBySOGId", "SGOManage")';
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function(html) {
+                //Save seccess.
+                //alert("Save success");
+                //$('#generateContent').unblock();
+                //LoadStudentGroupTable(false);
+                $('#divStudentGroupTable').html(html);
+                $('#generateContent').unblock();
+                //Check Permission
+                @*if (@ViewBag.PermissionAccess != 3) {
+                    LockAllUI();
+                }*@
+            },
+            failure: function () {
+                $('#generateContent').unblock();
+                var alertMessage = '<div class="text-left">Create SGOGroup fail, Please try again.</div>';
+                popupAlertMessage('alert', alertMessage, 310, 500);
+            }
+        });
+        //Save finish
+        $("#PopupSGOCreateGroup").dialog("close");
+    }
+    ////////////////////////////////////////////////////////Change Cut Score
+    function btnClosePopupAddEditBand() {
+        $("#PopupSGOAddEditBand").dialog("close");
+    }
+    function ChangeCutScore(e, datapointId) {
+        $(e).disableBt();
+        var url = '@Url.Action("LoadDataPointBandByDataPointId", "SGOManage")?datapointId=' + datapointId;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function(html) {
+                //Prevent user fast click.
+                $(e).enableBt();
+
+                $("#generateContent").append('<div id="PopupSGOAddEditBand" class="dialog"></div>');
+                $("#PopupSGOAddEditBand").append(html);
+                $('#PopupSGOAddEditBand').dialog({
+                    title: "",
+                    open: function() {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function() {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function() {
+                        $('#PopupSGOAddEditBand').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 570,
+                    resizable: false
+                });
+            });
+    }
+    function btnSaveCutScore() {
+        ShowBlock($('#iddivAddEditBank'), 'Save');
+
+        var arrBand = [];
+        var vLowbiggerHigh = 0;
+        var voverlap = 0;
+        var lstBand = [];
+        $('#tbAddEditBand tr[class=AddEditBand]').each(function () {
+
+            var $tr = $(this);
+            $tr.removeAttr('style');
+            var vBandId = $(this).attr('bandid');
+            var vName = htmlEncode ($(this).find('input[class=bandName]').val());
+            var vHigh = parseFloat($(this).find('input[class=bandHigh]').val());
+            var vLow =  parseFloat($(this).find('input[class=bandLow]').val());
+            if (vHigh < vLow) {
+                $tr.attr('style', 'background-color: red;');
+                vLowbiggerHigh = 1;
+            }
+            if (lstBand.length > 0) {
+                $.each(lstBand, function (index, value) {
+                    
+                    if ((value.Low <= vLow && vLow <= value.High) || (value.Low <= vHigh && vHigh <= value.High)) {
+                        voverlap = 1;
+                        $tr.attr('style', 'background-color: red;');
+                    } else {
+                        lstBand.push({
+                            'Low': vLow,
+                            'High': vHigh
+                        });
+                    }
+                });
+            } else {
+                lstBand.push({
+                    'Low': vLow,
+                    'High': vHigh
+                });
+            }
+
+            var vCombine = vBandId + '|' + vName + '|' + vHigh + '|' + vLow;
+            arrBand.push(vCombine);
+        });
+        if (vLowbiggerHigh == 1) {
+            $('#iddivAddEditBank').unblock();
+            var alertMessageLowbiggerHigh = '<div class="text-left">High value must bigger Low value.</div>';
+            popupAlertMessage('alert', alertMessageLowbiggerHigh, 325, 500);
+            return false;
+        }
+        if (voverlap == 1) {
+            $('#iddivAddEditBank').unblock();
+            var alertMessageOverlap = '<div class="text-left">High value must be greater than low value.</div>';
+            popupAlertMessage('alert', alertMessageOverlap, 365, 500);
+            return false;
+        }
+
+        var vStrCutScore = arrBand.join('-^-');
+        //console.log(vStrCutScore);
+        var url = '@Url.Action("SaveCutScoreByDataPoint", "SGOManage")';
+        var data = { sgoId: $('#idhfSGOID').val(), dataPointId: $('#hdfDataPointId').val(), strCutScore: vStrCutScore };
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data,
+            success: function (response) {
+                //Update Default/Custom
+                var $dataPoint = $('#idlbCutScore-' + data.dataPointId);
+                if (response.isCustom == true) {
+                    $dataPoint.html('Custom');
+                } else {
+                    $dataPoint.html('Default');
+                }
+                $('#iddivAddEditBank').unblock();
+                $("#PopupSGOAddEditBand").dialog("close");
+                //LoadStudentGroupTable();
+                var scoreType = -1;
+                var subScoreId = 0;
+                if ($('select[name=selectScoreType][dpid=' + data.dataPointId + ']').length > 0) {
+                    scoreType = $('select[name=selectScoreType][dpid=' + data.dataPointId + ']').val();
+
+                    var scoreTypeArr = scoreType.split('_');
+                    if (scoreTypeArr.length > 1) {
+                        scoreType = scoreTypeArr[0];
+                        subScoreId = scoreTypeArr[1];
+                    }
+                }
+                ReloadDataPointScoreColor(data.dataPointId, scoreType, subScoreId);
+            },
+            failure: function () {
+                //TODO: post fail
+                $('#iddivAddEditBank').unblock();
+                $("#PopupSGOAddEditBand").dialog("close");
+            }
+        });
+    }
+    function btnApplyDefault() {
+        ShowBlock($('#iddivAddEditBank'), 'Save');
+        var url = '@Url.Action("InitDefaultCutScore", "SGOManage")';
+        var data = { dataPointId: $('#hdfDataPointId').val() };
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data,
+            success: function (response) {
+                //Update Default/Custom
+                var $dataPoint = $('#idlbCutScore-' + data.dataPointId);
+                if (response.isCustom == true) {
+                    $dataPoint.html('Custom');
+                } else {
+                    $dataPoint.html('Default');
+                }
+
+                $('#iddivAddEditBank').unblock();
+                $("#PopupSGOAddEditBand").dialog("close");
+                //LoadStudentGroupTable();
+                var scoreType = -1;
+                var subScoreId = 0;
+                if ($('select[name=selectScoreType][dpid=' + data.dataPointId + ']').length > 0) {
+                    scoreType = $('select[name=selectScoreType][dpid=' + data.dataPointId + ']').val();
+                    var scoreTypeArr = scoreType.split('_');
+                    if (scoreTypeArr.length > 1) {
+                        scoreType = scoreTypeArr[0];
+                        subScoreId = scoreTypeArr[1];
+                    }
+                }
+                
+                ReloadDataPointScoreColor(data.dataPointId, scoreType, subScoreId);
+            },
+            failure: function () {
+                //TODO: post fail
+                $('#iddivAddEditBank').unblock();
+                $("#PopupSGOAddEditBand").dialog("close");
+            }
+        });
+
+    }
+    ///////////////////////////////////////////Weight
+    function btnClosePopupChangeWeights() {
+        $("#PopupSGOChangeWeights").dialog("close");
+    }
+    function ChangeWeights(e, sgoId) {
+        $(e).disableBt();
+        var url = '@Url.Action("LoadDataPointWeightBysgoId", "SGOManage")?sgoId=' + sgoId;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                //Prevent user fast click.
+                $(e).enableBt();
+
+                $("#generateContent").append('<div id="PopupSGOChangeWeights" class="dialog"></div>');
+                $("#PopupSGOChangeWeights").append(html);
+                $('#PopupSGOChangeWeights').dialog({
+                    title: "",
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupSGOChangeWeights').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+            });
+    }
+
+    function btnSaveChangeWeights() {
+
+        var sumWeight = 0;
+        var arrDataPoint = [];
+        $('#tbChangeWeights tr[id^=idtrDataPoint-]').each(function () {
+            var vDataPointId = $(this).attr('DataPointId');
+            var vWeight = $('#inputPercent-' + vDataPointId).val();
+            sumWeight += vWeight;
+            var vCombine = vDataPointId + '-' + vWeight;
+            arrDataPoint.push(vCombine);
+        });
+
+        if (sumWeight <= 0) {
+            CustomAlert('Please input weight for at least one Data Point.')
+            return;
+        }
+
+
+        ShowBlock($('#iddivChangeWeighs'), 'Save');
+        if (arrDataPoint.length > 0) {
+            var url = '@Url.Action("SaveWeightChange", "SGOManage")';
+            var vStrDataPoint = arrDataPoint.join(',');
+            var data = { sgoId: $('#idhfSGOID').val(), strDataPoint: vStrDataPoint };
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: data,
+                success: function (response) {
+                    //console.log(response);
+                    $.each(response.data, function(index, value) {
+                        var weightInfo = value.Weight + ' (' + value.Percent + ')';
+                        $('#idlbWeight-' + value.DataPointId).html(weightInfo);
+                    });
+                    $('#iddivChangeWeighs').unblock();
+                    $("#PopupSGOChangeWeights").dialog("close");
+                    //console.log(response);
+                    //LoadStudentGroupTable();
+                },
+                failure: function () {
+                    //TODO: post fail
+                    $('#iddivChangeWeighs').unblock();
+                    $("#PopupSGOChangeWeights").dialog("close");
+                }
+            });
+        }
+    }
+    /////////////////////////////////////////////////////////End Weight
+
+    function CheckAllStudents() {
+        //console.log($('#idChkStudent').checked);
+        if ($('#idChkStudent').is(':checked'))
+        {
+            $('input[name=studentGroup]').attr("checked", "checked");
+
+        } else {
+            $('input[name=studentGroup]').removeAttr('checked');
+        }
+    }
+
+    function htmlEncode(value) {
+        //create a in-memory div, set it's inner text(which jQuery automatically encodes)
+        //then grab the encoded contents back out.  The div never exists on the page.
+        return $('<div/>').text(value).html();
+    }
+
+    function htmlDecode(value) {
+        return $('<div/>').html(value).text();
+    }
+
+    function LockAllUI() {
+        $('#generateContent :button').attr('disabled', true);
+
+        $('#generateContent :input').attr('disabled', true);
+        if (@ViewBag.PermissionAccess == 4) //MinorUpdate
+        {
+            $('#generateContent :input[type=checkbox]').removeAttr('disabled');
+            $('#idbtnExclude').removeAttr('disabled');
+            $('#idbtAddNewStudents').removeAttr('disabled');
+            $('#idbtnSave').removeAttr('disabled');
+            $('#idbtnSaveAndContinue').removeAttr('disabled');
+        }
+        $('#idbtnContinue').removeAttr('disabled');
+
+        $('#txtSGONote').prop('disabled', false);
+        $('#btnSaveNote').prop('disabled', false);
+    }
+
+    function LogExcludeStudent() {
+        var excludeGroupID = $('tr[name=blankRow][isexcluded=True]').attr('groupid');
+        var auditDetail = $('<students></students>');
+        $('input[name="studentGroup"]').each(function() {
+            var that = $(this);
+            var oldGroupID = that.attr('oldgroupid');
+            if (that.attr('groupid') != that.attr('oldgroupid') && that.attr('groupid') == excludeGroupID) {
+                if ($(auditDetail).find('group[id="' + oldGroupID + '"]').length) {
+                    $(auditDetail).find('group[id="' + oldGroupID + '"]').each(function() {
+                        var groupNode = $(this);
+                        groupNode.append('<studentid>' + that.attr('studentid') + '</studentid>');
+                    });
+                } else {
+                    var groupNode = $('<group></group>');
+                    groupNode.attr('id', oldGroupID);
+                    groupNode.append('<studentid>' + that.attr('studentid') + '</studentid>');
+                    auditDetail.append(groupNode);
+                }
+            }
+        });
+
+        if (auditDetail.html() == '')return;
+        var actionDetail = '<students>' + auditDetail.html() + '</students>';
+        $.ajax({
+            type: 'Post',
+            url: '@Url.Action("AddAuditTrail", "SGOAuditTrail")',
+            data: {SGOID: '@Model', SGOActionTypeID: '2', ActionDetail: actionDetail},
+            success: function(){}
+        });
+    }
+
+    function supportNavigationSaveAndRedirect(param) {
+        SaveStudentGroups(true, false, param);
+    }
+
+    function LoadAddNewStudents(e, sgoId) {
+        //$(e).disableBt();
+        var url = '@Url.Action("LoadAddNewStudentsFilter", "SGOManage")/' + sgoId;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function(html) {
+                //Prevent user fast click.
+                //$(e).enableBt();
+
+                $("#generateContent").append('<div id="PopupSGOAddEditBand" class="dialog"></div>');
+                $("#PopupSGOAddEditBand").append(html);
+                $('#PopupSGOAddEditBand').dialog({
+                    title: "",
+                    open: function() {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function() {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function() {
+                        $('#PopupSGOAddEditBand').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 1000,
+                    resizable: false
+                });
+            });
+    }
+
+
+    function showMessageMoveNewStudent(param) {
+        if ($('#idhfESGPermission').val() === '4' && $('#idhdfAllowSetGroup').val() === '1') {
+            var msg = '<p class="text-left">Students can no longer be moved between groups after saving. Would you like to save now or continue to move the newly added students?</p>';
+            popupAlertMessageV3('confirm', msg, 500, 200, 'confirmSaveMoveGroupWithNewStudent', param, 'Save', 'Continue Moving Students');
+            return false;
+        }
+        return true;
+    }
+
+    function confirmSaveMoveGroupWithNewStudent(param) {
+        var $self = $(this);
+        $('body').find('.ui-dialog').dialog('destroy').remove();
+        if (param === 1) {
+            var url = "/SGOScoringPlanTarget/Index?sgoId=" + $('#idhfSGOID').val();
+            SaveStudentGroups(true, true, url);
+        } else {
+            SaveStudentGroups(false, true, '');
+        }
+        // Get data when save page
+        // GetJSONDataEstablishStudentGroups() from _NavigationTabs.cshtml
+        window.oldJSONData = GetJSONDataEstablishStudentGroups();
+    }
+
+    function AppendStudentToGroupTable(students) {
+        ShowBlock($('#generateContent'), 'Loading');
+        var sgoId = '@Model';
+        var url = '@Url.Action("GetDataPointForStudent", "SGOManage")?sgoId=' + sgoId + '&isAutoGroup=false';
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function(response) {
+                var groupId = response.groupId;
+                var $trLast = $('#divStudentGroupTable tr[name=trTobeplaced]:last');
+                var isEmptyRow = false;
+                if ($trLast.length == 0) {
+                    $trLast = $('#divStudentGroupTable tr[name=emptyRow][groupId=' + groupId + ']:last');
+                    $trLast.attr('name', 'trTobeplaced');
+                    var $span = $trLast.find('span[name=groupname]').first();
+                    $span.attr('class', 'PreparednessGroupNameClass');
+
+                    var idx = 1;
+                    $trLast.find('td').each(function() {
+                        if (idx == 2) {
+                            $(this).empty();
+                            var html = '<input type="checkbox" id="0" value="0" name="studentGroup" studentid="0" groupid="' + groupId +
+                                '" oldgroupid="' + groupId + '" studenttype="0" onclick="checkstudenttype();"> <label for="0"></label>';
+                            $(this).html(html);
+                        }
+                        if (idx == 3) {
+                            $(this).empty();
+                            var htmlt = '<label style="color: black;font-weight: normal;" name="lblScore" dpid="0" studentid="0"></label>';
+                            $(this).html(htmlt);
+                        }
+                        idx = idx + 1;
+                    });
+                    isEmptyRow = true;
+                }
+                students.forEach(function(student) {
+                    var clone = $trLast.clone();
+                    //change groupid attribute in cloned item
+                    $(clone).find('input').each(function() {
+                        $(this).attr('id', student.studentid);
+                        $(this).attr('studentid', student.studentid);
+                        $(this).attr('value', student.studentid);
+                        $(this).attr('studenttype', student.type);
+                        $(this).prop('checked', false);
+                        var $label = $(this).parent().find('label').first();
+                        $label.attr('for', student.studentid);
+                        $label.text(student.studentName);
+                    });
+
+                    var $labelScore = $(clone).find('label[name=lblScore]').first();
+                    $labelScore.attr('studentid', student.studentid);
+                    var score = '';
+                    var dpid = '';
+                    var color = '';
+
+                    if (response.dataPoints != null && response.dataPoints.length > 0) 
+                    {
+                        response.dataPoints.forEach(function(item) {
+                            dpid = item.SGODataPointID;
+                            var studentScore = item.StudentScoreInDataPoints.filter(function(studentScore) {
+                                return student.studentid == studentScore.StudentId;
+                            });
+                            if (studentScore != null && studentScore.Score >= 0) 
+                            {
+                                score = parseFloat(studentScore.Sco).toFixed(2);
+                                if (!string.IsNullOrEmpty(studentScore.Color)) {
+                                    color = studentScore.Color;
+                                    if (item.Type == 2)
+                                    {
+                                        score += '(' + Math.Round(studentScore.ScorePercent, 0) + '%)';
+                                    }
+                                }
+                            }
+                            else {
+
+                                if (studentScore != null && item.Type == 6)
+                                {
+                                    score = studentScore.ScoreText;
+                                }                            
+                                else
+                                {
+                                        score = 'N/A';
+                                }
+                            }                        
+                        });
+                    }
+                    $labelScore.attr('dpid', dpid);
+                    $labelScore.html(score);
+                    $labelScore.parent().css('background-color', color);
+                    $trLast.after(clone);
+                });
+                if (isEmptyRow) {
+                    $trLast.remove();
+                }
+                $('#generateContent').unblock();
+
+            });
+    }
+</script>

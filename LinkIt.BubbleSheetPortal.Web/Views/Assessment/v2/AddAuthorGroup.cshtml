@@ -1,0 +1,259 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.AuthorGroup.AddAuthorGroupViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testdesign, "Add Author Group");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<style>
+    .block-text-name {
+        width: 100% !important;
+    }
+
+    .btn-container {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 18px;
+    }
+</style>
+
+<article class="container_12">
+    <section>
+        <div class="block-border">
+            <div class="block-content form">
+                <h1 style="padding: 0" class="mb-4">Create Author Group</h1>
+                @using (Html.BeginForm("AddAuthorGroup", "Assessment", FormMethod.Post, new { id = "addAuthorGroupForm", @class = "form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <ul style="display: none" id="error-messages" class="message error"></ul>
+                    <ul style="display: none" id="success-message" class="message success">
+                        <li>Author group successfully created.</li>
+                    </ul>
+
+                    <fieldset style="padding: 0">
+                        <p class="title-large">Author Group Detail</p>
+                        <div class="row">
+                            @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                            {
+                                <div class="col-3">
+                                    <label>State</label>
+                                    @Html.DropDownListFor(x => x.StateId, Model.States, new { id = "selectState" })
+                                </div>
+                                <div class="col-3">
+                                    <label>@LabelHelper.DistrictLabel</label>
+                                    <div class="block-text-name">
+                                        @Html.DropDownListFor(x => x.DistrictId, Model.Districts, new { id = "selectDistrict" })
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <label>School</label>
+                                    <div class="block-text-name">
+                                        @Html.DropDownListFor(x => x.SchoolId, Model.Schools, new { id = "selectSchool", @class = "full-width" })
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-3 ">
+                                    <label>Name</label>
+                                    @Html.TextBoxFor(model => model.Name, new { @class = "full-width", tabindex = "1", maxlength = 64 })
+                                </div>
+                            }
+                            else if (Model.IsDistrictAdmin)
+                            {
+                                <div class="col-3">
+                                    <label>School</label>
+                                    <div class="block-text-name">
+                                        @Html.DropDownListFor(x => x.SchoolId, Model.Schools, new { id = "selectSchool", @class = "full-width" })
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <label>Name</label>
+                                    @Html.TextBoxFor(model => model.Name, new { @class = "full-width", tabindex = "1", maxlength = 64 })
+                                </div>
+                            }
+                            else if (Model.IsTeacher || Model.IsSchoolAdmin)
+                            {
+                                <div class="col-3">
+                                    <label>School</label>
+                                    <div class="block-text-name">
+                                        @Html.DropDownListFor(x => x.SchoolId, Model.Schools, new { id = "selectSchool", @class = "full-width" })
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <label>Name</label>
+                                    @Html.TextBoxFor(model => model.Name, new { @class = "full-width", tabindex = "1", maxlength = 64 })
+                                </div>
+                            }
+                        </div>
+                    </fieldset>
+                    <div class="btn-container">
+                        <button id="btnCancel" type="button" class="btn-blue">Cancel</button>
+                        <button id="btnSubmit" type="submit" name="Save" class="btn-red">Create</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        breadcrumbDetailPage('.write', '#manageAuthorGroup');
+        $('.write').addClass('current');
+        $('#manageAuthorGroup').addClass('current');
+        $('#selectDistrict').marquee();
+        $('#selectSchool').marquee();
+
+        @if (Model.IsPublisher||Model.IsNetworkAdmin)
+        {
+            if (Model.IsNetworkAdmin)
+            {
+                <text>
+                    var stateSelect = $('#selectState');
+                    stateSelect.empty();
+                    $.get('@Url.Action("GetStatesByDictricIds", "PopulateStateDistrict")', { dictricIds: '@Model.StrIds' }, function (states) {
+                        addDefaultOption(stateSelect, "State");
+                        addSelectListItems(stateSelect, states);
+                    });
+
+                </text>
+            }
+            else
+            {
+                <text>
+                     populateStates();
+                </text>
+            }
+
+            <text>
+            $('#selectState').change(function () {
+                if ($(this).val() != 'select') {
+                    populateDistricts($('#selectDistrict'));
+                }
+                else {
+                    $('#selectDistrict').empty();
+                    $('#selectSchool').empty();
+                }
+            });
+
+            $('#selectDistrict').change(function () {
+                if ($(this).val() != 'select') {
+                    populateSchools($('#selectSchool'));
+                }
+                else {
+                    $('#selectSchool').empty();
+                }
+            });
+            </text>
+        }
+        else if (Model.IsDistrictAdmin)
+        {
+            <text>
+                var districtId = '@Model.UserDistrictId';
+                $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', { districtId: districtId }, function (response) {
+                    addDefaultOption($('#selectSchool'), "School");
+                    addSelectListItems($('#selectSchool'), response);
+                });
+            </text>
+        }
+        else if(Model.IsSchoolAdmin || Model.IsTeacher)
+        {
+             <text>
+                populateSchoolsForSchoolAdmin($('#selectSchool'));
+             </text>
+        }
+
+
+        $('#addAuthorGroupForm').submit(function (event) {
+            event.preventDefault();
+            $('#btnSubmit').disableBt();
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function (response) {
+                    if (response.Success != false) {
+                        location.href = response.RedirectUrl;
+                    }
+                    else {
+                        addErrorMessages(response);
+                        $('#success-message').hide();
+                        $('#btnSubmit').enableBt();
+                    }
+                },
+                failure: function (response) {
+                    alert(response);
+                }
+            });
+        });
+
+        $('#btnCancel').click(function () {
+            location.href = '@Url.Action("AuthorGroupList")';
+        });
+    });
+
+    function populateStates() {
+        var stateSelect = $('#selectState');
+        stateSelect.empty();
+
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (response) {
+            addDefaultOption(stateSelect, "State");
+            addSelectListItems(stateSelect, response);
+        });
+    }
+
+    function populateDistricts(districtSelect) {
+        districtSelect.empty();
+        $('#selectSchool').empty();
+        var stateValue = $('#selectState').val();
+        var url = '@Url.Action("GetDistricts", "PopulateStateDistrict")';
+        if ('@Model.IsNetworkAdmin' === 'True') {
+            url = '@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")';
+        }
+        $.get(url, { stateId: stateValue }, function (response) {
+            addDefaultOption(districtSelect, "@LabelHelper.DistrictLabel");
+            addSelectListItems(districtSelect, response);
+        });
+    }
+
+    function populateSchools(schoolSelect) {
+        schoolSelect.empty();
+        var districtValue = $('#selectDistrict').val();
+        $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', { districtId: districtValue }, function (response) {
+            addDefaultOption(schoolSelect, "School");
+            addSelectListItems(schoolSelect, response);
+        });
+    }
+
+    function populateSchoolsForSchoolAdmin(schoolSelect) {
+        schoolSelect.empty();
+        $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', {}, function (schools) {
+            addDefaultOption(schoolSelect, "School");
+            addSelectListItems(schoolSelect, schools);
+        });
+    }
+</script>

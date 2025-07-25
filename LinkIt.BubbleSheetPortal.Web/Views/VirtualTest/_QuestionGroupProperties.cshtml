@@ -1,0 +1,357 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.QuestionGroupPropertiesViewModel
+
+<article>
+    <section>
+        <div class="block-border">
+            <div class="block-content form">
+                <h1 class="PropertyTitle">
+                    Question Group Properties
+                </h1>
+                @if (Model.IsShowNormalBranchingButton)
+                {
+                    <div class="u-clearfix">
+                        <div class="question-properties-button text-right">
+                            <button type="button" id="btnEditBranching" style="display: none;">Branching</button>
+                        </div>
+                    </div>
+                }
+                @using (Html.BeginForm("EditQuestionGroupProperties", "VirtualTest", FormMethod.Post, new { id = "editQuestionGroupPropertiesForm", @class = "form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.TextArea("xmlContent", Model.Instruction, new { @style = "display:none" })
+                    <input id="VirtualSectionId" name="VirtualSectionId" type="hidden" value="@Model.VirtualSectionId" />
+                    <input id="VirtualTestId" name="VirtualTestId" type="hidden" value="@Model.VirtualTestId" />
+                    <input id="QuestionGroupId" name="QuestionGroupId" type="hidden" value="@Model.QuestionGroupId" />
+                    <input id="Instruction" name="Instruction" type="hidden" value="@Model.Instruction" />
+                    <input id="FirstQuestionInGroup" name="FirstQuestionInGroup" type="hidden" value="@Model.FirstQuestionInGroup" />
+                    <div class="clear10"></div>
+                    <div class="DivFieldSet">
+                        <fieldset>
+                            <div class="u-inline-block">
+                                <label class="u-fw-400">Question Group Title:</label>
+                            </div>
+                            <div class="u-inline-block u-w-400">
+                                @Html.TextBoxFor(x => x.QuestionGroupTitle, new { @class = "full-width", tabindex = 1, maxlength = 50 })
+                            </div>
+                        </fieldset>
+                        <fieldset>
+                            <legend>Question Group Instructions:</legend>
+                            <div class="u-clearfix">
+                                <div class="qContent">
+                                    <div id="topSpace"></div>
+                                    <div class="commonGroupAudio" id="questionType">
+                                        <ul>
+                                            <li>
+                                                <div class="audio" id="audioQuestion">
+                                                    <div class="audioRemove" id="audioRemoveQuestion">
+                                                        <img alt="Play audio" class="bntPlay" src="../../Content/themes/TestMaker/images/small_audio_play.png" title="Play audio" />
+                                                        <img alt="Stop audio" class="bntStop" src="../../Content/themes/TestMaker/images/small_audio_stop.png" title="Stop audio" />
+                                                        <input type="button" value="Remove audio" class="ckbutton removeAudio cke_toolgroup" />
+                                                        <span class="audioRef"></span>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                        <div class="clear"></div>
+                                    </div>
+                                    <textarea id="txtQuestionGroupInstruction" cols="80" name="editor2" rows="10"></textarea>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <div class="clear10"></div>
+                    </div>
+                    <div class="DivFieldSet">
+                        <fieldset>
+                            <div class="u-m-t-10" style="float:left;">
+                                <div class="u-inline-block">
+                                    @Html.RadioButtonFor(model => model.DisplayPosition, 0, new { id = "DisplayPositionTopQuestion" })
+                                </div>
+                                <div class="u-inline-block">
+                                    <label for="DisplayPositionTopQuestion" class="u-fw-400">On Top of Question Group Items</label>
+                                </div>
+                            </div>
+                            <div class="u-m-t-10" style="float:right;">
+                                <div class="u-inline-block">
+                                    @Html.RadioButtonFor(model => model.DisplayPosition, 1, new { id = "DisplayPositionTopPassage" })
+                                </div>
+                                <div class="u-inline-block">
+                                    <label for="DisplayPositionTopPassage" class="u-fw-400">On Top of Passage Panel</label>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div class="u-text-right u-m-t-10">
+                        <button type="button" onclick="SaveQuestionGroupProperties()">Save Changes</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+</article>
+<script>
+    $(function () {
+        try {
+            CKEDITOR.instances['txtQuestionGroupInstruction'].destroy(true);
+        } catch (e) {}
+
+        CKEDITOR.replace('txtQuestionGroupInstruction', {
+            extraPlugins: 'mathjax,sharedspace,multiplechoice,mathfraction,indent,dialog,contextmenu,liststyle,video,tabspaces',
+            toolbar: [
+                ['JustifyLeft', 'JustifyCenter', 'JustifyRight', '-', 'NumberedList', 'BulletedList'],
+                ['Bold', 'Italic', 'Underline'],
+                ['Sameline'],
+                ['FontSize', 'Subscript', 'Superscript', '-', 'RemoveFormat'],
+                ['Link', 'Unlink', 'Table', 'AudioUpload', 'SpecialChar', 'Indent', 'Outdent', 'Tabspaces', 'ImageUpload', 'VideoUpload']
+            ],
+            sharedSpaces: {
+                top: 'topSpace'
+            },
+            extraAllowedContent: 'span[stylename]; span(smallText,normalText,largeText,veryLargeText);'
+        });
+
+        if (CKEDITOR.env.ie && CKEDITOR.env.version == 8) {
+            document.getElementById('ie8-warning').className = 'warning';
+        }
+
+        xmlInstructionImport($('#xmlContent'));
+
+        $('#btnEditBranching').show();
+        $('#btnEditBranching').click(function() {
+            loaderIsOpened(true);
+            // Will later need to update from BE
+            var url = 'http://demo.linkitlocal.com/VirtualTest/TestBranching?VirtualTestId=377052&VirtualQuestionId=3556886&_=1598253083783';
+            var vVirtualTestID = $('#VirtualTestId').val();
+            var vFirstQuestionInGroup = $('#FirstQuestionInGroup').val();
+            var url = '/VirtualTest/TestBranching?VirtualTestId=' + vVirtualTestID + '&VirtualQuestionId=' + vFirstQuestionInGroup;
+
+            $.ajax({
+                url: url,
+                cache: false
+            }).done(function (html) {
+                loaderIsOpened(false);
+                renderDialog(html);
+            });
+
+            $(".close").unbind("click");
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+        });
+    });
+
+    function interalHelper() {
+        var convertObjToInlineStyle = function(obj) {
+            var arr = Object.entries(obj);
+            var result = '';
+
+            for (var i = 0, len = arr.length; i < len; i++) {
+                if (i === 0) {
+                    result += (arr[i][0] + ': ' + arr[i][1] + ';');
+                } else {
+                    result += (' ' + arr[i][0] + ': ' + arr[i][1] + ';');
+                }
+            }
+
+            return result;
+        };
+
+        return {
+            convertObjToInlineStyle: convertObjToInlineStyle
+        }
+    }
+
+    function loaderIsOpened(isOpen, message) {
+        message = message || 'Loading';
+
+        if (isOpen) {
+            ShowBlock($('#divMain'), message);
+        } else {
+            $('#divMain').unblock();
+        }
+    }
+
+    function renderDialog(htmlContent) {
+        var wrapElId = 'divTestBranchingPanel';
+        $('body').append('<div id="' + wrapElId + '" class="dialog"></div>');
+        $("#" + wrapElId).append(htmlContent);
+        $("#" + wrapElId).dialog({
+            title: "",
+            open: function () {
+                //If width of popup gt window width popup auto show on the left
+                var currentPopup = $(this);
+                if (currentPopup.width() > $(window).width()) {
+                    currentPopup.parent().css({ "left": "0" });
+                }
+
+                renderBackdrop();
+            },
+            beforeclose: function () {
+                var hasChange = $('#hdIsChange').val() == "1";
+
+                if (!hasChange) return true;
+
+                confirmExitBranching();
+                return false;
+            },
+            close: function () {
+                $('#' + wrapElId).remove();
+                $("body .my-overlay").remove();
+            },
+            modal: false,
+            width: 1006,
+            resizable: false
+        });
+    }
+
+    function renderBackdrop() {
+        var options = {
+            'z-index': $.ui.dialog.currentZ() - 1,
+            width: $(document).width() + 'px',
+            height: $(document).height() + 'px',
+            'background-color': 'black',
+            opacity: 0.3,
+            position: 'absolute',
+            top: '0px',
+            left: '0px'
+        };
+        var helper = interalHelper();
+        var style = helper.convertObjToInlineStyle(options);
+
+        $("body").append('<div class="my-overlay" style="' + style + '"></div>');
+    }
+
+    function confirmExitBranching() {
+        var message = 'Do you want to exit this question without saving?';
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section class="grid_5" style="height:140px;">' +
+            '<div class="block-border" style="width: 350px; min-height: 100px;">' +
+            '<div class="block-content form" style="padding-bottom:0px">' +
+            '<table cellpadding="0" cellspacing="0" style="margin-top:-15px;"><tr><td><p class="styleMessage" style="margin-bottom:10px;">' + message +
+            '</p></td></tr><tr><td>' +
+            '<p class="plButton"  style="margin-bottom:10px;text-align: center">' +
+            '<button id="btnOk" type="button" name="ok" onclick="confirmExitBranchingOkClick()">OK</button>' +
+            '<button id="btnCancel" type="button" name="cancel" onclick="confirmExitBranchingCancelClick()" style="margin-left:10px;">Cancel</button>' +
+            '</p></td></tr></table></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "ConfirmExitBranchingDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 420,
+                maxheight: 100,
+                resizable: false
+            });
+
+        $(".ui-dialog").css("height", hbody);
+    }
+
+    function confirmExitBranchingOkClick() {
+        $('#ConfirmExitBranchingDialog').remove();
+
+        $('#divTestBranchingPanel').remove();
+        $("body .my-overlay").remove();
+    }
+
+    function confirmExitBranchingCancelClick() {
+        $('#ConfirmExitBranchingDialog').remove();
+    }
+
+    function xmlInstructionImport(element) {
+        var xmlContent = "";
+        if (element.val() != "") {
+            xmlContent = element.val();
+            var qAudioRef = $(xmlContent).attr("audioref");
+            var content = $(xmlContent).html();
+            var instance = CKEDITOR.instances['txtQuestionGroupInstruction'];
+
+            instance.setData(content, function () {
+                //This to make sure state of CKEditor is false after loaded data. Waiting 1s
+                var that = this;
+                window.setTimeout(function () {
+                    that.resetDirty();
+                }, 1000);
+
+
+                if (qAudioRef != undefined && qAudioRef != "") {
+                    $("#addAudioQuestion").hide();
+                    $("#audioRemoveQuestion").show().find(".audioRef").text(qAudioRef);
+                }
+
+            });
+            instance.resetDirty();
+        }
+    }
+
+    function xmlInstructionExport() {
+        var instance = CKEDITOR.instances['txtQuestionGroupInstruction'];
+        return instance.getData();
+    }
+
+    function SaveQuestionGroupProperties() {
+        ShowBlock($('#divMain'), 'Saving');
+        $('#btnSubmit').disableBt();
+        $('#success-message').hide();
+
+        var questionAudioLink = "";
+        if ($("#audioRemoveQuestion").css("display") == "block" && $("#audioRemoveQuestion .audioRef").text() != "") {
+            var audioLink = $("#audioQuestion .audioRef").text();
+            if (audioLink != null) {
+                var idx = audioLink.indexOf('/RO');
+                if (idx > 0) {
+                    audioLink = audioLink.substring(idx, audioLink.length).replace(/%20/g, ' ');
+                }
+            }
+
+            questionAudioLink = 'audioRef = "' + audioLink + '" ';
+        }
+
+        var questionGroupContent = '';
+        var xmlInstructionContent = xmlInstructionExport();
+
+        if (xmlInstructionContent) {
+            questionGroupContent = '<div class="commonGroupQuestion" ' + questionAudioLink + '>' + xmlInstructionExport() + '</div>';
+            questionGroupContent = questionGroupContent.replace(/(\r\n|\n|\r)/gm, "")
+                                    .replace(new RegExp("\>[\n\t]+\<", "g"), "><")
+                                    .replace(/&nbsp;/g, "&#160;")
+                                    .replace(/[\u200B-\u200D\uFEFF]/g, '');
+        }
+
+        $('#Instruction').val(questionGroupContent);
+
+        var url = '@Url.Action("EditQuestionGroupProperties")';
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: $('#editQuestionGroupPropertiesForm').serialize(),
+            success: function (response) {
+                $('#divMain').unblock();
+
+                if (response.Success == true) {
+                    //get the virtualsectionid and assign to hidden
+                    $('#QuestionGroupId').val(response.QuestionGroupId);
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                    resetQuestionGroupIntrustionEditorDirty();//defined in Index.cshtml
+                    window.setTimeout(function () {
+                        $('#success-message').hide();
+                    }, 5000);
+                }
+                else {
+                    $('#error-messages').show();
+                    $('#error-messages').html('<ul><li>' + response.ErrorMessage + '</li></ul>');
+                    $('#error-messages').addClass('no-margin');
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                $('#divMain').unblock();
+                alert(response);
+            }
+        });
+
+    }
+</script>

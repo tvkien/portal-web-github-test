@@ -1,0 +1,644 @@
+@using LinkIt.BubbleSheetPortal.Web.Security
+@using StackExchange.Profiling
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using System.Configuration;
+@using LinkIt.BubbleSheetPortal.Web.App_Start
+@using Bundle = SquishIt.Framework.Bundle
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    @{
+        var strWhiteLable = string.Empty;
+        var vS3URL = HelperExtensions.GetS3CSSURL();
+        var districtId = 0;
+        if (Request.IsAuthenticated)
+        {
+            districtId = HelperExtensions.GetDistrictIdBySubdomain();
+        }
+        if (!string.IsNullOrEmpty(vS3URL))
+        {
+            strWhiteLable = string.Format("{0}{1}_newskin.css", vS3URL, HelperExtensions.LoginDistrict);
+        }
+
+        var isShowIconInfo = HelperExtensions.IsShowIconHelpTextInfo(districtId);
+
+        var currentUser = HttpContext.Current.GetCurrentUser();
+        var menuAccess = HelperExtensions.GetMenuForDistrict(currentUser);
+    }
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    @RenderSection("meta", required: false)
+    <link href="@BundleHelper.Version("~/Content/libs/fontawesome6/css/all.min.css")" rel="stylesheet" />
+    @BundleHelper.StyleSharedBundleV2()
+    @RenderSection("stylesheet", required: false)
+    <title>@ViewBag.Title</title>
+    @Html.Partial("_Favicons")
+    @if (IsSectionDefined("jQuery"))
+    {
+        @RenderSection("jQuery")
+    }
+    else
+    {
+        @BundleHelper.jQuery()
+    }
+    @BundleHelper.ScriptSharedTopBundleV2()
+    @BundleHelper.ScriptLKSearchWidgetBundle()
+    <script src='https://www.google.com/recaptcha/api.js'></script>
+    <script src="@Url.Content("~/Scripts/jquery.cookie.js")"></script>
+    <script src="@Url.Content("~/Scripts/marqueeV2.js")"></script>
+    @{
+        var script = HelperExtensions.GetGoogleAnalyticsTrackingScript();
+        if (script.Contains("<script"))
+        {
+            @Html.Raw(script);
+        }
+        else
+        {
+            <script type="text/javascript">
+
+                @Html.Raw(script)
+            </script>
+        }
+    }
+    <script type="text/javascript">
+        var _CURRENT_PAGE_NAME = "";
+        var IS_V2 = true;
+        var CKE_VERSION = "@BundleHelper.Version("/Content/themes/TestMaker")";
+    </script>
+    @if (Request.IsAuthenticated)
+    {
+        var url = ((UserPrincipal)User).WalkmeSnippetURL;
+        var userRole = ((UserPrincipal)User).RoleId;
+        if (url != string.Empty)
+        {
+            <script type="text/javascript">
+                (function () {
+                    var walkme = document.createElement('script');
+                    walkme.type = 'text/javascript'; walkme.async = true;
+                    walkme.src = '@url'; var s = document.getElementsByTagName('script')[0];
+                    s.parentNode.insertBefore(walkme, s);
+                    window._walkmeConfig = { smartLoad: true, linkitUserRole: '@userRole' };
+                })();
+            </script>
+        }
+    }
+    <style>
+
+
+        .margin-bottom-dropdown {
+            margin-bottom: 1.667em;
+        }
+
+            .margin-bottom-dropdown:after {
+                content: '';
+                float: none;
+                clear: both;
+                display: table;
+            }
+
+        .ui-dialog div.ui-dialog-content {
+            overflow: visible;
+        }
+        .profiler-results {
+            bottom: 20px !important;
+            top: auto !important;
+            border-top-left-radius: 10px;
+            border-right: none;
+            width: 90px;
+        }
+        .profiler-results .profiler-result .profiler-actions {
+            border-left: none;
+            border-right: none;
+        }
+        .profiler-results .profiler-result:last-child .profiler-button {
+            border-bottom-left-radius: 0 !important;
+            border-bottom-width: 0;
+        }
+        .profiler-results .profiler-result:first-child .profiler-button {
+            border-top: 1px solid #888;
+            border-top-left-radius: 10px;
+        }
+        .profiler-popup {
+            position: fixed !important;
+            bottom: 30px !important;
+            top: auto !important;
+        }
+        .profiler-queries {
+            bottom: 30px !important;
+            top: auto !important;
+        }
+
+    </style>
+</head>
+<body class="smaller portal-v2-containter" id="portal-v2-containter">
+    @Html.Partial("MainNavigation_v2")
+    @Html.Partial("VerticalNavigation_v2")
+
+    <!-- Status bar -->
+    <div id="status-bar">
+        <div class="container_12">
+            @Html.Partial("_ModalKeepAlive_V2")
+        </div>
+    </div>
+    <!-- End status bar -->
+    <div id="header-shadow">
+    </div>
+    <!-- End header -->
+    @RenderBody()
+    <link href='@strWhiteLable' rel="stylesheet" id="custom-css" />
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+        google.load('visualization', '1', { 'packages': ['corechart'] });
+    </script>
+    <script type="text/javascript">
+        function googleTagTracking() {
+            const path = window.location.pathname;
+            const queryString = window.location.search;
+            const eventName = `${path.replace(/^\/|\/+/g, (match, offset) => offset === 0 ? '' : '_')}_PageVisit`;
+            var category = undefined;
+            var title = $('title').text();;
+            if (typeof customCategoryType !== 'undefined') {
+                var roleId = '@currentUser.RoleId';
+                if (customCategoryType == 'HomePage') {
+                    if (roleId == 28)
+                        category = 'Student Portal';
+                    else if (roleId == 26)
+                        category = 'Parent Portal';
+                    else
+                        category = 'Admin Portal';
+                    title = '[' + category + '] - ' + title;
+                }
+                else {
+                    var appendText = '';
+                    if (roleId == 28)
+                        appendText = 'SP - ';
+                    else if (roleId == 26)
+                        appendText = 'PP - ';
+                    else
+                        appendText = 'AP - ';
+                    title = title.slice(0, 1) + appendText + title.slice(1);
+                    var areaMatch = title.match(/\[(.*?)\]/);
+                    category = areaMatch ? areaMatch[1] : '';
+                }
+            }
+            else {
+                var areaMatch = title.match(/\[(.*?)\]/);
+                category = areaMatch ? areaMatch[1] : '';
+            }
+
+            var data = {
+                page_title: title,
+                page_path: path,
+                category: category,
+                query_string: queryString,
+                user_id: @(currentUser != null ? currentUser.Id : 0)
+            };
+
+            gtag('event', eventName, data);
+            console.log(data);
+        }
+        googleTagTracking();
+    </script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            checkValidBrowser();
+
+            var activeTag = $("#main-nav li a[href='@Request.Url.LocalPath']")[0];
+              var activeArea = undefined;
+              if (activeTag) {
+                activeArea = $(activeTag).parent();
+              }
+              else {
+                  activeArea = $("#main-nav > ul > li")[0];
+              }
+              $(activeArea).addClass("current");
+            $(activeArea).parent().parent().addClass("current");
+            var parrentHtml = $(activeArea).parent().parent().addClass("current").html();
+            var childrenHtml = $(activeArea).addClass("current").html();
+            if ($(activeArea).hasClass("home")) {
+              parrentHtml = childrenHtml;
+              childrenHtml = '';
+            }
+            renderBreadcrumb(parrentHtml, childrenHtml);
+
+            $(".menu-help-resource").live("click", function () {
+                sessionStorage.setItem("NavModuleFrom", $(this).attr("nav"))
+            })
+
+        });
+    </script>
+
+    @BundleHelper.ScriptSharedBundleV2()
+
+    @RenderSection("scripts", required: false)
+
+    @MiniProfiler.RenderIncludes()
+    @*<div id="custom-footer" style="width: 946px;margin: 0 auto; clear: both;">
+            <img src="../../Content/images/loog-linkit-16x16.png" style="position: relative; top: 5px;" />
+            <span style="font-size: 11px;">Copyright &copy; @DateTime.Now.ToString("yyyy") | Powered by LinkIt!</span>
+            <input type="hidden" id="hdHelpTextInfo" />
+        </div>*@
+    <link rel="stylesheet" href="/Content/css/vue-components/vue-modal.css">
+
+    <script src="@BundleHelper.Version("/Scripts/TestMaker/Utils.js")"></script>
+    <script type="text/javascript" language="javascript">
+
+        function showFooter() {
+            $('section:visible:last').addClass('lastVisibleSection');
+            $('#custom-footer').appendTo('#flashContentContainer');
+        }
+
+        $(document).ready(function () {
+            $.ajaxSetup({ cache: false });
+            showFooter();
+            @if(((UserPrincipal)User).OriginalID > 0)
+            {
+                <text>
+            //$('#linkGoBack').show();//test only
+            </text>
+            }
+        });
+
+        function showGoBack() {
+            $('#linkGoBack').show();
+            var top = $('#imgGoBack').offset().top;
+            var left = $('#imgGoBack').offset().left;
+            $('#linkGoBack').offset({ top: top + 22, left: left + 2 });
+
+        }
+
+        function goBackToOriginalUser() {
+            ShowBlock($('body'), 'Going back to @(((UserPrincipal)User).OriginalUsername)');
+            $.ajax({
+                url: '@Url.Action("GoBackToOriginalUser","Admin")',
+                type: 'POST',
+                contentType: 'application/json',
+                success: function (response) {
+                    if (response.Success == true) {
+                        location.href = response.RedirectUrl;
+                    } else {
+                        $('body').unblock();
+                    }
+                }
+            });
+        }
+        function showNetworkAdminSelect() {
+            $('#divNetworkAdminSelectLayout').show();
+
+            var url = '@Url.Action("ShowNetworkAdminSelectLayoutV2","Account")';
+            $.ajax({
+                url: url,
+                cache: false
+            })
+                .done(function (html) {
+                    $('#divNetworkAdminSelectLayout').html(html);
+                });
+            var top = $('#imgNetworkAdminSelect').offset().top;
+            var left = $('#imgNetworkAdminSelect').offset().left - 200;
+            $('#divNetworkAdminSelectLayout').offset({ top: top + 33, left: left + 2 });
+            $('#divNetworkAdminSelectLayout').css('border', '2px solid #999');
+            $('#divNetworkAdminSelectLayout').css('height', 'auto');
+
+        }
+    </script>
+    <!-- If Tag dropdown is open, click outside of this control will close the tag dropdown -->
+    <script type="text/javascript">
+        $(function () {
+            if ('@isShowIconInfo' == 'True') {
+                getHelpTextInfo();
+            }
+        });
+        $('body').click(function () {
+            $('#linkGoBack').hide();
+            $('#divNetworkAdminSelectLayout').hide();
+
+        });
+        $('#imgGoBack').click(function (event) {
+            if (event.stopPropagation) {
+                event.stopPropagation();
+            }
+            else if (window.event) {
+                window.event.cancelBubble = true;
+            }
+        });
+        $('#linkGoBack').click(function (event) {
+            if (event.stopPropagation) {
+                event.stopPropagation();
+            }
+            else if (window.event) {
+                window.event.cancelBubble = true;
+            }
+        });
+        $('#imgNetworkAdminSelect').click(function (event) {
+            if (notificationVM) {
+                notificationVM.removeIsUnreadNotification();
+            }
+
+            if (event.stopPropagation) {
+                event.stopPropagation();
+            }
+            else if (window.event) {
+                window.event.cancelBubble = true;
+            }
+        });
+        $('#divNetworkAdminSelectLayout').click(function (event) {
+            if (event.stopPropagation) {
+                event.stopPropagation();
+            }
+            else if (window.event) {
+                window.event.cancelBubble = true;
+            }
+        });
+
+        $('.js-info-action').on('click', function (event) {
+            var html = $('#hdHelpTextInfo').val();
+            popupAlertInfoMessage(html, 'ui-popup-info', 500, 500);
+
+            if (isSafari) {
+                // Add scrollbar for safari on popup information
+                $('.ui-popup-info').find('.popup-info-content').addClass('scrollbar-safari');
+            }
+        });
+        function getHelpTextInfo() {
+            var url = '@Url.Action("GetHelpTextModule", "Help")';
+            var subTabCurrent = $('.menu-item ul li.current a');
+
+            var displayName = '';
+            if (subTabCurrent != null && subTabCurrent.length > 0) {
+                displayName = subTabCurrent.text();
+            } else {
+                var tabCurrent = $('#main-nav ul li.current a');
+                if (tabCurrent != null && tabCurrent.length > 0) {
+                    displayName = tabCurrent.text();
+                }
+            }
+            if (displayName == '') {
+                return;
+            }
+
+            $.ajax({
+                url: url,
+                cache: false,
+                data: { displayName: displayName.trim() }
+            }).done(function (html) {
+                $('#hdHelpTextInfo').val(html);
+                if (html != '') {
+                    $('.js-info-action').show().css('display', 'inline-block');
+                } else {
+                    $('.js-info-action').hide();
+                }
+            });
+        }
+
+        function isSafari() {
+            var browserUserAgent = navigator.userAgent.toString().toLowerCase();
+
+            return browserUserAgent.indexOf('safari') != -1 && browserUserAgent.indexOf('chrome') == -1;
+        }
+
+        function popupAlertInfoMessage(content, contentClass, w, h) {
+            var now = new Date().getTime();
+            var contentHtml = '';
+            var $div = $('<div />');
+
+            w = w !== undefined ? w : 400;
+            h = h !== undefined ? h : 100;
+
+            contentHtml += '<div class="popup-info">';
+            contentHtml += '<div class="popup-info-content">';
+            contentHtml += content;
+            contentHtml += '</div>';
+            contentHtml += '</div>';
+
+            $div.html(contentHtml)
+                .attr('id', 'popup-info-' + now)
+                .appendTo('body')
+                .dialog({
+                    modal: true,
+                    width: w,
+                    maxHeight: h,
+                    resizable: false,
+                    dialogClass: contentClass,
+                    close: function () {
+                        $(document).find('#popup-info-' + now).dialog('destroy').remove();
+                    }
+                });
+        };
+
+    </script>
+    <script type="text/javascript">
+        var notification = {
+            getUnreadNotification: function () {
+                return $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("LoadUnreadMessage","NotificationMessage")'
+                });
+            },
+            getListNotification: function (currentIndex) {
+                return $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("GetNotification", "NotificationMessage")',
+                    data: {
+                        'currentIndex': currentIndex
+                    }
+                });
+            }
+        };
+
+        var notificationVM = new Vue({
+            el: '#notification',
+            data: {
+                isShowLoading: false,
+                isShowDropdown: false,
+                isBusy: false,
+                isLoadMore: true,
+                countUnread: 0,
+                countIndex: 0,
+                listNotification: [],
+                remainUnread: 0
+            },
+            ready: function () {
+                var self = this;
+
+                notification.getUnreadNotification().done(function (data) {
+                    self.countUnread = data;
+                    self.remainUnread = data;
+                });
+            },
+            computed: {
+                isAllowScroll: function () {
+                    return this.isShowDropdown;
+                }
+            },
+            methods: {
+                toggleDropdown: function () {
+                    var self = this;
+
+                    self.isShowDropdown = !self.isShowDropdown;
+                    self.countUnread = 0;
+
+                    // Remove unread notification when close dropdown
+                    if (!self.isShowDropdown) {
+                        self.removeIsUnreadNotification();
+                    }
+
+                    // Get list notification message
+                    if (self.isShowDropdown && !self.listNotification.length) {
+                        self.isShowLoading = true;
+
+                        notification.getListNotification(self.countIndex).done(function (data) {
+                            self.updateIsUnreadNotification(self.remainUnread, data);
+                            self.countIndex = self.countIndex + data.length;
+                            self.isShowLoading = false;
+                            self.listNotification = data;
+                        });
+                    }
+                },
+                loadMoreListNotification: function () {
+                    var self = this;
+
+                    // Load more list notification when scrolling
+                    if (self.isLoadMore && self.isAllowScroll) {
+                        self.isBusy = true;
+                        self.isShowLoading = true;
+
+                        setTimeout(function () {
+                            notification.getListNotification(self.countIndex).done(function (data) {
+                                self.isBusy = false;
+                                self.isShowLoading = false;
+
+                                if (data.length) {
+                                    self.updateIsUnreadNotification(self.remainUnread, data);
+                                    self.countIndex = self.countIndex + data.length;
+                                    self.listNotification = self.listNotification.concat(data);
+                                } else {
+                                    self.isLoadMore = false;
+                                }
+                            });
+                        }, 1000);
+                    }
+                },
+                updateIsUnreadNotification: function (remainUnread, data) {
+                    var self = this;
+
+                    if (remainUnread > 0) {
+                        var i = 0;
+                        var lenData = data.length;
+
+                        if (remainUnread > data.length) {
+                            for (i = 0; i < lenData; i++) {
+                                data[i].IsUnread = true;
+                            }
+
+                            self.remainUnread = remainUnread - lenData;
+                        } else {
+                            for (i = 0; i < remainUnread; i++) {
+                                data[i].IsUnread = true;
+                            }
+
+                            self.remainUnread = 0;
+                        }
+                    }
+                },
+                removeIsUnreadNotification: function () {
+                    var self = this;
+                    self.isShowDropdown = false;
+
+                    if (self.listNotification.length) {
+                        self.remainUnread = 0;
+
+                        for (var i = 0, len = self.listNotification.length; i < len; i++) {
+                            self.listNotification[i].IsUnread = false;
+                        }
+                    }
+                },
+                mouseoverNotification: function (item) {
+                    item.IsUnread = false;
+                }
+            }
+        });
+    </script>
+    <style type="text/css">
+        #linkGoBack {
+            border: 2px solid var(--grey7);
+            text-align: left;
+            position: absolute;
+            background: var(--blue6);
+            cursor: pointer;
+            line-height: 11px;
+            padding: 5px;
+            min-width: 200px;
+            max-width: 260px;
+            word-wrap: break-word;
+            color: var(--white);
+        }
+
+            #linkGoBack:hover span {
+                color: #000;
+            }
+
+        #divNetworkAdminSelectLayout {
+            position: absolute;
+            background: var(--white);
+            padding: 24px;
+            border: 1px solid var(--selectBorder) !important;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        @@media (max-width: 1399px) and (min-width: 1200px) {
+            #divNetworkAdminSelectLayout {
+                max-height: 450px;
+            }
+        }
+    </style>
+
+    @if ((((UserPrincipal)User).IsPublisher) && ConfigurationManager.AppSettings["EnableMiniProfiler"] == "1")
+    {
+    <text>
+        <script type="text/javascript">
+            var $document = $(document);
+            var profilerButton = document.createElement('div');
+            profilerButton.className = 'profiler-button';
+            profilerButton.textContent = 'Collapse -';
+            profilerButton.style.border = '1px solid #888';
+            profilerButton.style.width = '90px';
+            profilerButton.style.padding = '3px 7px';
+            profilerButton.style.backgroundColor = '#fff';
+            profilerButton.style.borderRight = '0';
+
+            var profilerCollapse = document.createElement('div');
+            profilerCollapse.className = 'profiler-actions';
+            profilerCollapse.appendChild(profilerButton);
+            profilerCollapse.style.position = 'fixed';
+            profilerCollapse.style.bottom = '0';
+            profilerCollapse.style.right = '0';
+            profilerCollapse.style.zIndex = 9999999999;
+            profilerCollapse.style.cursor = 'pointer';
+            profilerCollapse.style.boxSizing = 'border-box';
+            profilerCollapse.style.webkitBoxSizing = 'border-box';
+            profilerCollapse.style.textAlign = 'center';
+
+            document.body.appendChild(profilerCollapse);
+
+            profilerButton.addEventListener('click', function (event) {
+                var target = event.target;
+                var $profiler = $document.find('.profiler-result');
+
+                if (target.classList.contains('is-active')) {
+                    target.classList.remove('is-active');
+                    target.textContent = 'Collapse -';
+                    $profiler.show();
+                } else {
+                    target.classList.add('is-active');
+                    target.textContent = 'Expand +';
+                    $profiler.hide();
+                }
+            }, false)
+        </script>
+    </text>
+    }
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</body>
+
+</html>

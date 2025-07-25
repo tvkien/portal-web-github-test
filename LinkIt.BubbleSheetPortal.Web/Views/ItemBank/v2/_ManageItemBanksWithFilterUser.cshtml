@@ -1,0 +1,279 @@
+<style type="text/css">
+    tr.even.row_selected td {
+        background-color: var(--blue7) !important;
+    }
+
+    tr.odd.row_selected td {
+        background-color: var(--blue7) !important;
+    }
+
+/*    #dataTableItemBank_wrapper {
+        margin-top: 34px;
+        margin: 0
+    }*/
+    #divItemBanks {
+        margin: 0;
+        width:100%;
+    }
+    /*#dataTableItemBank tbody tr {
+         height: 100% !important;*/ /* Fix for IE9 */
+    /*}*/
+    /*     #dataTableItemBank tr td {
+         padding-left: 4px;
+         padding-right: 4px;
+     }*/
+    /* No data available in table */
+    /*     #dataTableItemBank .dataTables_empty div {
+         width: 455px !important;
+     }*/
+    /*     .scrollItem thead,
+     .scrollItem tbody{display: block;}
+     .scrollItem tbody{
+         height: 400px;
+         overflow: auto;
+         overflow-x: hidden;
+     }*/
+    .scrollItem {
+        /*width: 463px !important;*/
+    }
+
+        .scrollItem tbody td {
+            /*word-break: break-all;*/ /* Not apply for whole table, just apply for long word in each td*/
+            word-wrap: break-word;
+        }
+    /*     .scrollItem tbody td:nth-of-type(1) div {
+         width: 454px;
+     }*/
+    /*.scrollItem tbody td:nth-of-type(2) div
+     {
+         width: 227px;
+     }
+     .scrollItem tbody td:nth-of-type(3) div
+     {
+         width: 145px;
+     }
+     .noscrollItem tbody td:nth-of-type(3) div
+     {
+         width: 160px;
+     }*/
+
+    /*For IE9*/
+    /*header*/
+    /* #dataTableItemBankHeader thead tr td:nth-of-type(1) {
+        width: 44px;
+    }
+    #dataTableItemBankHeader thead tr td:nth-of-type(2) {
+        width: 245px;
+    }
+    #dataTableItemBankHeader thead tr td:nth-of-type(3) {
+        width: 165px;
+    }*/
+    /*body*/
+    /*  .scrollItemIE9 {
+        width: 463px !important;
+    }
+     .scrollItemIE9 tbody td:nth-of-type(2) div
+    {
+         width: 224px;
+    }
+    .scrollItemIE9 tbody td:nth-of-type(3) div
+    {
+        width: 145px;
+        padding-right: 15px;
+    }
+    .noscrollItemIE9 tbody td:nth-of-type(3) div
+    {
+        width: 157px;
+        padding-right: 18px;
+    }
+    #divdataTableItemBank {
+        height: -20px;
+    }
+    #divdataTableItemBank {
+        margin-top: -20px !important;
+    }*/
+</style>
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form" id="divOnTop" style="background-color: #fcfcfc">
+                <h1>Item Banks</h1>
+                <div id="divItemBanks" class="no-margin last-child">
+                    <table id="dataTableItemBank" class="datatable table no-margin scrollItem" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col"></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Item Bank
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody style="cursor: pointer"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<script type="text/javascript">
+    var oTableItemBank;
+    var keepCurrentPageItemBank = 0;
+    var displayStartItemBank = 0;
+    $(function () {
+        removeTips();
+
+        $('#dataTableItemBank tbody').click(function (event) {
+            $(oTableItemBank.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+            var districtId = 0;
+
+            if (event.target.tagName.toUpperCase() == 'TD' && event.target.id != null && event.target.id.length > 0) {
+                $(event.target.parentNode).addClass('row_selected');
+                //showItemSet
+                $("#SelectedItemBankId").val(event.target.id);
+                if ('@ViewBag.IsNetworkAdmin' == 'True') {
+                    districtId = $('#selectDistrict').val();
+                }
+                ui.dataTableSet.fnReloadAjax('@Url.Action("LoadItemSetsWithFilterUser2")?itemBankId=' + event.target.id + '&districtId=' + districtId + '&userId=' + $("#selectUser").val());
+            }
+
+            //now there is always a div inside td
+            //event.target is now div not td
+            if (event.target.parentNode.tagName.toUpperCase() == 'TD' && event.target.parentNode.id != null && event.target.parentNode.id.length > 0) {
+                $(event.target.parentNode.parentNode).addClass('row_selected');
+                //showItemSet
+                $("#SelectedItemBankId").val(event.target.parentNode.id);
+                if ('@ViewBag.IsNetworkAdmin' == 'True') {
+                    districtId = $('#selectDistrict').val();
+                }
+                ui.dataTableSet.fnReloadAjax('@Url.Action("LoadItemSetsWithFilterUser2")?itemBankId=' + event.target.parentNode.id + '&districtId=' + districtId + '&userId=' + $("#selectUser").val());
+            }
+        });
+
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            sAjaxSource: getAjaxSource(),
+            fnServerParams: function (aoData) {
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+            },
+            //bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTIBankId', bSearchable: false, bSortable: false, sWidth: "0px", bVisible: false },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: "100%" }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).attr('id', aData[0]);
+                addWordBreakToTableCell($('td:eq(0)', nRow), 25, aData[1]);
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableItemBank'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableItemBank').unblock();
+                $('.with-tip').tip();
+                formatTableForAddingVertialScrollBar('dataTableItemBank', 'scrollItem', 'noscrollItem', 'scrollItemIE9', 'noscrollItemIE9');
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('dataTableItemBank_filter')
+            }
+        };
+
+        $("#dataTableItemBank").data("options", options);
+        oTableItemBank = $('#dataTableItemBank').dataTable();
+        oTableItemBank.fnSetFilteringDelay(500); //TuanVo: delay searching when user type in search box to save time of query
+
+        $('.viewItemSet').live('click', function () {
+            var itemBankId = $(this).attr('itemBankId');
+            //set selected color for row
+            $(oTableItemBank.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+            $(this.parentNode.parentNode).addClass('row_selected');//row_selected is defined in Index.cshtml
+
+            //showItemSet
+            $("#SelectedItemBankId").val(itemBankId);
+            var districtId = 0;
+            if ('@ViewBag.IsNetworkAdmin' == 'True') {
+                districtId = $('#selectDistrict').val();
+            }
+            ui.dataTableSet.fnReloadAjax('@Url.Action("LoadItemSetsWithFilterUser2")?itemBankId=' + itemBankId + '&districtId=' + districtId + '&userId=' + $("#selectUser").val());
+        });
+
+    });
+
+    function getAjaxSource() {
+        var stateId = $('#selectState').val();
+        var districtId = $('#selectDistrict').val();
+        var userId = $('#selectUser').val();
+
+        return '@Url.Action("LoadItemBanksWithFilterUser2")' + '?stateId=' + stateId + '&districtId=' + districtId + '&userId=' + userId;
+    }
+
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+    //(function ($) {
+    //    $.fn.hasScrollBar = function () {
+    //        return this.get(0).scrollHeight > this.height();
+    //    }
+
+    //    $.fn.createHeader = function (options) {
+    //        var settings = $.extend({
+    //            contentHeight: 300
+    //        }, options);
+
+    //        var newTable = $(this).clone();
+
+    //        //Clear all content of tbody
+    //        newTable.css({ "margin": "0px" }).attr({ "id": $(this).attr("id") + "_Header" }).find("tbody").remove();
+
+    //        //Create html for new header
+    //        if ($(this).parents(".tblScroll").length == 0) {
+    //            $(this).wrap("<div class='tblScroll' style='margin-top: -1.667em; position: relative;'></div>");
+    //            $(this).parents(".tblScroll").prepend("<div class='tblHeader' style='position: absolute; z-index: 2'>" + newTable.prop("outerHTML") + "</div>");
+    //            $(this).css({ "margin": "0px" });
+    //            $(this).wrap("<div class='tblContent'></div>").parents(".tblContent").css({ "height": settings.contentHeight + "px", "overflow-x": "hidden", "overflow-y": "auto" });
+    //            var lastTD = $(this).find("tbody tr").find("td:last");
+
+    //            var isCurrentOverflow = $('body, html').css("overflow");
+    //            $('body, html').css('overflow', 'hidden');
+    //            var screenWidth1 = $(window).width();
+    //            $('body, html').css('overflow', 'visible');
+    //            var screenWidth2 = $(window).width();
+    //            widthOfScrollBar = screenWidth1 - screenWidth2;
+
+    //            lastTD.css({ "padding-right": widthOfScrollBar + "px" });
+    //            //Revert status of overflow
+    //            $('body, html').css('overflow', isCurrentOverflow);
+    //        }
+
+    //    }
+    //})(jQuery);
+</script>

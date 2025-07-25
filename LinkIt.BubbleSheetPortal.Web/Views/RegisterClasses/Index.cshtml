@@ -1,0 +1,289 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SchoolAndClassViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Class Management");
+}
+
+<script>
+    var ClassManager = (function() {
+        // Constants
+        var selectedDistrictId = '@Model.DefaultDistrictId';
+        var selectedSchoolId = '@Model.CurrentSelectedSchoolId';
+        var selectedTeacherId = '@Model.CurrentSelectedTeacherId';
+
+        var roleId = '@Model.RoleId';
+        var userId = '@Model.UserId';
+
+        // Cached elements
+        var jqDetailDiv; // = $('#detailDiv');
+        var jqSelectSchool
+
+
+        ; // = $('#selectSchool');
+        var jqSelectTeacher; // = $('#selectTeacher');
+
+        // Variables
+        var ajaxCallCount = 0;
+
+        // Functions
+        function initViewForTeacher() {
+            displayTeacherView(selectedDistrictId, null, selectedTeacherId);
+        };
+        function initViewForGuest() { throw new Error(pattern.exec(arguments.callee.toString())[1] + " Not implemented"); };
+
+        function init() {
+            cacheElements();
+            initView(roleId);
+            bindEvents();
+        }
+
+        function cacheElements() {
+            jqDetailDiv = $('#detailDiv');
+            jqSelectSchool = $('#selectSchool');
+            jqSelectTeacher = $('#selectTeacher');
+        }
+
+        // Initialization
+
+        function initView(role) {
+
+            //innitDropdownListDistrict(selectedDistrictID, true);
+
+            registerDdlChange();
+
+            switch (role) {
+            case '5':
+                // publisher
+            case '3':
+                // district admin
+            case '8':
+                // school admin
+                initDropdownListSchool(selectedDistrictId, selectedSchoolId);
+                initDropdownListTeacher(selectedDistrictId, selectedSchoolId, selectedTeacherId);
+                break;
+            case '2':
+                // teacher
+                initViewForTeacher();
+                break;
+            default:
+                initViewForGuest();
+                break;
+            }
+        }
+
+        function initDropdownListSchool(selectedDistrictId, selectedSchoolId) {
+            if (!selectedDistrictId || selectedDistrictId == 'select') {
+                return;
+            }
+
+            var url = roleId == '8' || roleId == '2' ? '@Url.Action("GetSchoolsByUser")' : '@Url.Action("GetSchools", "Admin")';
+
+            $.ajax({
+                url: url,
+                data: { districtId: selectedDistrictId, userId: userId },
+                dataType: 'json',
+                async: false,
+                success: function (schools) {
+                    addDefaultOption(jqSelectSchool, "School");
+                    addSelectListWithDefaultValue(jqSelectSchool, schools, selectedSchoolId);
+                    jqSelectSchool.change();
+                },
+                beforeSend: function () {
+                    //showAdminContentLoading();
+                },
+                complete: function () {
+                    //hideAdminContentLoading();
+                }
+            });
+        }
+
+        function initDropdownListTeacher(selectedDistrictId, selectedSchoolId, selectedTeacherId) {
+            if (!selectedDistrictId || selectedDistrictId == 'select') {
+                return;
+            }
+
+            if (!selectedSchoolId || selectedSchoolId == 'select') {
+                return;
+            }
+            jqSelectTeacher.empty();
+            $.ajax({
+                url: '@Url.Action("GetTeachersInSchool")',
+                data: { schoolId: selectedSchoolId },
+                dataType: 'json',
+                async: false,
+                success: function (teachers) {
+                    addDefaultOption(jqSelectTeacher, "Teacher");
+                    addSelectListWithDefaultValue(jqSelectTeacher, teachers, selectedTeacherId, function (item) {
+                        return item.DisplayName;
+                    });
+                },
+                beforeSend: function () {
+                    //showAdminContentLoading();
+                },
+                complete: function () {
+                    //hideAdminContentLoading();
+                }
+            });
+        };
+
+        function loadTeacherContent() {
+            //var districtId = $('#selectDistrict').val(); //todo: depreciated on this page
+            var schoolId = jqSelectSchool.val();
+            var teacherId = jqSelectTeacher.val();
+
+            displayTeacherView(selectedDistrictId, schoolId, teacherId);
+        }
+
+        function displayTeacherView(districtId, schoolId, teacherId) {
+            jqDetailDiv.empty();
+
+            if (districtId == null || districtId == 'select') {
+                return;
+            }
+
+            //if (schoolId != null && schoolId == 'select') {
+            //    return;
+            //}
+
+            if (teacherId == null || teacherId == 'select') {
+                return;
+            }
+
+            var param = { teacherId: teacherId, schoolId: schoolId, districtId: districtId };
+
+            if (!schoolId) {
+                param = { teacherId: teacherId, districtId: districtId };
+            }
+
+            jqDetailDiv.load('@Url.Action("ListClassesByTeacher")', param, function (response) {
+                if (typeof (showFooter) === 'function') showFooter();
+                if (response == false) {
+                    alert("Error happen. Please refresh page.");
+                }
+            });
+        }
+
+        // Utilities
+        function addDefaultOption(selectList, objectText) {
+            selectList
+                .append($("<option></option>")
+                        .attr("value", "select")
+                        .text("Select " + objectText));
+        }
+
+        // Events
+        function registerDdlChange() {
+            registerDdlSchoolChange();
+            registerDdlTeacherChange();
+        }
+
+        function bindEvents() {
+            //$.subscribe('manageClass/studentAssigned', function (event, sender) {
+            //    LinkIt.success('#adminContent', 'Student Assigned')
+            //});
+        }
+
+        function registerDdlSchoolChange() {
+            jqSelectSchool.die("change");
+            jqSelectSchool.change(function () {
+                jqDetailDiv.empty();
+
+                var selectedValue = $(this).val();
+
+                if (roleId != '2') {
+                    $('#selectTeacher').empty();
+                    initDropdownListTeacher(selectedDistrictId, selectedValue, null, true);
+                } else {
+                    $('#selectTeacher').change();
+                }
+                if (selectedValue == 'select') {
+                    $('#roster-message').hide();
+                    return;
+                }
+
+                $.get('@Url.Action("DoesSchoolHaveScheduledRosterUpdates")', { schoolId: selectedValue }, function(response) {
+                    if (response) {
+                        $('#roster-message').show();
+                    } else {
+                        $('#roster-message').hide();
+                    }
+                });
+            });
+        }
+
+        function registerDdlTeacherChange() {
+            jqSelectTeacher.die("change");
+            jqSelectTeacher.change(function () {
+                loadTeacherContent();
+            });
+        }
+
+        return {
+            init: init
+        };
+    })();
+
+
+    function refreshTable(tableId) {
+        var table = $(tableId).dataTable();
+        table.fnStandingRedraw();
+        $('.with-tip').tip().hideTip();
+    }
+
+    $(function() {
+        ClassManager.init();
+        $('#selectSchool').marquee({widthSelected: 350});
+        $('#selectTeacher').marquee({widthSelected: 350});
+    });
+</script>
+
+<article class="container_12">
+    @if (Model.RoleId == 2)
+    {
+        @Html.Hidden(Model.UserId.ToString(), "selectTeacher")
+    }
+    else
+    {
+        <section class="grid_12">
+            <ul class="message warning" id="roster-message" style="display: none">
+                <li>Caution: If online changes are made to student, class, or teacher information, scheduled nightly student and staff roster uploads will override this data or cause data exceptions when differences exist.</li>
+            </ul>
+            <div class="block-border">
+                <div id="adminContent" class="block-content form">
+                    <fieldset class="grey-bg schoolClassManagermentSelector">
+                        <div class="columns">
+                            <div class="colx2-left">
+                                <div class="mb-3 block-content-dropdown-marquee">
+                                    School<br />
+
+                                    <div class="block-text-name ">
+                                        <select id="selectSchool"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="colx2-right">
+                                <div class="mb-3 block-content-dropdown-marquee">
+                                    @*<a href="javascript:void(0)" id="teacher" onclick="ClassManager.loadTeacherContent()"></a>*@
+                                    Teacher<br />
+                                    <div class="block-text-name ">
+                                        <select id="selectTeacher"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+        </section>
+    }
+</article>
+<div id="detailDiv"></div>

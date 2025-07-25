@@ -1,0 +1,374 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SharingGroup.UserInSharingGroupViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Common
+@using LinkIt.BubbleSheetPortal.Models
+
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Add Users to Sharing Group");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCustomBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCKEditorUtilsBundle()
+<style>
+    .ui-widget-content {
+        background: transparent;
+        border: none;
+    }
+
+        .ui-widget-content .ui-dialog-titlebar-close {
+            right: 5px;
+            top: 5px;
+            z-index: 10;
+        }
+
+    #divManageUserInSharingGroup .add-user-group {
+        cursor: pointer;
+    }
+
+    .add-user-group-column-fix {
+        max-width: 110px;
+        overflow-wrap: break-word;
+    }
+
+    #divManageUserInSharingGroup .no-margin.last-child {
+        margin: 0
+    }
+
+    #portal-v2-containter .last-child .block-pagination {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    #portal-v2-containter .icon-remove i {
+        color: var(--white);
+        font-size: 12px;
+        text-decoration: none;
+        height: 14px;
+        width: 14px;
+    }
+
+    #portal-v2-containter .icon-remove {
+        margin: auto;
+    }
+
+    .actionIcon {
+        padding-left: 5px;
+    }
+
+    #portal-v2-containter .datatable.table {
+        min-height: 75px;
+    }
+
+        #portal-v2-containter .datatable.table .removeUserInSharingGroup {
+            display: inline-block;
+            padding: 2px 2px 2px 0;
+        }
+
+    .modal-component-container {
+        padding: 0px !important;
+    }
+
+    #portal-v2-containter .modal-component-container {
+        padding: 0px !important;
+    }
+
+    .modal-component-transition {
+        top: calc(var(--heightMainNav)) !important;
+    }
+
+    .popup-assign-users > .modal-component-wrapper:first-child {
+        display: block !important;
+        padding-top: calc(var(--spacingDefault)) !important;
+    }
+</style>
+<link href="@BundleHelper.Version("~/Content/css/dialog.css")" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="~/Content/themes/Constellation/js/v2/jquery.tip.js"></script>
+<article class="container_12" id="assign-user-sharing-group">
+    <section class="grid_12">
+        <div class="block-border" id="divManageUserInSharingGroup">
+            <div class="block-content block-24 form">
+                <div class="d-flex flex-row justify-content-between">
+                    <h1 class="ps-0 pb-0" style="width: 78%; overflow-wrap: anywhere; ">
+                        Sharing Group: @Model.Name
+                    </h1>
+                    <div class="d-flex flex-column">
+                        <button id="btnBack" class="btn-text btn-back" style="text-align: right; padding-right: 0; margin-top: .5rem"><i class="fa-solid fa-arrow-left"></i>Back</button>
+                        @if (Model.IsOwner)
+                        {
+                            <button class="btn-plus-icon btn-text mt-2" style="margin-top: auto" onclick="assignUserSharingGroup()">
+                                Add user(s) to sharing group
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div style="display: none" id="btnShowActiveUsersBtn" class="form-check form-switch d-flex flex-row align-items-center mt-2 ps-0 float-left">
+                    <label class="form-check-label mb-0 deactivated-title" for="showActiveUsersBtn">Show Inactive Users:</label>
+                    <span class="ms-1 me-3" id="spanClassActive">Off</span>
+                    <div>
+                        <input class="form-check-input js-change-inactive-users" type="checkbox" name="showActiveUsersBtn" id="showActiveUsersBtn">
+                    </div>
+                </div>
+                <div class="clearfix mt-3">
+                    <table id="manageUserInSharingGroupTable" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width: 60px; max-width: 58px">Actions</th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    First Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Last Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Username
+                                </th>
+
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Role
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Schools
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Status
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Sharing Groups
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+    <modal-component v-bind:show.sync="isShowModalAssignUser" style=" display: none; position: absolute !important; padding-bottom: 3rem; z-index: 99;" class="popup-assign-users">
+        <div slot="header">
+            <a href="#" v-on:click="closeModalAddUserSharingGroup" class="modal-component-close">Close</a>
+        </div>
+        <div slot="body">
+            @Html.Partial("v2/_AssignUserSharingGroup")
+        </div>
+        <div slot="footer">
+            <div class="u-text-right">
+                <button v-on:click="closeModalAddUserSharingGroup">Close</button>
+            </div>
+        </div>
+    </modal-component>
+</article>
+<script src="@BundleHelper.Version("~/Scripts/SharingGroup/App.js")"></script>
+<link href="@BundleHelper.Version("~/Content/css/v2/sharing-group.css")" rel="stylesheet" type="text/css" />
+
+<script type="text/javascript">
+    var showInactive = false;
+    SharingGroupModel.getUserAvailableUrl = '@Url.Action("GetUserAvailableAddSharingGroupByFilter")/?sharingGroupId=' + '@Model.SharingGroupID' + '&districtId=' + '@Model.DistrictID';
+    SharingGroupModel.addUserToSharingGroupUrl = '@Url.Action("AddUserToSharingGroup")';
+
+    $(document).ready(function () {
+        loadUserInSharingGroupsToTable();
+        $('#btnBack').click(function () {
+            var url = '@Url.Action("Index", "SharingGroup")?showInactiveSharingGroup=' + '@Model.ShowInactiveSharingGroup' + '&tabActive=' + '@Model.TabActive' ;
+            window.location.href = url;
+        });
+
+        $('.js-change-inactive-users').on('change', function (ev) {
+            var dataTable = $('#manageUserInSharingGroupTable').dataTable();
+            ev.preventDefault();
+            var $self = $(this);
+            if ($self.hasClass('show-inactive')) {
+                showInactive = false;
+                $self.removeClass('show-inactive');
+                $("#spanClassActive").html('Off');
+            } else {
+                showInactive = true;
+                $self.addClass('show-inactive');
+                $("#spanClassActive").html('On');
+            }
+            dataTable.fnDraw();
+        });
+
+        $('.removeUserInSharingGroup').live('click', function () {
+            var userId = $(this).attr('UserID');
+            var groupId = '@Model.SharingGroupID';
+            var username = $(this).attr('UserName');
+            var message = 'Are you sure you want to remove this user ' + username + ' from this sharing group?';
+            confirmMessageV2(
+                {
+                    message,
+                    cbYesBtnFuncName: 'confirmRemoveUserInSharingGroup(' + userId + ',' + groupId +')',
+                    cbCancelBtnFuncName: 'cancelRemoveUserInSharingGroup()'
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'removeUserInSharingGroupDialog'
+                        }
+                    }
+                }
+            )
+        });
+
+    });
+
+    function confirmAlertMessage() {
+        $("#confirmAlertMessage").dialog("close");
+    }
+
+    function alertMessageV2(message) {
+        confirmMessageV2(
+            {
+                message,
+                cbYesBtnFuncName: 'confirmAlertMessage()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'confirmAlertMessage'
+                    }
+                }
+            }
+        )
+    }
+
+    function confirmRemoveUserInSharingGroup(userId, groupId) {
+        ShowBlock($('#manageUserInSharingGroupTable'), "Deleting");
+        $.post('@Url.Action("RemoveUserFromSharingGroup", "SharingGroup")', { userID: userId, sharingGroupID: groupId }, function (result) {
+            $('#manageUserInSharingGroupTable').unblock();
+            cancelRemoveUserInSharingGroup()
+            if (result) {
+                alertMessageV2('This user has been removed from the sharing group.');
+            }
+            else {
+                alertMessageV2('This user has not been removed from the sharing group.');
+            }
+            $('#manageUserInSharingGroupTable').dataTable().fnDraw();
+        });
+    }
+
+    function cancelRemoveUserInSharingGroup() {
+        $("#removeUserInSharingGroupDialog").dialog("close")
+    }
+
+    function loadUserInSharingGroupsToTable() {
+        var options = {
+            bServerSide: true,
+            sServerMethod: "GET",
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetUserInSharingGroup", "SharingGroup")',
+            fnServerParams: function (aoData) {
+                var isShowInactive = $('#showActiveUsersBtn').hasClass('show-inactive');
+                aoData.push(
+                    { name: "DistrictID", value: @Model.DistrictID },
+                    { name: "IsShowInactiveUser", value: isShowInactive },
+                    { name: "SharingGroupID", value: '@Model.SharingGroupID' }
+                );
+            },
+
+            iDisplayLength: 10,
+            aoColumns: [
+                { mData: 'UserId', sName: 'UserId', bSearchable: false, bSortable: false, sClass: 'col-action' },
+                { mData: 'FirstName', sName: 'FirstName', bSearchable: true, bSortable: true, sClass: 'add-user-group-column-fix' },
+                { mData: 'LastName', sName: 'LastName', bSearchable: true, bSortable: true, sClass: 'add-user-group-column-fix' },
+                { mData: 'UserName', sName: 'UserName', bSearchable: true, bSortable: true },
+                { mData: 'RoleName', sName: 'RoleName', bSearchable: true, bSortable: true },
+                { mData: 'SchoolList', sName: 'SchoolList', bSearchable: true, bSortable: false },
+                { mData: 'UserStatusName', sName: 'UserStatusName', bSearchable: true, bSortable: true },
+                { mData: 'SharingGroupName', sName: 'SharingGroupName', bSearchable: false, bSortable: false },
+            ],
+            aaSorting: [[1, "asc"]],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#manageUserInSharingGroupTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#manageUserInSharingGroupTable').unblock();
+                $(".with-tip").tip();
+            },
+            fnRowCallback: function (nRow, aData) {
+                var removeIcon = '<span class="icon fa-solid fa-trash icon-grey"></span>';
+                var removeStr = '<a href="javascript:void(0)" title="Remove" class="with-tip actionIcon cursor-pointer removeUserInSharingGroup" UserName="' + aData["UserName"] + '" UserID="' + aData["UserId"] + '">' + removeIcon + '</a>';
+                if ('@Model.IsOwner' == 'True') {
+                    $('td:eq(0)', nRow).html(removeStr);
+                } else {
+                    $('td:eq(0)', nRow).html('');
+                }
+                if (aData['SharingGroupName'] != null) {
+                    $('td:eq(7)', nRow).html('<div style="overflow-wrap: anywhere; ">' + aData['SharingGroupName'] + '</div>');
+                }
+                $('.home').removeClass('current');
+            },
+            fnInitComplete: function () {
+                $('#manageUserInSharingGroupTable_wrapper .block-custom-header').prepend($('#btnShowActiveUsersBtn'));
+                $('#btnShowActiveUsersBtn').show()
+                tranformSearchInputDataTable('manageUserInSharingGroupTable_filter')
+                $(".with-tip").tip();
+            }
+        };
+
+        $('#manageUserInSharingGroupTable').data('options', options);
+    }
+
+    function assignUserSharingGroup() {
+        ShowBlock($('#divManageUserInSharingGroup'), "Loading");
+        $.get('@Url.Action("GetAssignUserInSharingGroup")', { districtId: '@Model.DistrictID', sharingGroupId: '@Model.SharingGroupID' })
+            .done(function (response) {
+                SharingGroupModel.sharingGroupId = '@Model.SharingGroupID';
+                SharingGroupModel.showInactive = false;
+                SharingGroupModel.assignUser.roles = response.Roles;
+                SharingGroupModel.assignUser.schools = response.Schools;
+                SharingGroupModel.assignUser.allSchools = response.Schools;
+                SharingGroupModel.assignUser.roleSelected = [];
+                SharingGroupModel.assignUser.schoolSelected = [];
+                SharingGroupModel.isShowModalAssignUser = true;
+                displayFilterUserAddSharingGroup();
+                //registerEvent();
+            });
+    };
+</script>
+<script>
+    $(document).ready(function () {
+        breadcrumbDetailPage('.dataadmin', '#manageSharingGroupDad');
+    });
+</script>

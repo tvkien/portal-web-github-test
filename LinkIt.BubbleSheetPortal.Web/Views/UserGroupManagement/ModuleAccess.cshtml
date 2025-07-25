@@ -1,0 +1,324 @@
+@model LinkIt.BubbleSheetPortal.Web.Models.UserGroup.ModuleAccessViewModel
+@{
+    ViewBag.Title = "Module Access";
+}
+<style>
+    .ui-widget-content {
+        background: transparent;
+        border: none;
+    }
+
+    .ui-widget-content .ui-dialog-titlebar-close {
+        right: 5px;
+        top: 5px;
+        z-index: 10;
+    }
+</style>
+<link href="/Content/css/dialog.css" rel="stylesheet" type="text/css">
+<article class="container_12">
+    <section class="grid_12">
+        <div id="selectFilters">
+            <div class="block-border" id="selectFilters">
+                <div class="block-content form">
+                    <h1>Module Access</h1>
+                    <h1 style="margin-left:150px;">Group: @Model.GroupName</h1>
+                    <fieldset>
+                        <div class="columns">
+                            <div class="colx2-left">
+                                <div class="mb-3">
+                                    <label>Navigation Area</label>
+                                    <select id="ddlNavigationArea" class="full-width" style="width: 300px"></select>
+                                </div>
+                            </div>
+                            <div class="colx2-right">
+                                <div class="mb-3">
+                                    <label>Module</label>
+                                    <select id="ddlModule" class="full-width" style="width: 300px"></select>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="u-text-right">
+                        <button id="btnFilter" class="u-m-l-10" type="button">Apply Filters</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<article class="container_12" style="margin-top: 0">
+    <section class="grid_12">
+        <div class="block-border" id="manageUserAccess">
+            <div class="block-content form">
+                <h1>Keep Default Access: @Model.InheritRoleFunctionality</h1>
+                <div class="clearfix u-m-t-35">
+                    <div class="no-margin last-child">
+                        <table id="tblModuleAccess" class="datatable table no-margin datatable-module-access" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width: 3%; text-align:center">
+
+                                    </th>
+
+                                    <th scope="col" style="width: 15%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Module
+                                    </th>
+
+                                    <th scope="col" style="width: 15%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Area
+                                    </th>
+
+                                    <th scope="col" style="width: 16%">
+                                        District Access
+                                    </th>
+
+                                    <th scope="col" style="width: 15%">
+                                        School Access
+                                    </th>
+
+                                    <th scope="col" style="width: 17%">
+                                        User Group Access
+                                    </th>
+                                    <th scope="col">
+                                        Current Access for User in Groups
+                                    </th>
+                                </tr>
+                            </thead>
+
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div style="margin-top: -28px;">
+                    <button id="btnBack">Back</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    var areaID = -1;
+    var moduleID = -1;
+    var firstLoad = true;
+
+    $(document).ready(function () {
+        setTimeout(function () {
+            $(".dataadmin").trigger("click");
+            $('#manageUserGroupsTab').addClass('current');
+        }, 100);
+
+        setFilterDefault();
+        populateNavigateAreas();
+        bindDataToModudelAccessTable();
+
+        $('#btnBack').click(function () {
+            window.location.href = '@ViewBag.PreviousUrl';
+        });
+
+        $('#ddlNavigationArea').change(function () {
+            areaID = $(this).val();
+
+            if (!firstLoad) {
+                moduleID = -1;
+                firstLoad = false;
+            }
+
+            if (areaID > 0) {
+                populateModule(areaID);
+            }
+            else {
+                areaID = -1;
+                $('#ddlModule').empty();
+            }
+        });
+
+        $('#btnFilter').click(function () {
+            areaID = $('#ddlNavigationArea').val();
+            moduleID = $('#ddlModule').val();
+            $('#tblModuleAccess').dataTable().fnDraw();
+        });
+
+        $('.addModulePermissionIcon').live('click', function () {
+            var xliAreaId = $(this).attr('XLIAreaId');
+            var xliModuleId = $(this).attr('XLIModuleId');
+
+            var worker = $('<div"></div>');
+            var url = '@Url.Action("GetAddModulePermissionView", "UserGroupManagement")?xliGroupId=' + @Model.XLIGroupID + "&xliAreaId=" + xliAreaId + "&xliModuleId=" + xliModuleId;
+            worker
+                .addClass("dialog custom-dialog")
+                .attr("id", "addModulePermission")
+                .appendTo("body")
+                .load(url, function () {
+                    worker.dialog({
+                        title: $(this).attr("Add Module Permission"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                            $('#tblModuleAccess').dataTable().fnDraw();
+                        },
+                        modal: false,
+                        width: 720,
+                        resizable: false
+                    });
+                });
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+        });
+
+        $('.removeModulePermissionIcon').live('click', function () {
+            var xliModuleId = $(this).attr('XLIModuleId');
+
+            CustomConfirm({
+                message: 'Are you sure you want to delete this module Permission?',
+                yes: function () {
+                    ShowBlock($('#manageUserAccess'), "Waiting");
+                    $.post('@Url.Action("RemoveModulePermission", "UserGroupManagement")', { XLIGroupId: @Model.XLIGroupID, XLIModuleId: xliModuleId }, function (response) {
+                        if (response && response.success == true) {
+                            $(this).dialog("close");
+                            $('#tblModuleAccess').dataTable().fnDraw();
+                            $('#manageUserAccess').unblock();
+                        }
+                        else if (response && response.success == false) {
+                            addErrorMessages(response.message);
+                            $('#manageUserAccess').unblock();
+                        }
+                    });
+                },
+                noWidth: 80,
+                yesMessage: "OK",
+                noMessage: "Cancel",
+                no: function () {
+                    $(this).dialog("close");
+                }
+            });
+        });
+
+        $('.viewSchoolAccess').live('click', function () {
+            var xliModuleId = $(this).attr('XLIModuleId');
+
+            var worker = $('<div"></div>');
+            var url = '@Url.Action("ViewSchoolAccess", "UserGroupManagement")?xliModuleId=' + xliModuleId + "&districtId=" + @Model.DistrictID ;
+            worker
+                .addClass("dialog custom-dialog")
+                .attr("id", "viewSchoolAccessID")
+                .appendTo("body")
+                .load(url, function () {
+                    worker.dialog({
+                        title: $(this).attr("School Access"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                        },
+                        modal: false,
+                        width: 720,
+                        resizable: false
+                    });
+                });
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+        });
+    })
+
+    function bindDataToModudelAccessTable() {
+        var options = {
+            bServerSide: true,
+            sServerMethod: "GET",
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetModuleAccessData", "UserGroupManagement")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "DistrictID", value: @Model.DistrictID },
+                    { name: "XLIGroupID", value: @Model.XLIGroupID },
+                    { name: "XLIAreaID", value: areaID },
+                    { name: "XLIModuleID", value: moduleID },
+                );
+            },
+            iDisplayLength: 10,
+            aoColumns: [
+                { mData: 'ModuleID', sName: 'ModuleID', bSearchable: false, bSortable: false },
+                { mData: 'ModuleName', sName: 'Module', bSearchable: true, bSortable: true },
+                { mData: 'AreaName', sName: 'Area', bSearchable: true, bSortable: true },
+                { mData: 'DistrictAccess', sName: 'District Access', bSearchable: true, bSortable: false },
+                { mData: 'SchoolAccess', sName: 'School Access', bSearchable: true, bSortable: false },
+                { mData: 'UserGroupAccess', sName: 'User Group Access', bSearchable: true, bSortable: false },
+                { mData: 'CurrentAccess', sName: 'Current Access for User in Groups', bSearchable: true, bSortable: false },
+            ],
+            aaSorting: [[2, "asc"]],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#tblModuleAccess'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#tblModuleAccess').unblock();
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setButtonIcon(aData));
+                $('td:eq(4)', nRow).html(setSchoolAccessLink(aData));
+            }
+        };
+
+        $('#tblModuleAccess').data('options', options);
+    }
+
+    function populateNavigateAreas() {
+        $('#ddlNavigationArea').empty();
+        $.get('@Url.Action("GetAreasByUser", "UserGroupManagement")?districtId=' + @Model.DistrictID, {}, function (areas) {
+            addListItemsWithDefaultValue('Area', '#ddlNavigationArea', areas, areaID);
+        });
+    }
+
+    function populateModule(areaId) {
+        $('#ddlModule').empty();
+        $.get('@Url.Action("GetModulesByArea", "UserGroupManagement")', { areaId: areaId }, function (modules) {
+            addListItemsWithDefaultValue('Module', '#ddlModule', modules, moduleID);
+        });
+    }
+
+    function setButtonIcon(aData) {
+        if (aData["UserGroupAccess"] === 'None') {
+            var detailsIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")';
+            return '<a href="javascript:void(0)" class="addModulePermissionIcon" XLIAreaId="' + aData["AreaID"] + '" XLIModuleId="' + aData["ModuleID"] + '"><img src ="' + detailsIcon + '" width="16" height="16"></a>';
+        }
+        else {
+            var detailsIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+            return '<a href="javascript:void(0)" class="removeModulePermissionIcon" XLIModuleId="' + aData["ModuleID"] + '"><img src ="' + detailsIcon + '" width="16" height="16"></a>';
+        }
+    }
+
+    function setSchoolAccessLink(aData) {
+        if (aData["SchoolAccess"] !== 'None') {
+            return '<a href="javascript:void(0)" class="viewSchoolAccess" XLIModuleId="' + aData["ModuleID"] + '" DistrictID="' + @Model.DistrictID + '">View School Access</a>';
+        }
+    }
+
+    function setFilterDefault() {
+        var filter = JSON.parse(localStorage.getItem("AccessModuleFilter"));
+        if (filter) {
+            areaID = filter.areaID;
+            moduleID = filter.moduleID;
+
+            localStorage.removeItem("AccessModuleFilter");
+        }
+    }
+
+    function addListItemsWithDefaultValue(type, selectListId, results, defValue) {
+        addSelectListItemsWithDefaultValue($(selectListId), results, 'Select ' + type);
+
+        if (defValue) {
+            $(selectListId + ' option[value=' + defValue + ']').attr('selected', 'selected');
+        }
+
+        $(selectListId).trigger('change');
+    }
+
+</script>

@@ -1,0 +1,207 @@
+﻿@{
+    ViewBag.Title = "Upload Help";
+}
+
+@*@MvcHtmlString.Create(
+    Bundle.Css()
+        .Add(@Url.Content("~/Content/themes/HelpResource/HelpResourceCss.css"))
+        .Render("/Content/themes/Constellation/css/helpresourceupload_combined_#.css")
+)*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleHelpResourceBundle()
+
+<article class="container_12">
+    <section class="grid_8">
+        <div class="block-border" id="divAddResource" style="width: 700px">
+            <div class="block-content form">
+                <h1 data-bind="text: HelpResourceUploadTitle"></h1>
+                <div class="clear-10"></div>
+                <div class="columns">
+                    <fieldset id="locationFieldset">
+                        <legend>Resource Info</legend>
+                        <div class="columns" style="width: 610px">
+                            <div class="colx2-left">
+                                <p>
+                                    <label>Categories</label>
+                                    <select class="full-width" data-bind="value: HelpResourceCategoryID, options: Categories, optionsText: 'DisplayText', optionsValue: 'ID'"></select>
+                                </p>
+                                <p>
+                                    <label>Topic</label>
+                                    <input type="text" class="full-width" data-bind="value: Topic, attr: {style: TopicStyleAttr}" / >
+                                </p>
+                                <p>
+                                    <label>Description</label>
+                                    <textarea data-bind="value: Description" rows="5" id="descriptionArea" cols="75" style="width: 600px" maxlength="1000"></textarea>
+                                    <br />
+                                    <label id="lblDescriptionAvailableChars" class="lableCharacterLeft">&nbsp;</label>
+                                </p>
+                                <p style="width: 500px !important">
+                                    <label style="width: :100%">Keyword <i>(Optional where comma ',' is used to delimit keywords or keyword phrases)</i></label>
+                                    <textarea rows="5" data-bind="value: KeyWords" id="keywordsArea" cols="75" style="width: 600px" maxlength="1000"></textarea>
+                                    <label id="lblKeywordAvailableChars" class="lableCharacterLeft">&nbsp;</label>
+                                </p>
+                            </div>
+                            <div class="colx2-right">
+                                <p>
+                                    <label>Activities</label>
+                                    <select class="full-width" data-bind="value: HelpResourceTypeID, options: HelpResourceTypes, optionsText: 'DisplayText', optionsValue: 'ID'"></select>
+                                </p>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <fieldset id="LessonFileFieldset">
+                        <legend>Resource Path</legend>
+                        <div class="columns" style="min-height: 155px;">
+                            <div class="colx2-left">
+                                <p><label><input type="radio" name="radioHelpResourceLinkOrFile" data-bind="checked: HelpResourceLinkOrFile" value="link" />Link </label></p>
+                                <div data-bind="visible: LinkPanelVisible" style="width: 610px">
+                                    <label>Resource Path</label>
+                                    <div class="u-m-b-10">
+                                        <input type="text" style="width:560px;" data-bind="value: HelpResourceLink" />
+                                        <div class="u-inline-block u-v-align-middle">
+                                            <img data-bind="visible: ResoureLinkValidVisible" src="/../Content/themes/Constellation/images/icons/fugue/tick-circle.png" width="16" height="16" style="display: none;" />
+                                            <img data-bind="visible: ResoureLinkInValidVisible" id="imgResoureLinkInvalid" src="/../Content/themes/Constellation/images/icons/fugue/cross-circle.png" width="16" height="16" style="display: none;" />
+                                        </div>
+                                    </div>
+                                    <button data-bind="click: ValidateLinkClickHandler" type="button">Validate Link</button>
+                                </div>
+
+                                <div data-bind="visible: FilePanelVisible" style="width: 610px;display:none;">
+                                    <input id="file_upload" name="file_upload" type="file" />
+                                    <div class="clear"></div>
+                                    <b>
+                                        <a href="javascript:void(0);" class="tooltipBox u-inline-block u-m-t-10" data-bind="text: HelpResourceFileName, click: HelpResourceFileNameClickHandler, visible: HelpResourceFileNameVisible"></a>
+                                    </b>
+                                </div>
+                            </div>
+                            <div class="colx2-right">
+                                <p><label><input type="radio" name="radioHelpResourceLinkOrFile" data-bind="checked: HelpResourceLinkOrFile" value="file" />File</label></p>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+                <button type="submit" data-bind="click: SubmitClickHandler, enable: SubmitButtonEnable">Submit</button>
+                <button id="btnCancel" type="button" class="grey" data-bind="click: CancelClickHandler">Cancel</button>
+            </div>
+        </div>
+    </section>
+</article>
+
+@*@MvcHtmlString.Create(
+    Bundle.JavaScript()
+        .Add("/Scripts/knockout-3.4.2.js")
+        .Add("/Scripts/HelpResource/ShowDiaglog.js")
+        .Add("/Scripts/HelpResourceUpload/KnockModel.js")
+        .Render("/Content/themes/Constellation/js/helpresourceupload_combined_#.js")
+)*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptHelpResourceUploadBundle()
+
+<script type="text/javascript">
+
+    var viewModel = new HelpResourceUploadViewModel();
+
+    $(function () {
+        
+        viewModel.DownloadUrl('@Url.Action("Download", "HelpResourceUpload")');
+        viewModel.UploadUrl('@Url.Action("UploadHelpResource", "HelpResourceUpload")');
+        viewModel.HelpResourceUrl('@Url.Action("Admin", "HelpResource")');
+        viewModel.HelpResourceValidateLinkUrl('@Url.Action("ValidateLink", "HelpResourceUpload")');
+
+        viewModel.HelpResourceLinkIDConst(@((int)LinkIt.BubbleSheetPortal.Models.HelpResource.HelpResourceFileTypeEnum.Link));
+
+        ShowBlock($(viewModel.AddHelpResourceDivSelector()), 'Loading');
+
+        var getCategoriesPromise = viewModel.PostAjax('@Url.Action("GetHelpResourceCategories", "HelpResource")', null, function (allData) {
+            $(viewModel.AddHelpResourceDivSelector()).unblock();
+            var mappedObjects = $.map(allData, function (item) {
+                return new Category(item);
+            });
+            viewModel.Categories(mappedObjects);
+        }, null);
+
+        var getResourceTypesPromise = viewModel.PostAjax('@Url.Action("GetHelpResourceTypes", "HelpResource")', null, function (allData) {
+            $(viewModel.AddHelpResourceDivSelector()).unblock();
+            var mappedObjects = $.map(allData, function (item) {
+                return new HelpResourceType(item);
+            });
+            viewModel.HelpResourceTypes(mappedObjects);
+        }, null);
+
+        $.when(getCategoriesPromise, getResourceTypesPromise).done(function (a1, a2) {
+            console.log(a1);
+            console.log(a2);
+            viewModel.PostAjax('@Url.Action("GetHelpResourceByID", "HelpResourceUpload")', { 'helpResourceID': '@ViewBag.HelpResourceID' }, function (data) {
+                viewModel.Description(data.Description);
+                viewModel.HelpResourceFilePath(data.HelpResourceFilePath);
+                viewModel.HelpResourceID(data.HelpResourceID);
+                viewModel.HelpResourceLink(data.HelpResourceLink);
+                viewModel.HelpResourceTypeID(data.HelpResourceTypeID);
+                viewModel.HelpResourceFileTypeID(data.HelpResourceFileTypeID);
+                viewModel.Topic(data.Topic);
+                viewModel.HelpResourceCategoryID(data.HelpResourceCategoryID);
+                viewModel.KeyWords(data.KeyWords);
+                viewModel.DisplayResourceLinkValidStatus(data.HelpResourceLinkValid);
+
+                if (viewModel.HelpResourceFileTypeID() != null && viewModel.HelpResourceFileTypeID() == viewModel.HelpResourceLinkIDConst()) {
+                    viewModel.HelpResourceLinkOrFile('link');
+                } else {
+                    viewModel.HelpResourceLinkOrFile('file');
+                }
+
+            }, null);
+        });
+
+        ko.applyBindings(viewModel);
+    });
+
+    $('#file_upload').uploadifive(BuildUploadifiveOptions());
+
+    function BuildUploadifiveOptions() {
+        var result = {
+            'uploadLimit': 1,
+            'queueSizeLimit': 1,
+            'uploadScript': '@Url.Action("UploadHelpResource", "HelpResourceUpload")',
+            'overrideEvents': ['onDialogClose'],
+            'buttonText': 'Select File',
+            'fileObjName': 'postedFile',
+            'multi': false,
+            'removeCompleted': true,
+            'width': 100,
+            'auto': false,
+            'fileSizeLimit': '102400',
+            'fileType': false,
+            'overrideEvents': ['onError'],
+            'onCancel': function (file) {
+                if (viewModel.TotalFileInQueue() == 1)
+                    viewModel.TotalFileInQueue(viewModel.TotalFileInQueue() - 1);
+            },
+            'onAddQueueItem': function (file) {
+                if (viewModel.TotalFileInQueue() == 0)
+                    viewModel.TotalFileInQueue(viewModel.TotalFileInQueue() + 1);
+            },
+            'onUpload': function (file) {
+                ShowBlock($(viewModel.AddHelpResourceDivSelector()), 'Loading');
+            },
+            'onUploadComplete': function (file, data) {
+                $(viewModel.AddHelpResourceDivSelector()).unblock();
+                var allData = JSON.parse(data);
+                if (allData.success) {
+                    ConfirmDiaglog({ 'Message': 'Upload Successful.', 'width': 400, 'YesButtonCaption': 'Ok', 'ShowNoButton': false, 'HideCloseButton': 1 }, function (options) {
+                        location.reload();
+                    }, null);
+                } else {
+                    ConfirmDiaglog({ 'Message': allData.errorMessage, 'width': 400, 'YesButtonCaption': 'Ok', 'ShowNoButton': false, 'HideCloseButton': 1 }, function () {
+                        $('#file_upload').uploadifive('destroy');
+                        $('#file_upload').uploadifive(BuildUploadifiveOptions());
+                    }, null);
+                }
+
+            },
+            'onError': function (errorType, file) {
+            }
+        };
+        return result;
+    }
+
+</script>

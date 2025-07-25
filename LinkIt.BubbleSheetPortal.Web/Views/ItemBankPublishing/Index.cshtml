@@ -1,0 +1,422 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testdesign, "Item Bank Publishing");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<style>
+    #portal-v2-containter .btn-clear-filter {
+        color: var(--red);
+        margin: 0;
+        border: none;
+    }
+
+    #portal-v2-containter .btn-wrapper {
+        margin-top: 20px;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    #portal-v2-containter .block-content .no-margin {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+        #portal-v2-containter .block-content .no-margin.last-child {
+            margin-bottom: 0 !important;
+        }
+
+    #portal-v2-containter #dataTable_wrapper .block-footer {
+        display: none !important;
+    }
+
+    #portal-v2-containter #dataTable_wrapper table tbody tr .dataTables_empty,
+    #portal-v2-containter #dataTablePublishedDistrict_wrapper table tbody tr .dataTables_empty,
+    #portal-v2-containter #dataTablePublishedSchool_wrapper table tbody tr .dataTables_empty {
+        text-align: center;
+    }
+
+    #reviewList {
+        border-top: 1px solid #F0F0F0;
+        padding-top: 24px;
+    }
+
+    .block-text-name {
+        width: 100% !important;
+    }
+</style>
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border mb-4" id="selectFilters">
+            <div class="block-content form">
+                <h1>Item Library</h1>
+                <p class="title-large">Filter Item Banks</p>
+                <fieldset class="p-0 mb-4">
+                    <div class="row">
+                        @if (ViewBag.IsPublisher || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+                        {
+                            <div class="col-3">
+                                <label>State</label>
+                                <select id="selectState" class="full-width"></select>
+                            </div>
+                            <div class="col-3">
+                                <label>@LabelHelper.DistrictLabel</label>
+                                <div class="block-text-name">
+                                    <select id="selectDistrict" class="full-width"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-3">
+                            <label>Item Bank Name</label>
+                            <input type="text" id="selectBankName" class="full-width" />
+                        </div>
+                        <div class="col-3">
+                            <label>Author</label>
+                            <input type="text" id="selectAuthor" class="full-width" />
+                        </div>
+                        <div class="col-3">
+                            <label>Published To</label>
+                            <input type="text" id="selectPublishedTo" class="full-width" />
+                        </div>
+                        <div class="col-3 btn-wrapper">
+                            <button id="clearFilter" class="btn-clear-filter" type="button">
+                                Reset <i class="fa-solid fa-arrow-rotate-right ms-1"></i>
+                            </button>
+                            <button id="setFilter" class="btn-red" type="submit">Apply</button>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+        </div>
+        <div class="block-border" id="reviewList">
+            <div class="block-content form">
+                <p class="title-large" style="visibility: hidden" id="labelTable">Item Banks</p>
+                <div class="no-margin last-child">
+                    <table id="dataTable" class="datatable table no-margin" width="100%">
+                        <colgroup>
+                            <col />
+                            <col />
+                            <col style="width: 20%" />
+                            <col style="width: 20%" />
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Item Bank Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Author
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Published to @LabelHelper.DistrictLabel
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Published to School
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        InitData();
+        $('#selectDistrict').marquee();
+        $('#selectState').change(function () {
+            populateDistricts();
+        });
+
+        var isPublisher = '@ViewBag.IsPublisher' == 'True';
+        var isDistrictAdmin = '@ViewBag.IsDistrictAdmin' == 'True';
+
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSource(),
+            bAutoWidth: false,
+            aLengthMenu: [10, 25, 50, 100],
+            iDisplayLength: 25,
+            aaSorting: [[0, "asc"], [1, "asc"]],
+            aoColumns: [
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Author', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'QtiGroupSet', bSearchable: false, bSortable: false, sWidth: '140px', bVisible: ('@ViewBag.IsPublisher' == 'True' || '@ViewBag.IsNetworkAdmin' == 'True'|| '@ViewBag.IsDistrictAdmin' == 'True') },
+                { sType: 'string', sName: 'QtiGroupSet', bSearchable: false, bSortable: false, sWidth: '140px' },
+                { sType: 'string', sName: 'DistrictNames', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'SchoolNames', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'integer', sName: 'QtiBankId', bSearchable: false, bSortable: false, sWidth: '40px', bVisible: false }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).addClass('with-tip');
+                $('td:eq(0)', nRow);
+                $('td:eq(0)', nRow).bind({
+                    mouseenter: function () {
+                        if (aData[3] != null) {
+                            //$(this).attr('title', aData[3].split('|').join('\x0A'));
+							$(this).attr('title', '<p style="text-align:left;">' + aData[3].split('|').join('<br />') + '</p>');
+                        }
+                    },
+                    mouseleave: function () {
+                        ; //do nothing here
+                    }
+                });
+
+                if ('@ViewBag.IsPublisher' == 'True' || '@ViewBag.IsNetworkAdmin' == 'True'|| '@ViewBag.IsDistrictAdmin' == 'True') {
+                    $('td:eq(2)', nRow).html(setIconVisibilityPublishToDistrict(aData[6], aData[4]));
+                    $('td:eq(3)', nRow).html(setIconVisibilityPublishToSchool(aData[6], aData[5]));
+                } else {
+                    $('td:eq(2)', nRow).html(setIconVisibilityPublishToSchool(aData[6], aData[5]));
+                }
+
+            },
+            fnDrawCallback: function () {
+                $('#setFilter').removeAttr("disabled");
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTable_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTable_filter').addClass('data-search');
+
+                var elLabel = $('#labelTable');
+                elLabel.css({ position: 'absolute', marginTop: '8px', visibility: 'visible', left: '24px' });
+                $('.block-custom-header').prepend(elLabel);
+
+            }
+        };
+
+        $("#dataTable").data("options", options);
+
+        $('#setFilter').click(function () {
+            $(this).attr("disabled", "disabled");
+            setupFilters();
+        });
+
+        $('#clearFilter').click(function () {
+            $("#selectState option:eq(0)").attr('selected', 'selected');
+            populateDistricts();
+
+            $('input[type=text]').each(function () {
+                $(this).val('');
+            });
+            setupFilters();
+        });
+    });
+
+    function clearInputFields() {
+        $('.full-width').val('');
+    }
+
+    function getAjaxSource() {
+        var selectedDistrictId = '0';
+        if ($('#selectDistrict').length > 0) {
+            if ($('#selectDistrict').val() != 'select') {
+                selectedDistrictId = $('#selectDistrict').val();
+            }
+        } else {
+            selectedDistrictId = '@ViewBag.DistrictId';
+        }
+
+        var selectedBankName = $('#selectBankName').val();
+        var selectedAuthor = $('#selectAuthor').val();
+        var selectedPublishedTo = $('#selectPublishedTo').val();
+        return '@Url.Action("GetItemBankListV2")/?districtId=' + selectedDistrictId + '&bankName=' + selectedBankName + '&author=' + selectedAuthor + '&publishedTo=' + selectedPublishedTo;
+    }
+
+    function setIconVisibilityPublishToDistrict(qtiBankId, districtNames) {
+        var pencilIcon = '<span class="fa-solid fa-reply fa-flip-horizontal color-light-blue";></span>';
+        var editString = '<a style="display: inline-block; vertical-align: middle;" href="javascript:void(0)" onclick="displayPublishToDistrictForm(' + qtiBankId + ')" title="Edit" class="with-tip">' + pencilIcon + '</a>';
+        var viewIcon = '@Url.Content("~/Content/images/icons/school-icon.svg")';
+        var title = districtNames.split('|').join('<br />');
+        title = districtNames == '' ? '' : 'title="<p style=text-align:left;>' + title + '</p>"';
+        var classTip = districtNames == '' ? '' : 'class="with-tip"';
+        if (districtNames != '') editString = editString + '<a style="display: inline-block; vertical-align: middle; margin-left: 10px"><img src="' + viewIcon + '" ' + title + classTip + ' width="16" height="16" style="margin-right: 4px"><a/>';
+        return editString;
+    }
+
+    function setIconVisibilityPublishToSchool(qtiBankId, schoolNames) {
+        var pencilIcon = '<span class="fa-solid fa-reply fa-flip-horizontal color-light-blue";></span>';
+        var editString = '<a style="display: inline-block; vertical-align: middle; margin-left: 10px" href="javascript:void(0)" onclick="displayPublishToSchoolForm(' + qtiBankId + ')" title="Edit" class="with-tip">' + pencilIcon + '</a>';
+        var viewIcon = '@Url.Content("~/Content/images/icons/school-icon.svg")';
+        if (schoolNames == null) {
+            schoolNames = '';
+        }
+        var title = schoolNames.split('|').join('<br />');
+        title = schoolNames == '' ? '' : 'title="<p style=text-align:left;>' + title + '</p>"';
+        var classTip = schoolNames == '' ? '' : 'class="with-tip"';
+        if (schoolNames != '') editString = editString + '<a style="display: inline-table; vertical-align: middle; margin-left: 10px"><img src="' + viewIcon + '" ' + title + classTip + ' width="16" height="16" style="margin-right: 4px"></a>';
+        return editString;
+    }
+
+    function setupFilters() {
+        ui.dataTable.fnSettings().sAjaxSource = getAjaxSource();
+        ui.dataTable.fnDraw();
+    }
+
+    function filterColumn(searchTerm, columnIndex, settings) {
+        settings.aoPreSearchCols[columnIndex].sSearch = searchTerm;
+        settings.aoPreSearchCols[columnIndex].bRegex = false;
+        settings.aoPreSearchCols[columnIndex].bSmart = true;
+    }
+
+    function fnResetAllFilters(oSettings) {
+        for (var iCol = 0; iCol < oSettings.aoPreSearchCols.length; iCol++) {
+            oSettings.aoPreSearchCols[iCol].sSearch = '';
+        }
+    }
+
+    function InitData() {
+        if ('@ViewBag.IsNetworkAdmin' == 'True') {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function(states) {
+                addDefaultOption($('#selectState'), "State");
+                addSelectListItems($('#selectState'), states);
+                $('#selectState').val(@ViewBag.StateId);
+                $('#selectState').trigger('change');
+            });
+        } else {
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                addDefaultOption($('#selectState'), "State");
+                addSelectListItems($('#selectState'), states);
+            });
+        }
+
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            if('@ViewBag.IsPublisher'==='True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                });
+            } else {
+                if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                    $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#selectDistrict'), districts);
+                    });
+                }
+            }
+
+
+        }
+    }
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+
+    function displayPublishToDistrictForm(qtiBankId) {
+        var worker = $('<div />');
+
+        worker
+            .addClass("dialog")
+            .attr("id", "AssignParentForm")
+            .appendTo("body")
+        .load('@Url.Action("LoadListOrShareDistrict")/?qTIBankId=' + qtiBankId, function () {
+            worker.dialog({
+                title: $(this).attr("Publish to @LabelHelper.DistrictLabel"),
+                close: function () {
+                    $('.ui-widget-overlay').remove();
+                    $(this).remove();
+                    setupFilters();
+                },
+                modal: false,
+                width: 750,
+                resizable: false
+            });
+        });
+
+        showModalDialogBG();
+    }
+
+    function displayPublishToSchoolForm(qtiBankId) {
+        var worker = $('<div />');
+
+        worker
+            .addClass("dialog")
+            .attr("id", "AssignParentForm")
+            .appendTo("body")
+        .load('@Url.Action("LoadListOrShareSchool")/?qTIBankId=' + qtiBankId, function () {
+            worker.dialog({
+                title: $(this).attr("Publish to School"),
+                close: function () {
+                    $('.ui-widget-overlay').remove();
+                    $(this).remove();
+                    setupFilters();
+                },
+                modal: false,
+                width: 750,
+                resizable: false
+            });
+        });
+
+        showModalDialogBG();
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+</script>

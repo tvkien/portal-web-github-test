@@ -1,0 +1,426 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+<script src="@Url.Content("~/Scripts/jquery.listSplitter.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/TagIt/js/tag-it.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Scripts/TagIt/css/jquery.tagit.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Scripts/TagIt/css/tagit.ui-zendesk.css")" rel="stylesheet" type="text/css" />
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testmanagement, "Extract Test Results");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<style>
+    #selectTest {
+        border-color: transparent;
+    }
+
+    .content-test-name::after {
+        content: '';
+        float: none;
+        clear: both;
+        display: table;
+    }
+
+    #popupConfirm111 {
+        padding: 0 !important
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-popupConfirm111"] .ui-dialog-titlebar {
+        display: none;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-popupConfirm111"] section {
+        margin: 0 !important;
+        width: 100% !important;
+    }
+
+    .generate-student-list li:after {
+        content: '' !important;
+    }
+
+    .generate-student-list li a {
+        padding-left: 0 !important;
+    }
+
+    .tagit-close {
+        margin-top: -10px !important;
+    }
+
+    ul.tagit {
+        border-radius: 0;
+        border: 2px solid var(--selectBorder) !important;
+        min-height: 43px;
+        max-height: 126px;
+    }
+
+        ul.tagit li.tagit-new {
+            display: none;
+        }
+
+    .generate-student-list {
+        padding-left: 0 !important;
+        min-height: 43px;
+    }
+
+    .tabs-content {
+        border-color: var(--selectBorder);
+    }
+
+    .tagit-choice-editable {
+        padding: 8px 20px 8px 8px !important;
+        background: var(--blue3) !important;
+        border-radius: 2px !important;
+    }
+
+    .btn-wrapper {
+        display: flex;
+        gap: 16px;
+        justify-content: flex-end;
+    }
+</style>
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="selectFilters">
+            <div id="divFilterExtractTestResults" class="block-content form bubbleSheetSelector">
+                <h1>Filter Test Results</h1>
+                <fieldset class="p-0">
+                    <p class="title-large">Select Type of Extract</p>
+                    <input type="radio" onclick="ChooseTestResultType();" checked="checked" name="typeSelection" id="radioTestResult">
+                    <label style="padding-right: 15px" for="radioTestResult">Test Results</label>
+
+                    <input type="radio" onclick="ChooseUserType();" name="typeSelection" id="radioUser">
+                    <label style="padding-right: 15px" for="radioUser">Users</label>
+
+                    <input type="radio" onclick="ChooseRosterType();" name="typeSelection" id="radioRoster">
+                    <label style="padding-right: 15px" for="radioRoster">Roster</label>
+
+                    <input type="radio" onclick="ChooseTestType();" name="typeSelection" id="radioTest">
+                    <label style="padding-right: 15px" for="radioTest">Tests</label>
+
+                    <input type="radio" onclick="ChooseTestAssignmentType();" name="typeSelection" id="radioTestAssignment">
+                    <label style="padding-right: 15px" for="radioTest">Test Assignments</label>
+                </fieldset>
+                <div id="divTestResultFilter">
+                    @*@Html.Partial("_FilterExtractTestResult")*@
+                </div>
+                <div id="divUserFilter" style="display: none;">
+                </div>
+                <div id="divRosterFilter" style="display: none;">
+                </div>
+                <div id="divTestFilter" style="display: none;">
+                </div>
+                <div id="divTestAssignmentFilter" style="display: none;">
+                </div>
+                <div class="clear"></div>
+            </div>
+        </div>
+        <div id="divtestResult">
+            @Html.Partial("v2/_ExtractTestResult")
+        </div>
+        <div id="divUser" style="display: none;">
+            @Html.Partial("v2/_ExtractUser")
+        </div>
+        <div id="divRoster" style="display: none;">
+            @Html.Partial("v2/_ExtractRoster")
+        </div>
+        <div id="divTest" style="display: none;">
+            @Html.Partial("v2/_ExtractTest")
+        </div>
+        <div id="divTestAssignment" style="display: none;">
+            @Html.Partial("v2/_ExtractTestAssignment")
+        </div>
+    </section>
+</article>
+<div id="popupConfirm111" style="display: none">
+    <section style='z-index: 2004; margin: 0'>
+        <div class='block-border' style='z-index: 2004'>
+            <div class='block-content p-4' style='z-index: 1004'>
+                <p style='z-index: 1004; text-align: left; font-weight: bold'>
+                    Extracting in progress. You will receive the download link upon completion.
+                </p>
+            </div>
+            <div style='align-items:center; background: var(--navyColor); height: 64px; display: flex; justify-content: center'><button id="btnOk" class="btn-red">OK</button></div>
+        </div>
+    </section>
+
+</div>
+
+<script type="text/javascript">
+
+    $(function () {
+        if ($('#radioUser:checked').val() == 'on') {
+            ChooseUserType();
+        }
+        else if ($('#radioRoster:checked').val() == 'on') {
+            ChooseRosterType();
+        }
+        else if ($('#radioTest:checked').val() == 'on') {
+            ChooseTestType();
+        }
+        else if ($('#radioTestAssignment:checked').val() == 'on') {
+            ChooseTestAssignmentType();
+        }
+        else {
+            ChooseTestResultType();
+        }
+
+
+        $('#btnOk').click(function () {
+            $("#popupConfirm111").dialog('close');
+        });
+
+        $('.generate-student-list li').live({
+            mouseenter: function () {
+                if ($(this).attr('isselected') == "yes") {
+                    $(this).css('background-color', "#75B6E1");
+                }
+                else {
+                    $(this).css('background-color', "#e0e0e0");
+                }
+            },
+            mouseleave: function () {
+                if ($(this).attr('isselected') == "yes") {
+                    $(this).css('background-color', "#82CAFA");
+                }
+                else {
+                    $(this).css('background-color', "#f2f2f2");
+                }
+            },
+            click: function () {
+                if ($(this).attr('isselected') == "yes") {
+                    $(this).attr('isSelected', "no");
+                    $(this).css('background-color', "#e0e0e0");
+                }
+                else {
+                    $(this).attr('isSelected', "yes");
+                    $(this).css('background-color', "#75B6E1");
+                }
+                //setDisabledButtons();
+                if ($('#radioUser:checked').val() == 'on') {
+                    setDisabledButtonsUser();
+                }
+                else if ($('#radioTest:checked').val() == 'on') {
+                    setDisabledButtonsTest();
+                }
+                else if ($('#radioTestAssignment:checked').val() == 'on') {
+                    setDisabledButtonsTestAssignment();
+                }else {
+                    setDisabledButtons();
+                }
+            }
+        });
+    });
+
+    function moveBtnExtract(region) {
+        var regionEl = $(`#${region}`);
+        if (!regionEl) return;
+
+        var destinationEl = regionEl.find('.block-custom-header');
+        var btnEl = regionEl.find('.btn-wrapper .btn-blue')
+
+        if (!destinationEl || !btnEl) return;
+
+        btnEl.clone().prependTo(destinationEl)
+        removeDulicateBtnExtract(destinationEl);
+    }
+
+    function removeDulicateBtnExtract(region) {
+        if (!region) return;
+
+        var btnList = region.find('.btn-blue');
+        if (btnList.length < 2) return;
+
+        var btnClone = btnList[0];
+
+        btnList.remove();
+        region.prepend(btnClone);
+    }
+
+    function FilterColumn(searchTerm, columnIndex, settings) {
+        settings.aoPreSearchCols[columnIndex].sSearch = searchTerm;
+        settings.aoPreSearchCols[columnIndex].bRegex = false;
+        settings.aoPreSearchCols[columnIndex].bSmart = true;
+    }
+
+    function fnResetAllFilters(oSettings) {
+        for (var iCol = 0; iCol < oSettings.aoPreSearchCols.length; iCol++) {
+            oSettings.aoPreSearchCols[iCol].sSearch = '';
+        }
+    }
+
+    function builObjectFilter() {
+        var vData = {
+            DistrictId: GetDistrictID(),
+            StrStartDate: $('#selectFromDate').val(),
+            StrEndDate: $('#selectToDate').val(),
+            BankdId: $('#selectBank').val(),
+            ListTestIDs: BuildListTestSelected(),
+            StudentId: $('#selectStudent').val()
+        };
+    }
+
+    function ChooseTestResultType() {
+        loadReportForm('@Url.Action("LoadTestResultFilter")', $('#divTestResultFilter'));
+        clearForm($('#divUserFilter'));
+        clearForm($('#divTestFilter'));
+        clearForm($('#divTestAssignmentFilter'));
+        clearForm($('#divRosterFilter'));
+
+        $('#divtestResult').show();
+        $('#divUser').hide();
+        $('#divTest').hide();
+        $('#divTestAssignment').hide();
+        $('#divRoster').hide();
+    }
+
+    function ChooseUserType() {
+        loadReportForm('@Url.Action("LoadUserFilter")', $('#divUserFilter'));
+        clearForm($('#divTestResultFilter'));
+        clearForm($('#divTestFilter'));
+        clearForm($('#divTestAssignmentFilter'));
+        clearForm($('#divRosterFilter'));
+
+        $('#divtestResult').hide();
+        $('#divUser').show();
+        $('#divTest').hide();
+        $('#divTestAssignment').hide();
+        $('#divRoster').hide();
+    }
+
+    function ChooseRosterType() {
+        loadReportForm('@Url.Action("LoadRosterFilter")', $('#divRosterFilter'));
+        clearForm($('#divTestResultFilter'));
+        clearForm($('#divUserFilter'));
+        clearForm($('#divTestFilter'));
+        clearForm($('#divTestAssignmentFilter'));
+
+        $('#divtestResult').hide();
+        $('#divUser').hide();
+        $('#divTest').hide();
+        $('#divTestAssignment').hide();
+        $('#divRoster').show();
+    }
+
+    function ChooseTestType() {
+        loadReportForm('@Url.Action("LoadTestFilter")', $('#divTestFilter'));
+        clearForm($('#divUserFilter'));
+        clearForm($('#divTestResultFilter'));
+        clearForm($('#divTestAssignmentFilter'));
+        clearForm($('#divRosterFilter'));
+
+        $('#divtestResult').hide();
+        $('#divTest').show();
+        $('#divUser').hide();
+        $('#divTestAssignment').hide();
+        $('#divRoster').hide();
+    }
+
+    function ChooseTestAssignmentType() {
+        loadReportForm('@Url.Action("LoadTestAssignmentFilter")', $('#divTestAssignmentFilter'));
+        clearForm($('#divUserFilter'));
+        clearForm($('#divTestFilter'));
+        clearForm($('#divTestResultFilter'));
+        clearForm($('#divRosterFilter'));
+
+        $('#divtestResult').hide();
+        $('#divTest').hide();
+        $('#divUser').hide();
+        $('#divTestAssignment').show();
+        $('#divRoster').hide();
+    }
+
+    function loadReportForm(url, containerElement) {
+        var data = {
+            isPublisher: @ViewBag.IsPublisher.ToString().ToLower(),
+            districtId: @ViewBag.DistrictID
+        };
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data
+        })
+        .done(function(response) {
+            containerElement.html(response);
+            containerElement.show();
+        });
+    }
+    function clearForm(containerElement) {
+        containerElement.hide();
+        containerElement.empty();
+    }
+
+    function GetTypeExtract() {
+        if ($('#radioUser:checked').val() == 'on') {
+            return "users";
+        }
+        else if ($('#radioRoster:checked').val() == 'on') {
+            return "rosters";
+        }
+        else if ($('#radioTest:checked').val() == 'on') {
+            return "tests";
+        }
+        else if ($('#radioTestAssignment:checked').val() == 'on') {
+            return "testAssignments";
+        }else {
+            return "testResults";
+        }
+    }
+
+    function days_between(dateTo, dateFrom) {
+        // The number of milliseconds in one day
+        var ONE_DAY = 1000 * 60 * 60 * 24;
+
+        date1 = new Date(dateTo);
+        date2 = new Date(dateFrom);
+
+        // Convert both dates to milliseconds
+        var date1_ms = date1.getTime();
+        var date2_ms = date2.getTime();
+
+        // Calculate the difference in milliseconds
+        var difference_ms = Math.abs(date1_ms - date2_ms);
+
+        // Convert back to days and return
+        return Math.round(difference_ms / ONE_DAY);
+    }
+
+    function datediff(fromDate,toDate,interval) {
+        /*
+         * DateFormat month/day/year hh:mm:ss
+         * ex.
+         * datediff('01/01/2011 12:00:00','01/01/2011 13:30:00','seconds');
+         */
+        var second=1000, minute=second*60, hour=minute*60, day=hour*24, week=day*7;
+        fromDate = new Date(fromDate);
+        toDate = new Date(toDate);
+        var timediff = toDate - fromDate;
+        if (isNaN(timediff)) return NaN;
+        switch (interval) {
+            case "years": return toDate.getFullYear() - fromDate.getFullYear();
+            case "months": return (
+                ( toDate.getFullYear() * 12 + toDate.getMonth() )
+                -
+                ( fromDate.getFullYear() * 12 + fromDate.getMonth() )
+            );
+            case "weeks"  : return Math.floor(timediff / week);
+            case "days"   : return Math.floor(timediff / day);
+            case "hours"  : return Math.floor(timediff / hour);
+            case "minutes": return Math.floor(timediff / minute);
+            case "seconds": return Math.floor(timediff / second);
+            default: return undefined;
+        }
+    }
+</script>
+

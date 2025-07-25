@@ -1,0 +1,256 @@
+<style>
+    .block-filter-student-result {
+        padding-top: 3em;
+    }
+    #generateContent .block-filter-student-result .blockElement {
+        position: absolute !important;
+        top: 50% !important;
+        transform: translate(0, -50%);
+    }
+    .block-filter-student-result select {
+        min-width: auto;
+    }
+</style>
+<div class="block-filter-student-result">
+    <table id="filterStudentResultDataTable" class="datatable table no-margin" width="100%">
+        <thead>
+            <tr>
+                <th scope="col" style="width: 13px; text-align: center;">
+                    <input type="checkbox" id="chkAllTest" />
+                </th>
+                <th scope="col" style="text-align: center;">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Name
+                </th>
+                <th scope="col" style="text-align: center;">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    User Name
+                </th>
+                <th scope="col" style="text-align: center;">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Role
+                </th>
+                <th scope="col" style="text-align: center;">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    School
+                </th>
+                <th scope="col" style="display: none;">
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="height: 60px;"></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+
+    var filterStudentResultDT = (function () {
+        var $filterStudentResultDT = $('#filterStudentResultDataTable');
+        var currentFilterParams = {};
+        var selectedStudents = [];
+        function loadFilterStudentResultDataTable() {
+            var options = {
+                bServerSide: true,
+                bDestroy: true,
+                sAjaxSource: '@Url.Action("GetUsersByRoles", "AssignSurvey")',
+                oLanguage: { "sZeroRecords": "No results meet your search criteria." },
+                fnServerParams: function (aoData) {
+                    var currentParams = currentFilterParams;
+                    aoData.push(
+                        { name: "Roles", value: (currentParams && currentParams.roles) ? currentParams.roles : '' },
+                        { name: "DistrictId", value: currentParams && currentParams.districtId ? currentParams.districtId : -1 },
+                        { name: "DistrictTermId", value: currentParams && currentParams.districtTermId ? currentParams.districtTermId : -1 },
+                        { name: "SurveyId", value: currentParams && currentParams.surveyId ? currentParams.surveyId : -1 },
+                        { name: "BankId", value: currentParams && currentParams.bankId ? currentParams.bankId : -1 },
+                        { name: "SchoolId", value: currentParams && currentParams.schoolId ? currentParams.schoolId : -1 },
+                        { name: "TermId", value: currentParams && currentParams.termId ? currentParams.termId : -1 },
+                        { name: "TeacherId", value: currentParams && currentParams.teacherId ? currentParams.teacherId : -1 },
+                        { name: "ClassId", value: currentParams && currentParams.classId ? currentParams.classId : -1 },
+                        { name: "ProgramIds", value: currentParams && currentParams.programIds ? currentParams.programIds : '' },
+                        { name: "GradeIds", value: currentParams && currentParams.gradeIds ? currentParams.gradeIds : '' },
+                        { name: "Type", value: currentParams && currentParams.type ? currentParams.type : -1 },
+                        
+                    );
+                },
+                iDisplayLength: 10,
+                aoColumns: [
+                    { sType: 'integer', sName: 'UserId', bSearchable: false, bSortable: false },
+                    { sType: 'string', sName: 'FullName', bSearchable: false, bSortable: true },
+                    { sType: 'string', sName: 'UserName', bSearchable: false, bSortable: true },
+                    { sType: 'string', sName: 'RoleName', bSearchable: false, bSortable: true },
+                    { sType: 'string', sName: 'SchoolName', bSearchable: false, bSortable: true },
+                    { sType: 'integer', sName: 'RoleId', bSearchable: false, bSortable: false, bVisible: false }
+                ],
+                aaSorting: [[1, "asc"]],
+                bStateSave: false,
+                oSearch: {
+                    sSearch: $("#filterStudentResultDataTable_filter input").val()
+                },
+                fnRowCallback: function (nRow, aData) {
+                    $('td:eq(0)', nRow).html(setIconCheckbox(aData[0]));
+                    return nRow;
+                },
+                fnPreDrawCallback: function () {
+                    ShowBlock($filterStudentResultDT, 'Loading');
+                    $('.with-tip').tip();
+                    return true;
+                },
+                fnDrawCallback: function () {
+                    $filterStudentResultDT.unblock();
+                    var checkboxCount = $filterStudentResultDT.find("input.item-checkbox").length;
+                    var checkedCount = $filterStudentResultDT.find("input.item-checkbox:checked").length;
+                    if (checkboxCount > 0 && checkboxCount == checkedCount) {
+                        $filterStudentResultDT.find('#chkAllTest').prop("checked", true);
+                    } else {
+                        $filterStudentResultDT.find('#chkAllTest').prop("checked", false);
+                    }
+                    return true;
+                },
+            };
+
+            $filterStudentResultDT.data("options", options);
+
+            function setIconCheckbox(studentId) {
+                var isChecked = selectedStudents.indexOf(studentId) != -1;
+                var html = '<input type="checkbox" data-studentId="' + studentId + '" ' + (isChecked ? 'checked' : '') + ' class="item-checkbox" onchange="filterStudentResultDT.itemCheckboxOnchange(this,' + studentId + ')" /> ';
+                return html;
+            }
+        }
+
+        function itemCheckboxOnchange(t, studentId) {
+            var isAllSelected = true;
+            $filterStudentResultDT.find("input.item-checkbox").each(function (index, elem) {
+                if (!$(elem).is(':checked')) {
+                    isAllSelected = false;
+                }
+            });
+            if (selectedStudents.indexOf(studentId) != -1) {
+                selectedStudents = _.filter(selectedStudents, function (stId) {
+                    return stId != studentId;
+                });
+            } else {
+                selectedStudents.push(studentId)
+            }
+            
+            $filterStudentResultDT.find('#chkAllTest').prop("checked", isAllSelected);
+        };
+
+        function getFilterParrams() {
+            var districtId = $('#hdfDistrictId').val();
+            if (districtId == null) {
+                districtId = $('#selectDistrict').val();
+            }
+            var roles = [];
+
+            $('input[name=checkboxRoles]:checked').each(function () {
+                roles.push($(this).val());
+            });
+
+            var data = {
+                districtId: districtId,
+                bankId: $('#selectBank').val(),
+                surveyId: $('#selectSurvey').val(),
+                districtTermId: $('#selectDistrictTerm').val(),
+                type: $('input[name=assignmentType]:checked').val(),
+                roles: roles.join(',')
+            };
+
+            var $school = $('#selectSchool'),
+                $term = $('#selectDistrictTermFilter'),
+                $teacher = $('#selectTeacher'),
+                $class = $('#selectClass'),
+                $program = $('#selectPrograms'),
+                $grade = $('#selectGrades');
+
+            if ($school.is(':visible')) {
+                data.schoolId = $school.val()
+            }
+            if ($term.is(':visible')) {
+                data.termId = $term.val()
+            }
+            if ($teacher.is(':visible')) {
+                data.teacherId = $teacher.val()
+            }
+            if ($class.is(':visible')) {
+                data.classId = $class.val()
+            }
+            if ($program.is(':visible')) {
+                var programIds = $program.val();
+                if (programIds && programIds.length) {
+                    data.programIds = programIds.filter(function (item) {
+                        return item != 'select'
+                    }).join(',');
+                }
+            }
+            if ($grade.is(':visible')) {
+                var gradeIds = $grade.val();
+                if (gradeIds && gradeIds.length) {
+                    data.gradeIds = gradeIds.filter(function (item) {
+                        return item != 'select'
+                    }).join(',');
+                }
+            }
+           
+            currentFilterParams = $.extend({}, currentFilterParams, data);
+            return currentFilterParams;
+        }
+
+        function reload(clearSelected) {
+            if (!!clearSelected) {
+                selectedStudents = [];
+            }
+            getFilterParrams();
+            $filterStudentResultDT.dataTable().fnReloadAjax();
+        }
+
+        function init() {
+            $filterStudentResultDT.find('#chkAllTest').click(function () {
+                var checked = $(this).is(':checked');
+                var ids = [];
+                $filterStudentResultDT.find("input.item-checkbox").each(function (index, elem) {
+                    var $input = $(elem);
+                    $input.prop("checked", checked);
+                    var id = $input.data('studentid');
+                    ids.push(parseInt(id));
+                });
+                if (checked) {
+                    selectedStudents = selectedStudents.concat(ids);
+                } else {
+                    selectedStudents = _.filter(selectedStudents, function (id) { return ids.indexOf(id) == -1 });
+                }
+                selectedStudents = _.union(selectedStudents);
+            });
+        }
+        
+        return {
+            init,
+            loadFilterStudentResultDataTable,
+            reload,
+            itemCheckboxOnchange,
+            getSelected: function () {
+                return selectedStudents;
+            }
+        }
+    })();
+
+    $(function () {
+        filterStudentResultDT.init();
+        filterStudentResultDT.loadFilterStudentResultDataTable();
+    })
+</script>

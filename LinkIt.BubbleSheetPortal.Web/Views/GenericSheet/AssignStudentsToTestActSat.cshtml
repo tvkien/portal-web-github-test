@@ -1,0 +1,271 @@
+@using DevExpress.Office.Utils
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.GenericSheets.GenericSheetViewModel
+@{
+    ViewBag.Title = "Assign Students";
+}
+
+@section stylesheet {
+    <link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/Common.css">
+}
+
+
+<article class="container_12">
+    <section class="grid_5">
+        <div id="lstbubbleSheetFileActSat" class="block-border">
+            <div class="block-content form">
+                <h1>Uploaded Files</h1>
+                <div class="block-reviewer block-reviewer-cancel">
+                    <a href="/BubbleSheetReview" class="big-button btn-reviewbbs">Back to Review Bubble Sheets</a>
+                </div>
+                @if (Model.HasNoFilesUploaded)
+                {
+                    <p>This test does not have any sheets uploaded. Please visit the <a href="@Url.Action("Grade", "BubbleSheet")">Grade</a> page to upload sheets.</p>
+                }
+                else
+                {
+                    <p>
+                        Once you are done assigning students to sheets,
+                        @if (Model.VirtualTestSubTypeId == 2 || Model.VirtualTestSubTypeId == 6)
+                        {
+                            <a href="@Url.Action("ACTPage", "BubbleSheetReviewDetails", new { id = Model.Ticket, classId = Model.ClassId })">
+                                click here to view the bubble sheet details.
+                            </a>
+                        }
+                        else if (Model.VirtualTestSubTypeId == 3 || Model.VirtualTestSubTypeId == 7)
+                        {
+                            <a href="@Url.Action("SATPage", "BubbleSheetReviewDetails", new { id = Model.Ticket, classId = Model.ClassId })">
+                                click here to view the bubble sheet details.
+                            </a>
+                        }
+                        else
+                        {
+                            <a href="@Url.Action("Index", "BubbleSheetReviewDetails", new { id = Model.Ticket, classId = Model.ClassId })">
+                                click here to view the bubble sheet details.
+                            </a>
+                        }
+
+                    </p>
+                    <p style="height: 5px"></p>
+                    <div class="no-margin last-child">
+                        <table id="dataTable" class="datatable table no-margin" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        File Name
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Student
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+    <div id="assignStudentContainer"></div>
+</article>
+<style type="text/css">
+    .createStudentAssignGenericDialog .ui-widget-header {
+        z-index: 100;
+    }
+
+    .createStudentAssignGenericDialog .ui-dialog-titlebar-close {
+        right: 10px !important;
+        top: 25px !important;
+    }
+
+        .createStudentAssignGenericDialog .ui-dialog-titlebar-close:hover,
+        .createStudentAssignGenericDialog .ui-dialog-titlebar-close:focus {
+            padding: 1px;
+        }
+</style>
+<script type="text/javascript">
+    $(function () {
+        $('#generateTab').addClass('current');
+
+        var options = {
+            sAjaxSource: '@Url.Action("GetBubbleSheetsActSat","GenericSheet")' + '?ticket='+'@Model.Ticket'+'&classId=' + '@Model.ClassId',
+            bAutoWidth: true,
+            iDisplayLength: 25,
+            aaSorting: [[0, "desc"]],
+            oLanguage: {
+                sLengthMenu: "Show _MENU_",
+            },
+            aoColumns: [
+                { sType: 'string', sName: 'InputFileName', bSearchable: true, bSortable: true, },
+                { sType: 'string', sName: 'StudentName', bSearchable: true, bSortable: false, },
+                { sType: 'integer', sName: 'BubbleSheetId', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'integer', sName: 'BubbleSheetFileId', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(1)', nRow).html(createAssignStudentLink(nRow, aData[3]));
+                return nRow;
+            }
+        };
+        $("#dataTable").data("options", options);
+
+        function createAssignStudentLink(row, bubbleSheetFileId) {
+            var currentValue = $('td:eq(1)', row).html();
+            if (currentValue == "") {
+                return '<a href="javascript:void(0);" class="assignStudent" bubbleSheetFileId="' + bubbleSheetFileId + '">Assign and Grade<a/>';
+            }
+            return currentValue;
+        }
+
+        $("#dataTable").on('click', '.assignStudent', function () {
+            ShowBlock($('#lstbubbleSheetFileActSat'), "Loading Assign And Grade");
+            $('#assignStudentContainer').load('@Url.Action("AssignAndGradeStudentActSat")', { bubbleSheetFileId: $(this).attr('bubbleSheetFileId'), ticket : '@Model.Ticket' }, function (response, status) {
+                $('#lstbubbleSheetFileActSat').unblock();
+                if (status == "error") {
+                    alert('An error has occured. Please refresh the page and try again.');
+                }
+            });
+        });
+
+        $('#assignStudentContainer').on('submit', '#formAssignStudent', function (e) {
+            e.preventDefault();
+            removeErrorMessages('error-messages');
+            ShowBlock($('#blockAssignStudent'), "Submitting Sheet for Grading");
+
+            $.post($(this).attr('action'), $(this).serialize(), function (response) {
+                if (response.success) {
+                    //var studentName = response.isAllStudentsSelected ? $('#SelectedAllStudentsId option:selected').text() : $('#SelectedRemainingStudentsId option:selected').text();
+                    var studentName = $('#selectStudent option:selected').text();
+                    $('.assignStudent[bubbleSheetFileId="' + response.bubblesheetFileId + '"]').parent().html(studentName);
+                    $('#assignStudentContainer').html('');
+                } else {
+                    addErrorMessages(response);
+                }
+                $('#blockAssignStudent').unblock();
+            })
+            //.done(function() { alert( "second success" ); $('#blockAssignStudent').unblock(); })
+			//.fail(function() { //alert( "error" ); $('#blockAssignStudent').unblock(); })
+			.always(function () {
+			    //alert( "finished" );
+			    $('#assignStudentContainer').html('');
+			    $('#blockAssignStudent').unblock();
+			});
+        });
+
+        $('#assignStudentContainer').on('click', '#btnCancelStudentAssignment', function () {
+            $('#assignStudentContainer').html('');
+        });
+
+        $('#assignStudentContainer').on('change', '#chkShowAllStudents', function () {
+            $('#remainingStudentsList').toggle(!this.checked);
+            $('#allStudentsList').toggle(this.checked);
+        });
+    });
+
+
+    function CreateStudentAssignGeneric(id, classId) {
+        ShowBlock($('#blockAssignStudent'), "Add New Student");
+
+        var $generic = $("<div></div>");
+
+        if (classId == null)
+            classId = '';
+
+        $generic.load('@Url.Action("AddNewStudentForGeneric","GenericSheet")?id=' + id + '&classId=' + classId, function () {
+            $('#blockAssignStudent').unblock();
+            $generic.addClass("dialog")
+                .attr("id", "createStudentAssignGenericDialog")
+                .appendTo("body")
+                .dialog({
+                    dialogClass: 'createStudentAssignGenericDialog',
+                    close: function () { $(this).remove(); },
+                    modal: true,
+                    width: 500,
+                    maxheight: 400,
+                    resizable: false
+                });
+        });
+    }
+
+    function DisplayBubbleSheetFileByBubbleSheetID(id) {
+        ShowBlock($('#blockAssignStudent'), "Opening files");
+        //var hbody = $("body").height() - 109;
+        $("#divListBubbleSheetFileSub").html('');
+        $("#divListBubbleSheetFileSub").load("/GenericSheet/GetListBubbelSheetFileSubByBubblesheetFileId/" + id, function () {
+            $('#blockAssignStudent').unblock();
+            $("<div></div>")
+                .html($("#divListBubbleSheetFileSub").html())
+                .addClass("dialog")
+                .attr("id", "messageDialog")
+                .appendTo("body")
+                .dialog({
+                    close: function () { $(this).remove(); },
+                    modal: true,
+                    width: 500,
+                    maxheight: 400,
+                    resizable: false
+                });
+        });
+    }
+
+    $("#btnCreateStudentCancel").live("click", function (e) {
+        e.preventDefault();
+        $(".dialog").dialog("close");
+    });
+
+    $("#btnCreateStudentSubmit").live("click", function (e) {
+        e.preventDefault();
+        ShowBlock($('#divAddNewStudentFeorGeneric'), "Create And Assign Student");
+
+        $('#btnCreateStudentSubmit').disableBt();
+        var obj = {
+            SchoolId: $('#SchoolId').val(),
+            ClassId: $('#ClassId').val(),
+            GenderId: $('#selectGender').val() == '' ? '26' : $('#selectGender').val(),
+            RaceId: $('#selectRace').val(),
+            DistrictId: $('#DistrictId').val(),
+            GradeId: $('#selectGrade').val(),
+            StudentStateId: $('#StudentStateId').val(),
+            FirstName: $('#FirstName').val(),
+            MiddleName: $('#MiddleName').val(),
+            LastName: $('#LastName').val(),
+            StudentLocalId: $('#StudentLocalId').val(),
+            BubbleSheetFileId: $('#BubbleSheetFileId').val(),
+            Password: $('#Password').val(),
+            ConfirmPassword: $('#ConfirmPassword').val(),
+        };
+
+        $.ajax({
+            url: '@Url.Action("CreateStudentAndAssignmentGenericSheetForActSat","GenericSheet")',
+            type: 'POST',
+            data: obj,
+            success: function (result) {
+                $('#divAddNewStudentFeorGeneric').unblock();
+                if (result.success == true) {
+                    $('.assignStudent[bubbleSheetFileId="' + result.bubblesheetFileId + '"]').parent().html(result.studentName);
+                    $(".dialog").dialog("close");
+                    $('#divCreateStudentAssignGeneric').html('');
+                    $('#assignStudentContainer').html('');
+                } else {
+                    addErrorMessagesCustom('genericStudent-error-messages', result);
+                    $('#genericStudent-error-messages').show();
+                }
+
+                $('#btnCreateStudentSubmit').enableBt();
+            },
+            failure: function (error) {
+                $('#divAddNewStudentFeorGeneric').unblock();
+                $('#divCreateStudentAssignGeneric').html('');
+                $('#assignStudentContainer').html('');
+            }
+        });
+
+    });
+
+</script>

@@ -1,0 +1,222 @@
+@model LinkIt.BubbleSheetPortal.Web.Helpers.BBSClassViewSplitModel
+
+@{
+    ViewBag.Title = "Bubble Sheet Class View";
+}
+
+@section stylesheet {
+    <link rel="stylesheet" href="/Scripts/Lib/handsontable/pro/handsontable.full.min.css">
+    <link rel="stylesheet" href="/Scripts/Qtip/jquery.qtip.css">
+    <link rel="stylesheet" href="/Content/css/vue-components/vue-modal.css">
+    <link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/BubbleSheetClassReview.css">
+    <link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/Common.css">
+}
+
+<div vue="bubbleSheetClassReview">
+    <div class="bubbleSheetClassReviewWrapper">
+        <div class="bubbleSheetClassReviewContainer container_12 u-m-t-15">
+            <div class="fleft u-w-p-50">
+                <ul class="u-clearfix">
+                    <li class="fleft">
+                        <a href="#" class="bubbleSheetClassReviewPage is-first" data-url="Index">
+                            <span class="u-inline-block u-v-align-middle">Student Review</span>
+                        </a>
+                    </li>
+                    <li class="fleft">
+                        <a href="#" class="bubbleSheetClassReviewPage is-second" data-url="ClassViewPage">
+                            <span class="u-inline-block u-v-align-middle">Class Review</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="fleft u-w-p-50">
+                <div class="u-text-right">
+                    <button class="button-simple-grey button-simple-fs-grey" v-on:click="toggleFullScreen">
+                        <span class="icon" v-html="fullscreenStatus.icon"></span>
+                        <span v-text="fullscreenStatus.text"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <article class="bubbleSheetClassReviewContainer container_12 u-m-t-15">
+            <div class="block-border bubbleSheetClassReviewBorder" id="BubbleSheetClassReviewBorder">
+                <div class="block-content">
+                    <h1>Class</h1>
+                    <div class="block-reviewer block-reviewer-cancel">
+                        <a href="/BubbleSheetReview" class="big-button btn-reviewbbs-class">Back to Review Bubble Sheets</a>
+                    </div>
+                    <div class="u-clearfix u-m-t-5">
+                        <div class="fleft u-w-p-50">
+                            <h4>Test Name: <span class="u-fw-400">@Model.TestName</span></h4>
+                        </div>
+                        <div class="fleft u-w-p-50">
+                            <div class="u-text-right">
+                                <a href="#" v-on:click.prevent="refreshedStudentDetails">Refresh Student Details</a>
+                                <span>| Refreshed at <span v-text="refreshedAt"></span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="u-clearfix u-m-t-10">
+                        <div class="u-w-p-50 fleft">
+                            <label v-for="st in studentStatus"
+                                   class="bubbleSheetClassReviewStatus u-inline-block u-v-align-middle u-cursor-pointer">
+                                <input type="checkbox"
+                                       v-bind:value="st.value"
+                                       v-model="filterStudentSelected"
+                                       class="u-inline-block u-v-align-middle">
+                                <span class="bubbleSheetClassReviewStatusColor u-inline-block u-v-align-middle"
+                                      v-bind:style="{ background: st.background }">
+                                </span>
+                                <span class="u-inline-block u-v-align-middle" v-text="st.text"></span>
+                            </label>
+                        </div>
+                        <div class="u-w-p-50 fleft">
+                            <div class="u-text-right">
+                                <span class="u-inline-block u-v-align-middle">Answer Key:</span>
+                                <div v-for="qt in questionStatus"
+                                     class="bubbleSheetClassReviewStatus u-inline-block u-v-align-middle">
+                                    <span class="bubbleSheetClassReviewStatusColor u-inline-block u-v-align-middle"
+                                          v-bind:style="{ background: qt.background }">
+                                    </span>
+                                    <span class="u-inline-block u-v-align-middle" v-text="qt.text"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="u-m-t-10">
+                        <label class="bubbleSheetClassReviewCheckbox u-inline-block u-v-align-middle u-cursor-pointer u-m-r-5">
+                            <input type="checkbox"
+                                   class="u-inline-block u-v-align-middle"
+                                   v-model="isSelectedAllClassView"
+                                   v-on:click="selectedAllClassView">
+                            <span>Select All Students</span>
+                        </label>
+                        <label class="bubbleSheetClassReviewCheckbox u-inline-block u-v-align-middle u-cursor-pointer u-m-r-5">
+                            <input type="checkbox"
+                                   class="u-inline-block u-v-align-middle"
+                                   v-model="isAutoClassView">
+                            <span>Auto open BBS images</span>
+                        </label>
+                        <label class="bubbleSheetClassReviewCheckbox u-inline-block u-v-align-middle u-cursor-pointer">
+                            <input type="checkbox"
+                                   class="u-inline-block u-v-align-middle"
+                                   v-model="isAutoMultiCells">
+                            <span>Auto input multi-cells</span>
+                        </label>
+                    </div>
+
+                    <div class="u-m-t-10 bubbleSheetClassReviewTable">
+                        <div v-el:bubble-sheet-class-review id="BubbleSheetClassReview"></div>
+                    </div>
+
+                    <div class="u-m-t-10 u-clearfix">
+                        <div class="u-w-p-50 fleft">
+                            <button v-bind:disabled="!isShowMarkAsAbsent" v-on:click="markAsAbsent">Mark as Absent</button>
+                            <button class="u-m-l-5"
+                                    v-bind:disabled="isDisabledGradingShortcuts"
+                                    v-on:click="toggleGradingShortcutsModal">
+                                Shortcut Grading
+                            </button>
+                            <button class="u-m-l-5" v-on:click="undoClassView" v-bind:disabled="isDisabledUndoAndSave">Undo</button>
+                        </div>
+                        <div class="u-w-p-50 fleft">
+                            <div class="u-text-right">
+                                <button v-on:click="autoSavedClassView(true)" v-bind:disabled="isDisabledUndoAndSave">Save</button>
+                                <button class="u-m-l-5"
+                                        v-bind:disabled="isDisabledSubmit"
+                                        v-on:click="confirmSubmitClassView">
+                                    Submit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </article>
+
+        @Html.Partial("_GradingShortcuts")
+        @Html.Partial("_ViewBubbleSheetImage")
+        @Html.Partial("_ConfirmSubmit")
+        @Html.Partial("_ConfirmWarning")
+    </div>
+</div>
+
+@section scripts {
+    <script src='@Url.Content("~/Scripts/Lib/handsontable/pro/handsontable.full.min.js")'></script>
+    <script src='@Url.Content("~/Scripts/Qtip/jquery.qtip.js")'></script>
+    <script src='@Url.Content("~/Scripts/BubbleSheetClassReview/BubbleSheetReview.js")'></script>
+    <script src='@Url.Content("~/Scripts/BubbleSheetClassReview/BubbleSheetClassReviewUtils.js")'></script>
+    <script src='@Url.Content("~/Scripts/BubbleSheetClassReview/BubbleSheetClassReviewService.js")'></script>
+    <script src='@Url.Content("~/Scripts/BubbleSheetClassReview/BubbleSheetClassReview.js")'></script>
+    <script type="text/javascript">
+        $(function() {
+            // Get model data
+             // Get model data
+            @{
+                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                serializer.MaxJsonLength = Int32.MaxValue;
+                var jsonModel = serializer.Serialize(Model);
+                var actualData = serializer.Serialize(ViewBag.ActualData);
+            }
+            BubbleSheetClassReview.classView.data = mergedModel(@Html.Raw(jsonModel));
+
+            if ('@ViewBag.ActualData' != null && '@ViewBag.ActualData' != '') {
+                BubbleSheetClassReview.classView.actualData =  mergedModel(@Html.Raw(actualData));
+            } else {
+                BubbleSheetClassReview.classView.actualData =  mergedModel(@Html.Raw(jsonModel));
+            }
+
+            BubbleSheetClassReview.intervalAutoSaved = @Html.Raw(ViewBag.IntervalAutoSave);
+            BubbleSheetClassReview.setIntervalAutoSaved();
+            BubbleSheetClassReview.getClassViewData();
+            BubbleSheetReview.getBubbleReviewDetailsPage('.bubbleSheetClassReviewPage');
+            BubbleSheetReview.getBubbleReviewCurrentTab();
+
+            function mergedModel(data) {
+                var result = {
+                    Ticket: data.Ticket,
+                    ClassId: data.ClassId,
+                    TestName: data.TestName,
+                    BubbleSheetStudentDatas: []
+                };
+
+                var bbsStudentData = [];
+                data.Students.forEach(function (item) {
+                    var student = {
+                        Name: item.Name,
+                        Status: item.Status,
+                        Graded: item.Graded,
+                        PointsEarned: item.PointsEarned,
+                        StudentId: item.StudentId,
+                        BubbleSheetId: item.BubbleSheetId,
+                        IsChanged: item.IsChanged,
+                        RosterPosition: item.RosterPosition,
+                        BubbleSheetFileViewModel: item.BubbleSheetFileViewModel,
+                        BubbleSheetAnswers: [],
+                    };
+
+                    student.BubbleSheetAnswers = mergedAnswer(data.Questions, item.AnswerDatas);
+                    bbsStudentData.push(student);
+                });
+
+                result.BubbleSheetStudentDatas = bbsStudentData;
+                return result;
+            }
+
+            function mergedAnswer(questions, answers) {
+                answers.forEach(function (item) {
+                    var question = _.find(questions, function (m) {
+                        return m.VirtualQuestionId == item.VirtualQuestionId;
+                    });
+                    $.extend(item, question);
+                });
+
+                return answers;
+            }
+        });
+    </script>
+}

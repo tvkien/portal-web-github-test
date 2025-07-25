@@ -1,0 +1,208 @@
+@using LinkIt.BubbleSheetPortal.Models.Enum
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TDLS.TDLSProfileViewModel
+@{
+    ViewBag.Title = "TLDS Section 1";
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleTDLSContextSpecificInforBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptTDLSContextSpecificInforBundle()
+<style>
+    .sub-list {
+        list-style: disc;
+        margin-left: 40px;
+    }
+
+        .sub-list li {
+            margin: 4px;
+            line-height: normal;
+        }
+</style>
+
+<article class="container_12" id="idTopNavigation">
+    @Html.Partial("_NavigationTabs", Model)
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form" id="divOnTop">
+                <h1>Section 1</h1>
+                <ul style="display: none" id="success-messages" class="message success u-m-t-20">
+                </ul>
+
+                @using (Html.BeginForm("ContextSpecificInfor", "TLDSManage", FormMethod.Post, new { id = "ContextSpecificInforForm", @class = "form u-m-t-20" }))
+                {
+                    @Html.HiddenFor(m=>m.ProfileId)
+                    <fieldset>
+                        <legend>Context of early years setting/s</legend>
+                        <p>
+                            Please provide a brief description of the learning environment.
+                            This should cover:
+                            <ul class="sub-list">
+                                <li>Name and type of each relevant early childhood setting</li>
+                                <li>A description of program delivery (e.g. five-hour sessions, three times a week)</li>
+                                <li>Total number of children in group</li>
+                                <li>Information about staffing changes or the child's participation that may have impacted continuity of learning.</li>
+                            </ul>
+                        </p>
+                        @Html.TextAreaFor(m => m.ContextOfEarlyYearsSetting, new { @class = "full-width", @rows = "10", @cols = "50" })
+                    </fieldset>
+                    <fieldset>
+                        <legend>Specific information</legend>
+                        <p>
+                            Please provide an overview of any information that may impact on this child's continuity of learning including (for example):
+                            <ul class="sub-list">
+                                <li>Any significant health concerns</li>
+                                <li>
+                                    Language/s spoken at home (including Auslan and Aboriginal languages if appropriate)
+                                </li>
+                                <li>Any significant family circumstances or changes to family circumstances </li>
+                                <li>Specific positive learning relationships</li>
+                                <li>Any disclosed/diagnosed disability and/or developmental delay (noting that additional information can be provided in Section 1.2)</li>
+                                <li>Any overall comments</li>
+                            </ul>
+                        </p>
+                        @Html.TextAreaFor(m => m.SpecificInformation, new { @class = "full-width", @rows = "20", @cols = "50" })
+                    </fieldset>
+                    <div class="u-text-right">
+                        @if (Model.AccessRight == AccessRightEnum.Update)
+                        {
+                            <button id="btnSave" class="u-m-l-10" type="button">Save</button>
+                            <button id="btnSaveAndContinue" class="u-m-l-10" type="button">Save And Continue</button>
+                        }
+
+                        <input type="hidden" id="IsContinue" name="isContinue" value="false" />
+                        <button id="btnContinue" class="u-m-l-10" type="button" @if (!Model.ContextSpecificInforHasBeenSaved) { <text> disabled</text>}>Continue</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+</article>
+<script>
+    var isAccessRight = '@Model.AccessRight' == '@AccessRightEnum.Create' || '@Model.AccessRight' == '@AccessRightEnum.Update';
+    var contextSpecificInforFormSerializeString = '';
+    var completedChange = false;
+
+    $(document).ready(function () {
+        if ('@Model.ContextSpecificInforHasBeenSaved' === 'False') {
+            $('#idSgoNavigationStep4').addClass('disabled');
+        }
+        $('#ContextSpecificInforForm').find(':input').each(function (index, value) {
+            $(this).data('val', $(this).val());
+        });
+
+        setInterval(autoSaving, 60000);
+
+        if ('@Model.SectionChildParentCompleted' == 'True') {
+            $("#idSgoNavigationStep7").removeClass("disabled");
+        }
+    });
+
+    $('#ContextSpecificInforForm').on('change paste', ':input', function (e) {
+        $(this).data('val', $(this).val());
+        completedChange = true;
+    });
+
+    $('#ContextSpecificInforForm').on('keyup', ':input', function (e) {
+        if ($(this).val() != $(this).data('val')) {
+            $(this).data('val', $(this).val());
+            completedChange = true;
+        }
+    });
+
+    $('#btnContinue').click(function () {
+        var developmentOutcomeUrl = '@Url.Action("DevelopmentOutcome","TLDSManage")/?profileId=@Model.ProfileId';
+
+        if (isAccessRight) {
+            var formData = getContextSpecificInforFormSerializeString();
+            if (formData != contextSpecificInforFormSerializeString) {
+                CustomConfirm({
+                    message: 'Would you like to save changes before moving continue?',
+                    yes: function () {
+                        $("#btnSaveAndContinue").trigger("click");
+                    },
+                    no: function () {
+                        //continue
+                        location.href = developmentOutcomeUrl;
+                    }
+                });
+            } else {
+                location.href = developmentOutcomeUrl;
+            }
+        } else {
+            location.href = developmentOutcomeUrl;
+        }
+    });
+
+    $('#btnSaveAndContinue').click(function () {
+        $('#IsContinue').val('true');
+        ShowBlock($('#divOnTop'),'Saving');
+        $('#ContextSpecificInforForm').submit();
+    });
+
+    $('#btnSave').click(function () {
+        $('#IsContinue').val('false');
+        ShowBlock($('#divOnTop'), 'Saving');
+
+        var formData = $("#ContextSpecificInforForm").serializeArray();
+        $.ajax({
+            url: '@Url.Action("ContextSpecificInfor")',
+            type: 'POST',
+            data: formData,
+            success: function (response) {
+                if (response.Success) {
+                    $('#success-messages').html('<li> Successfully saved</li>');
+                    $('#success-messages').show();
+                    setTimeout(function () {
+                        $('#success-messages').hide();
+                    }, 5000);
+                    $('#divOnTop').unblock();
+                    $('#btnContinue').prop('disabled', false);
+                    $('#idSgoNavigationStep4').removeClass('disabled');
+                }
+            },
+            failure: function (response) {
+                alert(response);
+                $('#divOnTop').unblock();
+            }
+        });
+        contextSpecificInforFormSerializeString = getContextSpecificInforFormSerializeString();
+    });
+
+    $(function () {
+        $('.stats').addClass('current');
+        $('#rpTLDSManager').addClass('current');
+        contextSpecificInforFormSerializeString = getContextSpecificInforFormSerializeString();
+
+        if (!isAccessRight) {
+            // Disable all controls
+            tldsDisableInputControls();
+        }
+    });
+
+    function getContextSpecificInforFormSerializeString() {
+        return $("#ContextSpecificInforForm").serialize();
+    }
+
+    function autoSaving() {
+        if (completedChange) {
+            $('#IsContinue').val('false');
+
+            var formData = $("#ContextSpecificInforForm").serializeArray();
+            formData.push({ name: "AutoSaving", value: true });
+            $.ajax({
+                url: '@Url.Action("ContextSpecificInfor")',
+                type: 'POST',
+                data: formData,
+                success: function (response) {
+                    if (response.Success) {
+                    }
+                },
+                failure: function (response) {
+                    alert(response);
+                }
+            });
+
+            contextSpecificInforFormSerializeString = getContextSpecificInforFormSerializeString();
+            completedChange = false;
+        }
+    }
+</script>

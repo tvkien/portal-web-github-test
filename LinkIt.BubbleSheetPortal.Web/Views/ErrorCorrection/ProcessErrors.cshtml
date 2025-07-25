@@ -1,0 +1,255 @@
+@{
+    ViewBag.Title = "Process Errors";
+}
+<script src="../../Content/themes/TestMaker/ckeditor_utils.js"></script>
+@*<link href="../../Content/css/custom.css" rel="stylesheet" />*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleCustomBundle()
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Process Errors</h1>
+                <div class="process-controls">
+                    <button id="idDeleteBubbleSheetSelected" disabled="disabled">Delete Selected</button>
+                </div>
+
+                @if (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin)
+                {
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <label>State</label>
+                                <select id="selectState" class="full-width"></select>
+                            </p>
+                        </div>
+                        <div class="colx2-right">
+                            <p>
+                                <label>@LabelHelper.DistrictLabel</label>
+                                <select id="selectDistrict" class="full-width"></select>
+                            </p>
+                        </div>
+                    </div>
+                }
+                <p style="height: 5px"></p>
+                <div class="no-margin last-child">
+                    <table id="dataTable" class="datatable table no-margin datatable-process-error" width="100%">
+                        <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">
+                                <input type="checkbox" id="chkCheckAll" class="u-in"/>
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                File Name
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                Error
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                Uploaded By
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                Uploaded Date
+                            </th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        if ('@ViewBag.IsNetworkAdmin' === 'True') {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                addDefaultOption($('#selectState'), "State");
+                addSelectListItems($('#selectState'), states);
+                $('#selectState').val(@ViewBag.StateId);
+                $('#selectState').trigger('change');
+            });
+
+            $('#selectState').change(function () {
+                $('#selectDistrict').empty();
+                if ($('#selectState').val() != 'select') {
+                    populateDistricts();
+                }
+            });
+
+            $('#selectDistrict').change(function () {
+                if ($('#selectDistrict').val() != 'select') {
+                    $("#dataTable").dataTable().fnReloadAjax(getAjaxSource());
+                }
+            });
+        }
+
+        $('#tips').children().each(function () {
+            $(this).remove();
+        });
+
+        $('#generateTab').addClass('current');
+
+
+
+        var options = {
+            bServerSide: true,
+            sAjaxSource: getAjaxSource(),
+            bAutoWidth: false,
+            bStateSave: false,
+            aLengthMenu: [10, 50, 100, 1000],
+            iDisplayLength: 10,
+            aaSorting: [[4, "desc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'BubbleSheetErrorId', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'FileName', bSearchable: true, bSortable: true, sWidth: '230px' },
+                { sType: 'string', sName: 'Message', bSearchable: true, bSortable: true, sWidth: '250px' },
+                { sType: 'string', sName: 'UploadedBy', bSearchable: true, bSortable: true, sWidth: '130px' },
+                { sType: 'string', sName: 'CreatedDate', bSearchable: true, bSortable: true, sWidth: '140px' },
+                { sType: 'integer', sName: 'ErrorCode', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                var processHtml = '';
+                processHtml += '<ul class="keywords u-text-center">';
+                processHtml += '<li onclick="openDetail(' + aData[0] + ',' + aData[5] + ');" ><div class="blue-keyword" errorCode="' + aData[5] + '" bubbleSheetErrorId="' + aData[0] + '"></div>Fix</li>';
+                processHtml += '<li class="is-no-background"><input type="checkbox" name="chkbubbleSheetError" value="' + aData[0] + '"/></li>';
+                processHtml += '</ul>';
+
+                $('td:eq(0)', nRow).html(processHtml);
+                //$('td:eq(4)', nRow).html(Date.getByTicks(aData[4]));
+                $('td:eq(4)', nRow).html(displayDateWithFormat(aData[4], true));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+            }
+        };
+
+        $("#dataTable").data("options", options);
+
+        function getAjaxSource() {
+            if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                var districtId = $('#selectDistrict').val();
+                if (districtId != 'select')
+                    return '@Url.Action("GetBubbleSheetErrorList")?districtId=' + districtId;
+            }
+            return '@Url.Action("GetBubbleSheetErrorList")';
+        }
+    });
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                addSelectListItems($('#selectDistrict'), districts);
+            });
+        }
+    }
+
+    $('#chkCheckAll').change(function () {
+        if ($(this).prop('checked')) {
+            $('tbody tr td input[type="checkbox"]').each(function () {
+                $(this).prop('checked', true);
+            });
+            $('#idDeleteBubbleSheetSelected').prop('disabled', false);
+        } else {
+            $('tbody tr td input[type="checkbox"]').each(function () {
+                $(this).prop('checked', false);
+            });
+            $('#idDeleteBubbleSheetSelected').prop('disabled', true);
+        }
+    });
+
+    function GetBubbleSheetErrorSelected() {
+        var bubbleSheetErrorIds = '';
+        $('tbody tr td input[name="chkbubbleSheetError"][type=checkbox]:checked').each(function (i, e) {
+            bubbleSheetErrorIds += $(e).val() + ';';
+        });
+        return bubbleSheetErrorIds.substr(0, bubbleSheetErrorIds.length - 1);
+    }
+
+    $('#idDeleteBubbleSheetSelected').click(function () {
+        var confirmMessage = "Are you sure you want to delete this error?";
+        popupAlertMessage('confirm', confirmMessage, 450, 500);
+    });
+
+    function YesConfirmPopup(e) {
+        ShowBlock($('#dataTable'), "Delete");
+        var $self = $(e);
+        var bubbleSheetErrorIds = GetBubbleSheetErrorSelected();
+        $.post('@Url.Action("DeleteBubbleSheetError","ErrorCorrection")', { listBubbleSheetErrorIds: bubbleSheetErrorIds }, function (response) {
+            //TODO: Check status response
+            if (response == true) {
+                ui.dataTable.fnReloadAjax(); //getAjaxSource()
+                $('#dataTable').unblock();
+            } else {
+                $('#dataTable').unblock();
+                var confirmMessage = "Have some error, plase try again!";
+                popupAlertMessage('alter', confirmMessage, 450, 500);
+            }
+            $('#chkCheckAll').prop('checked', false);
+            $('#idDeleteBubbleSheetSelected').prop('disabled', true);
+        });
+        $self.parents('.ui-dialog').remove();
+    }
+
+    $('INPUT[name="chkbubbleSheetError"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkbubbleSheetError"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkCheckAll').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkCheckAll').attr('checked', 'checked');
+            }
+            $('#idDeleteBubbleSheetSelected').prop('disabled', false);
+        } else {
+            $('#chkCheckAll').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkbubbleSheetError"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                $('#idDeleteBubbleSheetSelected').prop('disabled', false);
+            } else {
+                $('#idDeleteBubbleSheetSelected').prop('disabled', true);
+            }
+        }
+    });
+
+    function openDetail(id, code) {
+        ShowBlock($('#dataTable'), "Loading");
+        var bubbleSheetErrorValue = id;
+        var errorCode = code;
+        $.post('@Url.Action("CorrectBubbleSheetError")', { id: bubbleSheetErrorValue, errorCode: errorCode }, function (response) {
+            location.href = response;
+            $('#dataTable').unblock();
+        });
+    }
+</script>

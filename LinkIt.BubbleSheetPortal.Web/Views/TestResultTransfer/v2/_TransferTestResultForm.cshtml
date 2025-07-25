@@ -1,0 +1,257 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestResultTransferModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+
+<style>
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-confirmTransferTestResultDialog"] {
+        background: transparent;
+        border: 0;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-confirmTransferTestResultDialog"] section {
+         position: fixed;
+         top: 50%;
+         left: 50%;
+         transform: translate(-50%, -50%);
+    }
+
+</style>
+
+<article class="container_6">
+    <section>
+        <div id="divPopupSelectDestinationClass" class="block-border" style="position: static">
+            <div class="block-content form" style="position: static">
+                <ul style="display: none" id="error-messages" class="message error">
+                </ul>
+                <fieldset class="field-set-block no-padding" style="margin-bottom:0">
+                    <p class="title-large">Select Class</p>
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <label>School</label>
+                            <select id="transferNewSchool" onchange="SchoolChange();">
+                            </select>
+                        </div>
+                        <div class="col-12 mb-4" id="ptransferNewTeacher" style="display: none;">
+                            <label>Teacher</label>
+                            <select id="transferNewTeacher" onchange="TeacherChange();">
+                            </select>
+                        </div>
+                        <div class="col-12 mb-4" id="ptransferNewTerm" style="display: none;">
+                            <label>@LabelHelper.Term</label>
+                            <select id="transferNewTerm" onchange="TermChange();">
+                            </select>
+                        </div>
+                        <div class="col-12 mb-4" id="ptransferNewClass" style="display: none;">
+                            <label>Class</label>
+                            <select id="transferNewClass" onchange="ClassChange();">
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="modal-component-footer mx-n4 px-4">
+                    <div slot="footer">
+                        <button id="btnCancelTransfer" onclick="ClosePopup();">Cancel</button>
+                        <button id="btnTransferTestResultSubmit" onclick="ConfirmTransfer();" class="btn-red" disabled="disabled">Submit</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    var userId = '@Model.UserId';
+    var districtId = '@Model.DistrictId';
+    var totalResult = '@Model.TotalResultSelected';
+
+    function loadTerms() {
+        $('#ptransferNewTerm').show();
+        $('#transferNewTerm').empty();
+        var teacherValue = $('#transferNewTeacher').val();
+        var schoolValue = $('#transferNewSchool').val();
+        if (teacherValue != 'select') {
+            $.get('@Url.Action("GetTerms", "PopulateStudent")', { userId: teacherValue, schoolId: schoolValue }, function (terms) {
+                AddSelectListItems($('#transferNewTerm'), terms, 'Select @LabelHelper.Term');
+            });
+        }
+    }
+
+    function loadTeachers() {
+        $('#ptransferNewTeacher').show();
+        var schoolValue = $('#transferNewSchool').val();
+        if (schoolValue != 'select') {
+            $.get('@Url.Action("GetTeachers", "PopulateSchoolTeacher")', { schoolId: schoolValue }, function (teachers) {
+                $('#transferNewTeacher').empty();
+                addDefaultOption($('#transferNewTeacher'), "Teacher");
+                addSelectListWithDefaultValue($('#transferNewTeacher'), teachers, 'select', function (item) {
+                    return (item.FirstName) ? item.LastName + ", " + item.FirstName + " (" + item.Name + ")" : item.LastName + " (" + item.Name + ")";
+                });
+            });
+        }
+    }
+
+    function loadClass() {
+        $('#ptransferNewClass').show();
+        var vTeacherId = $('#transferNewTeacher').val();
+        var vSchoolId = $('#transferNewSchool').val();
+        var vTermId = $('#transferNewTerm').val();
+        var url = '@Url.Action("GetClasseBySchoolUserAndTerm", "ManageClasses")';
+        $.getJSON(url, { userId: vTeacherId, schoolId: vSchoolId, districtTermId: vTermId }, function (response) {
+            $('#transferNewClass').empty();
+            AddSelectListItems($('#transferNewClass'), response, 'Select Class');
+        });
+    }
+
+    function setSubmitEnabledState() {
+        var vClassId = $('#transferNewClass').val();
+        if (vClassId > 0) {
+            $('#btnTransferTestResultSubmit').enableBt();
+        } else {
+            $('#btnTransferTestResultSubmit').disableBt();
+        }
+    }
+
+    function SchoolChange() {
+        var vSchoolId = $('#transferNewSchool').val();
+        $('#ptransferNewTeacher').hide();
+        $('#ptransferNewTerm').hide();
+        $('#ptransferNewClass').hide();
+        if (vSchoolId > 0) {
+            loadTeachers();
+        }
+    }
+
+    function TeacherChange() {
+        var vTeacherId = $('#transferNewTeacher').val();
+        $('#ptransferNewTerm').hide();
+        $('#ptransferNewClass').hide();
+        if (vTeacherId > 0) {
+            loadTerms();
+        }
+    }
+
+    function TermChange() {
+        var vTermId = $('#transferNewTerm').val();
+        $('#ptransferNewClass').hide();
+        if (vTermId > 0) {
+            loadClass();
+        }
+    }
+
+    function ClassChange() {
+        setSubmitEnabledState();
+    }
+
+    $(function () {
+        setSubmitEnabledState();
+        InitData();
+    });
+
+    // Public function
+    function transferTestResultToNewClass()
+    {        
+        var vClassId = $('#transferNewClass').val();
+        if (vClassId <= 0 || vClassId == 'undefined') {
+            alert('No class selected.');
+            return;
+        }
+        var dataToSend = { 'newClassId': vClassId, 'lstTestResultIds': '@Model.TestResultIDs'};
+        $.ajax({
+            url: '@Url.Action("TransferTestResultSelected", "TestResultTransfer")',
+            type: 'POST',
+            data: dataToSend,
+            success: function (response) {
+                var remainmessage = "";
+                if (response.Data > 0) {
+                    remainmessage = "The remaining students have transferred.";
+                    $('#success-message').html('<li style="text-transform:none;font-size:100%"> Test Results Transferred: (' + response.Data + ') </li > ');
+                    $('#success-message').show();
+                    InitAfterTransfer(); 
+                }
+                ClosePopup(true);
+                if (response.StudentNotTranfer != "") {
+                    var message = response.StudentNotTranfer + " cannot be transferred because they do not belong to the class. " + remainmessage;
+                    CustomAlert(message,true);
+                    return;
+                }                
+            },
+            fail: function (response) {
+                $('#error-messages').html('<li style="text-transform:none;font-size:100%"> Test results have NOT been Transfer. Please email <a href="mailto:technology@linkit.com">technology@linkit.com</a> for assistance. </li>');
+                $('#error-messages').show();
+                InitAfterTransfer();
+                ClosePopup(true);
+            }
+        });
+    }
+
+    function ConfirmTransfer() {
+        var message = 'Are you sure you want to transfer the (' + totalResult + ') test results?';
+        if (totalResult == 1)
+            message = 'Are you sure you want to transfer the (' + totalResult + ') test result?';
+        showConfirmMess(message, 'transferTestResultToNewClass()');
+    }
+
+    function InitData()
+    {
+        var isTeacher = $('#hdfIsIsTeacher').val();
+        var isSchoolAdmin = $('#hdfIsSchoolAdmin').val();
+        //Load School
+        $('#ptransferNewSchool').show();
+        var url = '@Url.Action("GetSchoolsByDistrictRaw", "ManageClasses")';
+        $.getJSON(url, { districtId: districtId }, function (response)
+        {
+            $('#transferNewSchool').empty();
+            AddSelectListItems($('#transferNewSchool'), response, 'Select School');
+
+            if (isTeacher == 1 || isSchoolAdmin == 1) {
+                //Default selected last item
+                $("#transferNewSchool option:last").attr("selected", "selected");
+
+                //Load Teacher
+                $('#ptransferNewTeacher').show();
+                var schoolValue = $('#transferNewSchool').val();
+                if (schoolValue != 'select') {
+                    $.get('@Url.Action("GetTeachers", "PopulateSchoolTeacher")', { schoolId: schoolValue }, function (teachers) {
+                        $('#transferNewTeacher').empty();
+                        AddSelectListItems($('#transferNewTeacher'), teachers, 'Select Teacher');
+                        if (isTeacher == 1) {
+                            //Default selected last item
+                            $("#transferNewTeacher option:last").attr("selected", "selected");
+                            //Load Term
+                            TeacherChange();
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    function showConfirmMess(message, yesFn, closeFn) {        
+        var params = { message };
+
+        if (yesFn) {
+            params.cbYesBtnFuncName = yesFn;
+        } else {
+            params.cbYesBtnFuncName = 'cancelDialog()';
+        }
+
+        if (!closeFn) {
+            params.cbCancelBtnFuncName = 'cancelDialog()'
+        }
+        confirmMessageV2(
+            params,
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'confirmTransferTestResultDialog'
+                    }
+                }
+            }
+        )
+    }
+
+    function cancelDialog() {
+        $("#confirmTransferTestResultDialog").dialog("close");
+    }
+
+</script>

@@ -1,0 +1,209 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.MoveStudentModel
+
+<style type="text/css">
+    .MoveStudentClass 
+    {
+        width: 265px;
+    }
+    .ui-widget-header 
+    {
+        position: relative;
+        top: 72px;
+        z-index: 9999;
+    }
+    
+   
+    .table thead td
+    {
+        color: #000 !important;
+        text-shadow: 0 0px;
+    }
+    .ui-widget-header{ position:relative; z-index:9999}
+    .ui-dialog-content
+    {
+        overflow: hidden !important;
+    }
+</style>
+
+<article class="container_12">
+    <section class="grid_5">
+        <div id="divAddEditGroup" class="block-border" style="position: static">
+            <div class="block-content form" style="position: static">
+                <h1 style="left: 2.5em; top: 4.0em">Transfer Student</h1>
+                <ul style="display: none" id="error-messages" class="message error">
+                </ul>
+                <fieldset>
+                    <legend>Select Class</legend>
+                    <select id="transferNewSchool" class="MoveStudentClass" data-related-property="schoolId" style="margin-bottom: 10px;"></select>
+                    <select id="transferNewTerm" class="MoveStudentClass" data-related-property="termId" style="display: none;margin-bottom: 10px;"></select>
+                    <select id="transferNewTeacher" class="MoveStudentClass" data-related-property="teacherId" style="display: none;margin-bottom: 10px;"></select>
+                    <select id="transferNewClass" class="MoveStudentClass" data-related-property="classId" style="display: none;"></select>
+                    <br/><br/>
+                    <input type="checkbox" id="transferTests" /> Transfer Tests
+                </fieldset>
+                <div style="text-align:right"><button id="btnMoveSubmit" onclick="TransferStudent.submit();">Submit</button><button id="btnMoveCancel" onclick="ClosePopup();" style="margin-left: 5px;">Cancel</button></div>            
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    var TransferStudent = (function () {
+        var transferNewSchool = $('#transferNewSchool');
+        var transferNewTerm = $('#transferNewTerm');
+        var transferNewTeacher = $('#transferNewTeacher');
+        var transferNewClass = $('#transferNewClass');
+        var transferTests = $('#transferTests');
+
+        var userId = '@Model.UserId';
+        var districtId = '@Model.DistrictId';
+
+        var currentFilter = {
+            schoolId: null,
+            termId: null,
+            teacherId: null,
+            classId: null,
+            transferTests: false
+        };
+
+        function bindEvents() {
+            // Clear clicks living on the DOM from other loads of the dialog..
+            $('#transferNewSchool, #transferNewTerm, #transferNewTeacher, #transferNewClass').die('change');
+            
+            function setSubmitEnabledState() {
+                if (currentFilter.classId && currentFilter.classId !== 'select' && transferNewClass.is(':visible')) {
+                    $('#btnMoveSubmit').enableBt();
+                } else {
+                    $('#btnMoveSubmit').disableBt();
+                }
+            }
+
+            function handleFilterChange(event) {
+                var self = $(event.target);
+                var relatedProperty = self.data('related-property');
+                currentFilter[relatedProperty] = self.val();
+
+                if (!currentFilter[relatedProperty] || currentFilter[relatedProperty] === 'select') {
+                    self.nextAll('.MoveStudentClass').empty().hide();
+                    currentFilter[relatedProperty] = null;
+                    currentFilter.classId = null;
+                    setSubmitEnabledState();
+                    return;
+                }
+
+                self.nextAll('.MoveStudentClass').empty().not(self.next('.MoveStudentClass')).hide();
+                self.next('.MoveStudentClass').show();
+
+                if (event.data && event.data.fnCallback)
+                    event.data.fnCallback();
+
+                setSubmitEnabledState();
+            }
+            
+            transferNewSchool.change({ fnCallback: loadTerms }, handleFilterChange);
+            
+            transferNewTerm.change({ fnCallback: loadTeachers }, handleFilterChange);
+            
+            transferNewTeacher.change({ fnCallback: loadClass }, handleFilterChange);
+            
+            transferNewClass.change(handleFilterChange);
+
+            transferTests.change(function(e) {
+                var self = $(e.target);
+                currentFilter.transferTests = self.prop('checked');
+            });
+        }
+        
+        function loadSchools() {
+            var url = '@Url.Action("GetSchoolsByDistrictRaw", "ManageClasses")';
+            $.getJSON(url, { districtId: districtId }, function (response) {
+                transferNewSchool.empty();
+                LinkIt.util.addSelectList({
+                    selectList: transferNewSchool,
+                    results: response,
+                    groupTitle: 'Please select a school'
+                });
+            });
+        }
+        
+        function loadTerms() {
+            var url = '@Url.Action("GetTransferTermsByDistrict", "ManageClasses")';
+            $.getJSON(url, { districtId: districtId }, function (response) {
+                transferNewTerm.empty();
+                LinkIt.util.addSelectList({
+                    selectList: transferNewTerm,
+                    results: response,
+                    groupTitle: 'Please select a @LabelHelper.Term'
+                });
+            });
+        }
+        
+        function loadTeachers() {
+            var url = '@Url.Action("GetTeachersInSchool", "Admin")';
+            $.getJSON(url, { userId: userId, schoolId: currentFilter.schoolId}, function (response) {
+                transferNewTeacher.empty();
+                LinkIt.util.addSelectList({
+                    selectList: transferNewTeacher,
+                    results: response,
+                    fnResultFormat: function (item){ return item.DisplayName },
+                    groupTitle: 'Please select a teacher'
+                });
+            });
+        }
+        
+        function loadClass() {
+            var url = '@Url.Action("GetClasseBySchoolUserAndTerm", "ManageClasses")';
+            $.getJSON(url, { userId: currentFilter.teacherId, schoolId: currentFilter.schoolId, districtTermId: $('#transferNewTerm').val() }, function (response) {
+                transferNewClass.empty();
+                LinkIt.util.addSelectList({
+                    selectList: transferNewClass,
+                    results: response,
+                    groupTitle: 'Please select a class'
+                });
+            });
+        }
+        
+        // Public function
+        function moveStudents() {
+            if (!currentFilter.classId) {
+                alert('No class selected.');
+                return;
+            }
+            ShowBlock($('#divAddEditGroup'),'Transferring students');
+            var dataToSend = { 'oldClassId': '@Model.OldClassId', 'newClassId': currentFilter.classId, 'movedStudentIds': '@Model.MovedStudentIDs', transferTests: currentFilter.transferTests };
+            $.ajax({
+                url: '@Url.Action("TransferStudents","ManageClasses")',
+                type: 'POST',
+                data: dataToSend,
+                success: function (response) {
+                    $('#divAddEditGroup').unblock();
+                    if (response.success == true) {
+                        $.publish('manageClass/transferStudentSuccess');
+                        ClosePopup(true);
+                    }
+                    else {
+                        ClosePopup(true);
+                        $.publish('manageClass/transferStudentError', JSON.stringify(response.errors));
+                    }
+                }
+            });
+        }
+        
+        // Public function
+        function init() {
+            bindEvents();
+            $('#btnMoveSubmit').disableBt();
+            loadSchools();
+        }
+
+        // Expose API
+        return {
+            init: init,
+            submit: moveStudents
+        };
+    })();
+
+    $(function() {
+        TransferStudent.init();
+    });
+</script>

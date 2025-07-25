@@ -1,0 +1,399 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog-draggable.css")" rel="stylesheet" type="text/css" />
+
+<link href="@BundleHelper.Version("~/Content/themes/LinkitStyleSheet-v2.css")" rel="stylesheet" />
+<link href="@BundleHelper.Version("~/Content/css/v2/PassageDetail-v2.css")" rel="stylesheet" />
+
+<style type="text/css">
+    .passage {
+        margin-bottom: 0;
+        overflow: auto;
+        max-height: 60vh;
+        min-height: 125px;
+        width: 100%;
+        background: none;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-PassageDetailDialog"],
+    .ui-dialog[aria-labelledby="ui-dialog-title-PassageDetailDialog"] .dialog {
+        padding: 0;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-PassageDetailDialog"] .ui-dialog-titlebar {
+        width: 100%;
+        top: 0 !important;
+        right: 0 !important;
+        min-height: 0 !important;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-PassageDetailDialog"] .ui-dialog-title,
+    .ui-dialog[aria-labelledby="ui-dialog-title-PassageDetailDialog"] .ui-icon-closethick {
+        display: none;
+    }
+
+    #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-PassageDetailDialog"] .ui-dialog-titlebar-close {
+        margin: 0 !important;
+        padding: 0;
+        top: 32px;
+        right: 24px;
+        width: 10px;
+        height: 14px;
+        border: 0 !important;
+    }
+
+    #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-PassageDetailDialog"] .ui-dialog-titlebar-close:after {
+        bottom: unset;
+        right: unset
+    }
+
+    .buttonAction #cbShuffle:after {
+        border: 2px solid var(--white) !important;
+    }
+</style>
+
+<div class="modal-component-content">
+    <div class="modal-passage-body px-4 pt-4">
+        <h3 class="h3 mb-3">@ViewBag.Name</h3>
+        <div id="divPassageDetail" class="modal-passage-content">
+            @Html.Raw(ViewBag.PassageHtmlContent)
+        </div>
+        <input type="hidden" value="@ViewBag.RefObjectID" />
+        <input type="hidden" id="hidTestItemMediaPath" value="@ViewBag.TestItemMediaPath" />
+    </div>
+    <div id="glossaryMessage">
+        <div class="block-border">
+            <div class="block-content form glossary-content">
+                <div class="glossary_text"></div>
+                <div class="glossary_define"></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-component-footer buttonAction">
+        <div slot="footer">
+            @if (ViewBag.IsShowShuffleCheckbox != null && ViewBag.IsShowShuffleCheckbox)
+            {
+                <div class="d-flex flex-row justify-content-start">
+
+                    @if (ViewBag.NoShuffle != null && ViewBag.NoShuffle)
+                    {
+                        <text><input id="cbShuffle" type="checkbox" checked /></text>
+                    }
+                    else
+                    {
+                        <text><input id="cbShuffle" type="checkbox" /></text>
+                    }
+                    <span style="color: white" class="ms-2 float">Don't shuffle the questions associated with this passage</span>
+                </div>
+            }
+
+            <button id="btnCloseUserClickPassageDetail" type="button" class="grey classProgramButton" data-dialog="close">
+                Close
+            </button>
+
+            @if (!ViewBag.IsQti3pPassage)
+            {
+                <button id="btnEditPassageDetail" type="button" class="classProgramButton btn-red" onclick="showPassageEditFormWhenPreview(@ViewBag.RefObjectID)">
+                    Edit
+                </button>
+            }
+
+        </div>
+    </div>
+
+</div>
+
+
+<script type="text/javascript">
+    $(function () {
+        MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+        setTablePassageDetailSyle()
+        var $divPassageDetail = $('#divPassageDetail.modal-passage-content');
+        var loaderPassage = CreateLoaderLoading();
+
+        $divPassageDetail.find('.imageupload').hide();
+
+        if ($divPassageDetail.find('.passage1').length > 0) {
+            $divPassageDetail.find('.passage1').append(loaderPassage);
+        } else {
+            $divPassageDetail.find('.passage').append(loaderPassage);
+        }
+
+        LoadImages_PassageDetail($divPassageDetail);
+        CheckNoImage($divPassageDetail);
+        GetAudioFromPassage($divPassageDetail);
+        GlossaryPassage($divPassageDetail);
+
+        $divPassageDetail.find('br').each((idx, ele) => {
+            if (ele.parentElement.tagName === 'P' && !ele.nextSibling) {
+            ele.parentElement.append(document.createElement('br'));
+            }
+        })
+    });
+
+    function checkInPassagePage() {
+        return window.location.pathname.toLowerCase() === "/passageeditor";
+    }
+
+    function showPassageEditFormWhenPreview(qtiRefObjectId)
+    {
+        var isInPassagePage = checkInPassagePage();
+        if (isInPassagePage) {
+            EditPassage(qtiRefObjectId)
+            return
+        }
+
+        ShowBlock($('#divMain'), 'Loading');
+        ShowBlock($('#divEditItem'), 'Loading');
+        var url = '@Url.Action("LoadEditPassageDiv", "PassageEditor")?id=' + qtiRefObjectId + '&firstTime=true&from=fromItemEditorPopup&virtualTestId=' + '@ViewBag.VirtualTestId';
+
+        if ($("#PassageDetailDialog").length) {
+            $('#PassageDetailDialog').dialog("close");
+        }
+
+        if ($('#ShowRefObjectContent').length) {
+            $('#ShowRefObjectContent').dialog("close");
+        }
+        $.ajax({
+            url: url,
+            cache: false
+        }).done(function (html) {
+            $('#divMain').unblock();
+            $('#divEditItem').unblock();
+            $('body').append('<div id="divPreviewOnlinePanel"></div>');
+            $('#divPassageCreateContent').html('');
+            $("#divPreviewOnlinePanel").html(html);
+            $('#divPreviewOnlinePanel').dialog({
+                title: "",
+                open: function () {
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+                    //Create overlay for popup
+                    var z_index = parseInt($("#divPreviewOnlinePanel").parent().css('z-index')) ;
+                    if ($('#divPassageFilterContent').length > 0 && $('#editPassageForm').length > 0) {
+                        $("body").prepend('<div class="my-overlay ui-widget-overlay" style="z-index: ' + (z_index + 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        $("#divPreviewOnlinePanel").parent().css('z-index', z_index + 2)
+                    } else {
+                        $("body").prepend('<div class="my-overlay ui-widget-overlay" style="z-index: ' + (z_index - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    }
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $('#divPreviewOnlinePanel').parent().remove();
+                    $('#divPreviewOnlinePanel').remove();
+                    ckID = window.currentCkID || ckID;
+                    $("body .my-overlay").remove();
+                },
+                modal: false,
+                width: 1006,
+                resizable: false,
+                dialogClass: 'ui-dialog-title-close',
+                position: {
+                  my: "center",
+                  at: "center",
+                  of: window
+                }
+            });
+        });
+    }
+
+    function isURLEncoded(str) {
+        try {
+            return decodeURIComponent(str) !== str;
+        } catch (e) {
+            return false; // If decoding throws, it's likely already encoded
+        }
+    }
+
+    function LoadImg(selector, isHideLoading) {
+        var urlSrc = selector.attr("src") || selector.attr("source");
+        if (!isURLEncoded(urlSrc)) {
+            urlSrc = encodeURI(urlSrc);
+        }
+        if(urlSrc) {
+            $(selector).load(urlSrc, function () {
+                if (isHideLoading && selector.height() > 1){
+                    $('#divPassageDetail #showloading').hide();
+                }
+                selector.show();
+            });
+        }
+    }
+
+    function LoadImages_PassageDetail(containerSelector) {
+        $(containerSelector).find(".imageupload,img").each(function () {
+            var image = $(this);
+            var imageUrl = image.attr("src");
+            if (IsNullOrEmpty(imageUrl)) {
+                imageUrl = image.attr("source");
+            }
+            if (imageUrl.toLowerCase().indexOf("http") == 0) {
+                LoadImg(image, true);
+                return;
+            }
+            if (IsNullOrEmpty(imageUrl)) imageUrl = '@Url.Content("~/Content/images/emptybg.png")';
+
+            if (imageUrl.charAt(0) == '/') imageUrl = imageUrl.substring(1);
+
+            image.attr("source", '');
+            image.attr("src", imageUrl);
+
+            if (image.index() == $(containerSelector).find(".imageupload,img").last().index())
+                LoadImg(image, true);
+            else {
+                LoadImg(image, false);
+            }
+        });
+    }
+
+    function IsNullOrEmpty(value) {
+        return typeof (value) === "undefined" || value == null || $.trim(value) == '';
+    }
+
+    function CheckNoImage(containerSelector) {
+        var countImg = containerSelector.find('img').length;
+
+        if (countImg == 0) {
+            $('#divPassageDetail #showloading').hide();
+        }
+
+        if (countImg == 1) {
+            if (containerSelector.find('img').attr('src').indexOf('loader.gif') > 0) {
+                $('#divPassageDetail #showloading').hide();
+            }
+        }
+    }
+
+    function CreateLoaderLoading() {
+        var loader = document.createElement('div');
+        var loaderImage = document.createElement('img');
+        var loarderImageSrc = '@Url.Content("../Content/images/prettyPhoto/default/loader.gif")';
+
+        loader.setAttribute('id', 'showloading');
+        loader.style.textAlign = 'center';
+
+        loaderImage.src = loarderImageSrc;
+
+        loader.appendChild(loaderImage);
+
+        return loader;
+    }
+
+    function GetAudioFromPassage(el) {
+        var $el = $(el);
+
+        $el.find('.passage').each(function (ind, passage) {
+            var $passage = $(passage);
+            var passageAudioRef = $passage.attr('audioref');
+
+            if (passageAudioRef != null || passageAudioRef == '') {
+                var el = CreateAudio(passageAudioRef);
+                $passage.prepend(el);
+            }
+        });
+    }
+
+    function CreateAudio(audioSrc) {
+        var audio = document.createElement('div');
+        var audioPlay = document.createElement('span');
+        var audioStop = document.createElement('span');
+
+        audio.className = 'c-audio';
+
+        audioPlay.className = 'c-audio-play';
+        audio.appendChild(audioPlay);
+
+        audioStop.className = 'c-audio-stop hide';
+        audio.appendChild(audioStop);
+
+        audioPlay.addEventListener('click', function () {
+            resetUIAudio(); // ckeditor_mk.js
+            var self = this;
+            self.classList.add('hide');
+            audioStop.classList.remove('hide');
+
+            window.playsound = new vnsAudio({
+                src: audioSrc,
+                onEnded: function () {
+                    self.classList.remove('hide');
+                    audioStop.classList.add('hide');
+                }
+            });
+        }, false);
+
+        audioStop.addEventListener('click', function () {
+            this.classList.add('hide');
+            audioPlay.classList.remove('hide');
+
+            if (window.playsound != null) {
+                window.playsound.pause();
+            }
+        }, false);
+
+        return audio;
+    }
+
+    function GlossaryPassage(el) {
+        var $el = $(el);
+
+        $el.find('span.glossary').unbind('click').on('click', function (e) {
+            var $self = $(this);
+            var $glossaryMessage = $('#glossaryMessage');
+            var glossaryText = $self.html();
+            var glossaryContent = $self.attr('glossary')
+                                        .replace(/&lt;br\/&gt;/gi, '<br />')
+                                        .replace(/&gt;/g, '>')
+                                        .replace(/&lt;/g, '<');
+
+            $glossaryMessage.find('.glossary_text').html(glossaryText);
+            $glossaryMessage.find('.glossary_define').html(glossaryContent);
+            var zIndex = parseInt($self.parents('.ui-dialog').css('z-index'), 10);
+            var dialogOverlay = CreateDialogOverlay(zIndex);
+
+            $('body').prepend(dialogOverlay);
+
+            $glossaryMessage.dialog({
+                modal: false,
+                width: 480,
+                resizable: false,
+                open: function (dialog) {
+                    $glossaryMessage.prev().css('top', '37px');
+                },
+                close: function () {
+                    $('.ui-widget-overlay:first').remove();
+                }
+            });
+
+        }).hover(function () {
+            var currentID = $(this).attr('glossary_id');
+            $el.find('span.glossary[glossary_id="' + currentID + '"]').addClass('glossary-hover');
+        }, function () {
+            var currentID = $(this).attr('glossary_id');
+            $el.find('span.glossary[glossary_id="' + currentID + '"]').removeClass('glossary-hover');
+        });
+    }
+
+    function CreateDialogOverlay(zIndex) {
+        var dialogOverlay = document.createElement('div');
+
+        dialogOverlay.className = 'ui-widget-overlay';
+        dialogOverlay.style.width = $(document).width() + 'px';
+        dialogOverlay.style.height = $(document).height() + 'px';
+        dialogOverlay.style.zIndex = zIndex + 1;
+
+        return dialogOverlay;
+    }
+    function setTablePassageDetailSyle(){
+        if('@ViewBag.IsQti3pPassage'=='True'){
+            $(document).ready(function() {
+                $('#divPassageDetail').addClass('is-qti3p-passage');
+            });
+        }
+    }
+</script>

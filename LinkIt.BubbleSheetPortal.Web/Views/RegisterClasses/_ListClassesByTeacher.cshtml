@@ -1,0 +1,369 @@
+@model LinkIt.BubbleSheetPortal.Models.User
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+
+<style type="text/css">
+    #dataTable_wrapper {
+        margin-bottom: -65px !important; 
+    }
+    
+</style>
+<!--[if IE]>
+	<style type="text/css">
+    #dataTable_wrapper {
+        margin-bottom: -61px !important; 
+    }
+    .pButton {
+        position: relative;
+        top: 17px !important;
+    }
+</style>
+<![endif]-->
+
+<link href="@Url.Content("~/Content/css/dialog.css")" rel="stylesheet" type="text/css" />
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="class-title">@Model.LastName @Model.FirstName</div>
+        <div class="block-border">
+            <div class="block-content form">
+                <ul style="display: none" id="error-messages-classList" class="message error"></ul>
+                <h1>
+                    Classes
+                    <a id="addNewClass" href="javascript:void(0)">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Add new class
+                    </a>
+                </h1>
+                <div id="manageClassNotificationContainer"></div>
+                <p style="height: 5px"></p>
+                <table id="dataTable" width="100%" cellspacing="0" class="datatable table no-margin">
+                    <thead>
+                        <tr>
+                            <th class="sorting_disabled" scope="col">
+                                <input type="checkbox" id="chkAllClass"/>
+                            </th>
+                            <th class="table-actions sorting_disabled" scope="col">Manage Class</th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up"class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>Name
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up"class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>@LabelHelper.Term
+                            </th>
+                            <th class="table-actions sorting_disabled" scope="col">Manage Students</th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up"class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>School
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td style="height: 60px;"></td></tr>
+                    </tbody>
+                </table>
+                <div class="clear-10"></div>
+                <div style="left: -11px;position: relative;top: 20px;width:100px;" class="pButton">
+                    <button id="btnBatchRemoveClass" type="submit" name="Remove" disabled="disabled" onclick="deleteBatchClass()">Remove</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<input type="hidden" id="hidClassId" value="" />
+<script type="text/javascript">
+    function LoadClassToTable()
+    {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetClassesByUserId")?userID=@Model.Id',
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[4, "asc"], [3, "asc"], [2, "asc"]],
+            aoColumnDefs: [ {
+                "aTargets": [0],
+                "mRender": function ( data, type, full ) {
+                    return '<input type="checkbox" name="chkClass" value="' + data + '" />';
+                }, "bSearchable": false, "bSortable": false
+            }, {
+                "aTargets": [1],
+                "mRender": function (data, type, full) {
+                    return setIconVisibility(full[0]);
+                }, "bSearchable": true, "bSortable": true, "sWidth": "70px"
+            }, {
+                "aTargets": [2],
+                "bSearchable": true, "bSortable": true
+            }, {
+                "aTargets": [3],
+                "bSearchable": true, "bSortable": true
+            }, {
+                "aTargets": [4],
+                "mRender" : function(data, type, full) {
+                    return setManageStudentsIcon(full[0]);
+                },
+                "bSearchable": false, "bSortable": false, "sWidth": "100px"
+            }, {
+                "aTargets": [5],
+                "mRender": function (data, type, full) {
+                    return full[9];
+                },
+                "bSearchable": true, "bSortable": true
+            }],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+            }
+        };
+        $("#dataTable").data("options", options);
+        initializeDataTable($("#dataTable"));
+    }
+    
+    function setCheckBox(classId) {
+        var checkboxString = '<input type="checkbox" name="chkClass" value="' + classId + '" />';
+        return checkboxString;
+    }
+
+    function setIconVisibility(classId) {
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a href="javascript:void(0)" title="Edit" classId="' + classId + '" class="with-tip editClass"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var deleteString = '<a href="javascript:void(0)" title="Delete" classId="' + classId + '" class="with-tip deleteClass" onclick="deleteClass(this)"><img src="' + deleteIcon + '" width="16" height="16"></a>';
+        
+        @*var assignIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/assign-icon.png")';
+        var assignString = '<a href="javascript:void(0)" title="Assign Teacher" classId="' + classId + '" class="with-tip assignClass" onclick="assignTeacher(this)"><img src="' + assignIcon + '" width="16" height="16"></a>';*@
+        
+        return editString + deleteString;
+    }
+    
+    function setManageStudentsIcon(classId) {
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/view-item.png")';
+        var editString = '<a href="@Url.Action("ModifyClassRoster", "RegisterClasses")/?classId=' + classId + '" title="Modify Student Roster" class="with-tip editClass"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        return editString;
+    }
+
+    function deleteClass (e) {
+        if (confirm('Are you sure you want to delete this class?') == false) return;
+        var classID = $(e).attr('classId');
+        $('#error-messages-classList').hide();
+        $.ajax({
+            url: '@Url.Action("DeleteClass")',
+            type: 'POST',
+            data: {classId: classID},
+            success: function (response) {
+                if (response.Success != false) {
+                    if(typeof refreshTable == 'function') {
+                        refreshTable("#dataTable");
+                    }
+                    $('#selectTeacher').change();
+                }
+                else {
+                    addErrorMessagesToList(response, 'error-messages-classList');
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+
+    function deleteBatchClass()
+    {
+        if (confirm('Are you sure you want to delete these classes?') == false) return;
+        setDisabledButtons(true);
+        var removeClassIds = getSelectedClassIds();
+        $('#error-messages-classList').hide();
+        $.ajax({
+            url: '@Url.Action("DeleteBatchClasses")',
+            type: 'POST',
+            data: {listIds: removeClassIds},
+            success: function (response) {
+                if (response.Success != false) {
+                    if(typeof refreshTable == 'function') {
+                        refreshTable("#dataTable");
+                    }
+                }
+                else {
+                    addErrorMessagesToList(response, 'error-messages-classList');
+                }
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+
+    $('#dataTable').on('click', '.editClass', function() {
+        var classID = $(this).attr('classId');
+        if (classID != undefined) {
+            var url = '@Url.Action("EditClass")/' + classID;
+            window.location.href = url;
+        }
+    });
+
+    $('#addNewClass').click(function() {
+        location.href = "/RegisterClasses/AddClass?teacherID=@HttpContext.Current.Session["SelectedTeacherID"]";
+    });
+
+    $('INPUT[name="chkClass"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkClass"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllClass').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllClass').attr('checked', 'checked');
+            }
+            setDisabledButtons(false);
+        }
+        else {
+            $('#chkAllClass').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkClass"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                setDisabledButtons(false);
+            }
+            else {
+                setDisabledButtons(true);
+            }
+        }
+    });
+
+    $('#chkAllClass').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkClass"][type=checkbox]').attr('checked', 'checked');
+            setDisabledButtons(false);
+        }
+        else {
+            $('INPUT[name="chkClass"][type=checkbox]').removeAttr('checked');
+            setDisabledButtons(true);
+        }
+    });
+
+    function setDisabledButtons(isDisabled) {
+        if (isDisabled) {
+            $('#btnBatchRemoveClass').attr('disabled', 'disabled');
+        }
+        else {
+            $('#btnBatchRemoveClass').removeAttr('disabled');
+        }
+    }
+
+    function getSelectedClassIds() {
+        var classIds = '';
+        $('INPUT[name="chkClass"][type=checkbox]:checked').each(function (i, e) {
+            classIds += $(e).val() + ',';
+        });
+        return classIds.substr(0, classIds.length - 1);
+    }
+    
+    function assignStudents(el)
+    {
+        var classId = $(el).attr('classId');
+        var worker = $('<div />');
+
+        worker
+            .addClass("dialog")
+            .attr("id", "assignStudentsDialog")
+            .appendTo("body")
+        .load('@Url.Action("GetAvailableStudents")/?classId=' + classId, function() {
+            worker.dialog({
+                title: $(this).attr("Assign Students"),
+                close: function() {
+                    $('.ui-widget-overlay').remove();
+                    $(this).remove();
+                },
+                modal: false,
+                width: 650,
+                resizable: false
+            });
+        });
+
+        //todo: the jQuery UI "dialog" plugin wasn't working properly here, so this workaround went in.. :(
+        showModalDialogBG();
+    }
+    
+    function assignTeacher(el) {
+        var classId = $(el).attr('classId');
+        var worker = $('<div />');
+        
+        worker
+            .addClass("dialog")
+            .attr("id", "assignTeacherDialog")
+            .appendTo("body")
+        .load('@Url.Action("AddTeacherToClass")/?classId=' + classId, function() {
+            worker.dialog({
+                title: $(this).attr("Assign Teacher"),
+                close: function() {
+                    $('.ui-widget-overlay').remove();
+                    $(this).remove();
+                },
+                modal: false,
+                resizable: false
+            });
+        });
+
+        //todo: the jQuery UI "dialog" plugin wasn't working properly here, so this workaround went in.. :(
+        showModalDialogBG();
+    }
+    
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+    
+    $(document).on('submit','[data-ajax-form]', function(e) { 
+        e.preventDefault();
+
+        var self = $(e.target);
+        var formId = self.attr('id');
+
+        self.ajaxSubmit({
+            success: ajaxHandler[formId]
+        }); 
+
+        // !!! Important !!! 
+        // always return false to prevent standard browser submit and page navigation 
+        return false; 
+    });
+
+    $(document).on('click', '[data-dialog="close"]', function (e) {
+        var self = $(e.target);
+        self.closest('.dialog').dialog('close');
+    });
+
+    var ajaxHandler = (function(){
+        function addTeacherToClassForm(resp, statusText, xhr, form){
+            if (resp == true) {
+                LinkIt.success('#manageClassNotificationContainer', 'Teacher sucessfully added to class.');
+                $('#assignTeacherDialog').dialog('close');
+            } else {
+                alert(resp.ErrorList.map(function (e, i) { return e.ErrorMessage; }).join(', '));
+            }
+        };
+
+        return {
+            addTeacherToClassForm: addTeacherToClassForm
+        };
+    })();
+
+    $(function () {
+        LoadClassToTable();
+    });
+    
+</script>

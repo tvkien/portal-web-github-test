@@ -1,0 +1,172 @@
+<section style='z-index: 2004; display: block'>
+    <div class='block-border' style='z-index: 2004'>
+        <div id="dvCreateVirtualTest" class='block-section-custom bubbleSheetSelector form' style='z-index: 1004'>
+            <div class="title-heading-popup mb-4">
+                <p class="title-large mb-0">Bulk Create Items</p>
+                <a id="closeBtn" href="#closeBtn" class="ui-dialog-titlebar-close ui-corner-all" role="button"><span class="ui-icon ui-icon-closethick">close</span></a>
+            </div>
+            <ul style="display: none" id="virtual-test-error-messages" class="virtual-test message error mb-4 mt-0 mx-0"></ul>
+            <ul style="display: none" id="virtual-test-success-message" class="virtual-test message success mb-4 mt-0 mx-0">
+                <li>Test created.</li>
+            </ul>
+            <fieldset class="p-0">
+                <div class="columns">
+                    <p class="mb-4">
+                        <label>Test Name</label>
+                        <input type="text" id="inputVirtualTestName" style="width: 100%" value="@ViewBag.VirtualTestName" disabled />
+                        <input type="hidden" />
+                    </p>
+                    <fieldset class="grey-bg no-margin p-0">
+                        <p style="font-size: 1.125rem !important; margin-bottom: 16px !important;" class="virtualtest-legend title-large">Bulk Create Items</p>
+                        <div class="virtualtest-content" style="">
+                            <p style="margin-bottom: 16px !important">
+                                <label for="simple-select">No. of MC Questions</label>
+                                <input type="text" value="0" id="numberOfMCQuestions" style="width: 100%" onkeydown="numberQuestionTextBox_Keydown(event)" />
+                            </p>
+
+                            <p style="margin-bottom: 16px !important">
+                                <label for="simple-select">No. of CR Questions</label>
+                                <input type="text" value="0" id="numberOfCRQuestions" style="width: 100%" onkeydown="numberQuestionTextBox_Keydown(event)" />
+                            </p>
+                            @if (ViewBag.VirtualTestId > 0)
+                            {
+                                if (ViewBag.HasMoreThanOneSection)
+                                {
+                                    <p>
+                                        <label for="simple-select">Section to add the items to</label>
+                                        <select id="selectSectionAddDialog"></select>
+                                    </p>
+                                }
+                            }
+                        </div>
+                    </fieldset>
+                </div>
+            </fieldset>
+        </div>
+        <div class="btn-wrapper">
+            <button class="btn-cancel" type="button" id="btnCancelCreateTestBank" onclick="cancelQuickAddVirtualTest()">Cancel</button>
+            <button class="btn-red" type="button" id="btnCreateTestBank" onclick="quickAddVirtualTest()">Create</button>
+        </div>
+    </div>
+</section>
+
+<style>
+    .btn-wrapper {
+        background: var(--navyColor);
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+    }
+
+    .btn-cancel {
+        display: flex;
+        align-items: center;
+        padding: 11px 32px;
+        font-weight: 900;
+        cursor: pointer;
+        width: fit-content;
+        height: 48px;
+        box-sizing: border-box;
+        border: 0;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        text-decoration: none;
+        color: var(--white) !important;
+    }
+
+    .title-heading-popup {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+    }
+
+    #closeBtn {
+        top: 0 !important;
+        right: 0 !important;
+    }
+
+    #closeBtn::after {
+        right: 0 !important;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-PopupdQuickAddCreateVirtualTest"] .ui-dialog-titlebar  {
+        display: none;
+    }
+
+    #PopupdQuickAddCreateVirtualTest {
+        padding: 0;
+        border: none;
+    }
+</style>
+
+<script>
+    function numberQuestionTextBox_Keydown(e) {
+        // Allow: backspace, delete, tab, escape, enter and .
+        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+            // Allow: Ctrl+A
+            (e.keyCode == 65 && e.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (e.keyCode >= 35 && e.keyCode <= 39)) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+    }
+
+    function quickAddVirtualTest() {
+        var selectedVirtualSectionId = 0;
+        if(@ViewBag.VirtualTestId > 0 && '@ViewBag.HasMoreThanOneSection' == 'True') {
+            selectedVirtualSectionId = $('#selectSectionAddDialog').val();
+            if(selectedVirtualSectionId==null || selectedVirtualSectionId <0) {
+                CustomAlert('Please select the section to add the items to');
+                return;
+            }
+        }
+
+        ShowBlock($('#dvCreateVirtualTest'), "Create Question");
+        $.post('@Url.Action("AddVirtualTest", "ManageTest")', { virtualTestId: @ViewBag.VirtualTestId, mcNumber: $("#numberOfMCQuestions").val(), crNumber: $("#numberOfCRQuestions").val(), selectedVirtualSectionId: selectedVirtualSectionId }, function (response) {            
+            if (response.success == true) {
+                $('#virtual-test-success-message').show();
+                $('#virtual-test-error-messages').hide();
+                $('#qtiItemDataTableAnswer').dataTable().fnDraw(false);
+                setTimeout(function () {
+                    $(".dialog").dialog("close");
+                }, 2000);
+            } else {
+                $('#virtual-test-error-messages').html('<li> ' + response.Error + ' </li>');
+                $('#virtual-test-error-messages').show();
+                $('#virtual-test-success-message').hide();
+            }
+            $('#dvCreateVirtualTest').unblock();
+        });
+    }
+
+    function cancelQuickAddVirtualTest() {
+        $(".dialog").dialog("close");
+    }
+
+    $('#closeBtn').live('click', function () {
+        $('.my-overlay').remove();
+        $(".dialog").dialog("close");
+    });
+
+    $(function() {
+        $('.virtualtest-legend').on('click', function() {
+            var $virtualtestContent = $('.virtualtest-content');
+
+            $virtualtestContent.toggle();
+        });
+
+        if (@ViewBag.VirtualTestId > 0) {
+            $.get('@Url.Action("GetSections", "VirtualTest")?virtualTestId=@ViewBag.VirtualTestId', function(states) {
+                AddSelectListItems($('#selectSectionAddDialog'), states, 'Select Section');
+            });
+        }
+    });
+</script>

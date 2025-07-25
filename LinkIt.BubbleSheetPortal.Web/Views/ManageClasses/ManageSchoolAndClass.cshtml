@@ -1,0 +1,221 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SchoolAndClassViewModel
+
+@{
+    ViewBag.Title = "Manage Schools and Terms";
+}
+@section meta {
+    <meta name="viewport" content="width=device-width">
+}
+<style>
+    #manageClass {
+        max-width: 940px;
+        margin: 30px auto 0;
+    }
+
+        #manageClass .block-border {
+            width: 918px;
+        }
+
+    .block-border .filter-group {
+        background: #fff;
+        padding: 2.833em 1.667em 1.667em;
+    }
+
+        .block-border .filter-group .fileter-item {
+            width: 44%;
+            float: left;
+            margin-bottom: 1.667em;
+            margin-left: 4%;
+        }
+
+        .block-border .background-filter::after,
+        .block-border .filter-group::after,
+        #manageClass .block-border::after,
+        #manageClass::after,
+        .block-border .filter-group .btn-filter::after {
+            display: table;
+            clear: both;
+            content: '';
+        }
+
+        .block-border .filter-group .select-state {
+            width: 350px;
+        }
+
+        .block-border .filter-group .lable {
+            margin: 0;
+            text-transform: capitalize;
+            color: #808080;
+            font-weight: bold;
+        }
+
+        .block-border .filter-group .background-filter {
+            background: #e6e6e6;
+            padding: 20px 10px 0;
+        }
+
+        .block-border .filter-group .btn-filter, .block-border .filter-group .btn-clear-filter {
+            float: right;
+            margin-top: 20px;
+        }
+
+    #detailDiv .school-details {
+        width: 940px;
+        margin-top: 15px;
+    }
+
+    .block-border .filter-group .btn-clear-filter {
+        margin-right: 10px;
+    }
+
+
+        .block-border .filter-group .btn-clear-filter:disabled:hover, .block-border .filter-group .btn-clear-filter:disabled {
+            border-color: #e9f2f6 #c4c3c3 #a2a2a2 #e3e2e2;
+            background: #c8c8c8 url(../images/old-browsers-bg/button-element-disabled-bg.png) repeat-x top;
+            background: -moz-linear-gradient(top, #f0f2f2,#c8c8c8);
+            text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.75);
+            background: -webkit-gradient(linear, left top, left bottom, from(#f0f2f2), to(#c8c8c8));
+            color: #bfbfbf;
+        }
+
+    #detailDiv .grid-full-with {
+        width: 940px;
+        margin: 0 auto 3em;
+    }
+
+    .hidden-title .grid-full-with .class-title {
+        display: none;
+    }
+</style>
+<div id="manageClass">
+    <div class="block-border form">
+        <div class="filter-group  block-content">
+            <h1>Filter Schools</h1>
+            <fieldset class="background-filter">
+                <div v-if="userRole === roles.PUBLISHER || userRole === roles.NETWORKADMIN" class="fileter-item mb-3">
+                    <label>State</label>
+                    <select v-model="selectedState" v-on:change="selectStates" class="full-width">
+                        <option v-for="item in states" :value="item.id">{{item.name}}</option>
+                    </select>
+                </div>
+                <div v-if="userRole !== roles.DISTRICTADMIN" class="fileter-item mb-3 block-content-dropdown-marquee">
+                    <label>@LabelHelper.DistrictLabel</label>
+                    <div class="block-text-name ">
+                        <select id="selectDistrictOption" v-model="selectedDistrictId" v-on:change="onDistrictChange" class="full-width" id="selectedDistrictId">
+                            <option v-for="item in districts" :value="item.id">{{item.name}}</option>
+                        </select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="fileter-item  mb-3 block-content-dropdown-marquee">
+                    <label>School</label>
+
+                    <div class="block-text-name ">
+                        <select id="selectSchoolOption" v-model="selectedSchool" v-on:change="selectSchool" class="full-width">
+                            <option v-for="item in school" :value="item.id">{{item.name}}</option>
+                        </select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+            <button v-on:click="onFilterSchool" id="btnFilter" :disabled='disabled ? true : false' class="btn-filter" type="submit">Apply Filters</button>
+            <button v-on:click="onClearFilter" :disabled='disabledFilter ? true : false' class="grey btn-clear-filter" type="submit">Clear Filters</button>
+        </div>
+    </div>
+</div>
+<div id="detailDiv"></div>
+
+<script type="text/javascript">
+    var DistrictLabel = '@LabelHelper.DistrictLabel';
+    var RoleID = parseInt('@ViewBag.RoleID');
+    var CurrentDistrictID = '@ViewBag.CurrentDistrictID';
+
+    function loadDistrictDetailData(districtId, schoolName) {
+        $('#detailDiv').load('@Url.Action("LoadDistrictDetail")', { districtId: districtId, schoolName: schoolName }, function (response) {
+            if (typeof (showFooter) === 'function') showFooter();
+            if (response == false) {
+                alert("Error happen. Please refresh page.");
+            }
+
+             $('.btnAddNew').on('click', function (e) {
+                 var selectedDistrictId = $('#selectDistrictOption').val();
+
+                if ((!selectedDistrictId || parseInt(selectedDistrictId) <= 0) && RoleID != 3) {
+                    e.preventDefault();
+                }
+            });
+        });
+    }
+
+    function emptyDetailDiv(){
+        $('#detailDiv').empty();
+    }
+
+
+    window.addEventListener("beforeunload", function (event) {
+        var textSearch = $('#detailDiv #dataTable_filter input').val();
+        var textTermSearch = $('#detailDiv #dataTableTerms_filter input').val();
+        sessionStorage.setItem('ManageSchoolAndClass', false);
+
+        if(textTermSearch) {
+           sessionStorage.setItem('textTermSearch', textTermSearch);
+        } else {
+            sessionStorage.setItem('textTermSearch', '');
+        }
+
+        if(textSearch) {
+            sessionStorage.setItem('textSearch', textSearch);
+        } else {
+            sessionStorage.setItem('textSearch', '');
+        }
+
+    });
+
+    $(document).ready(function () {
+        $('#selectDistrictOption').marquee({widthSelected: 375});
+        $('#selectSchoolOption').marquee({widthSelected: 375});
+        sessionStorage.setItem('isApplyFilter', false);
+        var ManageSchoolAndClass = JSON.parse(sessionStorage.getItem('ManageSchoolAndClass'));
+        sessionStorage.setItem('ManageSchoolAndClass', false);
+        if (ManageSchoolAndClass) {
+            if (sessionStorage.getItem('selectedDistrictId') && sessionStorage.getItem('schoolName')) {
+                var districtId = JSON.parse(sessionStorage.getItem('selectedDistrictId'));
+                var schoolName = JSON.parse(sessionStorage.getItem('schoolName'));
+                loadDistrictDetailData(districtId, schoolName);
+            }
+            else {
+                var schoolName = $("#selectSchoolOption option:selected").text() == null ? "" : $("#selectSchoolOption option:selected").text();
+                var districtId = districtId != undefined ? districtId : -1;
+                loadDistrictDetailData(districtId, schoolName);
+            }
+        }
+        else {
+            loadDistrictDetailData(-1, ' ');
+        }
+    });
+
+    function searchDelay(inputFilter, dataTable) {
+       var delay = null;
+
+       inputFilter.off('keyup.DT input.DT');
+
+       inputFilter.on("keyup", function () {
+           var search = inputFilter.val();
+           clearTimeout(delay);
+           delay = setTimeout(function () {
+               if (search != null) {
+                   dataTable.dataTable().fnFilter(search);
+               }
+           }, 1000);
+       });
+   }
+
+</script>
+
+
+<script src="@Url.Content("~/Scripts/ManageClass/api.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/ManageClass/ManageClass.js")" type="text/javascript"></script>

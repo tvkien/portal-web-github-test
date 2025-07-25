@@ -1,0 +1,682 @@
+@{
+    ViewBag.Title = "Create/Manage Passages";
+}
+
+<script src="@Url.Content("~/Scripts/knockout-3.0.0.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/FeLibs/jquery-coolfieldset/js/jquery.coolfieldset.js")" type="text/javascript"></script>
+<script src="@Url.Content("/Content/themes/AssignmentRegrader/js/css_browser_selector.js")" type="text/javascript"></script>
+
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<style>
+    .bntCreate {
+        margin-right: 10px;
+    }
+
+    #selectFilters select {
+        max-width: 300px;
+        min-width: 300px;
+    }
+</style>
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="selectFilters">
+            <div class="block-content form bubbleSheetSelector">
+                <h1>
+                    Filter
+                    <a href="@Url.Action("Create", "PassageEditor")">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Add New
+                    </a>
+                </h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>Passage successfully deleted.</li>
+                </ul>
+                <fieldset>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            @if ((ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin) || (ViewBag.IsPublisher != null && ViewBag.IsPublisher))
+                            {
+                                <p>
+                                    <label>State</label>
+                                    <select id="selectState" data-bind='options: PassageStates, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select State", value: PassageStateId' class="full-width"></select>
+                                </p>
+                            }
+                            <p>
+                                <label>Name</label>
+                                <input type="text" id="txtName" style="max-width: 288px;min-width: 288px;" />
+                            </p>
+                            <p>
+                                <label>@LabelHelper.GradeLabel</label>
+                                <select id="selectPassageGrade" data-bind='options: PassageGrades, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select @LabelHelper.GradeLabel", value: PassageGradeId' class="full-width"></select>
+                            </p>
+                            <p>
+                                <label>@LabelHelper.Subject</label>
+                                <select id="selectPassageSubject" data-bind='options: PassageSubjects, optionsText: "Text", optionsValue: "Text", optionsCaption: "Select Passage Subject", value: PassageSubjectText' class="full-width"></select>
+                            </p>
+                            <p>
+                            </p>
+                        </div>
+                        <div class="colx2-right">
+                            @if ((ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin) || (ViewBag.IsPublisher != null && ViewBag.IsPublisher))
+                            {
+                                <p>
+                                    <label>@LabelHelper.DistrictLabel</label>
+                                    <select id="selectDistrict" data-bind='options: PassageDistricts, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select @LabelHelper.DistrictLabel", value: PassageDistrictId' class="full-width"></select>
+                                </p>
+                            }
+                            <p>
+                                <label>Passage Number</label>
+                                <select id="selectPassageNumber" data-bind='options: PassageNumbers, optionsText: "Text", optionsValue: "Text", optionsCaption: "Select Passage Number", value: PassageNumberId'></select>
+                            </p>
+                            <p>
+                                <label>Text Type</label>
+                                <select id="selectTextType" data-bind='options: TextTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Type", value: TextTypeId' class="full-width"></select>
+                            </p>
+                            <p>
+                                <label>Text Sub Type</label>
+                                <select id="selectTextSubType" data-bind='options: TextSubTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Sub Type", value: TextSubTypeId' class="full-width"></select>
+                            </p>
+                            <p>
+                                <label>Flesch Kincaid</label>
+                                <select id="selectFleschKincaidIds" data-bind='options: FleschKincaidIds, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Flesch Kincaid", value: FleschKincaidId' class="full-width"></select>
+                            </p>
+                        </div>
+                    </div>
+                </fieldset>
+                <button data-bind="enable: (('@ViewBag.IsPublisher' === 'False' && '@ViewBag.IsNetworkAdmin' === 'False') || (('@ViewBag.IsPublisher' === 'True' || '@ViewBag.IsNetworkAdmin' === 'True') && PassageDistrictId))" id="filterSheets" class="float-right" type="submit" onclick="filterSheet();">Apply Filter</button>
+                <button id="clearFilter" class="float-right grey bntCreate" type="button" onclick="clearFilter();">Clear Filter</button>
+                <div class="clear"></div>
+            </div>
+        </div>
+        <br />
+        <br />
+        <div class="block-border" id="reviewList">
+            <div class="block-content form">
+                <h1>
+                    Passage/Reference List
+                </h1>
+                <p style="height: 5px"></p>
+                <div class="no-margin last-child">
+                    <table id="passageListDataTable" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="black-cell"><span class="loading"></span></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Passage Number
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.GradeLabel
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Subject
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Text Type
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Text Sub Type
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Flesch Kincaid
+                                </th>
+                                <th scope="col" style="display: none"></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<!--Remember search-->
+<input type="hidden" id="hdSearchBox" name="hdSearchBox" />
+<input type="hidden" id="hdParameterPageLoad" name="hdParameterPageLoad" />
+
+<script type="text/javascript">
+
+    function KeyValuePair(data) {
+        var self = this;
+        self.Text = ko.observable(data.Name);
+        self.Value = ko.observable(data.Id);
+    }
+
+    var vmPassage;
+    var viewModelPassage = function () {
+        var self = this;
+
+        //Grade
+        self.PassageGradeId = ko.observable('');
+        self.PassageGrades = ko.observableArray([]);
+
+        //Subject
+        self.PassageSubjectText = ko.observable('');
+        self.PassageSubjects = ko.observableArray([]);
+
+        //TextType
+        self.TextTypeId = ko.observable('');
+        self.TextTypes = ko.observableArray([]);
+
+        //TextSubType
+        self.TextSubTypeId = ko.observable('');
+        self.TextSubTypes = ko.observableArray([]);
+
+        //FleschKincaid
+        self.FleschKincaidId = ko.observable('');
+        self.FleschKincaidIds = ko.observableArray([]);
+
+        // Passage
+        self.PassageNumberId = ko.observable('');
+        self.PassageNumbers = ko.observableArray([]);
+
+         // District
+        self.PassageDistrictId = ko.observable('');
+        self.PassageDistricts = ko.observableArray([]);
+
+        self.DisplayFilter = ko.computed(function () {
+            self.PassageGrades([]);
+            self.PassageSubjects([]);
+            self.PassageNumbers([]);
+            self.TextTypes([]);
+            self.TextSubTypes([]);
+            self.FleschKincaidIds([]);
+            var url = '@Url.Action("GetFilterByCurrentUser", "PassageEditor")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {
+                    districtId: self.PassageDistrictId()
+                }
+            }).done(function (data) {
+                    var grades = $.map(data.Grades, function (item) {
+                        return new KeyValuePair(item);
+                    });
+                    self.PassageGrades(grades);
+                    if (@ViewBag.GradeId > 0) {
+                        $('#selectPassageGrade').val(@ViewBag.GradeId);
+                    }
+
+                    var subjects = $.map(data.Subjects, function (item) {
+                        return new KeyValuePair(item);
+                    });
+                    self.PassageSubjects(subjects);
+                    if ('@string.IsNullOrEmpty(ViewBag.Subject)' == 'False') {
+                        $('#selectPassageSubject').val('@Html.Raw(ViewBag.Subject)');
+                    }
+
+                    var textTypes = $.map(data.TextTypes, function (item) {
+                        return new KeyValuePair(item);
+                    });
+                    self.TextTypes(textTypes);
+                    if (@ViewBag.TextTypeId > 0) {
+                        $('#selectTextType').val(@ViewBag.TextTypeId);
+                    }
+
+                    var textSubTypes = $.map(data.TextSubTypes, function (item) {
+                        return new KeyValuePair(item);
+                    });
+                    self.TextSubTypes(textSubTypes);
+                    if (@ViewBag.TextSubTypeId > 0) {
+                        $('#selectTextSubType').val(@ViewBag.TextSubTypeId);
+                    }
+
+                    var fleschKincaids = $.map(data.FleschKincaids, function (item) {
+                        return new KeyValuePair(item);
+                    });
+                    self.FleschKincaidIds(fleschKincaids);
+                    if (@ViewBag.FleschKincaidId > 0) {
+                        $('#selectFleschKincaidIds').val(@ViewBag.FleschKincaidId);
+                    }
+
+                    var passageNumbers = $.map(data.PassageNumbers, function (item) {
+                        return new KeyValuePair(item);
+                    });
+                    self.PassageNumbers(passageNumbers);
+            });
+        });
+
+        //NetworkAdmin + Publisher
+        if ('@ViewBag.IsNetworkAdmin' === 'True' || '@ViewBag.IsPublisher' === 'True') {
+            //State
+            self.PassageStateId = ko.observable('');
+            self.PassageStates = ko.observableArray([]);
+            self.DisplayPassageState = ko.computed(function() {
+                var url;
+                if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                    url = '@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")';
+                }
+                if ('@ViewBag.IsPublisher' === 'True') {
+                    url = '@Url.Action("GetStates", "PopulateStateDistrict")';
+                }
+                $.ajax({
+                    url: url,
+                    type: 'get',
+                    cache: false,
+                    data: {}
+                }).done(function(data) {
+                    var mappedObjects = $.map(data, function(item) {
+                        return new KeyValuePair(item);
+                    });
+                    self.PassageStates(mappedObjects);
+                    if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                        self.PassageStateId(@ViewBag.StateId);
+                    }
+                });
+            });
+
+            // District
+            //@LabelHelper.DistrictLabel
+            self.DisplayPassageDistrict = ko.computed(function() {
+                $('#selectDistrict').empty();
+                if (self.PassageStateId() != undefined && self.PassageStateId() != '') {
+                    var url;
+                    if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                        url = '@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")';
+                    }
+                    if ('@ViewBag.IsPublisher' === 'True') {
+                        url = '@Url.Action("GetDistricts", "PopulateStateDistrict")';
+                    }
+                    $.ajax({
+                        url: url,
+                        type: 'get',
+                        cache: false,
+                        data: { stateId: self.PassageStateId() },
+                    }).done(function (data) {
+                        var mappedObjects = $.map(data, function (item) {
+                            return new KeyValuePair(item);
+                        });
+                        self.PassageDistricts(mappedObjects);
+                        if(self.PassageDistricts().length == 1){
+                            self.PassageDistrictId(self.PassageDistricts()[0].Value());
+                        }
+                    });
+                }
+            });
+        }
+    };
+
+    $(function () {
+        //Recover search filter
+        $('#txtName').val('@ViewBag.NameSearch');
+        $('#txtName').val($('#txtName').html('@ViewBag.NameSearch').text());
+
+        $('#txtPassageNumber').val('@ViewBag.PassageNumberSearch');
+
+        $('#hdParameterPageLoad').val('Y');//set this hidden field value to 'Y' tell us know that this is the first time search by receiving parameter, after that its value will be reset to empty
+
+        vmPassage = new viewModelPassage();
+        ko.cleanNode(document.getElementById("selectFilters"));
+        ko.applyBindings(vmPassage, document.getElementById("selectFilters"));
+
+        LoadPassageDataTable();
+        initializeDataTable($("#passageListDataTable"));
+    });
+
+    function clearFilter() {
+        $('#txtName').val('');
+        $('#txtPassageNumber').val('');
+        $("select").prop('selectedIndex', 0);
+    }
+
+    function filterSheet() {
+        $("#passageListDataTable").dataTable().fnReloadAjax(getAjaxSource());
+    }
+
+    function LoadPassageDataTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            //bStateSave: false,
+            sAjaxSource: getAjaxSource(),
+            cache: false,
+            sServerMethod: "POST",
+            fnServerParams: function (aoData) {
+
+                //TuanVo: When page load, set the sSearch as Keywords parameter to let dataTable search
+                if ($('#hdParameterPageLoad').val().length > 0) {
+                    var item = null;
+                    for (var i = 0; i < aoData.length; i++) {
+                        item = aoData[i];
+                        if (item.name == 'sSearch') {
+                            $("#hdSearchBox").val('@ViewBag.SearchBox');
+                            item.value = $("#hdSearchBox").html('@ViewBag.SearchBox').text();
+                            //alert('iii3:' + item.value);
+                            do {
+                                item.value = item.value.replace('""', '"');
+                            } while (item.value.indexOf('""') >= 0)
+
+                            if (item.value == '"') {
+                                item.value = item.value.replace('"', "''");
+                            } else {
+                                item.value = encodeURIComponent(item.value);
+                            }
+                            //alert('iii4:' + item.value);
+                            break;
+                        }
+                    }
+                } else {
+                    var item = null;
+                    for (var i = 0; i < aoData.length; i++) {
+                        item = aoData[i];
+                        if (item.name == 'sSearch') {
+                            //when passing parameter to searchbox then click on allpy filter, tabase does not recognize parameter, need to assign parameter to searchbox manually
+                            if (item.value.length == 0 && $("input[aria-controls|='passageListDataTable']").val().length > 0) {
+                                item.value = $("input[aria-controls|='passageListDataTable']").val();
+                            }
+
+                            do {
+                                item.value = item.value.replace('""', '"');
+                            } while (item.value.indexOf('""') >= 0)
+
+                            if (item.value == '"') {
+                                item.value = item.value.replace('"', "''");
+                            } else {
+                                item.value = encodeURIComponent(item.value);
+                            }
+                            break; //only process searchbox
+                        }
+                    }
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'PassageId', bSearchable: true, bSortable: false, sWidth: '90px' },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: '180px' },
+                { sType: 'int', sName: 'QTIRefObjectFileRef', bSearchable: true, bSortable: true, sWidth: '95px' },
+                { sType: 'integer', sName: 'GradeOrder', bSearchable: false, bSortable: true,sWidth: '75px' },
+                { sType: 'string', sName: 'Subject', bSearchable: true, bSortable: true,sWidth: '135px' },
+                { sType: 'string', sName: 'TextType', bSearchable: true, bSortable: true,sWidth: '136px' },
+                { sType: 'string', sName: 'TextSubType', bSearchable: true, bSortable: true,sWidth: '170px' },
+                { sType: 'string', sName: 'FleschKinkaidName', bSearchable: true, bSortable: true,sWidth: '110px' },
+                { sType: 'string', sName: 'Grade', bSearchable: true, bSortable: false, bVisible:false,sWidth: '0px' }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#passageListDataTable'), "Loading");
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                if (aData[1] == null || aData[1] == '') {
+                    $('td:eq(1)', nRow).html('[unnamed]');
+                }
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0], aData[1]));
+                $('td:eq(3)', nRow).html(aData[8]);//display @LabelHelper.GradeLabel name on grade column, gradeorder used for sorting
+                $('td:eq(1)', nRow).die('click');
+                $('td:eq(1)', nRow).click(function(){
+                    showPassageDetailPopupOnPassageList(aData[0], '');
+                }) ;
+                $('td:eq(1)', nRow).addClass('cursor-pointer');
+                $('td:eq(8)', nRow).css('display','none');
+                return nRow;
+            },
+            fnDrawCallback: function () {
+                $('#passageListDataTable').unblock();
+                $('.with-tip').tip();
+                $('.column-sort .sort-up').css('height', '20px');
+                $('.column-sort .sort-down').css('height', '20px');
+
+                //After the first loading data from database, display the keyword parameter on Search box and set search box value (set to settings.oPreviousSearch.sSearch)
+                if ($('#hdParameterPageLoad').val().length > 0) {
+                    $("input[aria-controls|='passageListDataTable']").val('@ViewBag.SearchBox');//set value for the search box
+                    $("input[aria-controls|='passageListDataTable']").val($("input[aria-controls|='passageListDataTable']").html('@ViewBag.SearchBox').text());//set value for the search box
+
+                    $('#hdParameterPageLoad').val('');// reset empty for this value to make sure that this code block can be run only one time when page load ( the first time)
+                }
+            }
+        };
+        $("#passageListDataTable").data("options", options);
+    }
+
+    function setIconVisibility(passageId, passageName) {
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editUrl = '@Url.Action("Edit","PassageEditor")?id=' + passageId;
+        var nameSearch = $("#txtName").val();
+        var passageNumber = $("#txtPassageNumber").val();
+        var gradeId = $("#selectPassageGrade").val();
+        var subject = $('#selectPassageSubject').val();
+        var textTypeId = $("#selectTextType").val();;
+        var textSubTypeId = $("#selectTextSubType").val();
+        var fleschKincaidId = $("#selectFleschKincaidIds").val();
+        var searchBox = $('#passageListDataTable_filter input').val();
+        editUrl += '&nameSearch=' + encodeURIComponent(nameSearch);
+        editUrl += '&passageNumber=' + passageNumber;
+        editUrl += '&gradeId=' + gradeId;
+        editUrl += '&subject=' + encodeURIComponent(subject);
+        editUrl += '&textTypeId=' + textTypeId;
+        editUrl += '&textSubTypeId=' + textSubTypeId;
+        editUrl += '&fleschKincaidId=' + fleschKincaidId;
+        editUrl += '&searchBox=' + encodeURIComponent(searchBox);
+        //var editString = '<a href="@Url.Action("Edit","PassageEditor")/' + passageId + '" title="Edit Passage" passageId="' + passageId + '" class="with-tip"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        //var editString = '<a href="' + editUrl + '" title="Edit Passage" passageId="' + passageId + '" class="with-tip"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        var editString = '<a href="javascript:void(0);" onclick="EditPassage(' + passageId + ')" title="Edit Passage" passageId="' + passageId + '" class="with-tip"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        var removeIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var removeString = '<a passageId="' + passageId + '" passageName="' + encodeURI(passageName)   +'" href="javascript:void(0);" onclick="RemovePassage(this);" title="delete passage" class="with-tip"><img src="' + removeIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        return editString + removeString;
+    }
+
+    function RemovePassage(control) {
+        var self = $(control);
+        //var id = self.attr('passageId');
+        //if (confirm('Are you sure you want to delete this passage?')) {}
+        console.log(self.attr('passageId'));
+        LoadConfirmDeletePassage(self.attr('passageId'), self.attr('passageName'));
+    }
+
+    function getAjaxSource() {
+        var nameSearch =encodeURIComponent($("#txtName").val());
+        var passageNumber =encodeURIComponent($("#selectPassageNumber").val());
+        var gradeId = $("#selectPassageGrade").val();
+        var subject = encodeURIComponent($('#selectPassageSubject').val());
+        var textTypeId = $("#selectTextType").val();
+        var textSubTypeId = $("#selectTextSubType").val();
+        var fleschKincaidId = $("#selectFleschKincaidIds").val();
+
+        if ($('#hdParameterPageLoad').val().length > 0) {
+            gradeId = @ViewBag.GradeId;
+            subject = '@Html.Raw(ViewBag.Subject)';
+            textTypeId = @ViewBag.TextTypeId;
+            textSubTypeId = @ViewBag.TextSubTypeId;
+            fleschKincaidId = @ViewBag.FleschKincaidId;
+        }
+        if ('@ViewBag.IsNetworkAdmin' === 'True' || '@ViewBag.IsPublisher' === 'True') {
+            var districtId = $('#selectDistrict').val();
+            if (districtId == '')
+                districtId = 0;
+            return '@Url.Action("GetPassageList")/?nameSearch=' + encodeURIComponent(nameSearch) + '&gradeId=' + gradeId + '&subject=' + encodeURIComponent(subject) + '&textTypeId=' + textTypeId + '&textSubTypeId=' + textSubTypeId + '&fleschKincaidId=' + fleschKincaidId + '&passageNumber=' + passageNumber + '&districtId=' + districtId;
+        }
+        return '@Url.Action("GetPassageList")/?nameSearch=' + encodeURIComponent(nameSearch) + '&gradeId=' + gradeId + '&subject=' + encodeURIComponent(subject) + '&textTypeId=' + textTypeId + '&textSubTypeId=' + textSubTypeId + '&fleschKincaidId=' + fleschKincaidId + '&passageNumber=' + passageNumber;
+    }
+
+    function DeletePassage(qtiRefObjectId) {
+
+    }
+
+    function EditPassage(passageId) {
+        var editUrl = '@Url.Action("Edit","PassageEditor")?id=' + passageId;
+        var nameSearch = $("#txtName").val();
+        var passageNumber = $("#txtPassageNumber").val();
+        var gradeId = $("#selectPassageGrade").val();
+        var subject = $('#selectPassageSubject').val();
+        var textTypeId = $("#selectTextType").val();
+        ;
+        var textSubTypeId = $("#selectTextSubType").val();
+        var fleschKincaidId = $("#selectFleschKincaidIds").val();
+        var searchBox = $('#passageListDataTable_filter input').val();
+        nameSearch = htmlEncode(nameSearch);
+        subject = htmlEncode(subject);
+        searchBox = htmlEncode(searchBox);
+        editUrl += '&nameSearch=' + encodeURIComponent(nameSearch);
+        editUrl += '&passageNumber=' + passageNumber;
+        editUrl += '&gradeId=' + gradeId;
+        editUrl += '&subject=' + encodeURIComponent(subject);
+        editUrl += '&textTypeId=' + textTypeId;
+        editUrl += '&textSubTypeId=' + textSubTypeId;
+        editUrl += '&fleschKincaidId=' + fleschKincaidId;
+        editUrl += '&searchBox=' + encodeURIComponent(searchBox);
+        if ('@ViewBag.IsNetworkAdmin' === 'True') {
+            var districtId = $('#selectDistrict').val();
+            if (districtId == '')
+                districtId = null;
+            editUrl += '&districtId=' + districtId;
+        }
+        window.location.replace(editUrl);
+    }
+
+    function showPassageDetailPopupOnPassageList(id, data) {
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassageDetailPopupOnQtiItemDetailCSS")
+            .attr("id", "PassageDetailDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowPassageDetail", "QTIItem")\?refObjectID=' + id + '&data=' + encodeURI(data), function () {
+                worker.dialog({
+                    title: $(this).attr("PassageDetail"),
+                    open: function () {
+                        $('#divPassageDetail').find('video').trigger('play');
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+
+                        if (window.playsound != null) {
+                            window.playsound.pause();
+                        }
+                    },
+                    modal: false,
+                    width: 780,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    $('#btnCloseUserClickPassageDetail').die('click');
+    $('#btnCloseUserClickPassageDetail').live("click", function (e) {
+        $(".dialog").dialog("close");
+        if (window.playsound != null) {
+            window.playsound.pause();
+        }
+    });
+
+    function numberTextBox_Keydown(e) {
+
+        // Allow: backspace, delete, tab, escape, enter and .
+        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+            // Allow: Ctrl+A
+            (e.keyCode == 65 && e.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (e.keyCode >= 35 && e.keyCode <= 39)) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+    }
+
+    $("#txtPassageNumber").keydown(function (e) {
+        numberTextBox_Keydown(e);
+    });
+
+    function LoadConfirmDeletePassage(id, passageName) {
+        var url = '@Url.Action("LoadConfirmDeletePassage", "PassageEditor")?id=' + id + '&passageName=' + passageName;
+        $.ajax(
+            {
+                url: url, cache: false
+            })
+            .done(function (html) {
+                $("#reviewList").append('<div id="PopupDeletePassagebyId" class="dialog"></div>');
+                $("#PopupDeletePassagebyId").append(html);
+                $('#PopupDeletePassagebyId').dialog({
+                    title: "",
+                    open: function () {
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupDeletePassagebyId').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    function DeletePassageByID(id) {
+        $(".dialog").dialog("close");
+        ShowBlock($('#passageListDataTable'), "Loading");
+        $.ajax({
+            url: '@Url.Action("Delete", "PassageEditor")',
+            type: 'POST',
+            data: { qtiRefObjectId: id },
+            success: function(response) {
+                if (response.Success == true) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                    //Reload table
+                    filterSheet();
+                } else {
+                    alert('An error has occured. Please try again.');
+                }
+                $('#passageListDataTable').unblock();
+
+            },
+            failure: function(response) {
+                alert(response);
+            }
+        });
+    }
+</script>

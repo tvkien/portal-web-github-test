@@ -1,0 +1,214 @@
+<article id="divMoveVirtualTestID" class="container_12" style="margin-top: 0px; width: 700px;">
+    <section class="grid_9">
+        <div class="block-border">
+            <div class="block-content form p-4 block-content-margin" id="divMoveVirtualTest">
+                <h3 class="p-0 h3 mb-3 modal-heading">
+                    Move Form
+                </h3>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                </ul>
+                <div class="mt-2 float-start" style="display: none;" id="formCreateACopy">
+                    <input type="checkbox" onclick="ReloadBanks();" id="createACopy" name="CreateACopy" />
+                    <label class="label-lg ms-2" for="createACopy">Create a Copy</label>
+                </div>
+
+
+                <table id="dataTableTestBankTop" class="datatable table" width="100%">
+                    <thead>
+                        <tr>
+                            <th scope="col"></th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Bank Name
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Subject
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                @LabelHelper.GradeLabel
+                            </th>
+                            <th scope="col"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="height: 60px;"></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    </section>
+</article>
+<div class="opacityPopup" id="popupLevel2" style="top: 0; z-index: 1; display: none; opacity: 0.3; position: absolute; width: 100%; height: 100%; background: var(--black);"></div>
+<style>
+    .divPopupMoveVirtualTestConfirmDialog {
+        z-index: 99999 !important;
+    }
+</style>
+<script type="text/javascript">
+    $(function() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            sAjaxSource: getAjaxSourceLoadTestBankforMove(),
+            fnServerData: function (sUrl, aoData, fnCallback, oSettings) {
+                oSettings.jqXHR = $.ajax({
+                    "url": sUrl + "?currentBankId=" + $('#SelectedTestBankId').val() + "&isCopy=" + $('#createACopy').is(':checked'),
+                    "data": aoData,
+                    "success": fnCallback,
+                    "cache": false
+                });
+            },
+            fnServerParams: function(aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+            },
+            //bLengthChange: false,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'BankID', bSearchable: false, bSortable: false, sWidth: "20px" },
+                { sType: 'string', sName: 'BankName', bSearchable: true, bSortable: true, sWidth: "180px" },
+                { sType: 'string', sName: 'Subject', bSearchable: true, bSortable: true, sWidth: "120px" },
+                { sType: 'integer', sName: 'GradeOrder', bSearchable: true, bSortable: true, sWidth: "50px" },
+                { sType: 'string', sName: 'Grade', bSearchable: true, bSortable: true, sWidth: "0px", bVisible: false }
+            ],
+            fnRowCallback: function(nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityMoveCopy(aData[0]));
+                $('td:eq(3)', nRow).html(aData[4]);
+                //Add word-break: break-all; to td which has long BankName ,such as NewBankDemo_123_456_789_1011
+                addWordBreakToTableCell($('td:eq(1)', nRow), 30, aData[1]);
+                addWordBreakToTableCell($('td:eq(2)', nRow), 20, aData[2]);
+            },
+            fnPreDrawCallback: function() {
+                $('#PopupMoveCopyVirtualTest').dialog('center');
+                ShowBlock($('#dataTableTestBankTop'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function() {
+                $('#dataTableTestBankTop').unblock();
+                $('.with-tip').tip();
+            },
+            fnInitComplete: function () {
+                $('#dataTableTestBankTop_wrapper .block-custom-header').prepend($('#formCreateACopy'));
+                $('#formCreateACopy').show()
+                tranformSearchInputDataTable('dataTableTestBankTop_filter');
+                $('#PopupMoveCopyVirtualTest').dialog('center');
+            }
+        };
+
+        $("#dataTableTestBankTop").data("options", options);
+        initializeDataTable($("#dataTableTestBankTop"));
+    });
+
+    function getAjaxSourceLoadTestBankforMove() {
+        return '@Url.Action("LoadTestBankforMove", "DataLockerEntryForm")';
+    }
+
+    function setIconVisibilityMoveCopy(bankId) {
+        var moveIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/move-icon-v2.svg")';
+        var moveString = '<a style="display: block; width: 100%; text-align:center" href="javascript:void(0)" onclick="MoveVirtualTest(this);" title="Move\/copy form" bankId="' + bankId + '" class="with-tip"><img src="' + moveIcon + '" width="20" height="20"></a>';
+
+        return moveString;
+    }
+
+    function MoveVirtualTest(control)
+    {
+        //TODO: Update ItemBank
+        var bankId = $(control).attr('bankId');
+        var virtualTestId = '@ViewBag.VirtualTestId';
+        var virtualTestName = '@ViewBag.VirtualTestName';
+        var createACopy = $('#createACopy').is(':checked');
+
+        if (!createACopy) {
+            ShowBlock($('#divMoveVirtualTestID'), "Moving");
+        }
+
+        //Show confirm dialog
+
+        var url = '@Url.Action("LoadMoveVirtualTestConfirmDialog", "DataLockerEntryForm")?virtualTestId=' + virtualTestId + '&toBankId=' + bankId + '&createACopy=' + createACopy + '&virtualTestName=' + encodeURI(virtualTestName);
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function(html) {
+                $("#divMoveVirtualTest").append('<div id="divPopupMoveVirtualTestConfirmDialog" class="dialog"></div>');
+                $("#divPopupMoveVirtualTestConfirmDialog").append(html);
+                $('#divPopupMoveVirtualTestConfirmDialog').dialog({
+                    dialogClass: 'divPopupMoveVirtualTestConfirmDialog',
+                    title: "",
+                    open: function() {
+                        //Create overlay for popup
+                        var zindex = $('#divMoveCopyVirtualTestDialog').parent().css('z-index');
+                        var zIndexConfirm = parseInt(zindex) + 1;
+                        var zIndexDialog = parseInt(zindex) + 2;
+                        $("body").append('<div class="my-overlay" style="z-index: ' + zIndexConfirm + ';width:' + $(document).width() + 'px;height:2000' + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        $('#divPopupMoveVirtualTestConfirmDialog').parent().css('z-index', zIndexDialog);
+                    },
+                    beforeclose: function() {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function() {
+                        $('#divPopupMoveVirtualTestConfirmDialog').remove();
+                        $("body .my-overlay:last").remove(); //remove the last only
+                        $('#divMoveVirtualTestID').unblock();
+                        $('.opacityPopup').css('display', 'none');
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false,
+
+
+                });
+
+            });
+        $('.opacityPopup').css('display', 'block');
+        $(".close").unbind("click");
+        $(".close").live("click", function(e) {
+            e.preventDefault();
+        });
+
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    function ReloadBanks() {
+       $('#dataTableTestBankTop').dataTable().fnDraw(true);
+    }
+</script>

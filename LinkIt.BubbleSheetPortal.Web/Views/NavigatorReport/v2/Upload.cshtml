@@ -1,0 +1,529 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Common
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Reporting, "Navigator Upload");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<link href="/Content/css/custom.css" rel="stylesheet" />
+<link rel="stylesheet" href="/Scripts/Qtip/jquery.qtip.css">
+<script src="@Url.Content("~/Scripts/Qtip/jquery.qtip.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/TagIt/js/tag-it.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Scripts/TagIt/css/jquery.tagit.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Scripts/TagIt/css/tagit.ui-zendesk.css")" rel="stylesheet" type="text/css" />
+<link href="@BundleHelper.Version("~/Content/css/v2/navigator-upload.css")" rel="stylesheet" type="text/css" />
+
+
+<style>
+    ul.tagit li:not(:first-child) ::-webkit-input-placeholder {
+        opacity: 0;
+    }
+
+    ul.tagit li:not(:first-child) ::-moz-placeholder {
+        opacity: 0;
+    }
+
+    ul.tagit li:not(:first-child) ::-ms-input-placeholder {
+        opacity: 0;
+    }
+
+    ul.tagit li:not(:first-child) ::placeholder {
+        opacity: 0;
+    }
+
+    #myProgress {
+        width: 100%;
+        background-color: #ddd;
+    }
+
+    #myBar {
+        width: 10%;
+        height: 30px;
+        background-color: #4CAF50;
+        text-align: center;
+        line-height: 30px;
+        color: white;
+    }
+
+    span.disabled {
+        pointer-events: none;
+        cursor: default;
+        background: #f0f2f2;
+        border-color: #e9f2f6 #c4c3c3 #a2a2a2 #e3e2e2;
+        color: #bfbfbf;
+    }
+
+    .js-tooltip-error {
+        width: 300px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        display: inline-block;
+    }
+
+    .datatableUpload tbody td {
+        word-break: break-all;
+        word-wrap: break-word;
+    }
+
+    .ui-autocomplete {
+        width: 250px !important;
+        top: calc((100hw - 852px)/2 + 5px) !important;
+    }
+
+    .btn-review {
+        width: max-content;
+        text-align: center;
+        border: none;
+        color: #0d6efd;
+    }
+
+    .max-width-250px {
+        max-width: 250px;
+    }
+
+    .tagit-new input.ui-widget-content.ui-autocomplete-input {
+        min-width: 130px !important;
+    }
+
+    ul.selectKeywords li:first-child {
+        font-weight: bold;
+    }
+
+    ul.selectKeywords .tagit-new {
+        max-width: 169px;
+    }
+
+    #file-upload-table .invalid-row {
+        color: var(--orangered);
+    }
+
+    #file-upload-table .valid-row {
+        color: var(--forestgreen);
+    }
+
+    #file-upload-table .disabled {
+        color: #bfbfbf;
+        border-color: #e9f2f6 #c4c3c3 #a2a2a2 #e3e2e2;
+        background: #c8c8c8 url(../images/old-browsers-bg/button-element-disabled-bg.png) repeat-x top;
+        background: -moz-linear-gradient( top, #f0f2f2, #c8c8c8 );
+        background: -webkit-gradient( linear, left top, left bottom, from(#f0f2f2), to(#c8c8c8) );
+        -moz-text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.75);
+        -webkit-text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.75);
+        text-shadow: 1px 1px 0 rgb(255 255 255 / 75%);
+        -moz-box-shadow: none;
+        -webkit-box-shadow: none;
+        box-shadow: none;
+        cursor: auto;
+    }
+
+    #file-upload-table #table-wrap table th, td {
+        border: 1px solid var(--grey);
+        text-align: left;
+        padding: 5px;
+        vertical-align: middle;
+    }
+
+    #file-upload-table #table-wrap table td p {
+        word-break: break-word;
+    }
+
+    .bg-error {
+        background-color: orange;
+    }
+
+    #btn-upload {
+        background-color: var(--red) !important;
+        color: white !important;
+        border: none !important;
+        margin-top: 24px;
+        width: 190px;
+    }
+
+        #btn-upload:hover {
+            background-color: var(--redHover) !important;
+        }
+
+    #submit-form fieldset {
+        display: flex;
+        width: 100%;
+    }
+
+    .ui-widget-overlay {
+        background: #000000;
+    }
+</style>
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="selectFilters">
+            <div class="block-content form bubbleSheetSelector">
+                <h1>Navigator Upload</h1>
+                <div id="submit-form" name="submit-form" class="columns">
+                    <fieldset>
+                        <div class="row g-3" id="upload-controls" style="width: 100%">
+                            <div class="col-4">
+                                <p>
+                                    <label>State</label>
+                                    <select id="selectState" name="selectState" class="full-width"></select>
+                                </p>
+                            </div>
+                            <div class="col-4">
+                                <p>
+                                    <label>@LabelHelper.DistrictLabel</label>
+                                    <select id="selectDistrict" name="selectDistrict" class="full-width"></select>
+                                </p>
+                            </div>
+                        </div>
+                        <button id="btn-upload" class="btn-accept disabled">Upload </button>
+                    </fieldset>
+                </div>
+            </div>
+
+            <div class="block-content form divTop">
+                <h1>Uploading Status</h1>
+                <p style="height: 5px"></p>
+                <table id="dataTable" width="100%" cellspacing="0" class="datatable table no-margin datatableUpload">
+                    <thead>
+                        <tr>
+                            <th class="black-cell sorting_disabled" style="width: 55px" scope="col">
+                                <span class="loading"></span>
+                            </th>
+                            <th scope="col">
+                                File Name
+                            </th>
+                            <th scope="col">
+                                Report Type
+                            </th>
+                            <th scope="col">
+                                Status
+                            </th>
+                            <th scope="col">
+                                Message
+
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+    </section>
+</article>
+
+<script>
+    // #region Fields
+    var textSearch = '';
+    var myInterval = new Array();
+    var navigatorReportIds = [];
+    var navigatorConfiguration = null;
+    var isShiftDown = false;
+
+    var $divTopBlock = $('#divTop');
+
+    const fieldsTable = [
+        { field: "navigatorCategory", id: "#file-path", columnIndex: 1 },
+        { field: "navigatorCategory", id: "#navigator-category", columnIndex: 3 },
+        { field: "reportType", id: "#report-type", columnIndex: 4 },
+        { field: "school", id: "#school", columnIndex: 5 },
+        { field: "schoolYear", id: "#year", columnIndex: 6 },
+        { field: "keywordShortNames", id: "#selectKeywordShortNames", columnIndex: 7 },
+        { field: "reportingPeriod", id: "#period", columnIndex: 8 },
+        { field: "reportSuffix", id: "#sufix", columnIndex: 9 },
+    ];
+
+    function hashCode(s) {
+        for (var i = 0, h = 0; i < s.length; i++)
+            h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+        return Math.abs(h);
+    }
+
+    // #end region Page Load
+    function displayMessage(message) {
+        var content = (message ? message.replace(/;/g, '; <br>') : '');
+        var title = (message ? message : '')
+        var html = '<span class="js-tooltip-students js-tooltip-error" title="' + content + '">' + title + '</span>';
+        return html;
+    }
+
+    // #region Functions
+    function setStyle(status) {
+        var textColor = '<p class="btn-review">' + status + '</p>';
+        return textColor;
+    }
+
+    function isSelectPeriodMandatoryEnabled() {
+        return navigatorConfiguration && navigatorConfiguration.periodMandatory;
+    };
+
+    function resetFileSelect() {
+        selectedFiles = [];
+    }
+
+    function getCheckExistsFileNameData() {
+        var fields = ["#selectState", "#selectDistrict", "#selectNavigatorCategory", "#selectReportType", "#selectSchool", "#selectSchoolYear", "#selectKeywordShortNames", "#selectReportingPeriod", "#selectReportSuffix"];
+        var checkFileData = {};
+         fields.forEach(function (value, index) {
+            var fieldName = value.replace('#select', '');
+            checkFileData[fieldName] = $(value).val();
+        });
+        return checkFileData;
+    }
+
+    function SubmitForm(formdata) {
+        return $.ajax({
+            type: "POST",
+            url: "Submit",
+            dataType: "json",
+            contentType: false, // Not to set any content header
+            processData: false, // Not to process data
+            data: formdata
+        });
+    }
+
+    function getUploadStatus() {
+        var datatable = $("#dataTable").dataTable();
+        datatable.fnSettings().fnServerParams = function (aoData) {
+            aoData.push({ "name": "reportIds", "value": navigatorReportIds });
+        };
+        datatable.fnDraw();
+    }
+
+    function addSelectedListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            selectList.html('<option value="-1">No Results Found</option>');
+        } else {
+            selectList.html('');
+
+            if (defaultValue) {
+                selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+            }
+
+            $.each(results, function (i, value) {
+                selectList.append(
+                    $("<option></option>").attr("value", value.id).text(value.name)
+                );
+            });
+        }
+    }
+
+   function populateStates() {
+        $.get('@Url.Action("GetStates", "CategoriesAPI")', function (states) {
+            addSelectedListItems($('#selectState'), states.data, "Select State");
+        });
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            $.get('@Url.Action("GetDistrictByStateId","CategoriesAPI")', { stateId: stateValue }, function (districts) {
+                addSelectedListItems($('#selectDistrict'), districts.data, 'Select District');
+            });
+        }
+    }
+
+    function btnUploadToggle() {
+
+        var value = $('#selectDistrict').val();
+        if (value && value > 0) {
+            $('#btn-upload').prop('disabled', false);
+            $('#btn-upload').removeClass('disabled');
+        } else {
+            $('#btn-upload').prop('disabled', true);
+            $('#btn-upload').addClass('disabled');
+        }
+    }
+
+    function showListFilePopup() {
+
+        var worker = $('<div />');
+        worker
+            .addClass("dialog listFileUploadDialogCss")
+            .attr("id", "listFileUploadDialog")
+            .appendTo("body")
+            .load('@Url.Action("ListFileUpload", "NavigatorReport")', function () {
+                worker.dialog({
+                    title: '',
+                    open: function () {
+                        $(this).parents('.ui-resizable').addClass('block-border');
+                        var that = this;
+                        setTimeout(function () {
+                            var height = $(that).parents('.ui-resizable').outerHeight();
+                            $(that).height(height);
+                            $(that).parents('.ui-resizable').height(height)
+                        }, 100);
+                    },
+                    close: function () {
+                        $("#ui-widget-overlay-upload").remove();
+                        $(this).parents('.ui-dialog').remove();
+                    },
+                    modal: false,
+                    width: 1280,
+                    minWidth: 730,
+                    resizable: true
+                });
+            });
+
+        showModalDialogBG();
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" id="ui-widget-overlay-upload" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index:1001;"></div>');
+    }
+
+    function closeDialogComfirmation() {
+        customConfirm('Are you sure you want to cancel upload file(s)?').then(function(result) {
+            if (result) {
+                cancelUploadClick();
+            }
+        })
+    }
+
+    function showModalDialogBGConfirmation() {
+        var zindex = $('#confirmCloseDialog').parent().css('z-index');
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" id="ui-widget-overlay-confirmation" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index:' + zindex + ';"></div>');
+    }
+
+    function cancelUploadClick() {
+        $('#listFileUploadDialog').dialog('close');
+        $("#ui-widget-overlay-upload").remove();
+        $("#tips").html('');
+    }
+
+    // #region Page Load
+    $(document).ready(function () {
+
+        populateStates();
+
+        $(document).on('change', '#selectState', function (e) {
+            populateDistricts();
+            btnUploadToggle();
+        });
+
+        $(document).on('change', '#selectDistrict', function (e) {
+            btnUploadToggle();
+
+            if (e.target.value > 0 && $('.row-item').length > 0) {
+                $('#file-upload-table').removeClass('hide');
+            } else {
+                $('#file-upload-table').addClass('hide');
+            }
+
+        });
+
+        $(document).on('click', '#btn-upload', function (e) {
+            var value = $('#selectDistrict').val();
+            if (value && value > 0) {
+                showListFilePopup();
+            }
+        });
+
+
+        $(document).on('change', '#checkbox-all', function (e) {
+            var isChecked = e.target.checked;
+
+            for (let i = 0; i < $('.file-checkbox').length; i++) {
+                $($('.file-checkbox')[i]).prop('checked', isChecked).trigger('change');
+            }
+
+        });
+
+        //load State data
+        //register dropdown dependencies
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetUploadedReportsInfo")',
+            fnServerParams: function (aoData) {
+                aoData.push({ "name": "reportIds", "value": navigatorReportIds });
+            },
+            sServerMethod: "POST",
+            bAutoWidth: false,
+            aaSorting: [[0, "desc"]],
+            iDisplayLength: 10,
+            aoColumns: [
+                { sType: 'integer', sName: 'NavigatorReportId', bVisible: false },
+                { sType: 'string', sName: 'FileName', bSearchable: true, bSortable: false, sWidth: '40%' },
+                { sType: 'string', sName: 'ReportTypeName', bSearchable: true, bSortable: false, sWidth: '20%' },
+                { sType: 'string', sName: 'Status', bSearchable: true, bSortable: false, sWidth: 'auto' },
+                { sType: 'string', sName: 'Message', bSearchable: true, bSortable: false, sWidth: '20%' }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(2)', nRow).html(setStyle(aData[3]));
+                $('td:eq(2)', nRow).css("text-align: center; vertical-align: middle;width: auto;")
+                $('td:eq(3)', nRow).html(displayMessage(aData[4]));
+                $('td:eq(3) .js-tooltip-error', nRow).qtip({
+                    content: {
+                        text: false
+                    },
+                    style: {
+                        classes: 'qtip-students qtip-bootstrap qtip-shadow'
+                    },
+                     hide: {
+                        fixed: true,
+                        delay: 300
+                    },
+                    position: {
+                        at: 'bottom left',
+                        adjust: {
+                            method: 'none shift'
+                         },
+                    },
+                });
+                return nRow;
+            },
+            fnDrawCallback: function (oSettings) {
+                var allSucceeded = false;
+                $divTopBlock.unblock();
+                for (i = 0; i < oSettings.aoData.length; i++) {
+                    var row = oSettings.aoData[0]._aData;
+                    if (row[3] !== 'Succeeded' && row[3] !== 'Deleted' && row[3] !== 'Error') {
+                        allSucceeded = false;
+                    }
+                    else {
+                        allSucceeded = true;
+                    }
+                }
+                if (allSucceeded) {
+                    clearInterval(myInterval);
+                }
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTable_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                if (elSearchInput.length) {
+                    elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+                }
+
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTable_filter').addClass('data-search');
+            }
+        };
+
+
+        $("#dataTable").data("options", options);
+        $(document).on('keydown keyup', function (e) {
+            isShiftDown = e.shiftKey;
+        });
+    });
+
+</script>

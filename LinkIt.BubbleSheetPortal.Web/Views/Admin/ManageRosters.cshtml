@@ -1,0 +1,233 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.UploadRosterViewModel
+
+@{
+    ViewBag.Title = "Manage Rosters";
+}
+
+<article class="container_12">
+    <section class="grid_8" style="display: table;">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>
+                    Roster Status
+                    <a id="uploadRoster" href="javascript:void(0)">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Upload New Roster
+                    </a>
+                </h1>
+                <p style="height: 5px"></p>
+                <table id="dataTable" style="display: table" cellspacing="0" class="datatable table no-margin">
+                    <thead>
+                        <tr>
+                            <th colspan="6">
+                                @if (Model.RequestTypes != null && Model.RequestTypes.Any())
+                                {
+                                    foreach (var item in Model.RequestTypes)
+                                    {
+                                        <input type="checkbox" id="filterStudentFullRefresh_@item.Value" class="statusFilter" value="@item.Text" checked="checked" />
+                                        <label class="statusFilterLabelRosters" for="filterStudentFullRefresh_@item.Value">@item.Text</label>
+                                    }
+                                }
+                            </th>
+                        </tr>
+                        <tr>
+                            <th class="sorting_disabled black-cell" scope="col">
+                                <span class="loading"></span>
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>District Name (District)
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>File Name
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>Type
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>Uploaded
+                            </th>
+                            <th scope="col" class="table-actions sorting_disabled">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    <div id="upload-block"></div>
+</article>
+<script type="text/javascript">
+    $(function () {
+        var options = {
+            sAjaxSource: '@Url.Action("GetRosters")',
+            bAutoWidth: true,
+            iDisplayLength: 10,
+            aaSorting: [[4, "desc"]],
+            aoColumns: [
+                { sType: 'numeric', sName: 'Status', bVisible: true, bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'DistrictName', bSearchable: true, bSortable: true, sWidth: '250px' },
+                { sType: 'string', sName: 'FileName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'RosterType', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'DateUploaded', bSearchable: false, bSortable: true, sWidth: '250px' },
+                { sType: 'numeric', sName: 'IsDeleted', bSearchable: false, bSortable: false, sWidth: '90px' },
+                { sType: 'numeric', sName: 'CanSubmit', bVisible: false, bSearchable: false, bSortable: false },
+                { sType: 'numeric', sName: 'IsSubmitted', bVisible: false, bSearchable: false, bSortable: false },
+                { sType: 'numeric', sName: 'HasBeenMoved', bVisible: false, bSearchable: false, bSortable: false },
+                { sType: 'numeric', sName: 'HasEmailContent', bVisible: false, bSearchable: false, bSortable: false },
+                { sType: 'numeric', sName: 'Id', bVisible: false, bSearchable: false, bSortable: false },
+                { sType: 'numeric', sName: 'Mode', bVisible: false, bSearchable: false, bSortable: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(determineStatusKeyword(aData[0], aData[11], aData[12], aData[7], aData[8]));
+                $('td:eq(4)', nRow).html(displayDateWithFormat(aData[4],true));
+                $('td:eq(5)', nRow).html(addActionIcons(aData[6], aData[7], aData[9], aData[10]));
+                return nRow;
+            }
+        };
+
+        $("#dataTable").data("options", options);
+
+        $('.statusFilter').change(function () {
+            var filters = [];
+            $('.statusFilter:checked').each(function () {
+                filters.push($(this).val().replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"));
+            });
+            var joinedFilters = filters.join("|");
+            ui.dataTable.fnFilter(joinedFilters, 3, true, false);
+        });
+
+        setInterval(function() {
+            ui.dataTable.fnReloadAjax();
+        }, 20000);
+
+    });
+
+    function determineStatusKeyword(statusId, modeId, rosterType, isSubmitted, hasBeenMoved) {
+        if (rosterType == '5' || rosterType == '13' || rosterType == '20'
+            || rosterType == '16' || rosterType == '14'
+            || rosterType == '77'
+            || rosterType == '78'
+            || rosterType == '79') {
+            if (isSubmitted == "True" && hasBeenMoved == "False") {
+                return '<ul class="keywords"><li title="Your roster has passed validation and is ready to be submitted." class="blue-keyword with-tip">Ready for Update</li></ul>';
+            }
+
+            if (hasBeenMoved == "True" && statusId != '4' && statusId != '5') {
+                return '<ul class="keywords"><li title="Your roster has passed validation and has been submitted." class="blue-keyword with-tip">Updating</li></ul>';
+            }
+
+            if (modeId == 1 && statusId == 0) {
+                return '<ul class="keywords"><li title="Your roster has been uploaded and is currently being validated." class="blue-keyword with-tip">Validating...</li></ul>';
+            }
+            if (modeId == 1 && statusId == 1) {
+                return '<ul class="keywords"><li title="Your roster has validation errors." class="yellow-keyword with-tip">Validated w Errors</li></ul>';
+            }
+            if (modeId == 1 && statusId == 2) {
+                return '<ul class="keywords"><li title="Your roster has validation warnings, but can be submitted." class="yellow-keyword with-tip">Validated w Warnings</li></ul>';
+            }
+            if (modeId == 1 && statusId == 3) {
+                return '<ul class="keywords"><li title="Your roster passed validation." class="green-keyword with-tip">Validated</li></ul>';
+            }
+            if (modeId == 2 && statusId < 4) {
+                return '<ul class="keywords"><li title="Your roster is currently updating." class="blue-keyword with-tip">Updating...</li></ul>';
+            }
+            if (modeId == 2 && statusId == 4) {
+                return '<ul class="keywords"><li title="Your roster completed but had errors." class="yellow-keyword with-tip">Completed w Errors</li></ul>';
+            }
+            if (modeId == 2 && statusId == 5) {
+                return '<ul class="keywords"><li title="Your roster completed successfully." class="green-keyword with-tip">Completed</li></ul>';
+            }
+        }
+
+        if (rosterType == '15' || rosterType == '40') {
+            if (modeId == 2 && statusId < 4) {
+                return '<ul class="keywords"><li title="Your roster is currently updating." class="blue-keyword with-tip">Updating...</li></ul>';
+            }
+            if (modeId == 2 && statusId == 4) {
+                return '<ul class="keywords"><li title="Your roster completed but had errors." class="yellow-keyword with-tip">Completed w Errors</li></ul>';
+            }
+            if (modeId == 2 && statusId == 5) {
+                return '<ul class="keywords"><li title="Your roster completed successfully." class="green-keyword with-tip">Completed</li></ul>';
+            }
+        }
+    }
+
+    function addActionIcons(canSubmit, isSubmitted, hasEmail, requestId) {
+        var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var submitIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/tick-circle.png")';
+        var emailIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/mail.png")';
+
+        var submitString = '', emailString = '';
+        var deleteString = '<a href="javascript:void(0)" title="Delete" requestId="' + requestId + '" class="with-tip deleteRequest"><img src="' + deleteIcon + '" width="16" height="16"></a>';
+
+        if (canSubmit == "True") {
+            submitString = '<a href="javascript:void(0)" title="Submit" requestId="' + requestId + '" class="with-tip submitRequest rosterIcon"><img src="' + submitIcon + '" width="16" height="16"></a>';
+        }
+
+        if(hasEmail == "True") {
+            emailString = '<a href="javascript:void(0)" title="Open Email" requestId="' + requestId + '" class="with-tip openEmail rosterIcon"><img src="' + emailIcon + '" width="16" height="16"></a>';
+        }
+
+        return deleteString + submitString + emailString;
+    }
+
+    $('.deleteRequest').live('click', function () {
+        if (confirm('Are you sure you want to DELETE this roster?')) {
+            var requestId = $(this).attr('requestId');
+            $.get('@Url.Action("DeleteRequest")', { requestId: requestId }, function (result) {
+                if (result.success == true) {
+                    ui.dataTable.fnReloadAjax();
+                } else {
+                    alert(result.message);
+                }
+            });
+        }
+    });
+
+    $('.submitRequest').live('click', function () {
+        if (confirm('Are you sure you want to SUBMIT this roster?')) {
+            var requestId = $(this).attr('requestId');
+            $.get('@Url.Action("SubmitRequest")', { requestId: requestId }, function (result) {
+                if (result.success == true) {
+                    ui.dataTable.fnReloadAjax();
+                } else {
+                    alert(result.message);
+                }
+            });
+        }
+    });
+
+    $('.openEmail').live('click', function() {
+        var requestId = $(this).attr('requestId');
+        $.get('@Url.Action("GetEmailContentForRoster")', { requestId: requestId }, function (response) {
+            if (response != undefined) {
+                $.modal({
+                    content: response,
+                    title: 'Email Content',
+                    maxWidth: 1200,
+                    closeButton: false,
+                    buttons: {
+                        'Close': function (win) { win.closeModal(); }
+                    }
+                });
+            }
+        });
+    });
+
+    $('#uploadRoster').click(function () {
+        $('#upload-block').load('@Url.Action("AddRoster")');
+    });
+</script>

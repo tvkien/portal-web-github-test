@@ -1,0 +1,336 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.ACTReport.ACTReportViewModel
+@{
+    ViewBag.Title = "Specialized Report";
+}
+
+<script src="@Url.Content("~/Scripts/jquery.listSplitter.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/FeLibs/jquery-coolfieldset/js/jquery.coolfieldset.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/moment.min.js")" type="text/javascript"></script>
+
+<style type="text/css">
+    .coolfieldset, .coolfieldset.expanded {
+        border: 1px solid #aaa;
+    }
+
+        .coolfieldset.collapsed {
+            border: 0;
+            border-top: 1px solid #aaa;
+        }
+
+        .coolfieldset legend[name="legendTestName"] {
+            padding-left: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .coolfieldset legend[name="legendTestName"], .coolfieldset.expanded legend[name="legendTestName"] {
+            background: transparent url(/Content/themes/base/images/expanded.gif) no-repeat center left;
+            background-size: 10px 10px;
+        }
+
+        .coolfieldset.collapsed legend[name="legendTestName"] {
+            background: transparent url(/Content/themes/base/images/collapsed.gif) no-repeat center left;
+            background-size: 10px 10px;
+        }
+</style>
+
+<article class="container_12">
+    <section class="grid_12">
+        <div id="ACTPageContent" class="block-border">
+
+            @using (Html.BeginForm("Index", "ACTReport", FormMethod.Post, new { id = "actReportForm", @class = "block-content form bubbleSheetSelector" }))
+            {
+                <h1>Specialized Report                    
+                </h1>
+                
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+
+                <fieldset class="grey-bg">
+                    <legend>Select Report</legend>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <label>Report</label>
+                                <select id="reportType">
+                                    <option value="-1">Select Report</option>
+                                    @foreach (var report in Model.ReportTypes)
+                                    {
+                                        <option value="@report.Value">@report.Text</option>
+                                    }
+                                </select>
+                            </p>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div id="actStudentReportDiv" style="display: none">
+                    @*@Html.Partial("_StudentReportTab")*@
+                </div>
+                
+                <div id="actSummaryReportDiv" style="display: none">
+                    @*@Html.Partial("_SummaryReportTab")*@
+                </div>
+                
+                <div id="satStudentReportDiv" style="display: none">
+                    @*@Html.Partial("_SATStudentReportTab")*@
+                </div>
+                
+                <div id="satSummaryReportDiv" style="display: none">
+                    @*@Html.Partial("_SATSummaryReportTab")*@
+                </div>
+            }
+        </div>
+    </section>
+</article>
+
+<div id="specializedReportDownloadDiv"></div>
+
+<input type="hidden" id="testType" value="" />
+
+<div id="popupConfirm111" style="display: none;">
+    <section style='z-index: 2004'>
+        <div class='block-border' style='z-index: 2004'>
+            <div class='block-content' style='z-index: 1004'>
+                <h1>Create PDF</h1>
+                <p style='z-index: 1004; text-align: center'>
+                    Successfully created PDF.
+                </p>
+                <br />
+                <p style='z-index: 2004; text-align: center'><a id='aGeneratePDFSuccess' style='z-index: 2004; text-align: center' href='www.google.com' target='_blank' class='LinkitStypeButton big-button'>OK </a></p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div id="popupConfirmSAT" style="display: none;">
+    <section style='z-index: 2004'>
+        <div class='block-border' style='z-index: 2004'>
+            <div class='block-content' style='z-index: 1004'>
+                <h1>Create PDF</h1>
+                <p style='z-index: 1004; text-align: center'>
+                    Successfully created PDF.
+                </p>
+                <br />
+                <p style='z-index: 2004; text-align: center'><a id='aGeneratePDFSuccessSAT' style='z-index: 2004; text-align: center' href='www.google.com' target='_blank' class='LinkitStypeButton big-button'>OK </a></p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    function loadReportForm(url, containerElement) {
+        var data = {
+            IsAdmin: @Model.IsAdmin.ToString().ToLower(),
+            CanSelectTeachers: @Model.CanSelectTeachers.ToString().ToLower(),
+            IsSchoolAdmin: @Model.IsSchoolAdmin.ToString().ToLower(),
+            IsPublisher: @Model.IsPublisher.ToString().ToLower(),
+            IncludeStateInformation: @Model.IncludeStateInformation.ToString().ToLower()
+            };
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data
+        })
+        .done(function(response) {
+            containerElement.html(response);
+            containerElement.show();
+
+            if ($('#reportType').val() == 'ACTStudentReport' 
+                    || $('#reportType').val() == 'SATStudentReport'
+                    || $('#reportType').val() == 'NewACTStudentReport'
+                || $('#reportType').val() == 'NewSATStudentReport'
+                || $('#reportType').val() == 'ACTStudentReportNewTemplate'
+                || $('#reportType').val() == 'SATStudentReportNewTemplate') {
+                if($('#fsReportContentOption').length){
+                    $('#fsReportContentOption').show();
+                }
+            } else {
+                if($('#fsReportContentOption').length){
+                    $('#fsReportContentOption').hide();
+                }
+            }
+
+            if ($('#reportType').val() == 'KnowsysSATStudentReport') {
+                if($('#ksReportContentOption').length){
+                    $('#ksReportContentOption').show();
+                }
+            } else {
+                if($('#ksReportContentOption').length){
+                    $('#ksReportContentOption').hide();
+                }
+            }
+        });
+    }
+
+    function loadDateRangeReportDownload(url) {        
+        $.ajax({
+            type: "POST",
+            url: url
+            //,
+            //data: data
+        })
+        .done(function(response) {
+            $('#specializedReportDownloadDiv').html('');
+            $('#specializedReportDownloadDiv').show();
+            $('#specializedReportDownloadDiv').html(response);           
+        });
+    }
+
+    function getVirtualTestSubTypeId() {
+        if ($('#reportType').val() == 'ACTStudentReport' 
+            || $('#reportType').val() == 'ACTSummaryReport'
+            || $('#reportType').val() == 'KnowsysStudentReport') {
+            return '2';
+        } else if ($('#reportType').val() == 'SATStudentReport' 
+            || $('#reportType').val() == 'SATSummaryReport'
+            || $('#reportType').val() == 'KnowsysSATStudentReport') {
+            return '3';
+        }else if ($('#reportType').val() == 'NewACTSummaryReport') {
+            return '2;6';
+        }else if ($('#reportType').val() == 'NewSATStudentReport' 
+            || $('#reportType').val() == 'NewSATSummaryReport') {
+            return '7';
+        }else if ($('#reportType').val() == 'NewACTStudentReport' ) {
+            return '2;6';
+        }
+
+        return 0;
+    }
+
+    function clearForm(containerElement) {
+        containerElement.hide();
+        containerElement.empty();
+    }
+    $('#reportType').change(function () {
+        if ($('#reportType').val() == 'ACTStudentReport' || $('#reportType').val() == 'KnowsysStudentReport') {
+            loadReportForm('@Url.Action("LoadACTStudentReportTab")', $('#actStudentReportDiv'));
+            clearForm($('#actSummaryReportDiv'));
+            clearForm($('#satStudentReportDiv'));
+            clearForm($('#satSummaryReportDiv'));
+            clearForm($('#specializedReportDownloadDiv'));
+        }else if ($('#reportType').val() == 'NewACTStudentReport') {
+            clearForm($('#actSummaryReportDiv'));
+            clearForm($('#satStudentReportDiv'));
+            clearForm($('#satSummaryReportDiv'));
+            loadReportForm('@Url.Action("LoadNewACTStudentReportTab")', $('#actStudentReportDiv'));
+            loadDateRangeReportDownload('@Url.Action("LoadSpecializedReportDownload", "PopulateReporting")');
+        }else if ($('#reportType').val() == 'ACTSummaryReport' || $('#reportType').val() == 'NewACTSummaryReport') {
+            clearForm($('#actStudentReportDiv'));
+            clearForm($('#satStudentReportDiv'));
+            clearForm($('#satSummaryReportDiv'));
+            clearForm($('#specializedReportDownloadDiv'));
+            loadReportForm('@Url.Action("LoadACTSummaryReportTab")', $('#actSummaryReportDiv'));
+        } else if ($('#reportType').val() == 'SATStudentReport' || $('#reportType').val() == 'KnowsysSATStudentReport') {
+            clearForm($('#actStudentReportDiv'));
+            clearForm($('#actSummaryReportDiv'));
+            clearForm($('#satSummaryReportDiv'));
+            clearForm($('#specializedReportDownloadDiv'));
+            loadReportForm('@Url.Action("LoadSATStudentReportTab")', $('#satStudentReportDiv'));
+        } else if ($('#reportType').val() == 'NewSATStudentReport') {
+            clearForm($('#actStudentReportDiv'));
+            clearForm($('#actSummaryReportDiv'));
+            clearForm($('#satSummaryReportDiv'));
+            loadReportForm('@Url.Action("LoadNewSATStudentReportTab")', $('#satStudentReportDiv'));
+            loadDateRangeReportDownload('@Url.Action("LoadSpecializedReportDownload", "PopulateReporting")');
+        } else if ($('#reportType').val() == 'SATSummaryReport' || $('#reportType').val() == 'NewSATSummaryReport') {
+            clearForm($('#actStudentReportDiv'));
+            clearForm($('#actSummaryReportDiv'));
+            clearForm($('#satStudentReportDiv'));
+            clearForm($('#specializedReportDownloadDiv'));
+            loadReportForm('@Url.Action("LoadSATSummaryReportTab")', $('#satSummaryReportDiv'));
+        } else {
+            clearForm($('#actStudentReportDiv'));
+            clearForm($('#actSummaryReportDiv'));
+            clearForm($('#satStudentReportDiv'));
+            clearForm($('#satSummaryReportDiv'));
+            clearForm($('#specializedReportDownloadDiv'));
+        }
+    });
+
+$('.generate-student-list li').live({
+    mouseenter: function () {
+        if ($(this).attr('isselected') == "yes") {
+            $(this).css('background-color', "#75B6E1");
+        }
+        else {
+            $(this).css('background-color', "#e0e0e0");
+        }
+    },
+    mouseleave: function () {
+        if ($(this).attr('isselected') == "yes") {
+            $(this).css('background-color', "#82CAFA");
+        }
+        else {
+            $(this).css('background-color', "#f2f2f2");
+        }
+    },
+    click: function () {
+        if ($(this).attr('isselected') == "yes") {
+            $(this).attr('isSelected', "no");
+            $(this).css('background-color', "#e0e0e0");
+        }
+        else {
+            $(this).attr('isSelected', "yes");
+            $(this).css('background-color', "#75B6E1");
+        }
+    }
+});
+</script>
+
+<style type="text/css">
+    .positionAdd {
+        position: relative;
+        right: -6px;
+        top: 26px;
+    }
+
+    button {
+        margin-left: 30px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        /*top: 100px !important;*/
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    /*.ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }*/
+</style>

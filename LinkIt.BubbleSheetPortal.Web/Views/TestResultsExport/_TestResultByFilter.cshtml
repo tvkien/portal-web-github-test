@@ -1,0 +1,477 @@
+@using System.Linq
+@using LinkIt.BubbleSheetPortal.Models.Enum
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.DisplayTestResultFilterViewModel
+<article class="container_12" style="margin-top: 2em">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1 id="btnShowTestResultExported" class="off">
+                    Show Exported:
+                    <span id="spanShowExported">OFF</span>
+                </h1>
+
+                <button id="btnSubmitSelected" onclick="SubmitSelected(null);" class="off">
+                    Mark Selected Results for Export
+
+                </button>
+                <div class="no-margin last-child" id="test-result-export">
+                    <table id="dataTable" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width: 13px; text-align: center;">
+                                    <span>Select</span>
+                                    <input type="checkbox" id="chkAllTestResult" />
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                                    Test
+                                </th>
+                                <th scope="col" style="min-width: 100px;">
+                                    <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                                    Result Date
+                                </th>
+                                <th>
+                                    <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                                    School
+                                </th>
+                                <th scope="col" style="min-width: 100px;">
+                                    <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                                    Teacher
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                                    Class
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                                    Student
+                                </th>
+                                <th scope="col" style="display: none"></th>
+                            </tr>
+
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<div id="confirmModal" class="modal">
+    <div class="popup-alert">
+        <div class="popup-alert-border">
+            <div class="popup-alert-content">
+                <table class="popup-alert-table">
+                    <tbody>
+                        <tr>
+                            <td>
+                                <p>Are you sure you want to mark the <span id="countTestResultSelected">1</span> test result(s) for export?</p>
+                                @if (((int[])ViewBag.GradebookSIS).Contains((int)GradebookSIS.Realtime))
+                                {
+                                    <p>If so, please select where test result should be saved to:</p>
+                                }
+                            </td>
+                        </tr>
+                        @if (((int[])ViewBag.GradebookSIS).Contains((int)GradebookSIS.Realtime))
+                        {
+                            <tr>
+                                <td>
+                                    <input type="checkbox" value="0" name="testExtract_gradebook" id="testExtract_gradebook" class="gradebook_option" /> <label for="testExtract_gradebook">Gradebook</label>
+                                    <input type="checkbox" value="0" name="testExtract_studentRecord" id="testExtract_studentRecord" class="gradebook_option" /> <label for="testExtract_studentRecord">Student Record</label>
+                                </td>
+                            </tr>
+                        }
+                        else if (((int[])ViewBag.GradebookSIS).Contains((int)GradebookSIS.CleverApi))
+                        {
+                            <tr style="display:none">
+                                <td>
+                                    <input type="checkbox" value="0" name="testExtract_cleverApi" id="testExtract_cleverApi" checked /> <label for="testExtract_cleverApi">Clever Api</label>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr style="display:none">
+                                <td>
+                                    <input type="checkbox" value="0" name="testExtract_gradebook" id="testExtract_gradebook" checked /> <label for="testExtract_gradebook">Gradebook</label>
+                                </td>
+                            </tr>
+                        }
+                        <tr>
+                            <td>
+                                <input type="radio" name="testExtract_IsExportRawScore" id="testExtract_IsExportPercent" value="false" class="gradebook_option" checked> <label for="testExtract_studentRecord" style="padding-right: 21px;">Percent</label>
+                                <input type="radio" name="testExtract_IsExportRawScore" id="testExtract_IsExportRawScore" value="true" class="gradebook_option"> <label for="testExtract_gradebook" style="padding-right: 69px;">Raw</label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="popup-alert-controls">
+                                    <button id="confirmRetag">Yes</button>
+                                    <button class="form_close" name="form_close">No</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<style type="text/css">
+    #dataTable_wrapper {
+        margin-bottom: -19px !important;
+        margin-top: 2.5em;
+    }
+
+    #btnSubmitSelected {
+        margin-left: 22%;
+        /* border-color: gainsboro; */
+        position: absolute;
+        top: -8px;
+        font-family: "Trebuchet MS", "Lucida Sans Unicode", "Lucida Sans", Arial, Helvetica, sans-serif;
+        font-size: 1.5em;
+        padding: 3px;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .dialog {
+        position: fixed !important;
+    }
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .plButton {
+        text-align: center;
+        position: relative;
+        top: 47px;
+    }
+
+    #btnOk {
+        width: 79px;
+        margin-right: 10px;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        position: absolute;
+        right: 7px;
+        top: -8px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close span {
+        display: block;
+        left: -360px;
+        margin: 1px;
+        position: absolute;
+    }
+
+    #btnShowTestResultExported {
+        cursor: pointer;
+    }
+
+    #test-result-export .block-controls select {
+        width: 65px;
+    }
+
+    .tableRow td {
+        background: #c3c3c3 !important;
+    }
+
+    /* The Modal (background) */
+    .modal {
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1; /* Sit on top */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgb(0,0,0); /* Fallback color */
+        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        z-index: 9999;
+    }
+
+    .popup-alert {
+        width: 480px;
+        position: fixed;
+        top: 10%;
+        left: 50%;
+        margin-left: -240px;
+    }
+    /* The Close Button */
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+</style>
+<script type="text/javascript">
+    var showExportedTestResult = false;
+    var isExported = 'False';
+
+    $(function () {
+        $(document).ready(function () {
+            setConfirmBtnStatus();
+            searchDelay()
+        });
+
+        $(".form_close").on("click", function () {
+            $("#confirmModal").hide();
+        });
+
+        $(".gradebook_option").on("click", function () {
+            setConfirmBtnStatus();
+        });
+
+        $("#confirmRetag").on("click", function () {
+            var testReusltIDs = GetTestResultSelected();
+            confirmRetagTestResult({
+                testResultIDs: testReusltIDs,
+                isGradebook: $("#testExtract_gradebook:checked").length > 0,
+                isStudentRecord: $("#testExtract_studentRecord:checked").length > 0,
+                isCleverApi: $("#testExtract_cleverApi:checked").length > 0,
+                isExportRawScore: $('input[name="testExtract_IsExportRawScore"]:checked').val() === "true"
+            });
+        });
+    $('#btnSubmitSelected').on('click', function () {
+        $('#countTestResultSelected').text($('input[name="chkTestResult"]:checked').length);
+    });
+        function setConfirmBtnStatus() {
+            var checked = $("#testExtract_gradebook:checked").length;
+            checked += $("#testExtract_studentRecord:checked").length;
+            checked += $("#testExtract_cleverApi:checked").length;
+
+            if (checked > 0) {
+                $("#confirmRetag").enableBt();
+            } else {
+                $("#confirmRetag").disableBt();
+            }
+        }
+
+        btnShowTestResultExportedClick();
+
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetTestResultRetaggedToView")',//'?districtId=@Model.DistrictId&virtualTestId=@Model.VirtualTestId&classId=@Model.ClassId&studentId=@Model.StudentName&schoolId=@Model.SchoolId&teacherId=@Model.TeacherName&termId=@Model.TermrId'&timePeriod=@Model.TimePeriod',,
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "districtId", value: '@Model.DistrictId' },
+                    { name: "virtualTestId", value: '@Model.VirtualTestId' },
+                    { name: "classId", value: '@Model.ClassId' },
+                    { name: "studentName", value: '@Model.StudentName' },
+                    { name: "schoolId", value: '@Model.SchoolId' },
+                    { name: "teacherName", value: '@Model.TeacherName' },
+                    { name: "termId", value: '@Model.TermrId' },
+                    { name: "timePeriod", value: '@Model.TimePeriod' },
+                    { name: "isShowExported", value: isExported }
+                );
+            },
+            bAutoWidth: false,
+            iDisplayLength: 50,
+            aLengthMenu: [50, 100, 500, 1000],
+            aaSorting: [[1, "asc"]],
+            oLanguage: { "sEmptyTable": "Match Not Found" },
+            aoColumns: [
+                { sType: 'int', sName: 'ID', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'TestNameCustom', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'ResultDate', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'SchoolName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'TeacherCustom', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'ClassNameCustom', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'StudentCustom', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'IsExported', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBox(aData[0], aData[7]));
+                if (aData[7] === 'True') {
+                    $('td:eq(0)', nRow).parent().addClass('tableRow');
+                }
+                var row = displayDateWithFormatJsonDate(aData[2],"");
+                $('td:eq(2)', nRow).text(row);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+
+                ShowBlock($('#dataTable'), "Loading");
+                $("#btnSubmitSelected").attr("disabled", true)
+                return true;
+            },
+            fnDrawCallback: function () {
+
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+                ReloadTestResult();
+            }
+        };
+
+        function setCheckBox(testResultId, isExported) {
+            var checkboxString = '';
+            checkboxString = '<div style="text-align: center;">' +
+            '<input style="text-align: center;" type="checkbox" name="chkTestResult" value="' + testResultId + '" /> </div>';
+            return checkboxString;
+        }
+
+        $("#dataTable").data("options", options);
+        initializeDataTable($("#dataTable"));
+    });
+
+
+    $('#chkAllTestResult').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkTestResult"][type=checkbox]').attr('checked', 'checked');
+            var testResultSelected = GetTestResultSelected();
+            if (testResultSelected.length > 0) {
+                setDisabledButtons(false);
+            }
+        } else {
+            $('INPUT[name="chkTestResult"][type=checkbox]').removeAttr('checked');
+            setDisabledButtons(true);
+        }
+    });
+
+    function setDisabledButtons(isDisabled) {
+        if (isDisabled) {
+            $('#btnSubmitSelected').disableBt();
+        } else {
+            $('#btnSubmitSelected').enableBt();
+        }
+    }
+
+    $('INPUT[name="chkTestResult"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkTestResult"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllTestResult').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllTestResult').attr('checked', 'checked');
+            }
+            setDisabledButtons(false);
+        } else {
+            $('#chkAllTestResult').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkTestResult"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                setDisabledButtons(false);
+            } else {
+                setDisabledButtons(true);
+            }
+        }
+    });
+     function searchDelay() {
+    var inputFilter = $("#dataTable_filter input[type='text']");
+    var dataTable = $("#dataTable");
+    var delay = null;
+
+    inputFilter.off('keyup.DT input.DT');
+
+    inputFilter.on("keyup", function () {
+        var search = inputFilter.val();
+        clearTimeout(delay);
+        delay = setTimeout(function () {
+            if (search != null) {
+                dataTable.dataTable().fnFilter(search);
+            }
+        }, 1000);
+    });
+    }
+
+    function GetTestResultSelected() {
+        var testResultIds = '';
+        $('INPUT[name="chkTestResult"][type=checkbox]:checked').each(function (i, e) {
+            testResultIds += $(e).val() + ',';
+        });
+        return testResultIds.substr(0, testResultIds.length - 1);
+    }
+
+    function SubmitSelected(e) {
+        $("#confirmModal").show();
+    }
+
+    function ReloadTestResult() {
+        $('#chkAllTestResult').attr('checked', false);
+        setDisabledButtons(true);
+    }
+
+    function SetupFilters() {
+        $("#spanShowExported").html(showExportedTestResult ? "ON" : "OFF");
+        SetupFiltersUpdate();
+    }
+
+    function btnShowTestResultExportedClick() {
+        $('#btnShowTestResultExported').unbind('click');
+        $('#btnShowTestResultExported').click(function () {
+            ShowBlock($('#dataTable'), "Loading");
+            showExportedTestResult = !showExportedTestResult;
+            SetupFilters();
+        });
+    }
+
+    function SetupFiltersUpdate() {
+        if (showExportedTestResult === false) {
+            isExported = 'False';
+        } else {
+            isExported = 'True';
+        }
+        var dataTable = $('#dataTable').dataTable();
+        var settings = dataTable.fnSettings();
+        fnResetAllFilters(settings);
+        FilterColumn(isExported, 6, settings);
+        dataTable.fnDraw();
+    }
+
+    function FilterColumn(searchTerm, columnIndex, settings) {
+        settings.aoPreSearchCols[columnIndex].sSearch = searchTerm.trim();
+        settings.aoPreSearchCols[columnIndex].bRegex = false;
+        settings.aoPreSearchCols[columnIndex].bSmart = true;
+    }
+
+    function fnResetAllFilters(oSettings) {
+        for (var iCol = 0; iCol < oSettings.aoPreSearchCols.length; iCol++) {
+            oSettings.aoPreSearchCols[iCol].sSearch = '';
+        }
+    }
+
+</script>

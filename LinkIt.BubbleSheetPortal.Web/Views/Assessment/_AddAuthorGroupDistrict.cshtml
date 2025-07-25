@@ -1,0 +1,192 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.AuthorGroup.AddAuthorGroupUserSchoolDistrictViewModel
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog-draggable.css")" rel="stylesheet" type="text/css" />
+<article class="container_12" style="margin-top: 2px; width: 700px;">
+    <section class="grid_9">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Add @LabelHelper.DistrictLabel to Author Group</h1>
+                <div id="generateContent">
+                    <div class="block-content form bubbleSheetSelector">
+                        <ul style="display: none" id="error-messages" class="message error"></ul>
+                        @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                        {
+                            <fieldset id="publisherContent" class="grey-bg">
+                                <div class="columns">
+                                    <div class="colx2-left">
+                                        <p>
+                                            <label>State</label>
+                                            <select id="selectStatePopup"></select>
+                                        </p>
+                                    </div>
+                                    <div class="colx2-right">
+                                    </div>
+                                </div>
+                            </fieldset>
+                        }
+                        <div class="clear"></div>
+                    </div>
+                </div>
+                <div class="clear-25"></div>
+                <div id="reviewList">
+                    <div class="block-content form">
+                        <h1>Select @LabelHelper.DistrictLabel To Add
+                        </h1>
+                        <div id="studentNotInClassNotifications"></div>
+                        <p style="height: 5px"></p>
+                        <div class="no-margin last-child">
+                            <table id="dataTableAddDistrict" class="datatable table no-margin" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" style="width: 15px"></th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Name
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div style="clear: both"></div>
+                <div class="no-margin last-child" style="padding-left: 17px; padding-top: 20px">
+                    <button id="btnCancel" onclick="closeAddAuthorGroupDistrict()" type="button" class="grey classProgramButton">Close</button>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    //declare global variables
+    var stateId = 0;
+
+    $(function () {
+        @if (Model.IsPublisher||Model.IsNetworkAdmin)
+        {
+<text>
+        LoaddataTableAddDistrict();
+        if ('@Model.IsPublisher' === 'True') {
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                populateStates(states);
+            });
+        }
+        if ('@Model.IsNetworkAdmin' === 'True') {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                populateStates(states);
+            });
+        }
+        $('#selectStatePopup').change(function () {
+            $('#selectDistrictPopup').empty();
+            $('#selectSchoolPopup').empty();
+            if ($('#selectStatePopup').val() != 'select') {
+                assignStateDistrictSchool($('#selectStatePopup').val());
+                $("#dataTableAddDistrict").dataTable().fnReloadAjax(getAjaxSourceForAuthorGroupDistrict());
+            }
+        });
+        </text>
+        }
+        @if (Model.IsDistrictAdmin)
+        {
+<text>
+        stateId = '@Model.StateId';
+        LoaddataTableAddDistrict();
+</text>
+        }
+    });
+
+    function assignStateDistrictSchool(selectedState) {
+        stateId = selectedState;
+    }
+
+    function populateStates(states) {
+        addDefaultOption($('#selectStatePopup'), "State");
+        addSelectListItems($('#selectStatePopup'), states);
+    }
+
+    function LoaddataTableAddDistrict() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceForAuthorGroupDistrict(),
+            fnServerParams: function (aoData) {
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'DistrictId', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'DistrictName', bSearchable: true, bSortable: true }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableAddDistrict'), "Loading");
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityAddDistrict(aData[0]));
+                return nRow;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableAddDistrict').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        $("#dataTableAddDistrict").data("options", options);
+        initializeDataTable($("#dataTableAddDistrict"));
+    }
+
+    function getAjaxSourceForAuthorGroupDistrict() {
+        return '@Url.Action("GetDistrictList")?stateId=' + stateId + '&authorGroupId=@Model.AuthorGroupId';
+    }
+
+    function setIconVisibilityAddDistrict(districtId) {
+        var addIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")';
+        return '<a href="javascript:void(0)" title="Add @LabelHelper.DistrictLabel To Group" districtId="' + districtId + '" authorGroupId="' + '@Model.AuthorGroupId' + '" class="with-tip" onclick="AddDistrictToGroup(this);"><img src="' + addIcon + '" width="16" height="16"></a>';
+    }
+
+    function AddDistrictToGroup(control) {
+        var self = $(control);
+        var districtId = self.attr('districtId');
+        var authorGroupId = self.attr('authorGroupId');
+
+        if (confirm("Do you want to add this @LabelHelper.DistrictLabel to this author group?")) {
+            $.post('@Url.Action("AddDistrictToAuthorGroup")', { districtId: districtId, authorGroupId: authorGroupId }, function (response) {
+                if (response == true) {
+                    ui.dataTableAddDistrict.fnDraw();
+                    LinkIt.success('#studentNotInClassNotifications', '@LabelHelper.DistrictLabel added');
+                } else {
+                    alert('Error. User does not exist.');
+                }
+            });
+
+            self.hide();
+        }
+    }    
+</script>

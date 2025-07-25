@@ -1,0 +1,209 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.Models.ManageTest.AssignAuthorGroupModel
+
+<article id="articleAuthorGroupBanks" class="container_13" style="margin-top: 2px;width:960px;">
+    <section>
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>
+                    Author Groups
+                    <a id="linkSearchAuthorGroups" href="javascript:void(0)" onclick="SearchAuthorGroups();">
+                        <img src="/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png">Assign Author Groups</img>
+                    </a>
+                </h1>
+                <div id="notification" style="padding-bottom: 5px"></div>
+                <p style="width:10px;"></p>
+                <table id="dataTableAuthorGroupBanks" class="datatable table no-margin" width="100%">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="black-cell"><span class="loading"></span></th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Name of Author Group
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Users in the Group
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Schools in the Group
+                            </th>
+                            @if(Model.IsPublisher || Model.IsNetworkAdmin)
+                            {
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.DistrictLabels in the Group
+                                </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <button id="btnCloseUserClick" type="button" class="grey classProgramButton" data-dialog="close" style="margin-top: 30px;margin-bottom: -10px;margin-left: -5px;">Close</button>
+            </div>
+             
+        </div>
+    </section>
+</article>
+<div id='divAssignAuthorGroup'>
+</div>
+<script type="text/javascript">
+
+    var addAuthorGroupBankTasks = [];
+
+    $(function () {
+        BindAuthorGroupBanksToDataTable();
+
+        $('#' + 'btnSearchAuthorGroups').unbind('click').click(function () {
+            SearchAuthorGroups();
+        });
+    });
+
+    function BindAuthorGroupBanksToDataTable() {
+        var options = {
+            bServerSide: true,
+            sServerMethod: "POST",
+            bDestroy: true,
+            bProcessing: false,
+            sAjaxSource: '@Url.Action("GetAuthorGroupBanks", "Assessment")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "BankID", value: '@Model.BankID' }
+                );
+            },
+            iDisplayLength: 10,
+            aoColumns: [
+                { sType: 'integer', sName: 'AuthorGroupId', bSearchable: false, bSortable: false, sWidth: '50px' },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'UserList', bSearchable: true, bSortable: true, sWidth: '180px' },
+                @if(Model.IsPublisher || Model.IsNetworkAdmin)
+                {
+                    <text>
+                    { sType: 'string', sName: 'SchoolList', bSearchable: true, bSortable: true, sWidth: '180px' },
+                    { sType: 'string', sName: 'DistrictList', bSearchable: true, bSortable: true, sWidth: '180px' }
+                    </text>
+                }
+                else
+                {
+                    <text>
+                    { sType: 'string', sName: 'SchoolList', bSearchable: true, bSortable: true, sWidth: '180px' }
+                    </text>
+                }
+            ],
+
+            aaSorting: [[1, 'asc']],
+            fnRowCallback: function (nRow, aData) {
+                var removeAuthorGroup = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+                var removeAuthorGroupString = '<a href="javascript:void(0)" title="Remove Author Group" itembankId="@Model.BankID" authorGroupId="' + aData[0] + '" class="with-tip" onclick="RemoveAuthorGroup(this);"><img src="' + removeAuthorGroup + '" width="16" height="16"></a>';
+                $('td:eq(0)', nRow).html(removeAuthorGroupString);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableAuthorGroupBanks'), 'Loading');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableAuthorGroupBanks').unblock();
+                return true;
+            },
+            fnInitComplete: function () {
+            }
+        };
+
+        $("#dataTableAuthorGroupBanks").data("options", options);
+        initializeDataTable($("#dataTableAuthorGroupBanks"));
+    }
+
+    function SearchAuthorGroups() {
+        $.ajax({
+            url: '@Url.Action("SearchAuthorGroups")',
+            cache: false,
+            data: { BankID: '@Model.BankID' },
+            type: 'post'
+        }).done(function (html) {
+            $('#' + 'articleAuthorGroupBanks').hide();
+            $('#' + 'divAssignAuthorGroup').html(html);
+        });
+    }
+
+    function RemoveAuthorGroup(control) {
+        var self = $(control);
+        var authorGroupId = self.attr('authorGroupId');
+        self.hideTip();
+
+        var options = {Message: "Do you want to remove author group?"};
+        ConfirmSubmitTest(options, function () {
+            ShowBlock($('#dataTableAuthorGroupBanks'), 'Loading');
+            $.ajax({
+                url: '@Url.Action("RemoveAuthorGroupBank", "ManageTest")',
+                type: 'post',
+                data: { id: '@Model.BankID', authorGroupID: authorGroupId }
+            }).done(function () {
+                LinkIt.success('#notification', '@LabelHelper.DistrictLabel is removed');
+                $('#dataTableAuthorGroupBanks').dataTable().fnDraw();
+            });
+        }, null);
+    }
+    
+    function ConfirmSubmitTest(options, yesCallBack, noCallBack) {
+        var n = new Date().getTime();
+        var yesButtonID = 'ConfirmYesButton_' + n;
+        var noButtonID = 'ConfirmNoButton_' + n;
+        var yesButtonHtml = '<button id="' + yesButtonID + '" style="width:63px;">Yes</button>';
+        var noButtonHtml = '<button id="' + noButtonID + '" style="width:63px;">No</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + options.Message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + yesButtonHtml + '&nbsp;&nbsp;' + noButtonHtml + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "confirmSubmitDialog")
+            .appendTo("body")
+            .dialog({
+                open: function () {
+                    //move the overylay to cover the author group list and under the confirm dialog
+                    var zindexAuthorGroupListDialog = $('#AssignAuthorGroups').parent().css('z-index');
+                    $('.ui-widget-overlay').css('z-index', parseInt(zindexAuthorGroupListDialog) + 1);
+                    $('#confirmSubmitDialog').parent().css('z-index', parseInt(zindexAuthorGroupListDialog) + 2);
+                },
+                close: function () {
+                    var zindexAuthorGroupListDialog = $('#AssignAuthorGroups').parent().css('z-index');
+                    $('.ui-widget-overlay').css('z-index', parseInt(zindexAuthorGroupListDialog) - 1);
+                     $(this).remove();
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        $('#' + yesButtonID).click(function () {
+            $("#confirmSubmitDialog").dialog("close");
+            if (typeof yesCallBack === "function") yesCallBack(options);
+        });
+
+        $('#' + noButtonID).click(function () {
+            $("#confirmSubmitDialog").dialog("close");
+            if (typeof noCallBack === "function") noCallBack(options);
+        });
+    }
+    $('#btnCloseUserClick').live("click", function (e) {
+        //Reload property
+        LoadBankProperty(@Model.BankID);//defined in _TestBanks.cshtml
+        $(".dialog").dialog("close");
+    });
+</script>

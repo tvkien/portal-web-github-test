@@ -1,0 +1,556 @@
+﻿<style type="text/css">
+    .ui-widget-header {
+        top: 70px;
+        right:0px !important
+    }
+    #categories-dropdown {
+        display: -webkit-box;
+        display: -ms-flexbox;
+        display: flex;
+    }
+    #categories-dropdown label {
+        margin-right: 0.5rem;
+    }
+    #categories-dropdown select {
+        width: 265px !important;
+    }
+    .is-invalid .qtiItemSelector {
+        border-color: red !important;
+    }
+    .error-message {
+        color: red;
+        display: none;
+        font-size: 85%;
+        margin-top: 0.25rem;
+    }
+    .is-invalid .error-message {
+        display: block;
+    }
+    .d-none {
+        display: none !important;
+    }
+</style>
+
+<article id="divListMasterTagMany" class="container_12" style="width: 100%">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form">
+                <div id="divPassageFilter" class="bubbleSheetSelector" style="margin-top:0px">
+                    <h1>Add Tag</h1>
+                    <p style="height: 5px">
+                        <div id="divLinkitDefaultTagNotifications"></div>
+                    </p>
+                    <fieldset style=" margin-top: -20px;">
+                        <div class="columns">
+                            <div class="colx2-left">
+                                <p>
+                                    <input id="radioLinkitDefaultCategories" type="radio" name="VirtualQuestionItemTagCategory" checked="checked" class="VirtualQuestionItemTagCategory"/>
+                                    <label for="radioLinkitDefaultCategories">Linkit Default Category</label>
+                                    <input id="radioDistrictCategories" type="radio" name="VirtualQuestionItemTagCategory" class="VirtualQuestionItemTagCategory"/>
+                                    <label for="radioDistrictCategories">@LabelHelper.DistrictLabel Category</label>
+                                </p>
+                            </div>
+                            <div class="colx2-right">
+                                <div id="categories-dropdown" data-bind="
+                                        css: {
+                                            'd-none': !isShowSelectCategory()
+                                        }
+                                    ">
+                                    <label>Rubric Category</label>
+                                    <div data-bind="
+                                        css: {
+                                            'is-invalid': isInvalidCategory
+                                        }
+                                    ">
+                                        <select
+                                            id="selectCategories"
+                                            class="qtiItemSelector"
+                                            data-bind="
+                                                options: rubricQuestionCategories,
+                                                optionsText: 'Name',
+                                                optionsValue: 'Id',
+                                                value: selectedCategoryId
+                                            "
+                                            style="width: 350px"
+                                        ></select>
+                                        <p class="error-message">Please select at least one category from the category list to assign tag.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <!-- Render  _TagLinkitDefault.cshtml here -->
+                    <div id="divLinkitDefaultTag">
+                        
+                    </div>
+                    <div id="divDistrictTag">
+                        <fieldset style="margin-bottom: 0px">
+                            <div class="columns" id="divDistrictFilter">
+                                @if (ViewBag.IsPublisher || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+                                {
+                                    <div class="colx2-left">
+                                        <p>
+                                            <label>State</label>
+                                            <select id="selectState"  style="min-width: 350px; max-width: 350px"></select>
+                                        </p>
+                                        <p>
+                                            <label>Tag Category</label>
+                                            <select id="selectCategory" style="min-width: 350px; max-width: 350px"></select>
+                                        </p>
+                                   
+                           
+                                    </div>
+                                    <div class="colx2-right">
+                                        <p>
+                                            <label>@LabelHelper.DistrictLabel</label>
+                                            <select id="selectDistrict" style="min-width: 350px; max-width: 350px" onchange="loadDistrictCategory()"></select>
+                                        </p>
+                                        <p>
+                                            <label>Tag/Description</label>
+                                            <input type="text" id="txtTextToSearch" style="min-width: 350px; max-width: 350px"/>
+                                        </p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="colx2-left">
+                                        <p>
+                                            <label>Category</label>
+                                            <select id="selectCategory" style="min-width: 350px; max-width: 350px"></select>
+                                        </p>
+                                    </div>
+                                    <div class="colx2-right">
+                                        <p>
+                                            <label>Tag/Description</label>
+                                            <input type="text" id="txtTextToSearch" style="min-width: 350px; max-width: 350px"/>
+                                        </p>
+                                    </div>
+                                }
+                            </div>
+                        </fieldset>
+                        <br />
+                        <button id="setFilterTag" class="float-right" type="button">Apply Filters</button>
+                        <button id="clearFilterTag" class="float-right grey" style="margin-right: 5px" type="button">Clear Filters</button>
+                        <div class="clear"></div>
+                        <div class="clear-25"></div>
+                        <div style="float: left; width: 100%">
+                            <div id="divTagAvailable" style="float: left; width: 48%;padding-right: 2px;">
+                            </div>
+                            <div id="divTagAssigned" style="float: left;width: 50%;padding-left: 2px">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="clear: both"></div>
+                    <div class="no-margin last-child" style="padding-left: 17px; margin-top: -25px">
+                        <button id="btnCloseUserClick" type="button" class="grey classProgramButton" data-dialog="close">Close</button>
+                    </div>
+                    
+                </div>
+                
+            </div>
+
+        </div>
+    </section>
+</article>
+
+<input type="hidden" id="MutualTopicIdString"/>
+<input type="hidden" id="MutualSkillIdString"/>
+<input type="hidden" id="MutualOtherIdString"/>
+<input type="hidden" id="MutualItemTagIdString"/>
+
+<script type="text/javascript">
+    ko.bindingHandlers.select2 = {
+        init: function (element, valueAccessor, allBindingsAccessor) {
+            var obj = valueAccessor(),
+                allBindings = allBindingsAccessor(),
+                lookupKey = allBindings.lookupKey;
+
+            $(element).select2(obj);
+            if (lookupKey) {
+                var value = ko.utils.unwrapObservable(allBindings.value);
+                $(element).select2('data', ko.utils.arrayFirst(obj.data.results, function (item) {
+                    return item[lookupKey] === value;
+                }));
+            }
+
+            ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+                $(element).select2('destroy');
+            });
+        },
+        update: function (element) {
+            $(element).trigger('change');
+        }
+    };
+
+    var vm;
+    var viewModel = function() {
+        var self = this;
+        self.selectedTagCategoryId = ko.observable(null);
+        self.rubricQuestions = ko.observableArray(null);
+        self.rubricQuestionCategories = ko.observableArray(null);
+        self.selectedCategoryId = ko.observable();
+        self.isRubricBasedQuestion = ko.computed(function() {
+            return !IsNullOrEmpty(self.rubricQuestionCategories());
+        });
+        self.isMultipleQuestion = ko.observable('@ViewBag.IsMultipleQuestion' === 'True' ? true : false);
+        self.isShowSelectCategory = ko.computed(function() {
+            return !self.isMultipleQuestion() && self.isRubricBasedQuestion();
+        });
+        self.isInvalidCategory = ko.observable(false);
+        self.isReadyToAssign = ko.computed(function() {
+            var hasCategories = !IsNullOrEmpty(self.selectedCategoryId());
+            var isMultipleQuestion = self.isMultipleQuestion();
+            var isRubricBasedQuestion = self.isRubricBasedQuestion();
+
+            return isMultipleQuestion
+                ? true
+                : (!isRubricBasedQuestion || (isRubricBasedQuestion && hasCategories))
+                    ? true
+                    : false;
+        });
+        self.questionCategoryTags = ko.computed(function() {
+            var copyedRubricQuestions = JSON.parse(JSON.stringify(self.rubricQuestions()));
+            var selectedCategoryId = self.selectedCategoryId() ? self.selectedCategoryId().toString() : '';
+            var allCategoryIds = ko.utils.arrayMap(self.rubricQuestionCategories(), function(category) {
+                return category.Id;
+            });
+            var selectedCategoryIds = selectedCategoryId;
+
+            return !self.isRubricBasedQuestion()
+                ? null
+                : self.isMultipleQuestion()
+                    ? copyedRubricQuestions
+                    : ko.utils.arrayMap(copyedRubricQuestions, function(question) {
+                        return {
+                            VirtualQuestionID:  question.VirtualQuestionID,
+                            RubricQuestionCategoryIDs: selectedCategoryIds
+                        }
+                    });
+        });
+
+        self.selectedCategoryId.subscribe(function(newValue) {
+            var isDefaultCategory = $('#radioLinkitDefaultCategories').is(':checked');
+            var isDistrictCategory = $('#radioDistrictCategories').is(':checked');
+
+            if (isDefaultCategory) {
+                if (!IsNullOrEmpty(ui) && !IsNullOrEmpty(ui.dataTableTopic)) {
+                    ui.dataTableTopic.fnDraw();
+                }
+                if (!IsNullOrEmpty(ui) && !IsNullOrEmpty(ui.dataTableSkill)) {
+                    ui.dataTableSkill.fnDraw();
+                }
+                if (!IsNullOrEmpty(ui) && !IsNullOrEmpty(ui.dataTableOther)) {
+                    ui.dataTableOther.fnDraw();
+                }
+            }
+            
+            if (isDistrictCategory) {
+                if (!IsNullOrEmpty(ui) && !IsNullOrEmpty(ui.dataTableAssignedDistrictTag)) {
+                    ui.dataTableAssignedDistrictTag.fnReloadAjax(getAjaxSourceForAssignedDistrictTag());
+                }
+            }
+
+            if (!IsNullOrEmpty(newValue)) {
+                self.isInvalidCategory(false);
+            }
+        });
+
+        getCategories(function(questions, categories) {
+            self.rubricQuestions(questions);
+            self.rubricQuestionCategories(categories);
+        });
+    };
+
+    $(function () {
+        vm = new viewModel();
+        ko.cleanNode(document.getElementById("divListMasterTagMany"));
+        ko.applyBindings(vm, document.getElementById("divListMasterTagMany"));
+    });
+
+    function getCategories(callback) {
+        callback = callback || function() {};
+
+        $.ajax({
+            url: "@Url.Action("GetRubricCategoryByQuestionIds", "VirtualTest")?virtualQuestionIds=@ViewBag.VirtualQuestionIdString",
+            type: "get",
+            async: false,
+            success: function(data) {
+                var mappedCategories = [];
+                var mappedQuestions = [];
+
+                $.each(data, function(index, question) {
+                    var categories = question.RubricQuestionCategories;
+                    var categoryIds = [];
+
+                    $.each(categories, function(index, category) {
+                        mappedCategories.push({
+                            Id: category.RubricQuestionCategoryID,
+                            Name: category.CategoryName
+                        });
+
+                        categoryIds.push(category.RubricQuestionCategoryID);
+                    });
+
+                    if (mappedCategories.length) {
+                        mappedCategories.unshift({
+                            Id: categoryIds.join(','),
+                            Name: 'All Categories'
+                        });
+                    }
+
+                    mappedQuestions.push({
+                        VirtualQuestionID: question.VirtualQuestionID,
+                        RubricQuestionCategoryIDs: categoryIds.join(',')
+                    })
+                });
+
+                callback(mappedQuestions, mappedCategories);
+            }
+        });
+    };
+
+    function getAssignedDistrictTagIds() {
+        var assignedTags = ui.dataTableAssignedDistrictTag.fnGetData();
+        var assignedTagIds = assignedTags.map(function(tag) {
+            return tag[0];
+        });
+
+        return assignedTagIds;
+    }
+    
+    function getAvailabelDistrictTagIds() {
+        var availabelTags = ui.dataTableDistrictTagAvailable.fnGetData();
+        var availabelTagIds = availabelTags.map(function(tag) {
+            return tag[0];
+        });
+
+        return availabelTagIds;
+    }
+
+    function updateAssignDistrictButtonStatus() {
+        var assignedTagIds = getAssignedDistrictTagIds();
+        var availabelTagIds = getAvailabelDistrictTagIds();
+
+        availabelTagIds.forEach(function(tagId) {
+            var isExisted = assignedTagIds.indexOf(tagId) != -1;
+            if (isExisted) {
+                $("#iconDelete_" + tagId).show();
+                $("#iconAdd_" + tagId).hide();
+            } else {
+                $("#iconDelete_" + tagId).hide();
+                $("#iconAdd_" + tagId).show();
+            }
+        });
+    }
+</script>
+<script type="text/javascript">
+    $(function () {
+
+        if ($('#divLinkitDefaultTag').html().trim().length == 0) {
+            var url = '@Url.Action("LoadTagLinkitDefaultPartialView")?virtualQuestionIdString=' + '@ViewBag.VirtualQuestionIdString';
+            $.ajax({
+                url: url,
+                cache: false
+            })
+                .done(function (html) {
+                    $('#divLinkitDefaultTag').html(html);
+                });
+        }
+        $('#divLinkitDefaultTag').show();
+        $('#divDistrictTag').hide();
+
+        $.get('@Url.Action("GetMutualAssignedDistrictTagIdString")/?virtualQuestionIdString=' + '@ViewBag.VirtualQuestionIdString', function (data) {
+
+            $("#MutualItemTagIdString").val(data.MutualItemTagIdString);
+            if ($('#radioDistrictCategories').is(':checked')) {
+                LoadDistrictTag();
+
+            }
+
+        });
+    });
+
+    $('.VirtualQuestionItemTagCategory').die('click');
+    $('.VirtualQuestionItemTagCategory').live("click", function (e) {
+        if ($('#radioLinkitDefaultCategories').is(':checked')) {
+            LoadLinkitDefaultTag();
+        }
+        if ($('#radioDistrictCategories').is(':checked')) {
+            LoadDistrictTag();
+        }
+    });
+
+    $('#setFilterTag').die('click');
+    $('#setFilterTag').live("click", function (e) {
+        if ($('#radioDistrictCategories').is(':checked')) {
+            ReloadDistrictTagAvailable();//defined in _ListDistrictTagAvailable
+        }
+    });
+
+    $('#clearFilterTag').die('click');
+    $('#clearFilterTag').live("click", function (e) {
+        if ($('#radioLinkitDefaultCategories').is(':checked')) {
+        }
+        if ($('#radioDistrictCategories').is(':checked')) {
+            @if (ViewBag.IsPublisher || ViewBag.IsNetworkAdmin)
+            {
+                 <text>
+            $('#selectDistrict').val(0);
+            </text>
+            }
+            $('#selectCategory').val(0);
+            //$('#txtTextToSearch').val('');
+        }
+    });
+
+    $("#selectState").die("change");
+    $('#selectState').change(function () {
+        if ($('#selectState').val() != 'select') {
+            $('#selectDistrict').empty();
+            $('#selectCategory').empty();
+            var stateValue = $('#selectState').val();
+            if (stateValue != '-1') {
+                if ('@ViewBag.IsNetworkAdmin' == 'True') {
+                    $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#selectDistrict'), districts);
+                    });
+                } else {
+                    $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#selectDistrict'), districts);
+                        if (selectDistrictId_dt != null && selectDistrictId_dt > 0) {
+                            $('#selectDistrict').val(selectDistrictId_dt);
+                            $('#selectDistrict').trigger('change');
+                        }
+                    });
+                }
+            }
+        }
+    });
+
+    $('#selectCategory').die('change');
+    $('#selectCategory').change(function () {
+        $('#setFilterTag').attr('disabled', 'disabled');
+        var category = $('#selectCategory').val();
+        if (category != null && category != '' && category != 'select') {
+            $('#setFilterTag').removeAttr('disabled');
+        }
+
+    });
+    function loadDistrictCategory() {
+        $('#selectCategory').empty();
+        var districtId = $('#selectDistrict').val();
+        if (districtId == 'select' || districtId == 'undefined') {
+            districtId = 0;
+        }
+
+        var dropdownSelector = '#selectCategory';
+        $.ajax({
+            url: '@Url.Action("GetAllDistrictCategory", "ItemTag")?districtId=' + districtId,
+            dataType: 'json',
+            async: false,
+            success: function (data) {
+                addDefaultOption($(dropdownSelector), "Category");
+                addSelectListWithDefaultValue($(dropdownSelector), data, 0);
+                if (selectCategoryId_dt != null && selectCategoryId_dt > 0) {
+                    $('#selectCategory').val(selectCategoryId_dt);
+                    if (textToSearch_dt != null && textToSearch_dt.length > 0) {
+                        $('#txtTextToSearch').val(textToSearch_dt);
+                    }
+                    $('#selectCategory').trigger('change');
+
+                    $('#setFilterTag').trigger('click');
+
+                }
+
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+
+            }
+        });
+    }
+    function LoadLinkitDefaultTag() {
+        $('#divLinkitDefaultTag').show();
+        $('#divDistrictTag').hide();
+        $('#setFilterTag').removeAttr('disabled');
+    }
+
+    function LoadDistrictTag() {
+        var url = '@Url.Action("LoadListDistrictTagAvailablePartialView")?virtualQuestionIdString=' + '@ViewBag.VirtualQuestionIdString';
+        $.ajax({
+            url: url,
+            cache: false,
+            async: false, // Make sure that these content is loaded before other functions are called
+        })
+            .done(function (html) {
+                $('#divTagAvailable').html(html);
+            });
+
+        //load assigned tags
+        url = '@Url.Action("LoadListDistrictTagAssignedPartialView")?virtualQuestionIdString=' + '@ViewBag.VirtualQuestionIdString';
+        $.ajax({
+            url: url,
+            cache: false,
+            async: false, // Make sure that these content is loaded before other functions are called
+        })
+            .done(function (html) {
+                $('#divTagAssigned').html(html);
+            });
+
+        $('#divLinkitDefaultTag').hide();
+        $('#divDistrictTag').show();
+        $('#setFilterTag').attr('disabled', 'disabled');
+        @if (ViewBag.IsPublisher)
+        {
+            <text>
+        //load state for publisher
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            AddSelectListItems($('#selectState'), states, 'Select State');
+            if (selectStateId_dt != null && selectStateId_dt > 0) {
+                $('#selectState').val(selectStateId_dt);
+                $('#selectState').trigger('change');
+            }
+        });
+        </text>
+        }
+        else if (ViewBag.IsNetworkAdmin)
+        {
+            <text>
+        $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+            AddSelectListItems($('#selectState'), states, 'Select State');
+            $('#selectState').val(@ViewBag.StateId);
+            $('#selectState').trigger('change');
+        });
+
+        </text>
+        }
+        else
+        {
+             <text>
+        loadDistrictCategory();
+        </text>
+        }
+
+        
+    }
+</script>
+<script type="text/javascript">
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+
+</script>   

@@ -1,0 +1,278 @@
+@model LinkIt.BubbleSheetPortal.Models.Class
+
+@*<script src="@Url.Content("~/Scripts/jquery-1.7.1.min.js")" type="text/javascript"></script>*@
+<script src="@Url.Content("~/Scripts/jquery-ui-1.8.11.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.unobtrusive-ajax.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<script src="@Url.Content("~/Scripts/jquery.listSplitter.js")" type="text/javascript"></script>
+
+<article class="container_12" style="margin-top:2em">
+    <section class="grid_12">
+        <div class="class-title">@Model.Name</div>
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Students</h1>
+                <div class="clear-10"></div>
+                <div class="clear-10"></div>
+                <div class="last-child">
+                    <table id="dataTable" class="datatable table" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width: 13px"><input type="checkbox" id="chkAllStudent" /></th>
+                                <th scope="col" style="width: 55px">Actions</th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    First Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Middle Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Last Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Gender
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Local ID
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.GradeLabel
+                                </th>                
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td style="height: 60px;"></td></tr>
+                        </tbody>
+                    </table>
+                    <div class="clear-10"></div>
+                    <div style="left: 9px;position: relative;top: 7px;width:200px;" class="pButton">
+                        <button id="btnRemoveSelected" onclick="deleteStudent(null);" disabled="disabled">Remove</button>
+                        <button id="btnMoveSelected" onclick="LoadMoveStudentsForm(null);" disabled="disabled">Transfer</button>
+                    </div>
+                    <div class="clear-10" style="height: 7px !important;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<style type="text/css">
+    #dataTable_wrapper {
+        margin-bottom: -52px !important; 
+    }
+    
+</style>
+<!--[if IE]>
+	<style type="text/css">
+    #dataTable_wrapper {
+        margin-bottom: -48px !important; 
+    }
+    .pButton {
+        position: relative;
+        top: 5px !important;
+    }
+</style>
+<![endif]-->
+<link href="@Url.Content("~/Content/css/dialog.css")" rel="stylesheet" type="text/css" />
+<script type="text/javascript">
+
+    $(function () {
+        var classId = '@Model.Id';
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetStudentsInClass")?classID=@Model.Id',
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[2, "asc"]],
+            aoColumns: [
+                { sType: 'int', sName: 'ID', bSearchable: false, bSortable: false },
+                { sType: 'int', sName: 'StudentID', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'FirstName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'MiddleName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'LastName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Gender', bSearchable: true, bSortable: true, sWidth: '85px' },
+                { sType: 'string', sName: 'Code', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Grade', bSearchable: true, bSortable: true, sWidth: '85px' }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBox(aData[1]));
+                $('td:eq(1)', nRow).html(setIconVisibility(aData[1]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        function setCheckBox(studentId) {
+            var checkboxString = '<input type="checkbox" name="chkStudent" value="' + studentId + '" />';
+            return checkboxString;
+        }
+
+        function setIconVisibility(studentId) {
+            var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+            var editString = '<a href="/ManageClasses/EditStudent/' + studentId + '" title="Edit Student" class="with-tip"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+            var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+            var deleteString = '<a href="javascript:void(0)" onclick="deleteStudent(this);" title="Remove" studentId="' + studentId + '" class="with-tip deleteStudent"><img src="' + deleteIcon + '" width="16" height="16"></a>';
+
+            var moveIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/move-icon.png")';
+            var moveString = '<a class="with-tip" onclick="LoadMoveStudentsForm(this);" title="Transfer" studentId="' + studentId + '" href="javascript:void(0)"><img src="' + moveIcon + '" width="16" height="16"style="margin-right: 4px"></a>';
+
+            return editString + moveString + deleteString;
+        }
+
+        $("#dataTable").data("options", options);
+        initializeDataTable($("#dataTable"));
+
+    });
+
+    function deleteStudent(e) {
+        var removedStudentIds = '';
+        var confirmAlert = '';
+        if (e != null) {
+            removedStudentIds = $(e).attr('studentId');
+            confirmAlert = "Are you sure you want to remove this student?";
+        }
+        else {
+            removedStudentIds = getSelectedStudentIds();
+            confirmAlert = "Are you sure you want to remove selected student(s)?";
+        }
+        if (confirm(confirmAlert)) {
+            setDisabledButtons(true);
+            var classId = '@Model.Id';
+            $.post('@Url.Action("RemoveStudentFromClass")', { classId: classId, removedStudentIds: removedStudentIds }, function (response) {
+                if (response.success == true) {
+                    ui.dataTable.fnDraw();
+                    $('#chkAllStudent').removeAttr('checked');
+                } else {
+                    alert('Student does not exist, please try again.');
+                }
+            });
+        }
+    }
+
+    function ClosePopup(refreshGrid) {
+        $(".dialog").dialog("close");
+        if (refreshGrid == true) {
+            ui.dataTable.fnDraw();
+            $('#chkAllStudent').removeAttr('checked');
+            setDisabledButtons(true);
+        }
+    }
+
+    $('#chkAllStudent').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkStudent"][type=checkbox]').attr('checked', 'checked');
+            setDisabledButtons(false);
+        }
+        else {
+            $('INPUT[name="chkStudent"][type=checkbox]').removeAttr('checked');
+            setDisabledButtons(true);
+        }
+    });
+
+    function setDisabledButtons(isDisabled) {
+        if (isDisabled) {
+            $('#btnRemoveSelected').attr('disabled', 'disabled');
+            $('#btnMoveSelected').attr('disabled', 'disabled');
+        }
+        else {
+            $('#btnRemoveSelected').removeAttr('disabled');
+            $('#btnMoveSelected').removeAttr('disabled');
+        }
+    }
+
+    $('INPUT[name="chkStudent"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkStudent"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllStudent').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllStudent').attr('checked', 'checked');
+            }
+            setDisabledButtons(false);
+        }
+        else {
+            $('#chkAllStudent').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkStudent"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                setDisabledButtons(false);
+            }
+            else {
+                setDisabledButtons(true);
+            }
+        }
+    });
+
+    function getSelectedStudentIds() {
+        var studentIds = '';
+        $('INPUT[name="chkStudent"][type=checkbox]:checked').each(function (i, e) {
+            studentIds += $(e).val() + ',';
+        });
+        return studentIds.substr(0, studentIds.length - 1);
+    }
+
+    function LoadMoveStudentsForm(e) {
+        var data = { };
+        if (e == null) {
+            data = { OldClassId: '@Model.Id', SchoolId: $('#selectSchool').val(), TeacherId: $('#selectTeacher').val(), MovedStudentIDs: getSelectedStudentIds() };
+        }
+        else {
+            var studentId = $(e).attr('studentId');
+            data = { OldClassId: '@Model.Id', SchoolId: $('#selectSchool').val(), TeacherId: $('#selectTeacher').val(), MovedStudentIDs: studentId };
+        }
+
+        $("<div></div>")
+                    .addClass("dialog")
+                    .attr("id", "moveStudentDialog")
+                    .appendTo("body")
+                                .dialog({
+                                    title: $(this).attr("Move Student"),
+                                    close: function () { $(this).remove(); },
+                                    modal: true,
+                                    width: 420,
+                                    resizable: false
+                                })
+                            .load('@Url.Action("OpenMoveStudentsForm", "Admin")', data, function () { });
+    }
+    
+</script>

@@ -1,0 +1,218 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.AddClassViewModel
+@{
+    ViewBag.Title = "Add Class";
+}
+
+<script src="@Url.Content("~/Scripts/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+<article class="container_12">
+    <section class="grid_7">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Add Class
+                </h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>Class successfully added.</li>
+                </ul>
+                @using (Html.BeginForm("AddClass", "RegisterClasses", FormMethod.Post, new { id = "addClassForm", @class = "form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.ValidationSummary(true)
+                    @Html.HiddenFor(model => model.TeacherId)
+                    <fieldset>
+                        <legend>Class Detail</legend>
+                        <div class="colx2-left">
+                            <p>
+                                <label>
+                                    Zip Code</label>
+                                <span class="relative">                                    
+                                    <input type="text" id="ZipCode" name="ZipCode" class="full-width" title="Type 5 digits Zip Code" maxlength="5"/>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="colx2-right">
+                            <p style="padding-top: 8px;">
+                                <label>
+                                    &nbsp;</label>
+                                <span class="relative">
+                                    <span style="display: none; color: red;" id="error-zipcode-message">Invalid Zip Code</span>
+                                    <span style="display: none; font-weight: bold" id="success-zipcode-message" ></span>             
+                                </span>
+                            </p>
+                        </div>
+                        <br/>
+                        <div class="columns" style="margin-top: 60px;" id="divClassDetail">
+                            @if (Model.IsUserTeacher)
+                            {
+                                <p>
+                                    <label>School</label>
+                                    <span class="relative">
+                                        <input type="text" id="NewSchoolName" name="SchoolName" class="full-width" style="display: none" placeholder="Add New School" />
+                                        <img id="NewSchoolCloseButton" style="position: absolute;right: 8px;top: -1px; display: none;" src="\Content\themes\Constellation\images\icons\fugue\cross-circle.png" alt="x"/>
+                                        <select id="selectSchool" name="SchoolId" class="full-width"></select>
+                                    </span>
+                                </p>
+                            }
+                            <p>
+                                <label>Group/Course Name</label>
+                                <span class="relative">
+                                    @Html.TextBoxFor(model => model.Course, new { @class = "full-width", tabindex = "1", maxlength = 49 })
+                                </span>
+                            </p>
+                            <p>
+                                <label>Section (optional)</label>
+                                <span class="relative">
+                                    @Html.TextBoxFor(model => model.Section, new { @class = "full-width", tabindex = "2", maxlength = 49 })
+                                </span>
+                            </p>   
+                            <p style="font-weight: bold">
+                                <span id="className"></span>
+                            </p>                           
+                        </div>
+                    </fieldset>
+                    <p>
+                        <button id="btnSubmit" type="submit" name="Save">Create Class</button>
+                        <button id="btnCancel" type="button" class="grey">Cancel</button>
+                    </p>
+                }
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        $('.dataadmin').addClass('current');
+        $('#dtaRegisterClasses').addClass('current');
+
+        var zipCode = '';
+
+        $('#ZipCode').keydown(function () {
+            zipCode = $('#ZipCode').val();
+        });
+        
+        $('#ZipCode').keyup(function () {
+            
+            // Whenever user press 3 characters in zipcode textbox
+            if ($('#ZipCode').val().length == 5 && $('#ZipCode').val() != zipCode) {
+                
+                ShowBlock($('.block-border'), "Loading");
+                $('#NewSchoolName').hide();
+                $('#NewSchoolCloseButton').hide();                
+                $('#NewSchoolName').val('');
+                $('#selectSchool').show();
+                
+                $.ajax({
+                    url: '@Url.Action("PopulateDataByZipCode","RegisterClasses")',
+                    type: 'POST',
+                    data: { zipCode: $('#ZipCode').val()},
+                    success: function(response) {
+                        if (response.stateCode != '') {                            
+                            $('#success-zipcode-message').text(response.stateCode);
+                            $('#success-zipcode-message').show();
+                            $('#error-zipcode-message').hide();
+                            
+                            populateSchools(response.schools);
+                        }else {                                                                                    
+                            $('#success-zipcode-message').hide();
+                            $('#error-zipcode-message').show();
+                            
+                            $('#selectSchool').empty();
+                        }
+                        
+                        $('.block-border').unblock();
+                    }                                        
+                });
+            } else if ($('#ZipCode').val().length < 5) {
+                $('#success-zipcode-message').hide();
+                $('#error-zipcode-message').hide();
+                $('#selectSchool').empty();
+            }
+        });
+        
+        $('#Course, #Section').keyup(function () {
+            if ($('#Course').val().trim() != '' || $('#Section').val().trim() != '') {
+                $('#className').text('Class: ' + $('#Course').val() + ' ' + $('#Section').val());
+            }else {
+                $('#className').text('');
+            }            
+        });
+        
+        $("#NewSchoolCloseButton").click(function (event) {
+            event.preventDefault();
+            $('#NewSchoolName').hide();
+            $('#NewSchoolCloseButton').hide();
+            $('#NewSchoolName').val('');
+            $('#selectSchool').val(0);
+            $('#selectSchool').show();
+        });
+
+        $('#selectSchool').change(function () {
+            if ($('#selectSchool').val() == 'addNew') {
+                $('#NewSchoolName').show();
+                $('#NewSchoolCloseButton').show();
+                $('#selectSchool').hide();
+                $('#NewSchoolName').focus();                
+            }
+        });
+
+        function loadSchools(selectedSchoolId) {
+            $.post('@Url.Action("GetSchoolsByZipCode", "RegisterClasses")/?zipCode='+ $('#ZipCode').val(), function (schools) {
+                populateSchools(schools);
+                $('#selectSchool').val(selectedSchoolId);
+                
+                $('#NewSchoolName').hide();
+                $('#NewSchoolCloseButton').hide();
+                $('#NewSchoolName').val('');
+                $('#selectSchool').show();
+                
+                $('.block-border').unblock();
+            });
+        }
+
+        function populateSchools(schools) {
+            addDefaultOption($('#selectSchool'), "School or Add New");
+            addSelectListItems($('#selectSchool'), schools);
+            addAddNewItem($('#selectSchool'), "School");
+
+            $('#selectSchool option[value="-1"]').html('Select School or Add New'); // Replace default 'No Results Found' with this text
+        }        
+
+        function addAddNewItem(selectList, objectText) {
+            selectList
+                .append($("<option></option>")
+                        .attr("value", "addNew")
+                        .text("<< Add New " + objectText + " >>"));
+        }
+
+        $('#addClassForm').submit(function (event) {
+            event.preventDefault();
+
+            $('#btnSubmit').disableBt();
+
+            $.ajax({
+                url: $(this).target,
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function (response) {
+                    if (response.Success != false) {
+                        location.href = response.RedirectUrl;
+                    }
+                    else {
+                        addErrorMessages(response);
+                        $('#success-message').hide();
+                        $('#btnSubmit').enableBt();
+                    }
+                },
+                failure: function (response) {
+                    alert(response);
+                }
+            });
+        });
+
+        $('#btnCancel').click(function () {
+            location.href = '@Url.Action("Index")';
+        });
+    });
+</script>

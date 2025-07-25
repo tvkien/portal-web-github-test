@@ -1,0 +1,169 @@
+﻿@{
+    ViewBag.Title = "SGO Final Signoff";
+}
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGO.FinalSignOffViewModel
+@*@MvcHtmlString.Create(
+            Bundle.Css()
+                .Add(@Url.Content("~/Content/css/custom.css"))
+                .Add(@Url.Content("~/Content/css/sgohome.css"))
+                .Render("/Content/themes/Constellation/css/SGOAFinalSignOff_combined_#.css"))*@
+@*@MvcHtmlString.Create(
+    Bundle.JavaScript()
+        .Add("/Scripts/knockout-3.0.0.js")
+        .Add("/Content/themes/TestMaker/ckeditor_utils.js")
+            .Render("/Content/themes/Constellation/js/SGOAFinalSignOff_combined_#.js")
+    )*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleSGOManageFinalSignOffBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptSGOManageFinalSignOffBundle()
+
+<article class="container_12" id="idTopNavigation">
+    @Html.Action("LoadNavigation", "SGOManage", new { sgoId = @Model.SGOId })
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form">
+                <input type="hidden" id="sgoId" value="@Model.SGOId" />
+                <h1>
+                    Final SignOff
+                </h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success"></ul>
+                <fieldset class="grey-bg sgo-fieldset">
+                    <div class="columns sgo-columns">
+                        @Html.Raw(Model.FinalSignoffDirection)
+                    </div>
+                </fieldset>
+                <div class="clear"></div>
+
+                <fieldset class="grey-bg">
+                    <legend>Comment</legend>
+                    <div class="columns">
+                        <textarea id="idtareaComment" rows="10" spellcheck="true" class="u-full-width" onchange=" DisableMessage(); ">@Html.Raw(Html.Encode(Model.comments))</textarea>
+                    </div>
+                </fieldset>
+                @Html.Action("LoadSGONote", "SGOManage", new { sgoId = Model.SGOId, pageName = LinkIt.BubbleSheetPortal.Models.SGO.SGOPageNameConstant.FinalSignoff })
+                <div class="clear"></div>
+                <div class="float-right">
+                    @if (Model.IsApprover)
+                    {
+                        <button id="btnFinalSignOffApprove" type="button">Approve</button>
+                        <button id="btnFinalSignOffDeny" type="button">Deny</button>
+                    }
+                    else
+                    {
+                        <button id="btnFinalSignOffTeacherAcknowledged" type="button">Teacher Acknowledged</button>
+                    }
+                </div>
+                <div class="clear"></div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script>
+    $(function() {
+        $('.stats').addClass('current');
+        $('#rpSGOManager').addClass('current');
+
+        initNavigationTabs(8, @Model.SGOId);
+
+        if (@Model.PermissionAccess != 3) //Full Update
+        {
+            LockAllUI();
+        }         
+    });
+
+    $('#btnFinalSignOffDeny').click(function() {
+        ShowBlock($('#idTopNavigation'), "Process");
+        DisableMessage();
+        var sgoId = @Model.SGOId;
+        //var strComments = htmlEncode($('#idtareaComment').val().trim());
+        var strComments =  $('#idtareaComment').val() ;
+        if (strComments.length === 0) {
+            $('#error-messages').html('<li>Please enter reason.</li>');
+            $('#error-messages').show();
+            $('#idTopNavigation').unblock();
+            return;
+        }
+        $.post('@Url.Action("SGOFinalSignOffDeny", "SGOManage")', { sgoId: sgoId, strComment: strComments }, function (response) {
+            if (!response) {
+                $('#error-messages').html('<li>Have a error, Please try again.</li>');
+                $('#error-messages').show();
+            } else {
+                var url = "/SGOManage/Index";
+                window.location.href = url;
+            }
+            $('#idTopNavigation').unblock();
+        }).always(function() {
+            $('#idTopNavigation').unblock();
+        });
+    });
+
+    $('#btnFinalSignOffApprove').click(function() {
+        ShowBlock($('#idTopNavigation'), "Process");
+        DisableMessage();
+        var sgoId = @Model.SGOId;
+        //var strComments = htmlEncode ($('#idtareaComment').val().trim());
+        var strComments =  $('#idtareaComment').val() ;
+        $.post('@Url.Action("SGOFinalSignOffApprove", "SGOManage")', { sgoId: sgoId, strComment: strComments }, function(response) {
+            if (!response) {
+                $('#error-messages').html('<li>Have a error, Please try again.</li>');
+                $('#error-messages').show();
+            } else {
+                var url = "/SGOManage/Index";
+                window.location.href = url;
+            }
+            $('#idTopNavigation').unblock();
+        }).always(function() {
+            $('#idTopNavigation').unblock();
+        });
+
+    });
+
+    $('#btnFinalSignOffTeacherAcknowledged').click(function() {
+        ShowBlock($('#idTopNavigation'), "Process");
+        DisableMessage();
+        var sgoId = @Model.SGOId;
+        //var strComments = htmlEncode ($('#idtareaComment').val().trim());
+        var strComments = $('#idtareaComment').val();
+        $.post('@Url.Action("SGOTeacherAcknowledged", "SGOManage")', { sgoId: sgoId, strComment: strComments }, function(response) {
+            if (!response) {
+                $('#error-messages').html('<li>Have a error, Please try again.</li>');
+                $('#error-messages').show();
+            } else {
+                var url = "/SGOManage/Index";
+                window.location.href = url;
+            }
+            $('#idTopNavigation').unblock();
+        }).always(function() {
+            $('#idTopNavigation').unblock();
+        });
+    });
+
+    function DisableMessage() {
+        $('#error-messages').hide();
+        $('#success-message').hide();
+    }
+
+    function LockAllUI() {
+        $('#idTopNavigation :input').attr('disabled', true);
+        $('#idTopNavigation :button').attr('disabled', true);
+        //if ($('#idtareaComment').length > 0) {
+        //    $('#idtareaComment').hide();
+        //}
+
+        $('#txtSGONote').prop('disabled', false);
+        $('#btnSaveNote').prop('disabled', false);
+    }
+
+    function htmlEncode(value) {
+        return $('<div/>').text(value).html();
+    }
+
+    function htmlDecode(value) {
+        return $('<div/>').html(value).text();
+    }
+    function supportNavigationSaveAndRedirect(param) {
+
+    }
+</script>

@@ -1,0 +1,118 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{    
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<link href="@BundleHelper.Version("~/Content/css/v2/help-resource.css")" rel="stylesheet" type="text/css" />
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleHelpResourceBundle()
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border mb-4" id="selectFilters">
+            <div id="divFilterTestAssignments" class="block-content form bubbleSheetSelector">
+                <h1>Filter Help Resources</h1>
+                @Html.Partial("v2/_Filter")
+                <div class="d-flex justify-content-end">
+                    <button class="btn-blue me-3" type="button" data-bind="click: SelectAll">Select All</button>
+                    <button class="btn-blue me-3" type="button" data-bind="click: SelectNone">Select None</button>
+                    <button id="clearFilter" class="btn-blue me-3" type="button" data-bind="click: ClearFilter">Clear Filter</button>
+                    <button id="filterSheets" class="btn-blue" type="button">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+        @Html.Partial("v2/_SearchResult")
+    </section>
+</article>
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptHelpResourceBundle()
+
+<script type="text/javascript">
+    var customCategoryType = 'PortalType';
+    var listCategorySeleted = '@ViewBag.ListCategorySeleted';
+    var arrayCategorySeleted = listCategorySeleted.split(',');
+
+    var viewModel = new HelpResourceViewModel();
+    var tableSelector = "#helpResourceDataTable";
+
+    $(function () {
+        viewModel.PostAjax('@Url.Action("GetHelpResourceCategories", "HelpResource")', null, function (allData) {
+            var isOnlyOneCat = allData.length === 1;
+
+            var mappedObjects = $.map(allData, function (item) {
+
+                if (arrayCategorySeleted.indexOf(item.ID + '') != -1) {
+                    return new Category(item, true);
+                }
+                return new Category(item, isOnlyOneCat);
+            });
+            viewModel.Categories(mappedObjects);
+            if (isOnlyOneCat || listCategorySeleted) {
+                setTimeout(function () {
+                    var dataTable = $(tableSelector).dataTable();
+                    dataTable.fnDraw();
+                }, 2000)
+            }
+        }, null);
+
+        viewModel.PostAjax('@Url.Action("GetHelpResourceTypes", "HelpResource")', null, function (allData) {
+            var mappedObjects1 = $.map(allData, function (item) {
+                return new HelpResourceType(item);
+            });
+            viewModel.HelpResourceTypes(mappedObjects1);
+        }, null);
+
+        ko.applyBindings(viewModel);
+
+        $(tableSelector).data("options", BuildSearchResultDataTable(tableSelector));
+
+        $('#filterSheets').click(function () {
+            var dataTable = $(tableSelector).dataTable();
+            dataTable.fnDraw();
+        });
+
+        setTimeout(function () {
+            var navModuleFrom = sessionStorage.getItem('NavModuleFrom');
+            if (navModuleFrom && navModuleFrom !== "HELP") {
+                $("#main-nav ul.menu_ul li").removeClass("current");
+                $("#breadcrumbHeader").html("")
+                var elNavVertical = $("#main-nav").find(`li.menu-help-resource[nav=${navModuleFrom}]`);
+                elNavVertical.addClass("current");
+                var activeAreaHtml = $(elNavVertical).parent().parent().addClass("current");
+                renderBreadcrumb(activeAreaHtml.html(), $(elNavVertical).html());
+                sessionStorage.removeItem("NavModuleFrom");
+            };
+
+        }, 1000)
+
+    });
+
+    $(tableSelector).on('click', '.jsOpenHelpResource', function (event) {
+        var $self = $(this);
+        var helpresourcefiletypeid = $self.attr('helpresourcefiletypeid');
+        var helpresourcefilepath = $self.attr('helpresourcefilepath');
+        var helpresourcelink = $self.attr('helpresourcelink');
+
+        if (helpresourcefiletypeid != null && helpresourcefiletypeid == 2) {
+            window.open(helpresourcelink, '_blank');
+        } else {
+            var url = '@Url.Action("Download", "HelpResourceUpload")' + '?filePath=' + helpresourcefilepath;
+            window.open(encodeURI(url), '_blank');
+        }
+
+    });
+
+</script>

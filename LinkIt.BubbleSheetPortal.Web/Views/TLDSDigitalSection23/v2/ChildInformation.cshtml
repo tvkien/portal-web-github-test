@@ -1,0 +1,174 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TLDSDigital.TldsProfileDigitalViewModel
+
+@{
+    ViewBag.Title = "TLDS Digital";
+}
+@{
+    Layout = null;
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleTLDSDigitalSection23Bundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptTLDSDigitalSection23Bundle()
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>TLDS Digital Section 2 & 3</title>
+    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="@Url.Content("~/Scripts/BlockUI.js")" type="text/javascript"></script>
+</head>
+<body>
+
+    <div class="container-fluid">
+        <div class="col-sm-7 col-sm-offset-2 col-xs-12 custom-offset" id="divOnTop">
+            <h1 class="tlds-print-title u-text-uppercase">Transition learning and development statement</h1>
+            @Html.Partial("_SectionPrint0", Model)
+            @Html.Partial("_SectionPrint1", Model)
+            @Html.Partial("_SectionPrint2", Model)
+            @Html.Partial("_SectionPrint3", Model)
+            @*@Html.Partial("_SectionPrint4", Model)*@
+
+            @if (!Model.IsPrinting)
+            {
+                <div class="button-group">
+                    <button id="backButton" type="button" class="btn btn-success tlds-button"> Back</button>
+                    <button id="downloadButton" type="button" class="btn btn-primary tlds-button"> Print</button>
+                </div>
+            }
+        </div>
+    </div>
+    
+
+</body>
+</html>
+
+<div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true" id="mi-modal">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">Click to create Draft PDF form?</h4>
+                <p>
+                    <a id="idlinkSGOFilePrint" target="_blank" style="display: none;" href="#">
+                        <u>
+                            Click here to open PDF file
+                        </u>
+                    </a>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" id="modal-btn-yes">Create PDF</button>
+                <button type="button" class="btn btn-primary" id="modal-btn-no">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    // #region Functions
+    function ShowBlock(div, text) {
+        div.block({
+            css: {
+                border: 'none',
+                padding: '15px',
+                backgroundColor: '#000',
+                '-webkit-border-radius': '10px',
+                '-moz-border-radius': '10px',
+                opacity: 1,
+                color: '#fff'
+            },
+            message: '<h2 style="color:#fff">' + text + ' ...</h2>'
+        });
+    }
+
+    var modalConfirm = function (callback) {
+        $("#btn-confirm").on("click", function () {
+            $("#mi-modal").modal('show');
+        });
+
+        $("#modal-btn-yes").on("click", function () {
+            callback(true);
+            $("#mi-modal").modal('hide');
+        });
+
+        $("#modal-btn-no").on("click", function () {
+            $('#divOnTop').unblock();
+            $("#mi-modal").modal('hide');
+        });
+    };
+
+    modalConfirm(function (confirm) {
+        printPDFBlankForm();
+    });
+
+    function printPDFBlankForm() {
+        ShowBlock($('#divOnTop'), "Generating Draft PDF form");
+
+        var url = window.location.pathname;
+        var tldsProfileLinkId = url.substring(url.lastIndexOf('/') + 1);
+
+        var data = {
+            profileId: @Model.ProfileId,
+            TimezoneOffset: new Date().getTimezoneOffset(),
+            tldsProfileLinkId: tldsProfileLinkId
+        };
+
+        $.ajax({
+            url: '@Url.Action("GeneratePDFBlankForm", "TLDSDigitalSection23")',
+            traditional: true,
+            type: 'POST',
+            data: data,
+            success: function (response) {
+                getTLDSBlankPFDFormS3File(response.fileName);
+            },
+            failure: function (response) {
+                CustomAlert(response);
+            },
+            timeout: 300000
+        });
+    }
+
+    function getTLDSBlankPFDFormS3File(checkUrl) {
+        $.ajax({
+            url: '@Url.Action("GetTLDSReportS3File", "TLDSDigitalSection23")',
+            type: 'POST',
+            data: { fileName: checkUrl,profileId:@Model.ProfileId },
+            success: function (response) {
+                if (response.Result != true) {
+                    setTimeout(function () {
+                        getTLDSBlankPFDFormS3File(checkUrl);//try again
+                    }, 3000);
+                } else {
+                    $('#divOnTop').unblock();
+
+                    $("#mi-modal").modal('show');
+                    $('#idlinkSGOFilePrint').attr('href', response.Url);
+                    $('#idlinkSGOFilePrint').show();
+                    $('#modal-btn-yes').hide();
+                }
+            }
+        });
+    }
+    // #endregion Functions
+    // #region Events
+    $('#backButton').click(function () {
+        var url = window.location.pathname;
+        var profileLinkId = url.substring(url.lastIndexOf('/') + 1);
+        var link = '@Url.Action("Index", "TLDSDigitalSection23", new { id = "-1" })';
+        link = link.replace("-1", profileLinkId);
+        window.location = link;
+    });
+
+    $('#downloadButton').click(function () {
+        $('#idlinkSGOFilePrint').removeAttr('href');
+        $('#idlinkSGOFilePrint').hide();
+        $('#modal-btn-yes').show();
+        $("#mi-modal").modal('show');
+    });
+    // #endregion Events
+</script>
+

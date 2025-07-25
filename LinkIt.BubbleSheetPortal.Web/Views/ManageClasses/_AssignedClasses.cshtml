@@ -1,0 +1,117 @@
+@model LinkIt.BubbleSheetPortal.Models.Student
+<p style="height: 5px"></p>
+<div class="no-margin last-child">
+    <table id="dataTablesStudentClasses" class="datatable table no-margin" width="100%">
+        <thead>
+            <tr>
+                <th scope="col" style="width: 35px">
+                    Actions
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Class Name
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    School Name
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Term
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Teacher
+                </th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        initDataToTableStudentClasses();
+
+        $('.classStudent').live('click', function () {
+            var classId = $(this).attr('classId');
+            CustomConfirm({
+                message: 'Are you sure you want to remove this student from this class?',
+                yes: function () {
+                    $.post('@Url.Action("RemoveClassStudent")', { classId: classId, studentId: '@Model.Id' }, function (response) {
+                        if (response && response.success == true) {
+                            $(this).dialog("close");
+                            ui.dataTablesStudentClasses.fnDraw();
+                        }
+                        else if (response && response.success == false) {
+                            alert(response.message);
+                        }
+                    });
+                },
+                noWidth: 80,
+                yesMessage: "OK",
+                noMessage: "Cancel",
+                no: function () {
+                    $(this).dialog("close");
+                }
+            });
+        });
+    });
+
+    function initDataToTableStudentClasses() {
+        var optionsClassesOfStudent =
+        {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetClassesByStudentId")?studentId=' + '@Model.Id',
+            bAutoWidth: false,
+            bDestroy: true,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'ClassId', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'ClassName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'SchoolName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'TermName', bSearchable: true, bSortable: true, bVisible: false },
+                { sType: 'string', sName: 'TeacherName', bSearchable: true, bSortable: true, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityForAssignedClassTab(aData[0]));
+                $('td:eq(1)', nRow).html(displayClassNameForAssignedClassTab(aData[1], aData[3], aData[4]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTablesStudentClasses'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTablesStudentClasses').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        $("#dataTablesStudentClasses").data("options", optionsClassesOfStudent);
+        initializeDataTable($("#dataTablesStudentClasses"));
+    }
+
+    function setIconVisibilityForAssignedClassTab(classId) {
+        var addIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var addUserString = '<a href="javascript:void(0)" title="Remove student from class" classId="' + classId + '" class="with-tip classStudent"><img src="' + addIcon + '" width="16" height="16"></a>';
+        return addUserString;
+    }
+
+    function displayClassNameForAssignedClassTab(className, termName, teacherName) {
+        return '<span title="Teacher: ' + teacherName + ' <br/>@LabelHelper.DistrictLabel term: ' + termName + '" class="with-tip">' + className + '</span>';
+    }
+</script>

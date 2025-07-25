@@ -1,0 +1,66 @@
+﻿@using LinkIt.BubbleSheetPortal.Common.Enum
+@using LinkIt.BubbleSheetPortal.Models
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SATReport.SATReportMasterViewModel
+@{
+    var domainTagNames = new List<string>();
+    if (Model.DomainTagData.Any())
+    {
+        var testResultId = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(x => x.IsSelected).TestResultID;
+        domainTagNames = Model.DomainTagData.Where(x => x.TestResultID == testResultId)
+            .Select(x => new { x.TagName, x.MinQuestionOrder })
+            .Distinct().OrderBy(x => x.MinQuestionOrder).Select(x => x.TagName).ToList();
+    }
+}
+
+<style>
+    .tblDiagnostic thead th {
+        padding: 10px 7px !important;
+    }
+</style>
+<div>
+    <div class="boxtitle">
+        Essay
+    </div>
+
+    <table class="datatable table utility-table tblDiagnostic big_line" style="table-layout: fixed; width: 700px !important;">
+        <thead>
+            <tr>
+                <th class="utility" style="width: 100px;">Test Date</th>
+                <th class="utility" style="width: 200px;">Diag Form</th>
+                @foreach (var tagName in domainTagNames)
+                {
+                    <th class="utility">@tagName</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.Count; i++)
+            {
+                var item = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels[i];
+                string style = "";
+                string cssClass = "";
+                if (item.IsSelected)
+                {
+                    style = "font-weight:bold; font-style:italic;";
+                    cssClass = "question-detail-answer";
+                }
+
+                var domainTagDataOfTestResult = Model.DomainTagData.Where(x => x.TestResultID == item.TestResultID).OrderBy(x => x.MinQuestionOrder).ToList();
+                
+                <tr class="@cssClass">
+                <td class="utility" style="@style"><p>@item.TestDateText</p></td>
+                    <td class="utility" style="@style word-break:break-all;">@item.TestName</td>
+                    @foreach (var domainTag in domainTagDataOfTestResult)
+                    {
+                        <!-- Display data based on tag data of first test result  -->
+                        if (domainTagDataOfTestResult.IndexOf(domainTag) < domainTagNames.Count
+                            && domainTag.TagName.ToLower() == domainTagNames[domainTagDataOfTestResult.IndexOf(domainTag)].ToLower())
+                        {
+                        <td class="utility" style="@style text-align:right;">@domainTag.CorrectAnswer</td>
+                        }
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

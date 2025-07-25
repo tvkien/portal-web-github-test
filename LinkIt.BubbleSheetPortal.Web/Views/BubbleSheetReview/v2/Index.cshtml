@@ -1,0 +1,905 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Managebubblesheets, "Review Bubble Sheets");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleDataLockerTemplateBundle()
+<link href="@BundleHelper.Version("~/Content/css/v2/review-bubble-sheet.css")" rel="stylesheet" type="text/css" />
+
+<article class="container_12">
+    <section>
+        <div id="selectFilters" class="mb-4">
+            <div class="block-content form bubbleSheetSelector">
+                <div class="row g-3 align-items-end columns">
+                    <div class="col">
+                        <div class="row g-3 mb-4">
+                            <h1>Review Bubble Sheets</h1>
+                            <p class="title-large m-0 p-0 mb-3">1. Filter Bubble Sheets</p>
+                            @if ((ViewBag.IsPublisher != null && ViewBag.IsPublisher)
+                                || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+                            {
+                                <div class="col-3 block-content-dropdown-marquee">
+                                    <label>State</label>
+                                    <div class="block-text-name w-100">
+                                        <select id="selectState" class="w-100"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            @if ((ViewBag.IsPublisher != null && ViewBag.IsPublisher)
+                                 || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+                            {
+                                <div class="col-3 block-content-dropdown-marquee">
+                                    <label>@LabelHelper.DistrictLabel</label>
+
+                                    <div class="block-text-name w-100">
+                                        <select id="selectDistrict" class="w-100"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-3">
+                                <label>@LabelHelper.TestGrade</label>
+                                <input type="text" id="selectGrade" class="w-100" />
+                            </div>
+                            <div class="col-3">
+                                <label>@LabelHelper.Subject</label>
+                                <input type="text" id="selectSubject" class="w-100" />
+                            </div>
+                            <div class="col-3">
+                                <label>Bank</label>
+                                <input type="text" id="selectBank" class="w-100" />
+                            </div>
+                            <div class="col-3 block-content-dropdown-marquee">
+                                <label>School</label>
+
+                                <div class="block-text-name w-100">
+                                    <select id="selectSchool" class="w-100"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-3">
+                                <label>Class</label>
+                                <input type="text" id="selectClass" class="w-100" />
+                            </div>
+                            <div class="col-3">
+                                <label>Teacher</label>
+                                <input type="text" id="selectTeacher" class="w-100" />
+                            </div>
+                            <div class="col-3 block-content-dropdown-marquee">
+                                <label>Timeframe</label>
+                                <div class="block-text-name w-100">
+                                    <select id="dateTime" class="w-100">
+                                        <option value="14">2 weeks</option>
+                                        @if (ViewBag.IsTeacher != null && ViewBag.IsTeacher)
+                                        {
+                                            <option value="30">1 month</option>
+                                            <option value="180" selected>6 months</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="30" selected>1 month</option>
+                                            <option value="180">6 months</option>
+                                        }
+                                        <option value="365">1 year</option>
+                                        <option value="0">All</option>
+                                    </select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <label>Test</label>
+                                <input type="text" id="selectTest" class="w-100" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col" style="max-width: 250px;">
+                        <div class="d-flex justify-content-end">
+                            <button id="clearFilter" class="btn-text p-0 me-3" type="button">
+                                Reset
+                                <i class="fa-solid fa-arrow-rotate-right ms-1"></i>
+                            </button>
+                            <button id="filterSheets" class="btn-red" type="submit">Apply</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="reviewList">
+            <div class="block-content form">
+                <p class="title-large m-0">2. Review Bubble Sheets</p>
+
+                <div style="visibility: hidden" id="formCheckDeactivate" class="">
+                    <a href="javascript:void(0)" id="btnArchive" class="form-check form-switch d-flex flex-row align-items-center ms-0 ps-0 js-change-inactive-students text-decoration-none">
+                        <label style="font-size: var(--body-size);" class="form-check-label mb-0 deactivated-title" for="flexSwitchCheckDefault">Show Archived:</label>
+                        <span id="archiveText" class="ms-1 me-3" style="color: var(--navyColor)">Off</span>
+                        <div>
+                            <input id="inactiveStudentBtn" class="form-check-input" type="checkbox" id="flexSwitchCheckDefault">
+                        </div>
+                    </a>
+                </div>
+
+                <div class="last-child">
+                    <table id="dataTable" class="datatable table table-review-bubble-sheets" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="black-cell">Actions</th>
+                                <th scope="col" class="th-grade">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.TestGrade
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.Subject
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Bank
+                                </th>
+                                <th scope="col" class="th-test">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Test
+                                </th>
+                                <th scope="col" class="th-class">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Class
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Teacher
+                                </th>
+                                <th scope="col" class="th-created">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Created
+                                </th>
+                                <th scope="col" class="th-updated">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Updated
+                                </th>
+                                <th scope="col" class="th-updated2">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Uploaded*
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Fini
+                                </th>
+                                <th scope="col" class="th-review">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Review
+                                </th>
+                                <th scope="col" class="th-ungraded">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Ungraded
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    var currentFilterParams = undefined;
+
+    _historyData = {};
+    _CURRENT_PAGE_NAME = "BubbleSheetReview";
+    var isFormLoad = false;
+    var districtId = 0;
+    var archived = false;
+    $(function () {
+        _historyData.isFormLoad = true;
+        ClearSessionsManageSchool();
+        $('#selectState').marquee();
+        $('#selectDistrict').marquee();
+        $('#selectSchool').marquee();
+        $('#dateTime').marquee();
+        if (performance.navigation.type === 1) {
+            sessionStorage.removeItem("KEEP_SESSION");
+        }
+
+        InitData();
+        $('#selectState').change(function () {
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+        });
+
+        $('#selectDistrict').change(function () {
+            $('#selectSchool').empty();
+            var districtValue = $('#selectDistrict').val();
+            if (districtValue == null || districtValue == 'select' || districtValue <= 0) {
+                return;
+            }
+            populateSchoolsByDistrict(districtValue);
+        });
+
+        @if ((ViewBag.IsPublisher == null || !ViewBag.IsPublisher)
+                                && (ViewBag.IsNetworkAdmin == null || !ViewBag.IsNetworkAdmin))
+        {
+            <text>populateSchoolsByDistrict(null);</text>
+        }
+
+        loadHistoryData();
+
+        if ($('#selectDistrict').val() > 0) {
+            districtId = $('#selectDistrict').val();
+            //alert(districtId);
+        }
+
+
+        loadBubbleSheetReviewToDatatable();
+
+
+        $('#dataTable').on('click', '.download', function (event) {
+            event.preventDefault();
+            var url = $(this).attr('href');
+            $.get(url)
+                .success(function (result) {
+                    if (result.downloadUrl == undefined) {
+                        return CustomAlert('There is no associated image for this test.');
+                    }
+                    var response = '<a target="_new" href="' + result.downloadUrl + '"title="Download">Click here to save the file to your computer</a>';
+                    var htmlString = `<section class="grid_5">
+	                                <div class="block-border container-content">
+		                                <div class="block-content form" style="padding: 1.5em;">
+			                                <div class="main-content" style="font-weight: normal;"><div>
+                                                <h1 style="font-size: 1.375rem; padding: 0; margin-bottom: 1.5rem">File download</h1>`+
+                        response +
+                        `</div></div>
+		                                </div>
+		                            <div class="foot-content" style="justify-content: space-around;">
+			                            <a class="button-custom-new-skin red-btn" onclick="(function(){$('#emailRosterDialog').dialog('close')})()">Close</a>
+		                            </div>
+                                </section>`
+                    var worker = $('<div />');
+                    worker
+                        .addClass("dialog dialog-custom-new-skin")
+                        .attr("id", "emailRosterDialog")
+                        .html(htmlString)
+                        .appendTo("body")
+                    worker.dialog({
+                        close: function () {
+                            $(this).remove();
+                            $('.ui-widget-overlay').remove();
+                        },
+                        showCloseButton: false,
+                        modal: false,
+                        width: 500,
+                        resizable: false
+                    }).parent().find('.ui-dialog-titlebar-close').remove();
+                    showModalDialogBG()
+                });
+        });
+
+        function showModalDialogBG() {
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+        }
+
+        $('#filterSheets').click(function () {
+            $(this).attr("disabled", "disabled");
+
+            _historyData.isFormLoad = false;
+            keepSession();
+            loadHistoryData();
+
+            setupFilters();
+        });
+
+        $('#clearFilter').click(function () {
+            $('.columns').find('input:text').val('');
+
+            if ('@ViewBag.IsPublisher' == 'True' || '@ViewBag.IsNetworkAdmin' == 'True') {
+                $("#selectState").val(-1);
+                $('#selectDistrict').empty();
+                $('#selectSchool').empty();
+            }
+            else {
+                $('#selectSchool').val(-1);
+            }
+
+            if ('@ViewBag.IsTeacher' != null && '@ViewBag.IsTeacher'  == 'True') {
+                $('#dateTime').val(180)
+            }
+            else {
+                $('#dateTime').val(30)
+            }
+
+            sessionStorage.removeItem("KEEP_SESSION");
+            ResetSessionStorage();
+        });
+
+        $('#btnArchive').click(function () {
+            archived = !archived;
+            $("#archiveText").html(archived ? "On" : "Off");
+            keepSession();
+            loadHistoryData();
+            setupFilters();
+        });
+
+        $('#dataTable').on('click', '.archiveTest', function () {
+            var operationType = $(this).attr("operation") == 1 ? true : false;
+            var ticket = $(this).attr("ticket");
+            var classId = $(this).attr("classId");
+
+            if (operationType) {
+                message = "Are you sure you want to archive this test?";
+            }
+            else {
+                message = "Are you sure you want to unarchive this test?";
+            }
+
+            confirmMessageV2(
+                {
+                    message,
+                    cbYesBtnFuncName: "yesArchive('" + ticket + "'," + classId + ")",
+                    cbCancelBtnFuncName: 'closeArchive()',
+                    cbCloseBtnFuncName: 'closeArchive()'
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'archiveConfirm'
+                        }
+                    }
+                }
+            )
+        });
+    });
+
+    function closeArchive() {
+        $("#archiveConfirm").dialog("close");
+    }
+    function yesArchive(ticket, classId) {
+       closeArchive()
+       $.post('@Url.Action("ArchiveTest", "BubbleSheetReview")', { ticket: ticket, classId: classId }, function (response) {
+            if (response == true) {
+                //ui.dataTable.fnReloadAjax();
+                ui.dataTable.fnDraw(false);``
+            } else {
+                alert('Test does not exist, please try again.');
+            }
+       });
+    }
+
+    function ResetSessionStorage() {
+        if (_historyData) {
+            _historyData.stateID = 0;
+            _historyData.districtID = 0;
+            _historyData.schoolID = 0;
+        }
+    }
+
+    function loadBubbleSheetReviewToDatatable() {
+        var now = new Date();
+        var timeSpan = $('#dateTime').val();
+        now.addDays(-1 * timeSpan);
+
+        var dateString = (now.getMonth() + 1) + '/' + now.getDate() + '/' + now.getFullYear();
+
+        var options = {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetBubbleSheetReviewList_IncludedStatus", "BubbleSheetReview")',
+            fnServerParams: function (aoData) {
+                var schoolId = 0;
+                if ($('#selectSchool').val() != 'select' && $('#selectSchool').val() > 0) {
+                    schoolId = $('#selectSchool').val();
+
+                }
+
+                var currentParams = currentFilterParams || _historyData;
+
+                aoData.push(
+                    { name: "archived", value: (currentParams && !currentParams.isFormLoad) ? currentParams.archived : false  },
+                    { name: "districtId", value: currentParams && currentParams.districtID ? currentParams.districtID : null },
+                    { name: "schoolId", value: currentParams && currentParams.schoolID ? currentParams.schoolID : 0 },
+                    { name: "Duration", value: currentParams && currentParams.timeFrame ? currentParams.timeFrame : 30 },
+                    { name: "GradeName", value: currentParams && currentParams.grade ? currentParams.grade : '' },
+                    { name: "SubjectName", value: currentParams && currentParams.subject ? currentParams.subject : '' },
+                    { name: "BankName", value: currentParams && currentParams.bank ? currentParams.bank : '' },
+                    { name: "ClassName", value: currentParams && currentParams.class ? currentParams.class : '' },
+                    { name: "TeacherName", value: currentParams && currentParams.teacher ? currentParams.teacher : '' },
+                    { name: "TestName", value: currentParams && currentParams.test ? currentParams.test : '' }
+                );
+            },
+            bAutoWidth: false,
+            iDisplayLength: _historyData.pageSize > 0 ? parseInt(_historyData.pageSize) : 10,
+            aaSorting: [[8, "desc"]],
+            oSearch: {
+                sSearch: _historyData.searchText
+            },
+            onSearch: keepSession,
+            oLanguage: {
+                sSearch: "",
+                //sLengthMenu: "Show _MENU_",
+                "sZeroRecords": "No results meet your search criteria. Try changing your date range or other filters and search again."
+            },
+            aoColumns: [
+                { mData: 'Ticket', sType: 'integer', sName: 'Ticket', bSearchable: false, bSortable: false, sWidth: '90px' },
+                { mData: 'Grade', sType: 'string', sName: 'Grade', bSearchable: true, bSortable: true, sWidth: '100px' },
+                { mData: 'Subject', sType: 'string', sName: 'Subject', bSearchable: true, bSortable: false, bVisible: false },
+                { mData: 'Bank', sType: 'string', sName: 'Bank', bSearchable: true, bSortable: false, bVisible: false },
+                { mData: 'Test', sType: 'string', sName: 'Test', bSearchable: true, bSortable: true },
+                { mData: 'Class', sType: 'string', sName: 'Class', bSearchable: true, bSortable: true },
+                { mData: 'Teacher', sType: 'string', sName: 'Teacher', bSearchable: true, bSortable: true, sWidth: '120px' },
+                { mData: 'DateCreated', sType: 'string', sName: 'DateCreated', bSearchable: true, bSortable: true, sWidth: '170px' },
+                { mData: 'DateUpdated', sType: 'string', sName: 'DateUpdated', bSearchable: true, bSortable: true, sWidth: '170px' },
+                { mData: 'GradedCount', sType: 'integer', sName: 'GradedCount', bSearchable: true, bSortable: true, sWidth: '120px', sClass: 'columnRight' },
+                { mData: 'Fini', sType: 'string', sName: 'Fini', bSearchable: false, bSortable: true, sWidth: '80px' },
+                { mData: 'Review', sType: 'string', sName: 'Review', bSearchable: false, bSortable: true, sWidth: '100px' },
+                { mData: 'Ungraded', sType: 'string', sName: 'Ungraded', bSearchable: false, bSortable: true, sWidth: '110px' },
+                { mData: 'ClassId', sType: 'integer', sName: 'ClassId', bSearchable: false, bSortable: false, bVisible: false },
+                { mData: 'IsArchived', sType: 'bool', sName: 'IsArchived', bSearchable: false, bSortable: false, bVisible: false },
+                { mData: 'IsDownloadable', sType: 'bool', sName: 'IsDownloadable', bSearchable: false, bSortable: false, bVisible: false },
+                { mData: 'UnmappedSheetCount', sType: 'integer', sName: 'UnmappedSheetCount', bSearchable: false, bSortable: false, bVisible: false },
+                { mData: 'VirtualTestSubTypeID', sType: 'integer', sName: 'VirtualTestSubTypeID', bSearchable: false, bSortable: false, bVisible: false },
+            ],
+            aoSearchCols: [
+                null, null, null, null, null, null, null,
+                { "sSearch": ">= " + dateString, "bRegex": "false", "bSearchable": "true" },
+                null, null, null, null, null
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).parent().addClass('tableRow');
+                $('td:eq(0)', nRow).parent().attr('ticketId', aData['Ticket']);
+                $('td:eq(0)', nRow).html(setIconVisibility(aData['Ticket'], aData['ClassId'], aData['IsArchived'], aData['IsDownloadable'], aData['GradedCount'], aData['VirtualTestSubTypeID'], aData['Test']));
+                $('td:eq(4)', nRow).html(setTeacherName(aData['Teacher']));
+
+                var dateStr = displayDateWithFormatJsonDate(aData['DateCreated'], true);
+                if (dateStr == "")
+                    dateStr = "Not Available";
+                $('td:eq(5)', nRow).html(dateStr);
+                dateStr = displayDateWithFormatJsonDate(aData['DateUpdated'], true);
+                if (dateStr == "")
+                    dateStr = "Not Available";
+                $('td:eq(6)', nRow).html(dateStr);
+
+                $('td:eq(7)', nRow).html(setGradedCount(aData['GradedCount'], aData['UnmappedSheetCount']));
+
+                if (aData['ClassId'] == '0') {
+                    $('td:eq(4)', nRow).addClass('with-tip');
+                    $('td:eq(4)', nRow).attr('title', aData['Teacher']);
+                }
+
+                $('td:eq(1)', nRow).addClass('cell-grade');
+
+                var _pageSizeDefault = _historyData.pageSize ? _historyData.pageSize : 50;
+                var pageSizeGrid = $('#dataTable_length select').val();
+                if (_pageSizeDefault != pageSizeGrid) {
+                    keepSession();
+                    _pageSizeDefault = pageSizeGrid;
+                }
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#reviewList'), 'Loading');
+                return true;
+            },
+            fnDrawCallback: function (oSettings) {
+                $('#filterSheets').removeAttr("disabled");
+                $('#reviewList').unblock();
+                $('.with-tip').tip();
+                adjustGradeColumnWidth();
+            },
+            fnInitComplete: function () {
+                $('.block-footer').append('<span><b>* The number in parentheses represents generic sheets that have not been assigned and graded.</b></span>');
+
+                var elSearchLabel = $('#dataTable_filter');
+                var elSearchInput = elSearchLabel.find('input');
+                elSearchInput.attr('style', 'padding-left: 32px !important; position: relative;');
+                $('#dataTable_filter').addClass('data-search');
+
+                var elDeactivate = $('#formCheckDeactivate');
+                elDeactivate.css({ position: 'absolute', marginTop: '10px', visibility: 'visible', left: '24px' });
+                $('.block-custom-header').prepend(elDeactivate);
+                swapFooterTable();
+            }
+        };
+
+        $('#dataTable').data("options", options);
+    }
+
+    function setupFilters() {
+
+        currentFilterParams = getFilterDatas();
+
+        var dataTable = ui.dataTable;
+        var settings = dataTable.fnSettings();
+        fnResetAllFilters(settings);
+
+        if ($("#selectGrade").val()) {
+            filterColumn($('#selectGrade').val(), 1, settings);
+        }
+
+        if ($("#selectSubject").val()) {
+            filterColumn($('#selectSubject').val(), 2, settings);
+        }
+
+        if ($("#selectBank").val()) {
+            filterColumn($('#selectBank').val(), 3, settings);
+        }
+
+        if ($("#selectTest").val()) {
+            filterColumn($('#selectTest').val(), 4, settings);
+        }
+
+        if ($("#selectClass").val()) {
+            filterColumn($('#selectClass').val(), 5, settings);
+        }
+
+        if ($("#selectTeacher").val()) {
+            filterColumn($('#selectTeacher').val(), 6, settings);
+        }
+
+        if ($('#selectDistrict').val() > 0) {
+            districtId = $('#selectDistrict').val();
+        }
+
+        ui.dataTable.fnDraw(false);
+    }
+
+    function getDateTimeFromSelect(dateTime, oSettings) {
+        $.get('@Url.Action("GetDateTimeFromDayOffset")', { days: dateTime }, function (data) {
+            filterColumn(">= " + data.Date, 7, oSettings);
+        });
+    }
+
+    function filterColumn(searchTerm, columnIndex, settings) {
+        settings.aoPreSearchCols[columnIndex].sSearch = searchTerm;
+        settings.aoPreSearchCols[columnIndex].bRegex = false;
+        settings.aoPreSearchCols[columnIndex].bSmart = true;
+    }
+
+    function fnResetAllFilters(oSettings) {
+        for (var iCol = 0; iCol < oSettings.aoPreSearchCols.length; iCol++) {
+            oSettings.aoPreSearchCols[iCol].sSearch = '';
+        }
+    }
+
+    function getStudentViewIcon(virtualTestSubTypeID, isGradedCount, ticket, classId, testName) {
+        var el = document.createElement('a');
+
+        var pageUrl = 'Index';
+
+        if (virtualTestSubTypeID == 2 || virtualTestSubTypeID == 6) {
+            pageUrl = 'ACTPage';
+        } else if (virtualTestSubTypeID == 3 || virtualTestSubTypeID == 7) {
+            pageUrl = 'SATPage';
+        }
+
+        el.setAttribute('href', '/BubbleSheetReviewDetails/' + pageUrl + '/' + ticket + '?classId=' + classId + '&test=' + testName);
+        el.className = 'with-tip Icon my-1 mx-2';
+
+        if (isGradedCount) {
+            el.setAttribute('title', 'Assign & Grade');
+        } else {
+            el.setAttribute('title', 'Student View Details');
+        }
+
+        var elIcon = document.createElement('i');
+        elIcon.className = 'custom-icon fa-solid fa-user icon-grey';
+
+        el.appendChild(elIcon);
+
+        return el.outerHTML;
+    }
+
+    function getClassViewIcon(ticket, classId, testName) {
+        var el = document.createElement('a');
+        el.setAttribute('href', '/BubbleSheetClassView/ClassViewPage/' + ticket + '?classId=' + classId + '&test=' + testName);
+        el.setAttribute('title', 'Class View Details');
+        el.className = 'with-tip Icon my-1 mx-2';
+
+        var elIcon = document.createElement('i');
+        elIcon.className = 'custom-icon fa-solid fa-users icon-grey';
+
+        el.appendChild(elIcon);
+
+        return el.outerHTML;
+    }
+
+    function getArchivedIcon (isArchived, ticket, classId) {
+        var el = document.createElement('a');
+
+        el.setAttribute('href', 'javascript:void(0)');
+        el.setAttribute('ticket', ticket);
+        el.setAttribute('classId', classId);
+        el.className = 'with-tip archiveTest Icon my-1 mx-2';
+
+        //var elIcon = document.createElement('img');
+        //elIcon.setAttribute('src', '/Content/themes/Constellation/images/icons/folderIconV2.svg');
+        var elIcon = document.createElement('i');
+        elIcon.className = 'custom-icon fa-solid fa-eye-slash icon-grey';
+
+        if (isArchived) {
+            el.setAttribute('title', 'Unarchive');
+            el.setAttribute('operation', '0');
+            elIcon.className = 'custom-icon fa-solid fa-eye icon-grey';
+        } else {
+            el.setAttribute('title', 'Archive');
+            el.setAttribute('operation', '1');
+        }
+
+        el.appendChild(elIcon);
+
+        return el.outerHTML;
+    }
+
+    function getDownloadableIcon (ticket) {
+        var el = document.createElement('a');
+
+        el.setAttribute('href', '/BubbleSheet/GetDownloadUrl/' + ticket);
+        el.setAttribute('title', 'Download Original');
+        el.setAttribute('target', '_blank');
+        el.className = 'with-tip download Icon my-1 mx-2';
+
+        var elIcon = document.createElement('i');
+        elIcon.className = 'custom-icon fa-solid fa-download icon-grey';
+
+        el.appendChild(elIcon);
+
+        return el.outerHTML;
+    }
+
+    function setIconVisibility(ticket, classId, isArchived, isDownloadable, gradedCount, virtualTestSubTypeID, testName) {
+        var iconString = '';
+        var virtualTestSubTypeIdList = [2, 3, 6, 7];
+        var isGradedCount = gradedCount == '0 / 0';
+        var isSatOrAct = virtualTestSubTypeIdList.indexOf(virtualTestSubTypeID) > -1;
+
+        iconString += getStudentViewIcon(virtualTestSubTypeID, isGradedCount, ticket, classId, testName);
+
+        if (!isSatOrAct) {
+            iconString += getClassViewIcon(ticket, classId, testName);
+        }
+
+        iconString += getArchivedIcon(isArchived, ticket, classId);
+
+        if (isDownloadable) {
+            iconString += getDownloadableIcon(ticket);
+        }
+
+        return iconString;
+    }
+
+    function setTeacherName(teacherName) {
+        if ((teacherName == undefined || teacherName.indexOf('<br>') < 0)) {
+            return teacherName;
+        } else {
+            return teacherName.split('<br>')[0] + ' ...';
+        }
+    }
+
+    function populateSchoolsByDistrict(districtValue) {
+        $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', { districtId: districtValue }, function (schools) {
+            populateSchools(schools);
+            if (_historyData.schoolID > 0) {
+                $("#selectSchool").val(_historyData.schoolID);
+            }
+        });
+    }
+
+    function populateSchools(schools) {
+        addDefaultOption($('#selectSchool'), "School");
+        addSelectListItems($('#selectSchool'), schools);
+    }
+
+    function setGradedCount(gradedCountValue, unmappedSheetCount) {
+        if (gradedCountValue == "0 / 0") {
+            return "Generic</br>(" + unmappedSheetCount + ")";
+        } else if (unmappedSheetCount > 0) {
+            return gradedCountValue + "</br>(" + unmappedSheetCount + ")";
+        } else {
+            return gradedCountValue;
+        }
+    }
+
+    function setStudentCount(ticket, classID) {
+        var value;
+        $.ajax({
+            url: '@Url.Action("GetStudentTest")',
+            type: "GET",
+            data: { ticket: ticket, classID: classID },
+            async: false
+        }).done(function (response) {
+            value = response;
+        });
+        return value;
+    }
+
+    function InitData() {
+        if ('@ViewBag.IsNetworkAdmin' != null && '@ViewBag.IsNetworkAdmin'=='True') {
+            $.get('@Url.Action("GetStatesByDictricIds", "PopulateStateDistrict")', { dictricIds: '@ViewBag.ListDictrictIds' }, function (states) {
+                AddSelectListItems($('#selectState'), states, 'Select States');
+                if (_historyData.stateID > 0) {
+                    $("#selectState").val(_historyData.stateID);
+                    $('#selectState').trigger('change');
+                }
+            });
+        } else {
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                AddSelectListItems($('#selectState'), states, 'Select States');
+                if (_historyData.stateID > 0) {
+                    $("#selectState").val(_historyData.stateID);
+                    $('#selectState').trigger('change');
+                }
+            });
+        }
+
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            if ('@ViewBag.IsPublisher' === 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                    if (districts.length === 1) {
+                        $('#selectDistrict').trigger('change');
+                    }
+                    if (_historyData.districtID > 0) {
+                        $("#selectDistrict").val(_historyData.districtID);
+                        $('#selectDistrict').trigger('change');
+                    }
+                });
+            }
+            if ('@ViewBag.IsNetworkAdmin' == 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                    if (districts.length === 1) {
+                        $('#selectDistrict').trigger('change');
+                    }
+                    if (_historyData.districtID > 0) {
+                        $("#selectDistrict").val(_historyData.districtID);
+                        $('#selectDistrict').trigger('change');
+                    }
+                });
+            }
+        }
+    }
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+    function adjustGradeColumnWidth() {
+        if ($('.th-grade').text().length > 3) {
+           $('.cell-grade').attr('width','74px');
+        }
+    }
+
+    function loadHistoryData() {
+        if (sessionStorage.length > 0 && sessionStorage.KEEP_SESSION) {
+            var data = JSON.parse(sessionStorage.KEEP_SESSION);
+            if (data.rootPage === _CURRENT_PAGE_NAME) {
+                if (data.payload) {
+                    _historyData = data.payload;
+                    $("#dataTable_filter input").val(_historyData.searchText);
+                    $("#selectGrade").val(_historyData.grade);
+                    $("#selectSubject").val(_historyData.subject);
+                    $("#selectBank").val(_historyData.bank);
+                    $("#selectClass").val(_historyData.class);
+                    $("#selectTeacher").val(_historyData.teacher);
+                    $("#selectStudent").val(_historyData.student);
+                    $("#selectTest").val(_historyData.test);
+                    $("#selectTestCode").val(_historyData.testCode);
+                    $("#dateTime").val(_historyData.timeFrame);
+                    $('#dataTable_length select').val(_historyData.pageSize);
+                    $("#archiveText").html(_historyData.archived ? "On" : "Off");
+
+                }
+            }
+        }
+    }
+    function getFilterDatas() {
+        return {
+            stateID: $("#selectState").val(),
+            districtID: $("#selectDistrict").val(),
+            grade: $("#selectGrade").val(),
+            subject: $("#selectSubject").val(),
+            bank: $("#selectBank").val(),
+            schoolID: $("#selectSchool").val(),
+            class: $("#selectClass").val(),
+            teacher: $("#selectTeacher").val(),
+            student: $("#selectStudent").val(),
+            test: $("#selectTest").val(),
+            timeFrame: $("#dateTime").val(),
+            searchText: $("#dataTable_filter input").val(),
+            isFormLoad: isFormLoad,
+            pageSize: $('#dataTable_length select').val(),
+            archived: archived
+        };
+    }
+    function keepSession() {
+        var data = {
+            rootPage: "BubbleSheetReview",
+            subPages: ["BubbleSheetReviewDetail"],
+            payload: getFilterDatas()
+        };
+
+        sessionStorage.KEEP_SESSION = JSON.stringify(data);
+    }
+
+
+
+</script>

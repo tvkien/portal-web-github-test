@@ -1,0 +1,509 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.DataLockerPreferencesViewModel
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.ResultsEntryDataLocker, "Data Locker Preferences");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<style>
+    #DataLockerPreferenceContent .header {
+        font-size: 1.375rem;
+        font-weight: 700;
+        line-height: 1.455;
+        color: var(--navyColor);
+    }
+
+    #portal-v2-containter #DataLockerPreferencesForm {
+        padding: 24px
+    }
+
+        #portal-v2-containter #DataLockerPreferencesForm .modal-component-footer {
+            background-color: transparent;
+        }
+
+            #portal-v2-containter #DataLockerPreferencesForm .modal-component-footer #btnSave {
+                margin-right: 0;
+            }
+
+    #DataLockerPreferencesForm .clearBtn {
+        top: 12px;
+    }
+
+    #portal-v2-containter #DataLockerPreferenceContent #btnSave {
+        margin-left: auto;
+    }
+</style>
+
+<script src="@Url.Content("~/Scripts/TestDesign/testSchedule.js")" type="text/javascript"></script>
+<article class="container_12">
+    <section class="grid_12">
+        <div id="DataLockerPreferenceContent" class="block-border">
+            @using (Html.BeginForm("Index", "DataLockerPreferences", FormMethod.Post, new { id = "DataLockerPreferencesForm", @class = "block-content form bubbleSheetSelector" }))
+            {
+                <h1 class="p-0 m-0">Data Locker Preferences</h1>
+                <div>
+                    <div class="header mt-4">Select Preferences</div>
+                    <div id="divLoadBanks" style="width: 100%">
+                    </div>
+                    <div class="d-flex flex-column" style="max-width: 1120px">
+                        <div>
+                            <label>Setting Type</label>
+                            <div class="block-text-name">
+                                <select id="selectSettingType">
+                                    @if (Model.IsPublisher)
+                                    {
+                                        <text>
+                                            <option value="1">Enterprise Settings</option>
+                                        </text>
+                                    }
+                                    <option value="2">@LabelHelper.DistrictLabel Settings</option>
+                                    <option value="3">School Settings</option>
+                                </select>
+                            </div>
+                        </div>
+                        @if (Model.IsPublisher)
+                        {
+                            <div id="publisherContent">
+                                <div class="header mt-4 mb-3" id="lblStateSelect">Select State/@LabelHelper.DistrictLabel</div>
+                                <div class="d-flex flex-row">
+                                    <div>
+                                        <label>State</label>
+                                        <div class="block-text-name">
+                                            <select id="selectState"></select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="ms-3">
+                                        <label>@LabelHelper.DistrictLabel</label>
+                                        <div class="block-text-name">
+                                            <select id="selectDistrict"></select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="schoolSettings" class="ms-3" style="display: none">
+                                        <label>School</label>
+                                        <div class="block-text-name">
+                                            <select id="selectSchool" class="full-width"></select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input id="hdfSchoolId" type="hidden" value="0" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div id="schoolSettings" style="display: none">
+                                <div class="header mt-4 mb-3">Select School</div>
+                                <div class="d-flex flex-row">
+                                    <div>
+                                        <label>School</label>
+                                        <div class="block-text-name">
+                                            <select id="selectSchool" class="full-width"></select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <input id="hdfDistrictId" value="@Model.CurrentDistrictId" type="hidden" />
+                            <input id="hdfSchoolId" type="hidden" value="0" />
+                        }
+                    </div>
+                    <div class="d-flex flex-column" style="max-width: 1120px">
+                        <div id="lastUpdateInfor" style="text-align: right"></div>
+                        <div id="divSettingAreas" style="width: 100%;"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+</article>
+
+<script>
+
+    var testSchedule = new testSchedule('@ViewBag.DateFormat');
+    $(function () {
+
+        if ($('#selectSettingType').val() == 1) {
+            $('#publisherContent').hide();
+            LoadSettingCurrentRole();
+        }
+
+        @if (Model.IsPublisher)
+        {
+            <text>
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                populateStates(states);
+            });
+            </text>
+        }
+        else
+        {
+            if (Model.IsNetworkAdmin)
+            {
+                 <text>
+                $.get('@Url.Action("GetStatesByDictricIds", "PopulateStateDistrict")', { dictricIds: '@Model.StrIds' }, function (states) {
+                    populateStates(states);
+                });
+                </text>
+            }
+            else
+            {
+                if (Model.IsAdmin)
+                {
+                    <text>
+                    LoadSettingType(1);
+                    </text>
+                }
+                else if (Model.IsSchoolAdmin)
+                {
+                    <text>
+                    LoadSettingType(3);
+                    </text>
+                }
+            }
+        }
+
+    });
+
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            if ('@Model.IsPublisher' === 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+                });
+            }
+            if ('@Model.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+                });
+            }
+        }
+    }
+
+    function populateSchools(schoolSelect) {
+        schoolSelect.empty();
+        if ('@Model.IsPublisher' === 'True') {
+            var districtValue = $('#selectDistrict').val();
+            $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', { districtId: districtValue }, function (response) {
+                addDefaultOption(schoolSelect, "School");
+                addSelectListItems(schoolSelect, response);
+            });
+        }
+        else if ('@Model.IsAdmin' === 'True') {
+            $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', { districtId: $('#hdfDistrictId').val() }, function (response) {
+                addDefaultOption(schoolSelect, "School");
+                addSelectListItems(schoolSelect, response);
+            });
+        }
+        else if ('@Model.IsSchoolAdmin' === 'True') {
+            $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', function (response) {
+                addDefaultOption(schoolSelect, "School");
+                addSelectListItems(schoolSelect, response);
+            });
+        }
+    }
+
+    function populateStates(states) {
+        addDefaultOption($('#selectState'), "State");
+        addSelectListItems($('#selectState'), states);
+    }
+
+    $('#selectState').change(function () {
+        $('#selectState').marquee();
+        $('#selectDistrict').empty();
+        $('#selectSchool').empty();
+        $('#hdfSchoolId').val(0);
+
+        if ($('#selectState').val() != 'select') {
+            populateDistricts();
+        } else {
+            $('#divSettingAreas').empty();
+            $('#lastUpdateInfor').empty();
+        }
+    });
+
+    $('#selectDistrict').change(function () {
+        $('#selectDistrict').marquee();
+        if ($('#selectDistrict').val() != 'select') {
+            if ($('#selectSettingType').val() == 2) {
+                $('#selectSchool').empty();
+                $('#schoolSettings').hide();
+                LoadSettingCurrentRole();
+            }
+            else if ($('#selectSettingType').val() == 3) {
+                $('#divSettingAreas').empty();
+                $('#lastUpdateInfor').empty();
+                $('#selectSchool').empty();
+                $('#selectSchool').val('select');
+                $('#hdfSchoolId').val(0);
+                populateSchools($('#selectSchool'));
+            }
+        } else {
+            $('#divSettingAreas').empty();
+            $('#lastUpdateInfor').empty();
+        }
+    });
+
+    $('#selectSchool').change(function () {
+        $('#selectSchool').marquee();
+        if ($('#selectSchool').val() != 'select') {
+            $('#hdfSchoolId').val($('#selectSchool').val());
+            LoadSettingCurrentRole();
+        }
+        else {
+            $('#divSettingAreas').empty();
+            $('#lastUpdateInfor').empty();
+            $('#hdfSchoolId').val(0);
+        }
+    });
+
+    $('#selectSettingType').change(function () {
+        $('#selectState').val('select');
+        $('#selectDistrict').empty();
+        $('#selectSchool').empty();
+        $('#hdfSchoolId').val(0);
+
+        if ($('#selectSettingType').val() == 1) {
+            $('#publisherContent').hide();
+            LoadSettingCurrentRole();
+        }
+        else if ($('#selectSettingType').val() == 2) {
+            $("#lblStateSelect").text('Select State/@LabelHelper.DistrictLabel');
+            $('#publisherContent').show();
+            $('#divSettingAreas').empty();
+            $('#lastUpdateInfor').empty();
+            $('#schoolSettings').hide();
+            if ($('#hdfDistrictId').length > 0 && $('#hdfDistrictId').val()) {
+                LoadSettingCurrentRole();
+            }
+        }
+        else if ($('#selectSettingType').val() == 3) {
+            $("#lblStateSelect").text('Select State/@LabelHelper.DistrictLabel/School');
+            $('#publisherContent').show();
+            $('#divSettingAreas').empty();
+            $('#lastUpdateInfor').empty();
+            $('#selectSchool').empty();
+            $('#schoolSettings').show();
+            if ('@Model.IsSchoolAdmin' === 'True' || '@Model.IsAdmin' === 'True') {
+                $('#hdfSchoolId').val(0);
+                populateSchools($('#selectSchool'));
+            }
+        }
+    });
+
+    $('#divSettingAreas').on('click change', 'input:radio, input:checkbox', function () {
+        $("#btnSave").attr('disabled', false);
+        $("#btnCancel").attr('disabled', false);
+    });
+
+    function LoadSettingType(userRole) {
+        switch (userRole) {
+            case 1: //TODO districtAdmin
+                {
+                    //$('#selectSettingType option[value = "1"]').hide();
+                    $('#selectSettingType option[value = "1"]').remove();
+                    $('#selectSettingType option[value = "2"]').attr("selected", "selected");
+                    LoadSettingCurrentRole();
+                }
+                break;
+
+            case 2: //TODO User
+                {
+                    $('#selectSettingType option[value = "1"]').remove();
+                    $('#selectSettingType option[value = "4"]').attr("selected", "selected");
+                    LoadSettingCurrentRole();
+                }
+                break;
+
+            case 3: //TODO User
+                {
+                    $('#selectSettingType option[value = "1"]').remove();
+                    $('#selectSettingType option[value = "2"]').remove();
+                    $('#selectSettingType option[value = "3"]').attr("selected", "selected");
+                    $('#schoolSettings').show();
+                    populateSchools($('#selectSchool'));
+                }
+                break;
+
+            default:
+        }
+
+    }
+
+    function LoadSettingCurrentRole() {
+        ShowBlock($('#DataLockerPreferenceContent'), "Load Setting");
+        $('#lastUpdateInfor').empty();
+        var currentSettingType = $('#selectSettingType').val();
+        var currentDistrictId = 0;
+        if ($('#hdfDistrictId').length > 0) {
+            currentDistrictId = $('#hdfDistrictId').val();
+        }
+        else if ($('#selectSettingType').val() == 1) {
+            currentDistrictId = 0;
+        }
+        else {
+            currentDistrictId = $('#selectDistrict').val();
+        }
+        $('#divSettingAreas').empty();
+
+        $('#divSettingAreas').load('@Url.Action("LoadSettings")', { levelSetting: currentSettingType, districtId: currentDistrictId, schoolId: $('#hdfSchoolId').val() }, function (response) {
+            $('#DataLockerPreferenceContent').unblock();
+        });
+    }
+</script>
+<style type="text/css">
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: var(--dark) !important;
+    }
+</style>
+<style type="text/css">
+    /* css for timepicker */
+    .ui-datepicker .ui-datepicker-header {
+        top: 0px;
+    }
+
+    .ui-datepicker .ui-datepicker-prev span,
+    .ui-datepicker .ui-datepicker-next span {
+        background-image: url("/Content/themes/base/images/ui-icons_222222_256x240.png");
+    }
+
+    .ui-datepicker .ui-icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    .ui-timepicker-div .ui-widget-header {
+        margin-bottom: 8px;
+    }
+
+    .ui-timepicker-div dl {
+        text-align: left;
+    }
+
+        .ui-timepicker-div dl dt {
+            float: left;
+            clear: left;
+            padding: 0 0 0 5px;
+        }
+
+        .ui-timepicker-div dl dd {
+            margin: 0 10px 10px 63px;
+        }
+
+    .ui-timepicker-div td {
+        font-size: 90%;
+    }
+
+    .ui-tpicker-grid-label {
+        background: none;
+        border: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .ui-timepicker-rtl {
+        direction: rtl;
+    }
+
+        .ui-timepicker-rtl dl {
+            text-align: right;
+            padding: 0 5px 0 0;
+        }
+
+            .ui-timepicker-rtl dl dt {
+                float: right;
+                clear: right;
+            }
+
+            .ui-timepicker-rtl dl dd {
+                margin: 0 45% 10px 10px;
+            }
+
+    .ui-timepicker-div .ui-widget-header {
+        top: 0px;
+        background: url("images/ui-bg_highlight-soft_75_cccccc_1x100.png") repeat-x scroll 50% 50% var(--grey0) !important;
+    }
+
+    .colx2-left .lblrepeat {
+        line-height: 0px;
+        padding-top: 7px;
+    }
+
+    .colx2-left .lblend {
+        line-height: 0px;
+        padding-top: 5px;
+    }
+
+    .clear10 {
+        clear: both;
+        height: 10px;
+    }
+</style>

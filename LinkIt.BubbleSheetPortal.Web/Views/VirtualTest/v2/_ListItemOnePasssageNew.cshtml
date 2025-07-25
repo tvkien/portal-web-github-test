@@ -1,0 +1,446 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.ShowPassageFormViewModel
+<style>
+    #dataTableItemOnePassageNew tbody tr {
+        height: 100% !important; /* Fix for IE9 */
+    }
+</style>
+<style type="text/css">
+    .dataTableItemOnePassageNew .dataTables_empty {
+        height: 366px;
+        text-align: center;
+    }
+
+        .ui-dialog[aria-labelledby="ui-dialog-title-ShowPassageItemFormPopup"],
+        .ui-dialog[aria-labelledby="ui-dialog-title-ShowPassageItemFormPopup"] .dialog {
+            padding: 0;
+        }
+
+            .ui-dialog[aria-labelledby="ui-dialog-title-ShowPassageItemFormPopup"] .ui-dialog-titlebar {
+                width: 100%;
+                padding: 0;
+                top: 0 !important;
+                right: 0 !important;
+                min-height: 0 !important;
+            }
+
+            .ui-dialog[aria-labelledby="ui-dialog-title-ShowPassageItemFormPopup"] .ui-dialog-title,
+            .ui-dialog[aria-labelledby="ui-dialog-title-ShowPassageItemFormPopup"] .ui-icon-closethick {
+                display: none;
+            }
+
+    #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-ShowPassageItemFormPopup"] .ui-dialog-titlebar-close {
+        margin: 0;
+        padding: 0;
+        top: 16px;
+        right: 24px;
+        width: 10px;
+        height: 14px;
+        border: 0 !important;
+    }
+
+        #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-ShowPassageItemFormPopup"] .ui-dialog-titlebar-close:after {
+            bottom: unset;
+            right: unset
+        }
+</style>
+<div>
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h3 class="h3 mb-0">Associated Items</h3>
+        <a id="btnAddItemsOnePassageNewToItemSet" disabled="disabled" class="btn btn-link pe-0">Add Items to Test <i class="fa-solid fa-plus ms-2"></i></a>
+    </div>
+    <div>
+        <table id="dataTableItemOnePassageNew" class="datatable table no-margin dataTableItemOnePassageNew" width="100%">
+            <thead>
+                <tr>
+                    <th scope="col">
+                        <input type="checkbox" id="chkAllItemItemOnePassageNew" />
+                    </th>
+                    <th scope="col">Content</th>
+                    <th scope="col" style="display: none"></th><!--Tooltip-->
+                    <th scope="col" style="display: none"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="height: 60px;"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+@*        </div>
+        </section>
+    </article>*@
+<script type="text/javascript">
+
+    $(function () {
+        var options2 = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceItemOnePassageNew(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bFilter: false,
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QtiItemId', bSearchable: false, bSortable: false, sWidth: "50px", sClass: 'col-action' },
+                { sType: 'string', sName: 'Name', bSearchable: false, bSortable: false, },
+                { sType: 'string', sName: 'ToolTip', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'int', sName: 'MaxItemTooltipLength', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                //$('td:eq(0)', nRow).html(setIconVisibilityItemOnePassageNew(aData[0]));
+                $('td:eq(0)', nRow).html(setCheckBoxItemOnePassageNew(aData[0]));
+                $('td:eq(1)', nRow).html(parseXmlContentItemOnePassageNew(aData[1]));
+                $('td:eq(1)', nRow).addClass('with-tip');
+                $('td:eq(1)', nRow).bind({
+                    mouseenter: function () {
+                        displayItemTooltipItemOnePassageNew($(this), aData[2], aData[3]);
+                    },
+                    mouseleave: function () {
+                        $(this).removeClass('with-tip');
+                        $('#tips div:last-child').html('');
+                    }
+                });
+
+                $('td:eq(1)', nRow).attr("onclick", 'showItemOnePassagePopupNew(' + aData[0] + ',1)');
+                addWordBreakToTableCellItem($('td:eq(1)', nRow), 35, aData[1]);
+                $('td:eq(1)', nRow).addClass("cursor-pointer");
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableItemOnePassageNew'), 'Loading');
+                return true;
+            },
+            fnDrawCallback: function () {
+                firstLoad = false;//firstLoad defined in ItemsFromLibrary.cshtml
+                firstLoadListItemsFromLibraryNew = false;
+                MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+                LoadImages('#dataTableItemOnePassageNew');
+                $('.with-tip').tip();
+                $('#dataTableItemOnePassageNew').unblock();
+
+                //fraction is broken in new line
+                $("#dataTableItemOnePassageNew").find('span[class="math-tex"]').each(function (index, value) {
+                    var span = $(value);
+                    //add display:inline-block
+                    span.css('display', 'inline-block');
+                });
+                //replace list by ol ( list is generated from xmlcontent )
+
+                $("#dataTableItemOnePassageNew list[liststyletype='decimal']").each(function (index, value) {
+                    var html = '<ol style="list-style-type:decimal;list-style-position: inside">';
+                    $(value).find('li').each(function (idx, li) {
+                        html += $(li).outerHTML();
+                    });
+                    html += '</ol>';
+                    $(value).html(html);
+                });
+
+                formatTableForAddingVertialScrollBar('dataTableItemOnePassageNew', 'scrollItemDataTableItemOnePassageNew', 'noscrollItemDataTableItemOnePassageNew', 'scrollItemDataTableItemOnePassageNewIE9', 'noscrollItemDataTableItemOnePassageNewIE9');
+
+                loadContentNumberLineHotspot('#dataTableItemOnePassageNew');
+                loadContentImageHotSpot('#dataTableItemOnePassageNew');
+                loadContentDragAndDrop('#dataTableItemOnePassageNew');
+
+                calculatorSequenceWidth("#dataTableItemOnePassageNew partialsequence");
+            },
+            fnInitComplete: function () {
+                var tableEl = $('#dataTableItemOnePassageNew')[0];
+                var wrapper = document.createElement('div');
+                wrapper.classList.add('table-wrapper-scroll');
+                tableEl.parentNode.insertBefore(wrapper, tableEl);
+                wrapper.appendChild(tableEl);
+            }
+        };
+
+        $("#dataTableItemOnePassageNew").data("options", options2);
+        initializeDataTable($("#dataTableItemOnePassageNew"));
+    });
+
+    function getAjaxSourceItemOnePassageNew() {
+        $('#chkAllItemItemOnePassageNew').removeAttr('checked').removeClass('input-checked-v2');
+
+
+        ShowBlock($('#dataTableItemOnePassageNew'), "Loading");
+        var matchItemXml = '@Model.ShownItemXml';
+        return '@Url.Action("LoadItemOnePassageNew","ItemBank")?qtiRefObjectID=@Model.QTIRefObjectID' + '&matchItemXml=' + encodeParameter(matchItemXml);
+
+    }
+    function parseXmlContentItemOnePassageNew(xmlContent) {
+        var title = '';
+        xmlContent = correctInlineChoice(xmlContent);
+        $(xmlContent).find('.itemBody, itemBody, itembody').each(function () {
+            var itemBody = $(this);
+            itemBody.find("videolinkit").replaceWith(function () {
+                return $('');
+            });
+
+            if ($(xmlContent).find("responsedeclaration").attr("partialgrading") == "1") {
+                itemBody.find("sourcetext").each(function () {
+                    if ($(this).attr("pointvalue") > 0) {
+                        $(this).addClass("marker-correct");
+                    }
+                });
+            } else {
+                $(xmlContent).find("correctResponse").each(function () {
+                    var id = $(this).attr("identifier");
+                    itemBody.find("sourcetext[identifier=\"" + id + "\"]").addClass("marker-correct");
+                });
+            }
+
+            title = itemBody.html();
+        });
+
+        //title = title.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+        title = title.replaceAll("<object", "<object style='display: none;'");
+        var divTitle = '<div style="max-height:60px; overflow:hidden;">' + title + '</div>';
+
+        return divTitle;
+    }
+    function setIconVisibilityItemOnePassageNew(qtiItemId) {
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a href="javascript:void(0)" onclick="showItemOnePassagePopupNew(' + qtiItemId + ',1)"  title="Edit Item" qtiItemId="' + qtiItemId + '" class="with-tip EditQtiItem"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        var addToItemSet = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle.png")';
+        var addToItemSetString = '<a href="javascript:void(0)" title="Add To Item Set" qtiItemId="' + qtiItemId + '" class="with-tip addToItemSet2" onclick="AddItemPassageNewToItemSet(this);"><img src="' + addToItemSet + '" width="16" height="16"></a>';
+        return editString + addToItemSetString;
+    }
+    function setCheckBoxItemOnePassageNew(qtiItemId) {
+        var checkboxString = '<input type="checkbox" name="chkItemNew" value="' + qtiItemId + '"  />';
+
+        return checkboxString;
+    }
+    $('#btnAddItemsOnePassageNewToItemSet').die('click');
+    $('#btnAddItemsOnePassageNewToItemSet').live("click", function (e) {
+       //Show Pop up allow user to select section
+        var virtualTestId = $('#hiddenVirtualTestId').val();
+        var worker = $('<div />');
+        worker
+            .addClass("dialog SelectSectionDialog")
+            .attr("id", "SelectSectionDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowSelectSectionDialog")/?virtualTestId=' + virtualTestId + '&onPopup=true', function () {
+                worker.dialog({
+                    open: function () {
+                        $('#tips').html('');
+                        //get the z-index of dialog
+                        var zIndex = $('#SelectSectionDialog').parent('.ui-dialog').css('z-index');
+                        zIndex = parseInt(zIndex) + 1;
+                        //set z-index for overley
+                        $('.ui-widget-overlay').last().css('z-index', zIndex);
+                        $('.ui-widget-overlay').last().css('height', '2000px');
+                        $('#SelectSectionDialog').parent('.ui-dialog').css('z-index', zIndex + 1);
+                        $('#SelectSectionDialog').prev().css('top', '70px');
+                    },
+                    title: $(this).attr("Select Section"),
+                    close: function () {
+                        //refresh qtitem
+                        $('#tips').html('');
+
+                        //$('.ui-widget-overlay').remove();
+                        //remove the last only
+                        $('.ui-widget-overlay').last().remove();
+                        $('#SelectSectionDialog').parent('.ui-dialog').empty();
+                        $('#SelectSectionDialog').remove();
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+            });
+
+        showModalDialogBG();
+
+
+
+    });
+
+    function AddItemPassageNewToItemSet(control) {
+        ShowBlock($("#dataTableItemOnePassageNew"), "Adding");
+        var id = $(control).attr("qtiItemId");
+        var href = $(control);
+        $.get('@Url.Action("AddQTIToItemSet", "ItemBank")', { qtiItemId: id, qtiGroupId: $("#hiddenQIItemGroupID").val() }, function (response) {
+            $("#dataTableItemOnePassageNew").unblock();
+            if (response.Success == 'Success') {
+                //href.css({ 'display': 'none' });
+                if ($('#qtiItemDataTablePopup').length > 0) {
+                    ui.qtiItemDataTablePopup.fnDraw();
+                }
+            } else {
+                alert(response.errorMessage);
+            }
+
+        });
+    }
+
+    function ReloadItemOnePassageNew() {
+        $("#dataTableItemOnePassageNew").dataTable().fnReloadAjax(getAjaxSourceItemOnePassageNew());
+    }
+    function showItemOnePassagePopupNew(qtiItemId, showPassage) {
+        $.ajax({
+            url: '@Url.Action("CheckQtiItemExists", "ItemBank")',
+            data: { qtiItemId: qtiItemId },
+            type: 'get',
+            cache: false
+        }).done(function (response) {
+            if (response.Exists == 'False') {
+                alert(response.errorMessage);
+                return;
+            } else {
+                //Show popup
+                ShowBlock($('#dataTableItemOnePassageNew'), "Opening Item");
+                var worker = $('<div />');
+                worker
+                    .addClass("dialog EditQtiItemPopUpDialogCSS")
+                    .attr("id", "editQtiItemDialog")
+                    .appendTo("body")
+                    .load('@Url.Action("ShowEditQtiItemItem","ItemBank")\?qtiItemId=' + +qtiItemId + '&showPassage=' + showPassage, function () {
+                        worker.dialog({
+                            title: $(this).attr("Standard"),
+                            open: function () {
+                                //a new overlay will be generated when opening an dialog
+                                //set zindex of new overlay to make it cover Filter Item From Library Popup
+                                var z_index = $("#editQtiItemDialog").parent().css('z-index');
+                                $('.ui-widget-overlay:first').css('z-index', parseInt(z_index) + 1);
+                                $("#editQtiItemDialog").parent().css('z-index', parseInt(z_index) + 2);
+                                $("#editQtiItemDialog").prev().css('top', '30px');
+                                $('.ui-widget-overlay:first').height(2000);
+                                $('#dataTableItemOnePassageNew').unblock();
+                                AdjustQtiItemDetail();//declared in _QtiItemDetail.cshtml
+
+                                var qtiItemHTML = $('#divQtiItemDetail').html();
+                                qtiItemHTML = qtiItemHTML.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+                                $('#divQtiItemDetail').html(qtiItemHTML);
+
+                                $('#divQtiItemDetail').find('video').trigger('play');
+                                // Load content in file qtiItemLoadMedia.js
+                                loadContentNumberLineHotspot('#divQtiItemDetail');
+                                loadContentImageHotSpot('#divQtiItemDetail');
+                                loadContentDragAndDrop('#divQtiItemDetail');
+                                loadContentGlossary('#divQtiItemDetail', '#glossaryMessage');
+                                calculatorSequenceWidth("#divQtiItemDetail partialsequence");
+                            },
+                            close: function () {
+                                $('.ui-widget-overlay:first').remove();
+                                $(this).remove();
+                                $('#tips').html('');
+                            },
+                            modal: false,
+                            width: 640,
+                            resizable: false,
+                            position: {
+                                my: "center",
+                                at: "center",
+                                of: window
+                            }
+                        });
+                    });
+                showModalDialogBG();
+            }
+        }).error(function (request) {
+        });
+
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    jQuery.fn.outerHTML = function (s) {
+        return (s)
+            ? this.before(s).remove()
+            : jQuery("<p>").append(this.eq(0).clone()).html();
+    };
+    function displayItemTooltipItemOnePassageNew(e, data, maxItemTooltipLength) {
+        if (data == null) {
+            data = '';
+        }
+        var width = '100px'; //default
+        if (maxItemTooltipLength <= 300) {
+            width = '300px';
+        }
+        else if (data.length <= 400) {
+            width = '400px';
+        }
+        else {
+            width = '500px';
+        }
+
+        $(e).attr('title', '<p style="text-align:left;width:' + width + ';white-space: normal;word-break: break-all">' + data.split('|').join('<br />') + '</p>');
+    }
+</script>
+<!-- script for checkbox all-->
+<script type="text/javascript">
+    $('#chkAllItemItemOnePassageNew').die('click');
+    $('#chkAllItemItemOnePassageNew').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkItemNew"][type=checkbox]').attr('checked', 'checked');
+            $('#btnAddItemsOnePassageNewToItemSet').removeAttr('disabled');
+        }
+        else {
+            $('INPUT[name="chkItemNew"][type=checkbox]').removeAttr('checked');
+            $('#btnAddItemsOnePassageNewToItemSet').attr('disabled', 'disabled');
+        }
+    });
+
+    $('INPUT[name="chkItemNew"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            $('#btnAddItemsOnePassageNewToItemSet').removeAttr('disabled');
+            var checkboxes = $('INPUT[name="chkItemNew"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllItemItemOnePassageNew').removeAttr('checked').removeClass('input-checked-v2');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllItemItemOnePassageNew').attr('checked', 'checked');
+            }
+        }
+        else {
+            $('#chkAllItemItemOnePassageNew').removeAttr('checked').removeClass('input-checked-v2');
+            var checkedboxes = $('INPUT[name="chkItemNew"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+            }
+            else {
+                $('#btnAddItemsOnePassageNewToItemSet').attr('disabled', 'disabled');
+            }
+        }
+    });
+
+    function getSelectedItemsOnePassageNew() {
+        var Ids = '';
+        $('INPUT[name="chkItemNew"][type=checkbox]:checked').each(function (i, e) {
+            Ids += $(e).val() + ',';
+        });
+        return Ids.substr(0, Ids.length - 1);
+    }
+    function uncheckAllSelectedqQtiItemsOnePassageNew() {
+        $('INPUT[name="chkItemNew"][type=checkbox]').removeAttr('checked');
+        $('#btnAddItemsOnePassageNewToItemSet').attr('disabled', 'disabled');
+    }
+</script>

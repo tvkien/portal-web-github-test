@@ -1,0 +1,136 @@
+﻿@using System.Linq
+@using LinkIt.BubbleSheetPortal.Common.Enum
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Common
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SATReport.SATReportMasterViewModel
+
+@if (Model.ReportContentOption == Util.ACTSATReportContentOption_EssayOnly)
+{
+    foreach (var essayFile in Model.BubbleSheetFileSubViewModels)
+    {
+        if (essayFile.PageType == Util.BubbleSheetFileEssayPageType)
+        {
+            <img style="width:200mm;margin-left:-50px;margin-top:-40px" src="@essayFile.ImageUrl"/>
+        }
+    }
+}
+else
+{
+    <script>
+        var _satReport = new SATReport();
+    </script>
+    <h1 style="display:none" id="current-date-time"></h1>
+    <h2 style="display:none">
+        @Model.StudentInformation.StudentName
+    </h2>
+    <div class="container_12" style="overflow: visible !important; background-color: white !important;">
+        <div class="grid_12" style="width: 180mm; margin-left: 0px; margin-right: 0px;">
+            <div>
+                <div style="width:50%;float:left">
+                    @if (string.IsNullOrEmpty(Model.DistrictLogoUrl))
+                    {
+                        <p style="font-size:16pt;margin-bottom:5px;">@Model.DistrictName</p>
+                    }
+                    else
+                    {
+                        <img class="district-logo" src="@Model.DistrictLogoUrl" /><br />
+                    }
+
+                    @if (Model.VirtualTestSubTypeId != (int)VirtualTestSubType.NewSAT)
+                    {
+                        <span style="font-size:16pt">OLD&nbsp;</span>
+                    }
+
+                    <span style="font-size:16pt">SAT STUDENT REPORT</span><br />
+                    <span style="font-size:11pt">Test: </span><span style="font-weight: bold;font-size:11pt">@Model.StudentInformation.TestName</span>
+                    <span style="font-size:11pt">Test Date: </span><span style="font-weight: bold;font-size:11pt">@Model.StudentInformation.TestDate.DisplayDateWithFormat()</span>
+                </div>
+                <div style="width:45%;float:right;margin-top:5px">
+                    @Html.Partial("_StudentInformation", Model)
+                </div>
+                <div style="clear:both;">
+                    <div style="height:200px;position:relative">
+                        <div id="composite-chart"></div>
+                        <div id="ebraw-chart"></div>
+                        <div id="math-chart"></div>
+                        <div id="reading-chart"></div>
+                        <div id="writing-chart"></div>
+                        <div id="sub-math-chart"></div>
+                    </div>
+                    @if (Model.VirtualTestSubTypeId == (int)VirtualTestSubType.SAT)
+                    {
+                        @Html.Partial("_DiagnosticHistory", Model)
+                    }
+                    else
+                    {
+                        @Html.Partial("_DiagnosticHistoryNewSAT", Model)
+                    }
+
+                    @if (Model.VirtualTestSubTypeId == (int)VirtualTestSubType.NewSAT)
+                    {
+                        <div>
+                            @Html.Partial("_DiagnosticHistoryDomainTag", Model)
+                        </div>
+                        <div class="clear-25"></div>
+                    }
+
+                    <div class="non-break-inside">
+                        <div class="black-title" style="margin-top:0">
+                            <span>SCORE IMPROVEMENT</span>
+                        </div>
+                        <div id="score-improvement-chart">
+
+                        </div>
+                    </div>
+
+                    @Html.Partial("_SectionWithTagReport", Model)
+                        @if (Model.SectionTagViewModels.Any(aw => aw.AnswerSectionViewModels.Any(x => x.SectionID == Model.EssaySectionId)) 
+                            && Model.ReportContentOption == Util.ACTSATReportContentOption_ScoreAndEssay
+                            && Model.BubbleSheetFileSubViewModels.Count > 0)
+                        {
+                           <div class="break-before">
+                               @foreach (var essayFile in Model.BubbleSheetFileSubViewModels)
+                               {
+                               if (essayFile.PageType == Util.BubbleSheetFileEssayPageType)
+                               {
+                               <img style="width:200mm;margin-left:-50px;margin-top:-40px" src="@essayFile.ImageUrl" />
+                               }
+                               }
+                           </div>
+                        }
+
+                    @if (Model.NewSATEssayComments.Any())
+                    {
+                        <div class="clear-25 non-break-inside break-before"></div>
+                            @Html.Partial("_EssayComment", Model)
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+    var model = @Html.Raw(Json.Encode(Model.DiagnosticHistoryViewModel.TestAndScoreViewModels));
+    var sectionScoreNames = @Html.Raw(Json.Encode(Model.ListVirtualTestConversionName));
+    _satReport.initData(model, sectionScoreNames);
+    _satReport.renderDiagnosticCharts("composite-chart", "ebraw-chart", "math-chart", "reading-chart", "writing-chart", "sub-math-chart");
+    _satReport.renderScoreImprovementChart("score-improvement-chart");
+    var date = new Date();
+    var dateString = (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear()
+        + ' ' + formatAMPM(date);
+    $("#current-date-time").html(dateString);
+
+    function formatAMPM(date) {
+        var hours = date.getHours();
+        var minutes = date.getMinutes();
+        var seconds = date.getSeconds();
+        var ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        seconds = seconds < 10 ? '0' + seconds : seconds;
+        var strTime = hours + ':' + minutes + ':' + seconds + ' ' + ampm;
+        return strTime;
+    }
+</script>

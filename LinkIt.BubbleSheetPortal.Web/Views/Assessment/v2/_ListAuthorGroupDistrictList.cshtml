@@ -1,0 +1,160 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.AuthorGroup.AddAuthorGroupUserSchoolDistrictViewModel
+<div class="no-margin last-child">
+    <table id="dataTableAuthorGroupDistrict" class="datatable table no-margin" width="100%">
+        <thead>
+            <tr>
+                <th scope="col" style="width: 15px">Actions</th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Name
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .actions-btn {
+        text-align: center !important;
+    }
+
+    #confirmDeleteDistrictAuthorGroupDialog .block-content {
+        padding: 24px !important;
+    }
+
+    #confirmDeleteDistrictAuthorGroupDialog .main-content {
+        padding: 0 !important;
+    }
+
+    #confirmDeleteDistrictAuthorGroupDialog .button-custom-new-skin {
+        padding: 11px 32px !important;
+    }
+
+    #confirmDeleteDistrictAuthorGroupDialog .red-btn:hover {
+        background-color: var(--red2) !important;
+    }
+
+    #dataTableAuthorGroupDistrict tbody tr .dataTables_empty {
+        text-align: center !important;
+    }
+</style>
+
+<script type="text/javascript">
+    $(function () {
+        LoadDataTablesAuthorGroupDistricts(@Model.AuthorGroupId);
+    });
+
+    function LoadDataTablesAuthorGroupDistricts(authorGroupID) {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetAuthorGroupDistricts")/?authorGroupID=' + authorGroupID,
+            fnServerParams: function (aoData) {
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'DistrictId', bSearchable: false, bSortable: false, sClass: 'actions-btn' },
+                { sType: 'string', sName: 'DistrictName', bSearchable: true, bSortable: true }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableAuthorGroupDistrict'), "Loading");
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityDistrict(aData[0], aData[1]));
+                return nRow;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableAuthorGroupDistrict').unblock();
+                $('.with-tip').tip();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTableAuthorGroupDistrict_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTableAuthorGroupDistrict_filter').addClass('data-search');
+            }
+        };
+
+        $("#dataTableAuthorGroupDistrict").data("options", options);
+        initializeDataTable($("#dataTableAuthorGroupDistrict"));
+    }
+
+    function setIconVisibilityDistrict(districtId, districtName) {
+        var deleteIcon = '<span class="icon fa-solid fa-circle-xmark icon-red"></span>';
+        var deleteString = '<a authorGroupId="' + '@Model.AuthorGroupId' + '" districtId="' + districtId + '" districtName="' + districtName + '" href="javascript:void(0);" onclick="DeleteDistrictsInGroup(this);" title="Remove @LabelHelper.DistrictLabel" class="with-tip" style="display: inline-block !important">' + deleteIcon + '</a>';
+
+        if ('@Model.IsPublisher' != 'True' && '@Model.IsDistrictAdmin' != 'True' && '@Model.IsNetworkAdmin' != 'True') {
+            deleteString = '';
+        }
+
+        return deleteString;
+    }
+
+    function DeleteDistrictsInGroup(control) {
+        var self = $(control);
+        var authorGroupId = self.attr('authorGroupId');
+        var districtId = self.attr('districtId');
+        var districtName = self.attr('districtName');
+        deleteDistrictDialogComfirmation('Do you really want to remove the @LabelHelper.DistrictLabel \'' + districtName + '\' from the author group?', authorGroupId, districtId);
+    }
+
+    function deleteDistrictDialogComfirmation(message, authorGroupId, districtId) {
+        confirmMessageV2(
+            {
+                message: message,
+                cbYesBtnFuncName: 'HandleManageDistrictOKClick(' + authorGroupId + ',' + districtId +')',
+                cbCancelBtnFuncName: 'HandleManageDistrictCancelClick()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'confirmDeleteDistrictAuthorGroupDialog'
+                    }
+                }
+            }
+        )
+    }
+
+    function HandleManageDistrictOKClick(authorGroupId, districtId) {
+        $.post('@Url.Action("RemoveDistrictFromAuthorGroup")', { authorGroupId: authorGroupId, districtId: districtId }, function (response) {
+                if (response.Success == true) {
+                    $("#dataTableAuthorGroupDistrict").dataTable().fnDraw();
+                    $("#confirmDeleteDistrictAuthorGroupDialog").dialog("close");
+                }
+            });
+    }
+
+    function HandleManageDistrictCancelClick() {
+        $("#confirmDeleteDistrictAuthorGroupDialog").dialog("close");
+    }
+</script>

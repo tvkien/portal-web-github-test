@@ -1,0 +1,297 @@
+@using LinkIt.BubbleSheetPortal.Models.SGO
+@using LinkIt.BubbleSheetPortal.Web.Helpers.SGO
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGO.SGOProgressMonitorViewModel
+<fieldset class="grey-bg qtiItemSelector" id="fieldsetSgoResult">
+    <legend>SGO Results</legend>
+    <fieldset class="grey-bg qtiItemSelector" style="padding-top: 0;">
+        <div class="columns">
+            <input type="hidden" id="isHavePosstAssessment" value="@Model.IsHavePosstAssessment.ToString()"/>
+            <input type="hidden" id="idhdfGeneratedDate" value="@Model.GeneratedDate"/>
+            <table id="dataTableEstablishStudentGroups" class="datatable table table-sgo table-sgo-student table-sgo-student-modified no-margin" style="width: 833px;">
+                <thead>
+                    <tr>
+                        <th scope="col">Preparedness Group
+                        </th>
+                        <th scope="col">% Student at Target Score
+                        </th>
+                        <th scope="col">Teacher SGO Score
+                        </th>
+                        <th scope="col">Weight (based on students per group)
+                        </th>
+                        <th scope="col">Weighted Score
+                        </th>
+                        <th scope="col">Total Teacher SGO Score
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var sgoGroup in Model.SgoGroups)
+                    {
+                        var color = ColorHelper.GetColorHexList(Model.SgoGroups.Count, true)[Model.SgoGroups.IndexOf(sgoGroup)];
+                        <tr>
+                            <td style="background-color: @color">
+                                @sgoGroup.Order - @Html.Raw(sgoGroup.Name)
+                            </td>
+                            @if (Model.SgoCalculateScoreResults == null || !Model.SgoCalculateScoreResults.Any())
+                            {
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            }
+                            else
+                            {
+                                var sgoCalculateScoreResult = Model.SgoCalculateScoreResults.FirstOrDefault(x => x.SGOGroupID == sgoGroup.SGOGroupID);
+                                if (sgoCalculateScoreResult != null)
+                                {
+                            <td>@Math.Round(sgoCalculateScoreResult.PercentStudentAtTargetScore.GetValueOrDefault(), 0)</td>
+                            <td>
+                                @if (string.IsNullOrEmpty(sgoCalculateScoreResult.AttainmentGoal))
+                                {
+                                    @Math.Round(sgoCalculateScoreResult.TeacherScore.GetValueOrDefault(), 0)
+                                }
+                                else
+                                {
+                                    @*@string.Format("{0} - {1}", Math.Round(sgoCalculateScoreResult.TeacherScore.GetValueOrDefault(), 0), sgoCalculateScoreResult.AttainmentGoal)*@
+                                    @Math.Round(sgoCalculateScoreResult.TeacherScore.GetValueOrDefault(), 0)
+                                }
+
+                            </td>
+                            <td>@Math.Round(sgoCalculateScoreResult.Weight.GetValueOrDefault(), 3)</td>
+                            <td>@Math.Round(sgoCalculateScoreResult.WeightedScore.GetValueOrDefault(), 3)</td>
+                                }
+                            }
+
+                            @if (Model.SgoGroups.IndexOf(sgoGroup) == 0)
+                            {
+                                <td rowspan="@Model.SgoGroups.Count" style="text-align: center; vertical-align: middle;">
+                                    @if (Model.TotalTeacherSGOScore != -1)
+                                    {
+                                        <span>@Model.TotalTeacherSGOScore</span>
+                                        @*<br />
+                                        @Model.DescriptiveLabel*@
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
+    <br />
+    <button id="btnScoringDetail" type="button">Scoring Details</button>
+    <div id="divIdGeneratedDate" class="float-right" style="font-style: italic; display: none;">
+        @Model.GeneratedDate
+    </div>
+</fieldset>
+<br />
+<div class="clear"></div>
+<div class="float-right">
+    <button id="btnMonitorProgress" type="button">Monitor Progress</button>
+
+    <button id="btnScoreSgoResult" type="button" @(!Model.IsPreOrPostAssessmentHasScoreNull ? "" : "disabled='disabled'")>Score SGO Results</button>
+    <br />
+    <br />
+    @if (!Model.HavePostAssessmentLinkit)
+    {
+        <div id="idDivMonitorDescription" style="float: right; width: 300px;">
+            <p>
+                To score SGO results, you must first specify your post assessment data point in the 'Data Points' step in the navigation bar.
+                                    This will replace the 'Post Assessment - To Be Created' data point you previously set up.
+            </p>
+        </div>
+    }
+    else if (Model.IsPreOrPostAssessmentHasScoreNull)
+    {
+        <div id="idDivMonitorDescription" style="float: right; width: 300px;">
+            <p>
+                Some students in your SGO are missing post-assessment data point. These students will be highlighted in red in the "Scoring Details" page.
+                Please go to Step 4 to exclude these students from your SGO or return to this page when the data for these students has been entered. You may also exclude other students that should no longer be associated to your SGO in step 4.
+            </p>
+        </div>
+    }
+</div>
+<br />
+<br />
+
+
+
+
+<script>
+    $(function () {
+        if (@Model.PermissionAccess != 3) //Full Update
+        {
+            LockAllUI();
+        }
+
+        var startTimeISOString = $('#idhdfGeneratedDate').val();
+        if (startTimeISOString !== '') {
+            //console.log('start: ' + startTimeISOString);
+            var startTime = new Date(startTimeISOString + ' UTC');
+            //console.log('new: ' + startTime);
+            //var m_names = new Array("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
+            //var curr_date = startTime.getDate();
+            //var curr_month = startTime.getMonth();
+            //var curr_year = startTime.getFullYear();
+            //var vResult = 'Generated on ' + m_names[curr_month] + ' ' + curr_date + ', ' + curr_year;
+            var vResult = 'Generated on ' + displayDateWithFormat(startTime.getTime());
+
+            //console.log('Caculate: ' + vResult);
+            $('#idhdfGeneratedDate').val(vResult);
+            $('#divIdGeneratedDate').html(vResult);
+            $('#divIdGeneratedDate').show();
+        }
+    });
+
+    $('#btnScoreSgoResult').click(function () {
+        ShowBlock($('#fieldsetSgoResult'), "Loading");
+        $.ajax({
+            type: "POST",
+            url: '@Url.Action("CalculateSgoResult", "SGOProgressMonitor")',
+            data: { sgoId: $('#sgoId').val() }
+        })
+            .done(function (response) {
+                $('#divSgoResult').html(response);
+                $('#fieldsetSgoResult').unblock();
+                if ($('#isHavePosstAssessment').val() == 'True') {
+                    $('#idDivMonitorDescription').hide();
+                    $('#btnSubmitForApprove').removeAttr('disabled');
+                } else {
+                    $('#idDivMonitorDescription').show();
+                    $('#btnSubmitForApprove').attr('disabled', 'disabled');
+                    $('#btnScoreSgoResult').attr('disabled', 'disabled');
+                    $('#btnScoringDetail').attr('disabled', 'disabled');
+                }
+                $('#divIdGeneratedDate').html($('#idhdfGeneratedDate').val());
+            });
+    });
+
+    $('#btnMonitorProgress').click(function () {
+        var url = '@Url.Action("LoadMonitorProgress", "SGOProgressMonitor")?sgoId=' + $('#sgoId').val();
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divPopup").append('<div id="popupMonitorProgress" class="dialog"></div>');
+                $("#popupMonitorProgress").append(html);
+                $('#popupMonitorProgress').dialog({
+                    title: "",
+                    open: function () {
+                        var $doc = $(document);
+                        var $overlay = $('<div/>');
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                        //Create overlay for popup
+                        $overlay
+                            .addClass('my-overlay')
+                            .css({
+                                'background-color': 'black',
+                                'z-index': $('.ui-dialog').css('z-index') - 1,
+                                'width': $doc.width() + 'px',
+                                'height': $doc.height() + 'px',
+                                'opacity': '0.3',
+                                'position': 'absolute',
+                                'top': '0',
+                                'left': '0'
+                            });
+
+                        $overlay.appendTo($('body'));
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#popupMonitorProgress').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: '960px',
+                    resizable: false
+                });
+            });
+    });
+
+    $('#btnScoringDetail').click(function () {
+        var monitorProgressDataPointType = $('#monitorProgressDataPointType').val();
+        if(monitorProgressDataPointType != ''){
+            var url = '';
+            if(monitorProgressDataPointType == 'PreAssessment'){
+                url = '@Url.Action("SavePreAssessment", "SGOSelectDataPoint")';
+            }else if(monitorProgressDataPointType == 'PreAssessmentHistorical')
+            {
+                url = '@Url.Action("SavePreAssessmentHistorical", "SGOSelectDataPoint")';
+            }else if(monitorProgressDataPointType == 'PreAssessmentExternal'){
+                url = '@Url.Action("SavePreAssessmentExternal", "SGOSelectDataPoint")';
+            }else if(monitorProgressDataPointType == 'PreAssessmentCustom'){
+                url = '@Url.Action("SavePreAssessmentCustom", "SGOSelectDataPoint")';
+            }
+
+            ShowBlock($('#selectFilters'), "Loading");
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: dataPointDataLog
+            }).done(function (response) {
+                executeScoringDetail(response.SgoDataPointId);
+            });
+        }else{
+            executeScoringDetail();
+        }
+    });
+
+    function executeScoringDetail(sgoDataPointId){
+        ShowBlock($('#selectFilters'), "Loading");
+        var url = '@Url.Action("LoadScoringDetail", "SGOProgressMonitor")?sgoId=' + $('#sgoId').val();
+        if(sgoDataPointId != null && sgoDataPointId != ''){
+            url += '&sgoDataPointId=' + sgoDataPointId;
+        }
+
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $('#selectFilters').unblock();
+                $("#divPopup").append('<div id="popupScoringDetail" class="dialog"></div>');
+                $("#popupScoringDetail").append(html);
+                $('#popupScoringDetail').dialog({
+                    title: "",
+                    open: function () {
+                        var $doc = $(document);
+                        var $overlay = $('<div/>');
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                        //Create overlay for popup
+                        $overlay
+                            .addClass('my-overlay')
+                            .css({
+                                'background-color': 'black',
+                                'z-index': $('.ui-dialog').css('z-index') - 1,
+                                'width': $doc.width() + 'px',
+                                'height': $doc.height() + 'px',
+                                'opacity': '0.3',
+                                'position': 'absolute',
+                                'top': '0',
+                                'left': '0'
+                            });
+
+                        $overlay.appendTo($('body'));
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#popupScoringDetail').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: '960px',
+                    resizable: false
+                });
+            });
+    }
+</script>

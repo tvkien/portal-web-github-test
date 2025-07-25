@@ -1,0 +1,125 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestQuestionsViewModel
+@{
+    ViewBag.Title = "Correct Barcode Error";
+}
+
+<script type="text/javascript">
+    $(function () {
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+        if (window.FormData !== undefined) {
+            $('#file_upload').uploadifive({
+                'uploadScript': '@Url.Action("SubmitNewSheetForError")',
+                'overrideEvents': ['onDialogClose'],
+                'buttonText': 'Select File',
+                'fileObjName': 'postedFile',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 100,
+                'auto': true,
+                'onUpload': function (file) {
+                    $('#file_upload').data('uploadifive').settings.formData = getFormData(auth);
+                },
+                'onUploadComplete': function (file, data) {
+                    var result = $.parseJSON(data);
+                    if (result) {
+                        location.href = '@Url.Action("ProcessErrors")';
+                    }
+                }
+            });
+        }
+    });
+
+    function getFormData(auth) {
+        var bubbleSheetErrorId = '@Model.BubbleSheetErrorId';
+        return { 'AUTHID': auth, 'bubbleSheetErrorId': bubbleSheetErrorId };
+    }
+</script>
+
+<article class="container_12">
+    <section class="grid_10">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Barcode Error</h1>
+                <ul class="message warning no-margin">
+                    <li>
+                        When reading the bubble sheet, the barcode was unable to be determined. Please follow
+                        the steps below to manually enter the barcode or submit a replacement sheet for regrading.
+                    </li>
+                </ul>
+                <fieldset>
+                    <legend>Step 1</legend>
+                    <ul class="message no-margin">
+                        <li>View the file that caused the error. (Clicking on the image will open a larger version of the image in a new tab)</li>
+                    </ul>
+                    <a href="@Model.RelatedImage" target="_new"><img src="@Model.RelatedImage" width="128px" height="170px"/></a>
+                </fieldset>
+                    <fieldset>
+                        <legend>Step 2</legend>
+                        <ul class="message no-margin">
+                            <li>Manually enter the barcode that appears on the bubble sheet or submit a new replacement bubble sheet</li>
+                        </ul>
+                        <div class="columns">
+                            <div class="colx2-left">
+                                <label for="barcode">Barcode</label>
+                                @Html.TextBoxFor(x => x.Barcode, new { id = "barcode", style="width:300px"})
+                            </div>
+                            <div class="colx2-right">
+                                <label for="manual">Bubble Sheet</label>
+                                <input type="file" name="manual" id="file_upload"/>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <button id="btnSubmit" type="submit">Submit</button>
+                    <button id="btnDelete" type="button" class="red">Delete</button>
+                <button id="btnCancel" type="button" class="grey">Cancel</button>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        $('#generateTab').addClass('current');
+
+        $("#barcode").autocomplete({
+            source: function (request, response) {
+                var input = $("#barcode");
+                if (input.val().length > 2) {
+                    $.get('@Url.Action("GetBarcodes")', { StartsWith: $('#barcode').val() }, function (barcodes) {
+                        response(barcodes);
+                    });
+                }
+            }
+        });
+
+        $('#btnSubmit').click(function () {
+            ShowBlock($('.grid_10'), "Submitting Error Correction");
+            $.post('@Url.Action("SubmitBarcodeError")', { Barcode: $('#barcode').val(), BubbleSheetErrorId: '@Model.BubbleSheetErrorId' }, function (response) {
+                if (response) {
+                    location.href = '@Url.Action("ProcessErrors")';
+                } else {
+                    $('.grid_10').unblock();
+                    alert('Invalid Barcode.  Please try again.');
+                }
+            });
+
+        });
+
+        $('#btnDelete').click(function () {
+            if (confirm("Are you sure you want to delete this error?")) {
+                $.post('@Url.Action("RemoveBubbleSheetError")', { bubbleSheetErrorId: '@Model.BubbleSheetErrorId' }, function (response) {
+                    if (response == true) {
+                        location.href = '@Url.Action("ProcessErrors")';
+                    } else {
+                        alert('Error does not exist, please try again.');
+                    }
+                });
+            }
+        });
+
+        $('#btnCancel').click(function () {
+            location.href = '@Url.Action("ProcessErrors")';
+        });
+    });
+</script>

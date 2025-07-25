@@ -1,0 +1,232 @@
+@using LinkIt.BubbleSheetPortal.Web.Security
+@using StackExchange.Profiling
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelpers
+@using System.Configuration;
+@using LinkIt.BubbleSheetPortal.Web.App_Start
+@using Bundle = SquishIt.Framework.Bundle
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    @{
+        var strWhiteLable = string.Empty;
+        var vS3URL = HelperExtensions.GetS3CSSURL();
+        var districtId = 0;
+        if (Request.IsAuthenticated)
+        {
+            districtId = HelperExtensions.GetDistrictIdBySubdomain();
+        }
+        if (!string.IsNullOrEmpty(vS3URL))
+        {
+            strWhiteLable = string.Format("{0}{1}.css", vS3URL, HelperExtensions.LoginDistrict);
+        }
+
+        var isShowIconInfo = HelperExtensions.IsShowIconHelpTextInfo(districtId);
+
+        var currentUser = HttpContext.Current.GetCurrentUser();
+        var menuAccess = HelperExtensions.GetMenuForDistrict(currentUser);
+    }
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    @BundleHelperVuejs.StyleSharedBundle()
+    <title>@ViewBag.Title</title>
+    <link href='@strWhiteLable' rel="stylesheet" />
+    @Html.Partial("_Favicons")
+
+    <style>
+        .ui-dialog div.ui-dialog-content {
+            overflow: visible;
+        }
+    </style>
+    <link href="@Url.Content("~/app/css/layout/menu.css")" rel="stylesheet" />
+    <script src="@Url.Content("~/Scripts/jquery-1.7.1.min.js")" type="text/javascript"></script>
+    <script src="@Url.Content("/app/libraries/vuejs/vue.js")"></script>
+
+    <script>
+        var _isShowIconInfo = '@isShowIconInfo';
+        var URLs = {
+            loadUnreadMessage: '@Url.Action("LoadUnreadMessage","NotificationMessage")',
+            getNotification: '@Url.Action("GetNotification", "NotificationMessage")'
+        }
+    </script>
+    <script src='https://www.google.com/recaptcha/api.js'></script>
+
+    @{
+        var script = HelperExtensions.GetGoogleAnalyticsTrackingScript();
+        if (script.Contains("<script"))
+        {
+            @Html.Raw(script);
+        }
+        else
+        {
+            <script type="text/javascript">
+
+                @Html.Raw(script)
+            </script>
+        }
+    }
+
+    <script type="text/javascript">
+        var _CURRENT_PAGE_NAME = "";
+    </script>
+
+    @if (Request.IsAuthenticated)
+    {
+        var url = ((UserPrincipal)User).WalkmeSnippetURL;
+        var userRole = ((UserPrincipal)User).RoleId;
+        if (url != string.Empty)
+        {
+            <script type="text/javascript">
+                (function () {
+                    var walkme = document.createElement('script');
+                    walkme.type = 'text/javascript'; walkme.async = true;
+                    walkme.src = '@url'; var s = document.getElementsByTagName('script')[0];
+                    s.parentNode.insertBefore(walkme, s);
+                    window._walkmeConfig = { smartLoad: true, linkitUserRole: '@userRole' };
+                })();
+            </script>
+        }
+    }
+</head>
+<body class="smaller">
+    <header>
+        <div class="container_12">
+            <div class="logo">
+            </div>
+            <div class="clear">
+            </div>
+        </div>
+    </header>
+    @Html.Partial("MainNavigation")
+    <div id="sub-nav">
+    </div>
+    <div id="status-bar">
+        <div class="container_12">
+            <ul id="status-infos">
+                @if (Request.IsAuthenticated)
+                {
+                    <li class="spaced">
+                        @if (isShowIconInfo)
+                        {
+                            <span class="icon icon-info icon-24 js-info-action" title="More Information"></span>
+                        }
+
+                        @if (menuAccess.IsDisplaySettingItem)
+                        {
+                            <text>
+                                Welcome <a href="@Url.Action("Settings", "Account")"><strong>@(((UserPrincipal)User).WelcomeMessage)</strong></a>
+                            </text>
+                        }
+                        else
+                        {
+                            <text>
+                                Welcome <strong>@(((UserPrincipal)User).WelcomeMessage)</strong>
+                            </text>
+                        }
+                        @if (((UserPrincipal)User).OriginalID > 0 && (((UserPrincipal)User).OriginalRoleId == 5 || ((UserPrincipal)User).OriginalRoleId == 27))
+                        {
+                            <text>
+                                <a href="javascript:void(0)">
+                                    <img id="imgGoBack" onclick="showGoBack()"
+                                         src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/navigation-000-white.png")"
+                                         style="margin-left: 5px; margin-top: 5px;" />
+                                </a>
+
+                                <a id="linkGoBack" style="display: none;" onclick="goBackToOriginalUser()">
+                                    <span>Go back to @(((UserPrincipal)User).OriginalUsername)</span>
+                                </a>
+                            </text>
+                        }
+                        else
+                        {
+                            //Allow network admin to move between the district (when he's not in impersonation mode)
+                            if (((UserPrincipal)User).IsNetworkAdmin)
+                            {
+                                if (((UserPrincipal)User).GetMemberListDistrictId().Count >= 2)
+                                {
+                                    <text>
+                                        <a href="javascript:void(0)">
+                                            <img id="imgNetworkAdminSelect" onclick="showNetworkAdminSelect()"
+                                                 src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/navigation-000-white.png")" style="margin-left: 5px; margin-top: 5px;" />
+                                        </a>
+                                        <div id="divNetworkAdminSelectLayout" style="width: 296px; height: 0px">
+                                        </div>
+                                    </text>
+                                }
+                            }
+                        }
+                    </li>
+                    if (!HelperExtensions.DisableNotificationFeature)
+                    {
+                        <li>
+                            <div id="notification" class="notification">
+                                <a href="#" class="button notification-action" v-on:click.prevent="toggleDropdown">
+                                    <span class="icon icon-notification-small"></span>
+                                    <span class="notification-unread" v-bind:class="{ 'open': countUnread > 0 }" v-text="countUnread"></span>
+                                </a>
+                                <div class="notification-dropdown" v-bind:class="{ 'open': isShowDropdown }">
+                                    <div class="notification-title">
+                                        <h3>Notifications</h3>
+                                    </div>
+                                    <div class="notification-content" v-infinite-scroll="loadMoreListNotification()" infinite-scroll-disabled="isBusy" infinite-scroll-distance="15">
+                                        <div class="notification-item" v-for="item in listNotification" v-bind:class="{ 'is-unread': item.IsUnread }" v-on:mouseover="mouseoverNotification(item)">
+                                            <div class="notification-item-icon">
+                                                <span class="icon icon-notification-large"></span>
+                                            </div>
+                                            <div class="notification-item-content" v-html="item.HtmlContent"></div>
+                                        </div>
+                                        <div class="notification-loading" v-show="isShowLoading">
+                                            <span class="notification-spinner">
+                                                <span class="notification-spinner"></span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    }
+
+                    <li>
+                        <a href="@Url.Action("LogOff", "Account")" class="button red" title="Logout">
+                            <span class="smaller">LOGOUT</span>
+                        </a>
+                    </li>
+                }
+                else
+                {
+                    <li>
+                        <a href="@Url.Action("LogOn", "Account")" class="button red" title="Logout">
+                            <span class="smaller">LOGIN</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+    <!-- End status bar -->
+    <div id="header-shadow">
+    </div>
+    <!-- End header -->
+    @RenderBody()
+    <div id="custom-footer" style="width: 946px;margin: 0 auto; clear: both;">
+        <img src="../../Content/images/loog-linkit-16x16.png" style="position: relative; top: 5px;" />
+        <span style="font-size: 11px;">Copyright &copy; @DateTime.Now.ToString("yyyy") | Powered by LinkIt!</span>
+        <input type="hidden" id="hdHelpTextInfo" />
+    </div>
+
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+        google.load('visualization', '1', { 'packages': ['corechart'] });
+    </script>
+
+    @BundleHelperVuejs.ScriptSharedBundle()
+
+    @if ((((UserPrincipal)User).IsPublisher) && ConfigurationManager.AppSettings["EnableMiniProfiler"] == "1")
+    {
+        @MiniProfiler.RenderIncludes()
+        <text>
+            <script src="@Url.Content("~/app/js/layout/miniprofiler.js")"></script>
+        </text>
+    }
+</body>
+</html>

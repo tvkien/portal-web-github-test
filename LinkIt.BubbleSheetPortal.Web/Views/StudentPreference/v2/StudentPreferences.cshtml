@@ -1,0 +1,535 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models.Constants
+@using LinkIt.BubbleSheetPortal.Web
+@using LinkIt.BubbleSheetPortal.Models
+@model int
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Set Student/Parent Portal Options");
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleStudentPreferenceBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptStudentPreferenceBundle()
+<script src="@Url.Content("~/Scripts/TagIt/js/tag-it.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Scripts/TagIt/css/jquery.tagit.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Scripts/TagIt/css/tagit.ui-zendesk.css")" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="https://cdn.materialdesignicons.com/5.0.45/css/materialdesignicons.min.css">
+<link href="/Content/libs/select2/comboTreePlugin.css" rel="stylesheet" />
+<link href="@BundleHelper.Version("~/Content/css/v2/student-preferences-v2.css")" rel="stylesheet" />
+<script src="/Content/libs/select2/comboTreePlugin.js"></script>
+<article id="student-references" class="container_12 student-references-v2">
+    <div class="block-border form">
+        <div class="block-section-custom custom-comboTree">
+            <h1 class="page-title mb-4">Student/Parent Portal Options</h1>
+            <ul class="nav nav-pills mb-4">
+                <li v-show="showDefaultOption" :class="tabActive === 1 ? 'is-active nav-item' : 'nav-item' ">
+                    <a class="nav-link with-tip" title="Default Options" v-on:click="onSelectTab(1)">Default Options</a>
+                </li>
+                <li v-show="showTestTypeOption" :class="tabActive === 2 ? 'is-active nav-item' : 'nav-item'">
+                    <a class="nav-link with-tip" title="Category Options" v-on:click="onSelectTab(2)">Category Options</a>
+                </li>
+                <li v-if="showSpecificOption" :class="tabActive === 3 ? 'is-active nav-item' : 'nav-item'">
+                    <a class="nav-link with-tip" title="Test-Specific Options" v-on:click="onSelectTab(3)">Test-Specific Options</a>
+                </li>
+            </ul>
+            <div v-show="tabActive === 1 || tabActive === 2" class="tabs-details">
+                <default v-on:changes-school='changeOptionView' ref='showTestTypeOption'></default>
+            </div>
+            <div class="tabs-details position-relative">
+                <div class="w-100" v-bind:class="{'v-hidden': tabActive !== 3}">
+                    <div class="filter-wrapper mb-3">
+                        <h3 class="h3">Select Options Level </h3>
+                        <div class="row g-3">
+                            <div style="float:none" class="col-3 fileter-item">
+                                <label>Level</label>
+                                <select v-model="selectedLevel" v-on:change='selectLevel' class="full-width" id="selectedLevel">
+                                    <option v-for="item in level" :value="item.value">{{item.text}}</option>
+                                </select>
+                            </div>
+                            <div v-show="showSelectState" class="col-3 fileter-item">
+                                <label>State</label>
+                                <select v-model="selectedState" v-on:change="selectStates" class="full-width">
+                                    <option v-for="item in state" :value="item.Id">{{item.Name}}</option>
+                                </select>
+                            </div>
+                            <div v-show="showSelectClasses"
+                                 class="col-3 fileter-item">
+                                <label>Class</label>
+                                <ul id="selectClasses" name="selectClasses" class="selectClasses tagit ui-widget ui-widget-content ui-corner-all full-width">
+                                </ul>
+                            </div>
+                            <div v-show="showDistrictAdminRole" class="col-3 fileter-item">
+                                <label v-show="showSelectDistrict">{{districtLabel}}</label>
+                                <div class="position-relative">
+                                    <div class="w-100" v-bind:class="{'v-hidden': !showSelectDistrict}">
+                                        <div class="block-text-name w-100">
+                                            <select id="selectedDistrictID" v-model="selectedDistrict" v-on:change="onDistrictChange" class="full-width selectedDistrictID-specific">
+                                                <option v-for="item in districts" :value="item.Id">{{item.Name}}</option>
+                                            </select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3 fileter-item">
+                                <label v-show="showSelectSchool">School</label>
+                                <div class="position-relative">
+                                    <div class="w-100" v-bind:class="{'v-hidden': !showSelectSchool}">
+                                        <div class="block-text-name w-100">
+                                            <select id="selectedSchoolID" v-on:change="selectSchool" v-model="selectedSchool" class="full-width selectedSchoolID-specific">
+                                                <option v-for="item in school" :value="item.Id">{{item.Name}}</option>
+                                            </select>
+                                            <div class="box-select">
+                                                <span class="overlay"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="filter-wrapper checkbox-container">
+                        <h3 class="h3 mb-3">Select Test Filters</h3>
+                        <div class="row justify-content-center">
+                            <div class="col-3">
+                                <div class="filter-checkbox filter-test-types">
+                                    <div v-show="showLoadingTest" class="bg-full">
+                                        <div class="loading-dot">Loading</div>
+                                    </div>
+                                    <div class="filter-checkbox-header">
+                                        <input id="test-types" v-model="checkTestTypes" v-on:change="allSelectTestTypes" type="checkbox" name="test-types" class="chechbox" />
+                                        <label for="test-types">All Categories</label>
+                                    </div>
+                                    <div class="block-checkbox">
+                                        <div v-for="item in testType" class="checkbox-child">
+                                            <input :id="'test-type' + item.Id" v-on:change="selectCheckBoxTestTypes" type="checkbox" :value="item.Id" v-model="arrTestTypes" :name="item.Id"
+                                                   class="chechbox" :disabled="item.IsShow === false">
+                                            <label :title="item.Tooltip" :for="'test-type' + item.Id">{{item.Name}}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="filter-checkbox">
+                                    <div v-show="showLoadingGrades" class="bg-full">
+                                        <div class="loading-dot">Loading</div>
+                                    </div>
+                                    <div class="filter-checkbox-header">
+                                        <input id="grades" v-model="checkGrades" v-on:change="allSelectGrades" type="checkbox" name="grades" class="chechbox" />
+                                        <label for="grades">All @LabelHelper.TestGrades</label>
+                                    </div>
+                                    <div class="block-checkbox">
+                                        <div v-for="item in grades" class="checkbox-child">
+                                            <input :id="item.Id" v-on:change="selectCheckBoxGrades" type="checkbox" :value="item.Id" v-model="arrGrades" :name="item.Id"
+                                                   class="chechbox">
+                                            <label :for="item.Id">{{item.Name}}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="filter-checkbox checkbox-subject">
+                                    <div v-show="showLoadingSubjects" class="bg-full">
+                                        <div class="loading-dot">Loading</div>
+                                    </div>
+                                    <div class="filter-checkbox-header">
+                                        <input id="subjects" type="checkbox" name="subjects" v-model="checkSubject" v-on:change="allSelectSubjects" class="chechbox" />
+                                        <label for="subjects">All @LabelHelper.Subjects</label>
+                                    </div>
+                                    <div class="block-checkbox">
+                                        <div v-for="item in subjects" class="checkbox-child">
+                                            <input :id="item.Name" :value="item.Name" v-model="arrSubject" v-on:change="selectCheckBoxSubjects" type="checkbox" :name="item.Name"
+                                                   class="chechbox">
+                                            <label :for="item.Name">{{item.Name}}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button v-on:click="onClearFilter" class="btn-blue me-3" type="submit">Clear Filters</button>
+                        <button v-on:click="onFilter" id="btnFilter" :disabled='disabled ? true : false' class="btn-red" type="submit">Apply Filters</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div v-show="tabActive === 3" id="studentPreferencePage">
+        <div id="listVirtualTest">
+            <article class="container_12 mt-4">
+                <section class="grid-full-with">
+                    <div class="block-border bg-white p-4">
+                        <div class="form">
+                            <div class="d-flex align-items-center justify-content-between mb-4">
+                                <h1 class="page-title mb-0">Tests</h1>
+                                <div>
+                                    <a href="#" id="changeRefBtn" class="btn btn-link pe-0 ms-3">
+                                        Change options <i class="fa-solid fa-gear ms-2"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <div style="display: none;" id="formCheckDeactivate" class="form-check form-switch d-flex flex-row align-items-center ms-0 ps-0">
+                                <label class="form-check-label mb-0 deactivated-title" for="flexSwitchCheckDefault">Show Tests Shared at This Level:</label>
+                                <span class="ms-1 me-3" id="spanClassActive">Off</span>
+                                <div id="btnActiveTestClassAssignment">
+                                    <input class="form-check-input" type="checkbox" id="flexSwitchCheckDefault">
+                                </div>
+                            </div>
+
+                            <p class="text-align: justify;"><b>Caution:</b> Be careful when changing options for multiple tests with different options in effect. The new options will be applied to all the selected tests regardless of their previous settings (unless an option is locked). If you change locking at higher levels, you may have to come back and reset test-specific options.</p>
+                            <table id="dataTable" width="100%" cellspacing="0" class="datatable table no-margin">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" style="text-align: center">
+                                            <input type="checkbox" class="check-box-all" />
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Test Name
+                                        </th>
+
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Category
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            @LabelHelper.Subject
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            @LabelHelper.TestGrade
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Result Count
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Modified Date
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Modified By
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="height: 60px;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </article>
+        </div>
+    </div>
+    <div class="option-view mt-4" v-show='tabActive == 1 || tabActive == 2'>
+        <option-default ref='showViewOption' />
+    </div>
+    <my-modal v-bind:show="showModal" v-bind:group-details="groupDetails" ref="modal" v-on:show-modal-student="toggleModal(false)" v-bind:spectific="spectific"></my-modal>
+    <view-modal v-bind:showview="showview" v-bind:showloading="showloadingview" v-bind:rawhtml='rawhtml' ref="viewModal" v-on:show-modal-view='toggleModalView(false)'></view-modal>
+</article>
+<script type="text/javascript">
+    var virtualTestID = '';
+    var rolesValue = '@Model';
+    var isSetDelay = false;
+    var districtLabel = '@LocalizeHelper.LocalizedWithoutComment(LocalizeResourceKeys.DISTRICT_LABEL)';
+</script>
+<script type="text/javascript" src="/Scripts/Lib/vue.min.2.5.js"></script>
+<script type="text/javascript" src="@Url.Content("~/Scripts/StudentPreference/callAjax.js")"></script>
+<script type="text/javascript" src="@Url.Content("~/Scripts/StudentPreference/studentDefaultV2.js")"></script>
+<script type="text/javascript" src="@Url.Content("~/Scripts/StudentPreference/optionDefaultsV2.js")"></script>
+<script type="text/javascript" src="@Url.Content("~/Scripts/StudentPreference/studentPreferenceV2.js")"></script>
+<script type="text/javascript">
+    $(function () {
+        $('.selectedSchoolID-specific').marquee();
+        $('.selectedDistrictID-specific').marquee();
+        $('.selectedSchoolID-default').marquee();
+        $('.selectedDistrictID-default').marquee();
+        var textSearch = "";
+        var urlSchoolName = replace ? replace : '';
+        var showTest = false;
+        var options = {
+            bServerSide: true,
+            bRetrieve: true,
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetStudentTestPreferences")',
+            bInfo: true,
+            oSearch: {
+                sSearch: textSearch
+            },
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "DistrictID", value: app.selectedDistrict },
+                    { name: "SchoolID", value: app.selectedSchool },
+                    { name: "Level", value: app.selectedLevel },
+                    { name: "VirtualTestTypeIds", value: app.addFilteredTestTypes.toString() },
+                    { name: "GradeIDs", value: app.addFilteredGrades.toString() },
+                    { name: "SubjectIDs", value: app.arrSubject.toString() },
+                    { name: 'Visibilities', value: showTest ? '1' : '0' },
+                    { name: 'ClassIds', value: app.selectedClassIds() },
+                    { name: 'ExcludeTestTypes', value: app.addExcludeTestTypes.toString() },
+                );
+            },
+            bAutoWidth: true,
+            iDisplayLength: 50,
+            aaSorting: [[1, "asc"]],
+            aLengthMenu: [50, 100, 500],
+            aoColumns: [
+                { mData: 'VirtualTestID', sName: 'VirtualTestID', bSearchable: false, bSortable: false, sWidth: '120px', sClass: 'css-align-center list-icons-default' },
+                { mData: 'TestName', sName: 'TestName', bSearchable: true, bSortable: true },
+                { mData: 'DataSetCategory', sName: 'DataSetCategory', bSearchable: false, bSortable: true, sWidth: '120px' },
+                { mData: 'Subject', sName: 'Subject', bSearchable: true, bSortable: true, sWidth: '110px' },
+                { mData: 'Grade', sName: 'Grade', bSearchable: true, bSortable: true, sWidth: '100px' },
+                { mData: 'ResultCount', sName: 'ResultCount', bSearchable: true, bSortable: true, sWidth: '150px', sClass: 'css-align-right' },
+                { mData: 'ModifiedDate', sName: 'ModifiedDate', bSearchable: false, bSortable: true, sWidth: '160px', sClass: 'css-align-center' },
+                { mData: 'ModifiedBy', sName: 'ModifiedBy', bSearchable: false, bSortable: true, sWidth: '150px', sClass: 'css-align-center' },
+
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).parent().addClass('tableRow');
+
+                $('td:eq(0)', nRow).html(setIconVisibility(aData.VirtualTestID));
+                var dateStr = displayDateWithFormatJsonDate(aData.ModifiedDate);
+                if (dateStr == "")
+                    dateStr = "";
+                $('td:eq(6)', nRow).html(dateStr);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+                if (!isSetDelay) {
+                    searchDelay($("#dataTable_filter input[type='text']"), $("#dataTable"));
+                    isSetDelay = true;
+                }
+            },
+            fnInitComplete: function () {
+                $('#dataTable_wrapper .block-custom-header').prepend($('#formCheckDeactivate'));
+                $('#formCheckDeactivate').show()
+                tranformSearchInputDataTable('dataTable_filter')
+            }
+        };
+
+        $("#dataTable").data("options", options);
+
+        initializeDataTable($("#dataTable"));
+
+        function setIconVisibility(virtualTestId) {
+            var iconString = '';
+
+            var preferenceIcon = '<span class="open-icon">o</span>';
+            var preferenceString = '';
+            iconString = '<input type="checkbox" class="cbTestId" value="' + virtualTestId + '" />';
+            preferenceString = '<a id="preferenceOption" href="javascript:void(0)" title="Options" operation="0" virtualTestID="' + virtualTestId + '" class="with-tip jsViewPreference btn-review-assignment">' + preferenceIcon + '</a>';
+
+            var openMatrix = '<a href="javascript:void(0)" title="Options in Effect" class="pointer btn-view-matrix with-tip jsViewPreference btn-review-assignment" virtualTestID="' + virtualTestId + '" ><span class="open-icon">E</span></a>';
+
+            iconString += preferenceString + openMatrix;
+            return iconString;
+        }
+
+        function searchDelay(inputFilter, dataTable) {
+            var delay = null;
+
+            inputFilter.off('keyup.DT input.DT');
+
+            inputFilter.on("keyup", function () {
+                var search = inputFilter.val();
+                clearTimeout(delay);
+                delay = setTimeout(function () {
+                    if (search != null) {
+                        dataTable.dataTable().fnFilter(search);
+                    }
+                }, 1000);
+            });
+        }
+        $(document).on('click', '#preferenceOption', function (e) {
+            e.preventDefault();
+            var testId = $(this).attr('virtualtestid');
+            virtualTestID = testId;
+            showPreferenceModal(testId);
+        });
+
+        $('#dataTableListRef').on('click', '.btnPreferencesTest', function (event) {
+            testID = $(this).attr('virtualtestid');
+            showPreferenceModal(testID);
+        });
+
+        $(document).on('click', '#btnTestSettingCancel', function () {
+            $('#divTestSettingTestPropertyPanel').dialog('close');
+        });
+
+        $(document).on('change', '.check-box-all', function () {
+            if ($(this).is(':checked')) {
+                $('#dataTable_wrapper tbody .cbTestId').attr('checked', true);
+                var arrChecked = $('#dataTable_wrapper tbody .cbTestId:checked');
+                if (arrChecked.length === 0) {
+                    $('#changeRefBtn').addClass('disabled');
+                } else {
+                    $('#changeRefBtn').removeClass('disabled');
+                }
+            } else {
+                $('#dataTable_wrapper tbody .cbTestId').attr('checked', false);
+                $('#changeRefBtn').addClass('disabled');
+            }
+        });
+        $('#changeRefBtn').addClass('disabled');
+        $(document).on('change', '#dataTable_wrapper tbody .cbTestId', function () {
+            var elCheckAll = $('.check-box-all');
+            if (elCheckAll.hasClass('input-checked-v2')) {
+                elCheckAll.removeClass('input-checked-v2');
+            }
+            if (this.checked) {
+                var checkboxList = $('input.cbTestId[type=checkbox]');
+                var checkAll = true;
+                for (var i = 0; i < checkboxList.length; i++) {
+                    if (!(checkboxList[i]).checked) {
+                        elCheckAll.attr('checked', false);
+                        checkAll = false;
+                        break;
+                    }
+                }
+                if (checkAll) {
+                    elCheckAll.attr('checked', true);
+                }
+                $('#changeRefBtn').removeClass('disabled');
+            } else {
+                elCheckAll.attr('checked', false);
+                var arrChecked = $('#dataTable_wrapper tbody .cbTestId:checked');
+                if (arrChecked.length === 0) {
+                    $('#changeRefBtn').addClass('disabled');
+                } else {
+                    $('#changeRefBtn').removeClass('disabled');
+                }
+            }
+        });
+
+        $('#changeOptionTest').on('click', function(e){
+            e.preventDefault();
+            if(!showTest) {
+                $(this).text('Show Tests Shared at This Level: on');
+                showTest = true ;
+            }else{
+                $(this).text('Show Tests Shared at This Level: off');
+                showTest = false ;
+            }
+            loadData();
+        });
+        $('#flexSwitchCheckDefault').on('change', function () {
+            // From the other examples
+            if (!showTest) {
+                $('#flexSwitchCheckDefault').val(true);
+                $('#spanClassActive').html('On');
+                showTest = true;
+            } else {
+                $('#flexSwitchCheckDefault').val(false);
+                $('#spanClassActive').html('Off');
+                showTest = false;
+            }
+            loadData();
+        });
+        $(document).on('click', '.btn-view-matrix', function () {
+            var testID = $(this).attr('virtualtestid');
+            app.getViewOption(testID);
+        });
+        $('#changeRefBtn').on('click', function (e) {
+            e.preventDefault();
+            var testEls = $('.cbTestId:checked');
+            var testIds = [];
+            virtualTestID = '';
+            for (var i = 0; i < testEls.length; i++) {
+                testIds.push($(testEls[i]).val());
+            }
+            if (testIds.length > 0) {
+                 if (testEls.length === 1) {
+                    showPreferenceModal(testIds.join());
+                } else {
+                    showPreferenceModal(testIds.join());
+                }
+            }
+        });
+
+        function showPreferenceModal(testID, name) {
+            ShowBlock($('#dataTable_wrapper'), 'Loading');
+            $('#changeRefBtn').addClass('btn-disabled');
+            app.getPreferences(testID);
+        }
+    });
+    function loadData() {
+        $('#changeRefBtn').addClass('disabled');
+        $("#dataTable").dataTable().fnDraw();
+    }
+     var comboTree1 = null;
+     var categoryElementId = '#dataSetCategoryId';
+    if (rolesValue != '5' && rolesValue != '27') {
+        GetDataSetCategories();
+    }
+
+     function GetDataSetCategories(districtId = 0) {
+         $.get('@Url.Action("GetDataSetCategoriesForStudentPreference", "CategoriesAPI")' + '?districtId=' + districtId, function (categories) {
+             if (!comboTree1) {
+                 comboTree1 = $(categoryElementId).comboTree({
+                     source: [],
+                     isMultiple: false,
+                     cascadeSelect: true,
+                     collapse: false,
+                     selected: []
+                 });
+                 comboTree1.onChange(function () {
+                     studentDefaultClass.tryGetOptionDefault();
+                 });
+             }
+             comboTree1.setSource(categories);
+            $(categoryElementId).change(function(e) {
+                $(this).val(comboTree1 ? comboTree1.getSelectedNames() : '');
+            });
+        });
+    }
+
+</script>

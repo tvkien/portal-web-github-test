@@ -1,0 +1,444 @@
+@using LinkIt.BubbleSheetPortal.Common;
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.ReportItemTLDSManager, "Review Links", true);
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+<link href="/Content/css/tlds.css" rel="stylesheet" />
+<style type="text/css">
+    .ellipis .copyToClipboard {
+        display: inline-block;
+        float: left;
+        max-width: 16px;
+        cursor: pointer;
+    }
+
+    .ellipis a:not(.copyToClipboard) {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow-x: hidden;
+        display: inline-block;
+        float: left;
+        max-width: 150px;
+        margin-left: 15px;
+        direction: rtl;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+    .enrollment-year-container {
+        position: relative;
+    }
+
+    .enrollment-year-filter {
+        top: 12px;
+        left: 153px;
+    }
+
+    #selectGroup {
+        max-width: 210px;
+    }
+</style>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_utils.js"></script>
+<div id="TLDSReviewLink">
+    <article class="container_12" id="idTopNavigation">
+        <section class="grid_12">
+            <div class="block-content form" id="divOnTop">
+                <h1>
+                    Review Links
+                </h1>
+                <div id="divNotifications"></div>
+                <ul id="tlds-manage-success-message" class="message success u-m-t-20" style="display: none">
+                    <li></li>
+                </ul>
+                <ul id="tlds-manage-success-error-message" class="message error u-m-t-20" style="display: none">
+                    <li> </li>
+                </ul>
+                <div class="enrollment-year-container">
+                    <div class="tlds-feature-enrollment-year enrollment-year-filter js-enrollment-year hide d-flex align-items-center position-static float-left">
+                        <label class="m-0 me-2">Enrolment year</label>
+                        <select id="selectEnrollmentYear" style="width: 120px"></select>
+                        <label class="mb-0 ms-3 me-2">| &nbsp; Group</label>
+                        <div class="block-text-name" style="width: 240px">
+                            <select id="selectGroup" class="w-100"></select>
+                            <div class="box-select">
+                                <span class="overlay"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="no-margin last-child">
+                        <table id="dataTable" class="datatable table no-margin" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col"></th>
+                                    <th scope="col" style="text-align: center;">Last Name</th>
+                                    <th scope="col" style="text-align: center;">First Name</th>
+                                    <th scope="col" style="text-align: center;">Parent / Guardian</th>
+                                    <th scope="col" style="text-align: center;">Section Completed</th>
+                                    <th scope="col" style="text-align: center;">Profile's URL</th>
+                                    <th scope="col" style="text-align: center;">Expiry Date</th>
+                                    <th scope="col" style="text-align: center;">Status</th>
+                                    <th scope="col"></th>
+                                    <th scope="col"></th>
+                                    <th scope="col"></th>
+                                    <th scope="col"></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="mt-4 text-end">
+                    <button id="btnCancel" class="btn-blue">Cancel</button>
+                </div>
+            </div>
+        </section>
+    </article>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('.stats').addClass('current');
+        $('#rpTLDSManager').addClass('current');
+
+        $('#btnCancel').click(function () {
+            location.href = '@Url.Action("Index")';
+        });
+
+        populateEnrollmentYearFilter();
+        populateGroupFilter();
+    });
+
+    function InitLoadTLDSProfileLink() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceTLDSProfleLink(),
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aaSorting: [[6, 'desc']],
+            oLanguage: { sSearch: "" },
+            aoColumns: [
+                { sType: 'integer', sName: 'ProfileId', bSearchable: true, bSortable: true, sWidth: '115px' },
+                { sType: 'string', sName: 'StudentLastName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'StudentFirstName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Guardian', bSearchable: false, bSortable: true },
+                { sType: 'int', sName: 'SectionCompleted', bSearchable: false, bSortable: true },
+                { sType: 'string', sName: 'LinkUrl', bSearchable: false, bSortable: false, sClass: 'ellipis' },
+                { sType: 'string', sName: 'ExpiredDate', bSearchable: false, bSortable: true },
+                { sType: 'string', sName: 'Status', bSearchable: false, bSortable: true },
+                { sType: 'bool', sName: 'IsAccess', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'TLDSProfileLinkId', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'integer', sName: 'ProfileStatus', bVisible: false },
+                { sType: 'string', sName: 'ProfileIsReadOnly', bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData, dataIndex) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[9], aData[7], aData[10], aData[11]));
+                $('td:eq(5)', nRow).html(getTLDSProfileLink(aData[5], dataIndex));
+
+                $('td:eq(6)', nRow).html(displayDateWithFormat(aData[6], false));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                $('.js-enrollment-year').removeClass('hide');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+
+                var dataTable = $('#dataTable').dataTable();
+                dataTable.fnSetFilteringDelay(500);
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('dataTable_filter');
+                $(".block-custom-header").prepend($('.tlds-feature-enrollment-year'));
+            }
+        };
+        $("#dataTable").data("options", options);
+    }
+
+    function getTLDSProfileLink(linkUrl, index) {
+        var linkString = '<div style="position: relative;"><a index=' + index + ' class="copyToClipboard" > <img class="icon" style="height: 16px; position: absolute; top: -1px;" src="@Url.Content("~/Content/themes/Constellation/images/icons/icon-link.svg")" /> </a > ';
+        linkString += '<a target="_blank" class="link-' + index + '" href="' + linkUrl + '">' + linkUrl + '"</a></div>';
+        return linkString;
+    }
+
+    function setIconVisibility(tldsProfileLinkId, status, profileStatus, profileIsReadOnly) {
+        var iconString = "";
+
+        var actionIcon = '';
+        var actionString = '';
+        if (status == '@Constanst.TLDSProfileLink_Deactivated') {
+            actionIcon = '<i class="custom-icon fa-solid fa-circle-plus icon-green me-2"></i>';
+            actionString = '<a href="javascript:void(0);" title="Activate" onclick="activateTLDSProfileLink(event,' + "'" + tldsProfileLinkId + "'" + ')" class="with-tip">' + actionIcon + '</a>';
+        }
+        if (status !== '@Constanst.TLDSProfileLink_Deactivated') {
+            actionIcon = '<i class="custom-icon fa-solid fa-circle-minus icon-red me-2"></i>';
+            actionString += '<a href="javascript:void(0);" title="Deactivate" onclick="deactivateTLDSProfileLink(event,' + "'" + tldsProfileLinkId + "'" + ')" class="with-tip">' + actionIcon + '</a>';
+        }
+        if (status == '@Constanst.TLDSProfileLink_Open' ||
+            status == '@Constanst.TLDSProfileLink_InProgress' ||
+            status == '@Constanst.TLDSProfileLink_Expired' ||
+            status == '@Constanst.TLDSProfileLink_Completed') {
+            actionIcon = '<i class="fa-solid fa-arrows-rotate icon-grey me-2"></i>';
+            actionString += '<a href="javascript:void(0);" title="Refresh" onclick="refreshTLDSProfileLink(event,' + "'" + tldsProfileLinkId + "'" + ')" class="with-tip">' + actionIcon + '</a>';
+        }
+        actionIcon = '<i class="custom-icon custom-icon fa-solid fa-eye icon-grey"></i>';
+        actionString += '<a href="/TLDSManage/ViewTheParentResponse?tldsProfileLinkId=' + tldsProfileLinkId + '" target="_blank" title="View" class="with-tip">' + actionIcon + '</a>';
+        if (profileIsReadOnly === 'False') {
+            if (profileStatus === 10 ||
+                profileStatus === 40 ||
+                profileStatus === 50 ||
+                profileStatus === 60) {
+                actionString += '<a href="javascript:void(0);" title="Delete" onclick="deleteTLDSProfileLink(event,' + "'" + tldsProfileLinkId + "'" + ')" class="with-tip"><i class="fa-solid fa-trash icon-grey ms-2"></i></a>';
+            }
+        }
+        iconString += actionString;
+
+        return iconString;
+    }
+
+    var activate = false;
+    function deactivateTLDSProfileLink(event, tldsProfileLinkId) {
+        event.preventDefault();
+        activate = false;
+        var confirmMessage = "Do you want to deactivate this TLDSProfileLink?";
+        var $self = $(event);
+        CustomConfirm({
+            message: confirmMessage,
+            textLeft: true,
+            customClass: 'new-style-popup',
+            yes: function () {
+                confirmUpdateStatusTLDSProfileLink(tldsProfileLinkId, $self);
+            },
+            no: function () {
+                $(this).dialog("close");
+            },
+            yesMessage: "Yes",
+            noMessage: "No",
+        });
+    }
+
+    function confirmUpdateStatusTLDSProfileLink(tldsProfileLinkId, element) {
+        ShowBlock($('#idTopNavigation'), 'Loading');
+        $.post('@Url.Action("UpdateStatusTLDSProfileLink", "TLDSDigitalSection23")', { tldsProfileLinkId: tldsProfileLinkId, value: activate }, function (response) {
+            if (response.result == true) {
+                $('#tlds-manage-success-message').show();
+
+
+                if (activate == true) {
+                    $('#tlds-manage-success-message').html('<li>This TLDSProfileLink is Activate</li>');
+                } else {
+                    $('#tlds-manage-success-message').html('<li>This TLDSProfileLink is Deactivated</li>');
+                }
+                element.parents('.ui-dialog').remove();
+                setTimeout(function () {
+                    $('#tlds-manage-success-message').hide();
+                    //reload table
+                    var dataTable = $('#dataTable').dataTable();
+                    dataTable.fnDraw();
+                    $('#idTopNavigation').unblock();
+                }, 1000);
+            } else {
+                var vMessage = 'An error has occured. Please try again.';
+                popupAlertMessage('alert', vMessage, 300, 500);
+            }
+
+        });
+    }
+
+    function activateTLDSProfileLink(event, tldsProfileLinkId) {
+        event.preventDefault();
+        activate = true;
+        var $self = $(event);
+        var confirmMessage = "Do you want to activate this TLDSProfileLink?";
+        CustomConfirm({
+            message: confirmMessage,
+            textLeft: true,
+            customClass: 'new-style-popup',
+            yes: function () {
+                confirmUpdateStatusTLDSProfileLink(tldsProfileLinkId, $self);
+            },
+            no: function () {
+                $(this).dialog("close");
+            },
+            yesMessage: "Yes",
+            noMessage: "No",
+        });
+    }
+
+    $(document).on('click', '.copyToClipboard', function () {
+        var index = $(this).attr('index');
+        var element = $('.link-' + index);
+        copyToClipboard(element);
+        $("#divNotifications").empty();
+        LinkIt.success('#divNotifications', 'This url has been copied to clipboard.');
+    });
+
+    function copyToClipboard(element) {
+        var $temp = $("<input>");
+        $("body").append($temp);
+        $temp.val($(element).attr('href')).select();
+        document.execCommand("copy");
+        $temp.remove();
+    }
+
+    function populateEnrollmentYearFilter() {
+        $('#selectEnrollmentYear').empty();
+        $.get('@Url.Action("GetEnrollmentYearFilter", "TLDSManage")', function (data) {
+            addDefaultOption($('#selectEnrollmentYear'), "All");
+            addSelectListItemsWithSelectedValue($('#selectEnrollmentYear'), data);
+            if (data && data.length > 0) {
+                var defaultSelect = data.find(function (item) { return item.Selected });
+                defaultSelect = defaultSelect ? defaultSelect : data[0];
+                $('#selectEnrollmentYear').val(defaultSelect.Id);
+
+                InitLoadTLDSProfileLink();
+            }
+
+        });
+    }
+
+    function populateGroupFilter() {
+        $('#selectGroup').empty();
+        $.get('@Url.Action("GetGroupSelectList", "TLDSManage")', function (data) {
+            addDefaultOptionForTLDS($('#selectGroup'), "All");
+            addSelectListItemsForTLDS($('#selectGroup'), data);
+        });
+    }
+
+    function addDefaultOptionForTLDS(selectList, objectText) {
+        selectList.empty();
+        selectList
+            .append($("<option></option>")
+                .attr("value", "select")
+                .text(objectText));
+        var html = unescapeHtml(selectList.html());
+        selectList.html(html);
+    }
+
+    function addSelectListItemsForTLDS(selectList, results) {
+        if (results.length == 0) {
+            selectList.html('<option value="-1">All</option>');
+            return;
+        }
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+    }
+
+    function refreshTLDSProfileLink(event, tldsProfileLinkId) {
+        var $self = $(event);
+        event.preventDefault();
+        ShowBlock($('#idTopNavigation'), 'Loading');
+        $.post('@Url.Action("RefreshTSLDProfileLink", "TLDSDigitalSection23")', { tldsProfileLinkId: tldsProfileLinkId }, function (response) {
+         $('#tlds-manage-success-message').show();
+
+            if (response.result == true) {
+                  $('#tlds-manage-success-message').html('<li>This TLDSProfileLink has been extended day</li>');
+                setTimeout(function () {
+                       $('#tlds-manage-success-message').hide();
+                    //reload table
+                    var dataTable = $('#dataTable').dataTable();
+                    dataTable.fnDraw();
+                    $('#idTopNavigation').unblock();
+                }, 1000);
+            } else {
+                var vMessage = 'An error has occured. Please try again.';
+                popupAlertMessage('alert', vMessage, 300, 500);
+            }
+        });
+        $self.parents('.ui-dialog').remove();
+    }
+
+    function getAjaxSourceTLDSProfleLink() {
+        var url = '@Url.Action("LoadTLDSProfleLink", "TLDSDigitalSection23")';
+
+        if ($('#selectEnrollmentYear').length > 0) {
+            var enrollmentYear = $('#selectEnrollmentYear').val();
+            if (enrollmentYear == 'select' || enrollmentYear < 0) {
+                enrollmentYear = 0; //it's now allow user to search all when 'Select All' is choosen
+            }
+            url = url + '?EnrollmentYear=' + enrollmentYear;
+        }
+        if ($('#selectGroup').length > 0) {
+            var groupId = $('#selectGroup').val();
+            if (groupId == 'select' || groupId < 0) {
+                groupId = null; //it's now allow user to search all when 'Select All' is choosen
+            }
+            url = url + '&TldsGroupID=' + groupId;
+        }
+
+        return url;
+
+    }
+
+    $("#selectEnrollmentYear").change(function () {
+
+        var dataTable = $('#dataTable').dataTable();
+        dataTable.fnSettings().sAjaxSource = getAjaxSourceTLDSProfleLink();
+        dataTable.fnDraw();
+    });
+
+    $("#selectGroup").change(function () {
+        var dataTable = $('#dataTable').dataTable();
+        dataTable.fnSettings().sAjaxSource = getAjaxSourceTLDSProfleLink();
+        dataTable.fnDraw();
+        $("#selectGroup").marquee();
+    });
+
+    function deleteTLDSProfileLink(event, tldsProfileLinkId) {
+            var $self = $(event);
+            event.preventDefault();
+            CustomConfirm({
+                message: 'Deleting this link will also delete any associated data submitted via this link?',
+                textLeft: true,
+                customClass: 'new-style-popup',
+                yes: function () {
+                    ShowBlock($('#idTopNavigation'), 'Loading');
+                    $.post('@Url.Action("DeleteTldsProfileLink", "TLDSDigitalSection23")', { tldsProfileLinkId: tldsProfileLinkId }, function (response) {
+                        $('#tlds-manage-success-message').show();
+
+                        if (response.Result) {
+                            $('#tlds-manage-success-message').html('<li>This TLDS Profile Link has been deleted</li>');
+                            setTimeout(function () {
+                                $('#tlds-manage-success-message').hide();
+                            }, 5000);
+                            //reload table
+                            $('#dataTable').dataTable().fnDraw(false);
+                        } else {
+                            var vMessage = 'Has no right to delete this link';
+                            popupAlertMessage('alert', vMessage, 300, 500);
+                        }
+                    });
+                    $self.parents('.ui-dialog').remove();
+                    $('#idTopNavigation').unblock();
+                },
+                no: function () {
+                    $(this).dialog("close");
+                }
+            });
+        }
+</script>

@@ -1,0 +1,349 @@
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleQTIItemPassageDetailBundle()
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog-draggable.css")" rel="stylesheet" type="text/css" />
+
+<style type="text/css">
+    .ui-widget-header {
+        right: 0px !important; /*LNKT-6680*/
+    }
+
+    .passage {
+        width: 641px !important;
+        overflow-x: auto;
+    }
+
+    .assessmentItem {
+        width: 100%;
+    }
+
+    #divPassageDetail .passage ol li:before {
+        content: unset !important;
+    }
+
+    #divPassageDetail .passage ol {
+        margin: 8px 0 8px 30px;
+    }
+
+    #divPassageDetail .passage ul {
+        margin: 8px 0 8px 25px;
+        padding: 0;
+    }
+
+    #divPassageDetail .passage ul li {
+        list-style: disc !important;
+        list-style-position: outside;
+        list-style-type: circle;
+    }
+
+    #divPassageDetail .passage p {
+        margin-bottom: 0;
+    }
+</style>
+<section>
+    <div class="block-border">
+        <div class="block-content form">
+            <h1>@ViewBag.Name</h1>
+            <div id="divPassageDetail">
+                @Html.Raw(ViewBag.PassageHtmlContent)
+            </div>
+            <div style="clear: both"></div>
+            <input type="hidden" value="@ViewBag.RefObjectID" />
+            <div class="no-margin last-child buttonAction" style="padding-left: 16px">
+                <button id="btnCloseUserClickPassageDetail" type="button" class="grey classProgramButton" data-dialog="close">
+                    Close
+                </button>
+
+                @if (!ViewBag.IsQti3pPassage)
+                {
+                    <button id="btnEditPassageDetail" type="button" class="classProgramButton" onclick="showPassageEditFormWhenPreview(@ViewBag.RefObjectID)">
+                        Edit
+                    </button>
+                }
+
+                @if (ViewBag.IsShowShuffleCheckbox != null && ViewBag.IsShowShuffleCheckbox)
+                {
+                    if (ViewBag.NoShuffle != null && ViewBag.NoShuffle)
+                    {
+                        <text><input id="cbShuffle" type="checkbox" checked /></text>
+                    }
+                    else
+                    {
+                        <text><input id="cbShuffle" type="checkbox" /></text>
+                    }
+                    <text>Don't shuffle the questions associated with this passage</text>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+<div id="glossaryMessage">
+    <section>
+        <div class="block-border">
+            <div class="block-content form glossary-content">
+                <div class="glossary_text"></div>
+                <div class="glossary_define"></div>
+            </div>
+        </div>
+    </section>
+</div>
+<input type="hidden" id="hidTestItemMediaPath" value="@ViewBag.TestItemMediaPath" />
+
+<script type="text/javascript">
+
+    $(function () {
+        MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+
+        var $divPassageDetail = $('#divPassageDetail');
+        var loaderPassage = CreateLoaderLoading();
+
+        $divPassageDetail.find('.imageupload').hide();
+
+        if ($divPassageDetail.find('.passage1').length > 0) {
+            $divPassageDetail.find('.passage1').append(loaderPassage);
+        } else {
+            $divPassageDetail.find('.passage').append(loaderPassage);
+        }
+
+        LoadImages_PassageDetail($divPassageDetail);
+        CheckNoImage($divPassageDetail);
+        GetAudioFromPassage($divPassageDetail);
+        GlossaryPassage($divPassageDetail);
+
+        $divPassageDetail.find('br').each((idx, ele) => {
+            if (ele.parentElement.tagName === 'P' && !ele.nextSibling) {
+                ele.parentElement.append(document.createElement('br'));
+            }
+        })
+    });
+
+    function showPassageEditFormWhenPreview(qtiRefObjectId)
+    {
+        ShowBlock($('#divMain'), 'Loading');
+        ShowBlock($('#divEditItem'), 'Loading');
+        var url = '@Url.Action("LoadEditPassageDiv", "PassageEditor")?id=' + qtiRefObjectId + '&firstTime=true&from=fromItemEditorPopup&virtualTestId=' + '@ViewBag.VirtualTestId';
+
+        if ($("#PassageDetailDialog").length) {
+            $('#PassageDetailDialog').dialog("close");
+        }
+
+        if ($('#ShowRefObjectContent').length) {
+            $('#ShowRefObjectContent').dialog("close");
+        }
+        $.ajax({
+            url: url,
+            cache: false
+        }).done(function (html) {
+            $('#divMain').unblock();
+
+            $('#divEditItem').unblock();
+            $('body').append('<div id="divPreviewOnlinePanel"></div>');
+            $('#divPassageCreateContent').html('');
+            $("#divPreviewOnlinePanel").html(html);
+            $('#divPreviewOnlinePanel').dialog({
+                title: "",
+                open: function () {
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+
+                    //Create overlay for popup
+                    if ($('#divPassageFilterContent').length > 0 && $('#editPassageForm').length > 0) {
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($('.ui-dialog').css("z-index")) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    } else {
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    }
+
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $('.ui-widget-overlay:last').last().remove();
+                    $('#divPreviewOnlinePanel').parent().remove();
+                    $('#divPreviewOnlinePanel').remove();
+                    ckID = window.currentCkID || ckID;
+                    $("body .my-overlay").remove();
+                },
+                modal: false,
+                width: 1006,
+                resizable: false
+            });
+        });
+    }
+
+    function LoadImg(selector, isHideLoading) {
+        $(selector).load(function () {
+            if (isHideLoading && selector.height() > 1){
+                $('#showloading').hide();
+            }
+            selector.show();
+        });
+    }
+
+    function LoadImages_PassageDetail(containerSelector) {
+        $(containerSelector).find(".imageupload,img").each(function () {
+            var image = $(this);
+            var imageUrl = image.attr("src");
+            if (IsNullOrEmpty(imageUrl)) {
+                imageUrl = image.attr("source");
+            }
+            if (imageUrl.toLowerCase().indexOf("http") == 0) {
+                LoadImg(image, true);
+                return;
+            }
+            if (IsNullOrEmpty(imageUrl)) imageUrl = '@Url.Content("~/Content/images/emptybg.png")';
+
+            if (imageUrl.charAt(0) == '/') imageUrl = imageUrl.substring(1);
+
+            image.attr("source", '');
+            image.attr("src", imageUrl);
+
+            if (image.index() == $(containerSelector).find(".imageupload,img").last().index())
+                LoadImg(image, true);
+            else {
+                LoadImg(image, false);
+            }
+        });
+    }
+
+    function IsNullOrEmpty(value) {
+        return typeof (value) === "undefined" || value == null || $.trim(value) == '';
+    }
+
+    function CheckNoImage(containerSelector) {
+        var countImg = containerSelector.find('img').length;
+
+        if (countImg == 0) {
+            $('#showloading').hide();
+        }
+
+        if (countImg == 1) {
+            if (containerSelector.find('img').attr('src').indexOf('loader.gif') > 0) {
+                $('#showloading').hide();
+            }
+        }
+    }
+
+    function CreateLoaderLoading() {
+        var loader = document.createElement('div');
+        var loaderImage = document.createElement('img');
+        var loarderImageSrc = '@Url.Content("../Content/images/prettyPhoto/default/loader.gif")';
+
+        loader.setAttribute('id', 'showloading');
+        loader.style.textAlign = 'center';
+
+        loaderImage.src = loarderImageSrc;
+
+        loader.appendChild(loaderImage);
+
+        return loader;
+    }
+
+    function GetAudioFromPassage(el) {
+        var $el = $(el);
+
+        $el.find('.passage').each(function (ind, passage) {
+            var $passage = $(passage);
+            var passageAudioRef = $passage.attr('audioref');
+
+            if (passageAudioRef != null || passageAudioRef == '') {
+                var el = CreateAudio(passageAudioRef);
+                $passage.prepend(el);
+            }
+        });
+    }
+
+    function CreateAudio(audioSrc) {
+        var audio = document.createElement('div');
+        var audioPlay = document.createElement('span');
+        var audioStop = document.createElement('span');
+
+        audio.className = 'c-audio';
+
+        audioPlay.className = 'c-audio-play';
+        audio.appendChild(audioPlay);
+
+        audioStop.className = 'c-audio-stop hide';
+        audio.appendChild(audioStop);
+
+        audioPlay.addEventListener('click', function () {
+            resetUIAudio(); // ckeditor_mk.js
+            var self = this;
+            self.classList.add('hide');
+            audioStop.classList.remove('hide');
+
+            window.playsound = new vnsAudio({
+                src: audioSrc,
+                onEnded: function () {
+                    self.classList.remove('hide');
+                    audioStop.classList.add('hide');
+                }
+            });
+        }, false);
+
+        audioStop.addEventListener('click', function () {
+            this.classList.add('hide');
+            audioPlay.classList.remove('hide');
+
+            if (window.playsound != null) {
+                window.playsound.pause();
+            }
+        }, false);
+
+        return audio;
+    }
+
+    function GlossaryPassage(el) {
+        var $el = $(el);
+
+        $el.find('span.glossary').unbind('click').on('click', function (e) {
+            var $self = $(this);
+            var $glossaryMessage = $('#glossaryMessage');
+            var glossaryText = $self.html();
+            var glossaryContent = $self.attr('glossary')
+                                        .replace(/&lt;br\/&gt;/gi, '<br />')
+                                        .replace(/&gt;/g, '>')
+                                        .replace(/&lt;/g, '<');
+
+            $glossaryMessage.find('.glossary_text').html(glossaryText);
+            $glossaryMessage.find('.glossary_define').html(glossaryContent);
+            var zIndex = parseInt($self.parents('.ui-dialog').css('z-index'), 10);
+            var dialogOverlay = CreateDialogOverlay(zIndex);
+
+            $('body').prepend(dialogOverlay);
+
+            $glossaryMessage.dialog({
+                modal: false,
+                width: 480,
+                resizable: false,
+                open: function (dialog) {
+                    $glossaryMessage.prev().css('top', '37px');
+                },
+                close: function () {
+                    $('.ui-widget-overlay:first').remove();
+                }
+            });
+
+        }).hover(function () {
+            var currentID = $(this).attr('glossary_id');
+            $el.find('span.glossary[glossary_id="' + currentID + '"]').addClass('glossary-hover');
+        }, function () {
+            var currentID = $(this).attr('glossary_id');
+            $el.find('span.glossary[glossary_id="' + currentID + '"]').removeClass('glossary-hover');
+        });
+    }
+
+    function CreateDialogOverlay(zIndex) {
+        var dialogOverlay = document.createElement('div');
+
+        dialogOverlay.className = 'ui-widget-overlay';
+        dialogOverlay.style.width = $(document).width() + 'px';
+        dialogOverlay.style.height = $(document).height() + 'px';
+        dialogOverlay.style.zIndex = zIndex + 1;
+
+        return dialogOverlay;
+    }
+</script>

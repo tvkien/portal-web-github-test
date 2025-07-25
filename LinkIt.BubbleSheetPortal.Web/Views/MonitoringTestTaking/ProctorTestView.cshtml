@@ -1,0 +1,823 @@
+@model LinkIt.BubbleSheetPortal.Web.Models.MonitoringTestTaking.ProctorViewModel
+
+@*@MvcHtmlString.Create(
+    Bundle.Css()
+        .Add(@Url.Content("~/Content/css/custom.css"))
+        .Add(@Url.Content("~/Content/css/linkitStyleSheet.css"))
+        .Add(@Url.Content("~/Content/css/linkitMonitoringTestTaking.css"))
+        .Render("/Content/themes/Constellation/css/AdminTestView_combined_#.css")
+     )*@
+
+@*@MvcHtmlString.Create(
+    Bundle.JavaScript()
+        .Add("/Scripts/knockout-3.0.0.js")
+        .Add("/Content/themes/TestMaker/ckeditor_utils.js")
+        .Render("/Content/themes/Constellation/js/AdminTestView_combined_#.js")
+    )*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleProctorTestViewBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptProctorTestViewBundle()
+
+<div id="popupProctorTestView">
+    <div class="note-container">
+        <div class="pull-left">
+            <div class="note-item">
+                <div class="note note-yellow"></div> Question Has Not Been Answered
+            </div>
+            <div class="note-item">
+                <div class="note note-green"></div> Question Has Been Answered
+            </div>
+            <div class="note-item">
+                <div class="note note-star">*</div> Item Requires Manual Grading
+            </div>
+        </div>
+        <div class="pull-right text-right">
+            <div class="note-item">
+
+            </div>
+        </div>
+    </div>
+    <div class="block-text-time">
+        <span class="text-time"></span>
+    </div>
+    <div class="popupProctorTestView">
+        <table class="table table-bordered table-hover table-proctor-testview">
+            <thead>
+                <tr>
+                    <th style="width: 20px;"><input type="checkbox" data-bind="checked: SelectedAll"></th>
+                    <th style="width: 140px;">Student</th>
+                    <th style="width: 100px;">Test Status</th>
+                    <th>Questions</th>
+                </tr>
+            </thead>
+            <tbody data-bind="foreach: Students">
+                <tr>
+                    <td style="width: 20px;">
+                        <input type="hidden" data-bind="value: QTIOnlineTestSessionID" />
+                        <input type="checkbox" data-bind="checked: Selected, QTIOnlineTestSessionID: QTIOnlineTestSessionID">
+                    </td>
+                    <td style="width: 140px;" data-bind="text: StudentName"></td>
+                    <td style="width: 100px;" data-bind="text: TestStatusText, css: TestStatusCSS"></td>
+                    <td class="questions">
+                        <div class="all-questions">
+                            <div data-bind="foreach: DisplayQuestions" class="g">
+                                <div q data-bind="attr: {TimesVisited: TimesVisited,TimeSpent: TimeSpent } ,text: DisplayQuestionOrder, css: QuestionCSS, visible: QuestionVisible" class="g-1of20 proctorCell question-number"> </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="wrapper-footer-response">
+        <button data-bind="click: ReopendTest, enable: ReopendTestEnable" type="button" class="float-right">Reopen</button>
+        <button data-bind="click: SubmitTest" type="button" class="float-right" style="margin-right: 10px;">Submit Test</button>
+        <button data-bind="click: PauseTest" type="button" class="float-right" style="margin-right: 10px;">Pause Test</button>
+        <button data-bind="click: RedoFailedGradingProcess" type="button" class="float-right" style="margin-right: 10px;">Redo Failed Grading</button>
+    </div>
+</div>
+
+@*Public varaiables*@
+<script type="text/javascript">
+
+    var viewModel;
+    var popupSelector = '#popupContainer';
+
+    function IsNullOrEmpty(value) {
+        return typeof (value) === "undefined" || value == null || $.trim(value) == '';
+    };
+
+
+</script>
+
+@*Declare structure of data*@
+<script type="text/javascript">
+    function Question(data) {
+        var self = this;
+        self.QuestionID = ko.observable(data.QuestionID);
+        self.Answered = ko.observable(data.Answered);
+        self.ManualReview = ko.observable(data.ManualReview);
+        self.VirtualQuestionID = ko.observable(data.VirtualQuestionID);
+        self.QuestionOrder = ko.observable(data.QuestionOrder);
+        self.AnswerOrder = ko.observable(data.AnswerOrder);
+        self.NewQuestionCSS = ko.observable('');
+        self.TimeSpent = ko.observable(data.TimeSpent);
+        self.TimesVisited = ko.observable(data.TimesVisited);
+        self.QuestionCSSRefresh = ko.computed(function () {
+            if (self.Answered()) return 'questionAnswered';
+            return 'questionUnAnswered';
+        });
+        self.QuestionCSS = ko.computed(function () {
+            var result = self.QuestionCSSRefresh() + ' ' + self.NewQuestionCSS();
+            return result;
+        });
+        self.DisplayQuestionOrder = ko.computed(function () {
+
+            var result = self.QuestionOrder();
+            if (self.ManualReview()) result = result + '*';
+            return result;
+        });
+
+        self.QuestionVisible = ko.computed(function () {
+            if (!IsNullOrEmpty(viewModel) && viewModel.BranchingTest()) return self.Answered();
+            return true;
+        });
+    }
+
+    function Student(data) {
+        var self = this;
+        self.QTIOnlineTestSessionID = ko.observable(data.QTIOnlineTestSessionID);
+        self.StudentID = ko.observable(data.StudentID);
+        self.StudentName = ko.observable(data.StudentName);
+        self.StudentNameAlert = ko.computed(function () {
+            if (self.StudentName() == null) return '';
+            var result = self.StudentName().replace(/,/g, '');
+            return result;
+        });
+        self.TestStatus = ko.observable(data.TestStatus);
+        self.Active = ko.observable(data.Active);
+        self.AutoGrading = ko.observable(data.AutoGrading);
+        self.Selected = ko.observable(false);
+        self.GradingProcessSuccess = ko.observable(data.GradingProcessSuccess);
+        self.GradingProcessStatus = ko.observable(data.GradingProcessStatus);
+
+        self.NewTestStatusCSS = ko.observable('');
+
+        self.TestStatusText = ko.computed(function () {
+            if (self.QTIOnlineTestSessionID() == 0) return 'Not Started';
+            if (self.TestStatus() == '1' || self.TestStatus() == '2') {
+                if (self.Active() == 1) return 'In Progress';
+                return 'Not Active';
+            }
+            if (self.TestStatus() == '3') return 'Paused';
+            if (self.TestStatus() == '5') {
+                if (self.AutoGrading() == 1 || self.GradingProcessStatus() == 3) return 'Autograding';
+                if (!self.GradingProcessSuccess()) return 'Autograding failed';
+
+                return 'Manual Review';
+            }
+            if (self.TestStatus() == '4') return 'Completed';
+            if (self.TestStatus() == '6') return 'Not Active';
+            return '';
+        });
+
+        self.TestStatusRefresh = ko.computed(function () {
+            if (self.QTIOnlineTestSessionID() == 0) return 'testStatusNotStarted';
+            if (self.TestStatus() == '1' || self.TestStatus() == '2') {
+                if (self.Active() == 1) return 'testStatusInProgress';
+                return 'testStatusNotActive';
+            }
+
+            if (self.TestStatus() == '3') return 'testStatusPaused';
+            if (self.TestStatus() == '5') {
+                if (self.AutoGrading() == 1 || self.GradingProcessStatus() == 3) return 'testStatusAutograding';
+                if (!self.GradingProcessSuccess()) { return 'testStatusNotStarted'; }
+                return 'testStatusManualReview';
+            }
+            if (self.TestStatus() == '4') return 'testStatusCompleted';
+            return '';
+        });
+
+        self.TestStatusCSS = ko.computed(function () {
+            var result = self.TestStatusRefresh() + ' ' + self.NewTestStatusCSS();
+            return result;
+        });
+
+        self.CanPauseTest = ko.computed(function () {
+            if (self.QTIOnlineTestSessionID() == 0) return false;
+            if (self.TestStatus() == '1' || self.TestStatus() == '2') return true;
+            if (self.TestStatus() == '3') return false;
+            if (self.TestStatus() == '5') return false;
+            if (self.TestStatus() == '4') return false;
+            return false;
+        });
+
+        self.CanSubmitTest = ko.computed(function () {
+            if (self.QTIOnlineTestSessionID() == 0) return false;
+            if (self.TestStatus() == '1' || self.TestStatus() == '2') return true;
+            if (self.TestStatus() == '3') return true;
+            if (self.TestStatus() == '5') return false;
+            if (self.TestStatus() == '4') return false;
+            return false;
+        });
+
+        self.CanReOpen = ko.computed(function () {
+            if (self.QTIOnlineTestSessionID() == 0) return false;
+            if (self.TestStatus() == '4') return true;
+            if (self.TestStatus() == '5') return true;
+            return false;
+        });
+
+        self.CanRedoFailedGradingProcess = ko.computed(function () {
+            if (self.TestStatus() == '5' && !self.GradingProcessSuccess()) return true;
+            return false;
+        });
+
+        self.Questions = ko.observableArray([]);
+
+        if (data.Questions != null) {
+            var groupQuestion = [];
+            var group = []
+            var arrQuestion = data.Questions;
+            arrQuestion.forEach(function(element){
+                if(element.QuestionGroupId) {
+                    var arr =  group.filter(function(i) {
+                        return i.QuestionOrder === element.QuestionOrder;
+                    });
+                    if(arr.length === 0) {
+                        group = data.Questions.filter(function(item){
+                            return item.QuestionGroupId === element.QuestionGroupId;
+                        });
+                        if(group.length > 0) {
+                            groupQuestion.push(group);
+                        }
+                    }
+                } else {
+                    groupQuestion.push([element]);
+                }
+            });
+            var arrAnphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
+            groupQuestion.forEach(function (items, index) {
+                var prevItem = index ? groupQuestion[index - 1] : groupQuestion[0] ;
+
+                if(items.length === 1) {
+                    if(index === 0) {
+                        items[0]['DisplayQuestionsOrder'] = prevItem[0].QuestionOrder;
+                    } else {
+                        items[0]['DisplayQuestionsOrder'] = index + 1;
+                    }
+                } else {
+                    items.forEach(function(item, indexItem) {
+                        if(QuestionNumberLabel === '0') {
+                            item['DisplayQuestionsOrder'] = (index + 1) + arrAnphabet[indexItem];
+                        } else {
+                            item['DisplayQuestionsOrder'] = (index + 1) + '.' + (indexItem + 1);
+                        }
+
+                    });
+                }
+            });
+            var newArr = [].concat.apply([], groupQuestion);
+
+            arrQuestion.forEach(function(element){
+
+                var question = {};
+                for (var index = 0; index < newArr.length; index++) {
+                    if(newArr[index].QuestionOrder === element.QuestionOrder) {
+                        question = newArr[index];
+                        break ;
+                    }
+                }
+
+                if(question) {
+                    element.QuestionOrder = question.DisplayQuestionsOrder;
+                }
+            });
+            var mappedObjects = $.map(data.Questions, function (item) {
+                return new Question(item);
+            });
+            self.Questions(mappedObjects);
+        }
+        self.DisplayQuestions = ko.computed(function () {
+            if (IsNullOrEmpty(viewModel) || IsNullOrEmpty(self.Questions())) return [];
+            if (viewModel.BranchingTest())
+                return self.Questions().sort(function (left, right) {
+                    return left.AnswerOrder() === right.AnswerOrder() ? 0 : (left.AnswerOrder() > right.AnswerOrder() ? 1 : -1);
+                });
+            return self.Questions();
+        });
+
+    }
+    var QuestionNumberLabel = '';
+    function ViewModel() {
+        var self = this;
+        self.QTITestClassAssignmentID = ko.observable('@Model.QTITestClassAssignmentID');
+        self.VirtualTestId = ko.observable('@Model.VirtualTestId');
+        self.Students = ko.observable([]);
+        self.SchoolName = ko.observable('');
+        self.ClassName = ko.observable('');
+        self.TeacherName = ko.observable('');
+        self.TestName = ko.observable('');
+
+        self.SelectedAll = ko.computed({
+            read: function () {
+                var persons = self.Students();
+                for (var i = 0, l = persons.length; i < l; i++)
+                    if (!persons[i].Selected()) return false;
+                return true;
+            },
+            write: function (value) {
+                ko.utils.arrayForEach(self.Students(), function (person) {
+                    person.Selected(value);
+                });
+            }
+        });
+
+        self.Refresh = function () {
+            self.GetProctorViewData();
+        };
+
+        self.Innit = function () {
+            self.GetProctorViewData();
+            self.SchoolName('@Model.SchoolName');
+            self.ClassName('@Model.ClassName');
+            self.TeacherName('@Model.TeacherName');
+            self.TestName('@Model.TestName');
+
+            popupInterval = setInterval(function () { self.RefreshProtorView(); }, refreshTime);
+        };
+
+        self.SearchStudentByID = function (studentID) {
+            return ko.utils.arrayFirst(self.Students(), function (item) {
+                return item.StudentID() == studentID;
+            });
+        }
+
+        self.SearchQuestionByID = function (questionID, questions) {
+            return ko.utils.arrayFirst(questions, function (item) {
+                return item.QuestionID() == questionID;
+            });
+        }
+
+        self.GetProctorViewData = function () {
+            ShowBlock($(popupSelector), 'Loading');
+            uniqueRereshProctorView = true;
+            var url = '@Url.Action("GetProctorTestViewData")';
+            var postData = { QTITestClassAssignmentID: self.QTITestClassAssignmentID(), VirtualTestId: self.VirtualTestId() };
+            $.ajax({
+                type: 'POST',
+                url: url,
+                data: postData,
+                success: function (data) {
+                    uniqueRereshProctorView = false;
+                    $(popupSelector).unblock();
+
+                    var lastUpdated = data.LastUpdated;
+                    $('#popupProctorTestView .text-time').text('Last Updated at: ' + lastUpdated);
+                    if (data != null) {
+                        QuestionNumberLabel = data.QuestionNumberLabel;
+                        if (data.Students != null) {
+                            var mappedObjects = $.map(data.Students, function (item) {
+                                return new Student(item);
+                            });
+                            self.Students(mappedObjects);
+                        }
+                    }
+                    loadTooltip();
+                },
+                error: function () {
+                    $(popupSelector).unblock();
+                }
+            });
+        };
+
+        self.RefreshProtorView = function () {
+            if (uniqueRereshProctorView || !displayingProctorView) return;
+            var url = '@Url.Action("GetProctorTestViewData")';
+            var postData = { QTITestClassAssignmentID: self.QTITestClassAssignmentID(), VirtualTestId: self.VirtualTestId() };
+            var newStudents = [];
+            uniqueRereshProctorView = true;
+            $.ajax({
+                type: 'POST',
+                url: url,
+                data: postData,
+                success: function (data) {
+                    uniqueRereshProctorView = false;
+                    var lastUpdated = data.LastUpdated;
+                    $('#popupProctorTestView .text-time').text('Last Updated at: ' + lastUpdated);
+                    if (data != null) {
+                        QuestionNumberLabel = data.QuestionNumberLabel;
+                        if (data.Students != null) {
+                            $.each(data.Students, function (index, value) {
+                                var newStudent = new Student(value);
+                                var student = self.SearchStudentByID(newStudent.StudentID());
+                                if (student != null) {
+                                    if (newStudent.TestStatus() == '5' && (newStudent.Questions() == null || newStudent.Questions().length == 0)) {
+                                        newStudents.push(student);
+                                    } else {
+                                        newStudents.push(newStudent);
+                                        newStudent.Selected(student.Selected());
+                                        if (student.TestStatusRefresh() != newStudent.TestStatusRefresh()) {
+                                            newStudent.NewTestStatusCSS('new');
+                                        }
+
+                                        if (newStudent.Questions() != null) {
+                                            ko.utils.arrayForEach(newStudent.Questions(), function (newQuestion) {
+                                                var question = self.SearchQuestionByID(newQuestion.QuestionID(), student.Questions());
+                                                if (question != null && newQuestion != null && question.QuestionCSSRefresh() != newQuestion.QuestionCSSRefresh()) {
+                                                    newQuestion.NewQuestionCSS('new');
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+                            });
+
+                        }
+                    }
+
+                    self.Students(newStudents);
+                    loadTooltip();
+                    setTimeout(function () {
+                        $('.proctorCell.new').removeClass('new');
+                        $('#popupProctorTestView .table tbody tr td.new').removeClass('new');
+                    }, 3000);
+                },
+                error: function () {
+                    uniqueRereshProctorView = false;
+                }
+            });
+        };
+
+        self.SubmitTest = function () {
+            ShowBlock($(popupSelector), 'Loading');
+            var message = '';
+            var qtiOnlineTestSessionIDs = [];
+            var submitedTest = 0;
+            ko.utils.arrayForEach(self.Students(), function (student) {
+                if (student.Selected()) {
+                    if (student.CanSubmitTest()) {
+                        message = message + ', ' + student.StudentNameAlert();
+                        qtiOnlineTestSessionIDs.push(student.QTIOnlineTestSessionID());
+                        submitedTest = submitedTest + 1;
+                    }
+                }
+            });
+
+            if (message != '') {
+                var url = '@Url.Action("SubmitOnlineTest")';
+                var postData = JSON.stringify({ QTIOnlineTestSessionIDs: qtiOnlineTestSessionIDs });
+                $.ajax({
+                    type: 'POST',
+                    url: url,
+                    data: postData,
+                    contentType: 'application/json',
+                    success: function (data) {
+                        $(popupSelector).unblock();
+                        if (message != '') {
+                            if (message.substr(0, 1) == ',') message = message.substr(1, message.length);
+                            var alertMessageSuccess = data.Count + ' test(s) have been submitted.';
+                            popupAlertMessage('alert', alertMessageSuccess, 310, 500);
+                        }
+                        if (data != null && data.Success) {
+                            self.GetProctorViewData();
+                        }
+                    },
+                    error: function () {
+                        $(popupSelector).unblock();
+                    }
+                });
+            } else {
+                $(popupSelector).unblock();
+                var alertMessage = 'No tests have been submitted.';
+                popupAlertMessage('alert', alertMessage, 310, 500);
+            }
+        };
+
+        self.PauseTest = function () {
+            ShowBlock($(popupSelector), 'Loading');
+            var message = '';
+            var qtiOnlineTestSessionIDs = [];
+            var pausedTest = 0;
+            ko.utils.arrayForEach(self.Students(), function (student) {
+                if (student.Selected() && student.CanPauseTest()) {
+                    message = message + ', ' + student.StudentNameAlert();
+                    qtiOnlineTestSessionIDs.push(student.QTIOnlineTestSessionID());
+                    pausedTest = pausedTest + 1;
+                }
+            });
+            if (message != '') {
+                var confirmOptions = { Message: 'Are you sure you want to Pause? Students working on CR items may lose their work, so remind them to save their current answer by clicking the "next" question arrow before you pause.', HideCloseButton: 1 };
+                ConfirmDialog(confirmOptions, function (confirmOptions) {
+                    var url = '@Url.Action("PauseOnlineTest")';
+                    var postData = JSON.stringify({ QTIOnlineTestSessionIDs: qtiOnlineTestSessionIDs });
+                    $.ajax({
+                        type: 'POST',
+                        url: url,
+                        data: postData,
+                        contentType: 'application/json',
+                        success: function (data) {
+                            $(popupSelector).unblock();
+                            if (message != '') {
+                                var alertMessageSuccess = '';
+                                //var processed = data.Data.Resquest.length - data.Data.Response.length;
+                                //if (processed == 1) {
+                                //    alertMessageSuccess += 'There is ' + processed + ' test has been completed before submitting pause. '
+                                //} else if (process > 1) {
+                                //    alertMessageSuccess += 'There are ' + processed + ' tests have been completed before submitting pause. '
+                                //}
+
+                                if (message.substr(0, 1) == ',') message = message.substr(1, message.length);
+                                    alertMessageSuccess += data.Data.Response.length + ' test(s) have been paused.';
+
+                                popupAlertMessage('alert', alertMessageSuccess, 500, 500);
+                            }
+                            if (data != null && data.Success) {
+                                self.GetProctorViewData();
+                            }
+                        },
+                        error: function () {
+                            $(popupSelector).unblock();
+                        }
+                    });
+                }, function (confirmOptions) { $(popupSelector).unblock(); });
+            } else {
+                $(popupSelector).unblock();
+                var alertMessage = 'No tests have been paused.';
+                popupAlertMessage('alert', alertMessage, 310, 500);
+            }
+        };
+
+        self.ReopendTest = function () {
+            vqtiOnlineTestSessionIDs = [];
+
+            var errorMessage = '';
+            ko.utils.arrayForEach(self.Students(), function (student) {
+                if (student.Selected()) {
+                    if (!student.CanReOpen()) {
+                        errorMessage = errorMessage + ', ' + student.StudentNameAlert();
+                    } else {
+                        vqtiOnlineTestSessionIDs.push(student.QTIOnlineTestSessionID());
+                    }
+                }
+            });
+
+            if (vqtiOnlineTestSessionIDs.length == 0) {
+                if (errorMessage !== '') {
+                    if (errorMessage.substr(0, 1) == ',') errorMessage = errorMessage.substr(1, errorMessage.length);
+                    var alertMessage = 'No tests have been reopened.';
+                    popupAlertMessage('alert', alertMessage, 310, 500);
+                }
+                return;
+            }
+
+            // Todo check which students be able to reopen
+            // Do not allow a QTIOnlineTestSession to be reopenned if that session doest not have any test result associated with it
+
+            var studentsCanNotReopen = "";
+            var canReopen = false;
+            var confirmMessage = "Reopening the test will NOT erase student responses, but manually graded items will be reset to zero points. <br>Are you sure you want to reopen the test(s)?";
+
+            ko.utils.arrayForEach(self.Students(), function (student) {
+                if (vqtiOnlineTestSessionIDs.indexOf(student.QTIOnlineTestSessionID()) >= 0) {
+                    if (student.Questions().length == 0) {
+                        studentsCanNotReopen = studentsCanNotReopen.concat(student.StudentNameAlert() + "; ");
+                    } else {
+                        canReopen = true;
+                    }
+                }
+            });
+
+            if (!canReopen) {
+                var alertMessage = "The selected assignment cannot be reopened because there are no test results associated with it."
+                popupAlertMessage('alert', alertMessage, 450, 500);
+            } else {
+                if (studentsCanNotReopen !== "") {
+                    confirmMessage += "<br>";
+                    confirmMessage += "These students: <i>" + studentsCanNotReopen + " </i> cannot be reopened because there are no test results associated with it.";
+                }
+                popupAlertMessage('confirm', confirmMessage, 450, 500);
+            }
+        };
+
+        self.BranchingTest = ko.computed(function () {
+            return 'True' === '@Model.BranchingTest';
+        });
+        self.ReopendTestEnable = ko.computed(function () {
+            return !self.BranchingTest();
+        });
+
+        self.RedoFailedGradingProcess = function () {
+            ShowBlock($(popupSelector), 'Loading');
+            var message = '';
+            var qtiOnlineTestSessionIDs = [];
+            var submitedTest = 0;
+            ko.utils.arrayForEach(self.Students(), function (student) {
+                if (student.Selected()) {
+                    if (student.CanRedoFailedGradingProcess()) {
+                        message = message + ', ' + student.StudentNameAlert();
+                        qtiOnlineTestSessionIDs.push(student.QTIOnlineTestSessionID());
+                        submitedTest = submitedTest + 1;
+                    }
+                }
+            });
+
+            if (message != '') {
+                var url = '@Url.Action("RedoFailedGradingProcess")';
+                var postData = JSON.stringify({ QTIOnlineTestSessionIDs: qtiOnlineTestSessionIDs });
+                $.ajax({
+                    type: 'POST',
+                    url: url,
+                    data: postData,
+                    contentType: 'application/json',
+                    success: function (data) {
+                        $(popupSelector).unblock();
+                        if (data != null && data.Success == false) {
+                            var alertMessageError = 'You cannot grade this test as it is being graded.';
+                            popupAlertMessage('alert', alertMessageError, 310, 500);
+                            return;
+                        }
+                        if (message != '') {
+                            if (message.substr(0, 1) == ',') message = message.substr(1, message.length);
+                            var alertMessageSuccess = submitedTest + ' test(s) have been redo grading process.';
+                            popupAlertMessage('alert', alertMessageSuccess, 310, 500);
+                        }
+                        if (data != null && data.Success) {
+                            self.GetProctorViewData();
+                        }
+                    },
+                    error: function () {
+                        $(popupSelector).unblock();
+                    }
+                });
+            } else {
+                $(popupSelector).unblock();
+                var alertMessage = 'No tests have been redo grading process.';
+                popupAlertMessage('alert', alertMessage, 310, 500);
+            }
+        };
+
+        self.Innit();
+    }
+
+</script>
+
+<script type="text/javascript">
+    var vqtiOnlineTestSessionIDs = [];
+    $(function () {
+        viewModel = new ViewModel();
+        ko.applyBindings(viewModel);
+    });
+
+    function AlertMessage(message) {
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border">' +
+            '<div class="block-content form" style="padding-bottom: 2.833em;"><div>' + message +
+            '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: false,
+                width: 445,
+                maxheight: 500,
+                resizable: false,
+            });
+    }
+
+    function YesConfirmPopup(e) {
+        var $self = $(e);
+
+        ReopenTest();
+
+        $self.parents('.ui-dialog').remove();
+    }
+    function loadTooltip() {
+        setTimeout(function() {
+            $('.question-number').qtip({
+            content: {
+                text: function (event, api){
+                    var timespent = $(event.target).attr('timespent');
+                    timespent = secondToMinutes(parseFloat(timespent));
+                    var timesvisited = $(event.target).attr('timesvisited');
+                    var block = '<div class="block-tooltip"> <p><strong> Time Spent: </strong>'+
+                             timespent + '</p><p><strong>Times Visited: </strong>' + timesvisited + '</p>'
+                         +'</div>';
+                    return block
+                }
+            },
+             position: {
+                at: 'center center',
+                my: 'bottom center',
+            },
+            hide: {
+                fixed: true,
+                delay: 200
+            }
+        })
+        }, 100)
+
+    }
+    function secondToMinutes(d) {
+        d = Number(d);
+        var h = Math.floor(d / 3600);
+        var m = Math.floor(d % 3600 / 60);
+        var s = Math.floor(d % 3600 % 60);
+        return ('0' + h).slice(-2) + 'h ' + ('0' + m).slice(-2) + 'm ' + ('0' + s).slice(-2) + 's'
+    }
+    function ReopenTest() {
+        ShowBlock($(popupSelector), 'Loading');
+
+        var failedTestSessionIDs = [];
+        var normalTestSessionIDs = [];
+        ko.utils.arrayForEach(viewModel.Students(), function (student) {
+            if (student.Selected()) {
+                if (student.CanRedoFailedGradingProcess()) {
+                    failedTestSessionIDs.push(student.QTIOnlineTestSessionID());
+                } else if (student.CanReOpen()) {
+                    normalTestSessionIDs.push(student.QTIOnlineTestSessionID());
+                }
+            }
+        });
+
+        if (
+            failedTestSessionIDs.length == 0 &&
+            normalTestSessionIDs.length == 0) {
+            $(popupSelector).unblock();
+            var alertMessage = 'No tests have been reopened.';
+            popupAlertMessage('alert', alertMessage, 310, 500);
+            return;
+        }
+
+        var reopenNormalTestSessionPromise = ReopenNormalTestSession(JSON.stringify({
+            QTIOnlineTestSessionIDs: normalTestSessionIDs,
+            QTITestClassAssignmentID: viewModel.QTITestClassAssignmentID(),
+            VirtualTestID: viewModel.VirtualTestId()
+        }));
+
+        var reopenFailedGradingProcessPromise = ReopenFailedGradingProcess(JSON.stringify({ QTIOnlineTestSessionIDs: failedTestSessionIDs }));
+
+        $.when(reopenNormalTestSessionPromise
+            , reopenFailedGradingProcessPromise
+            ).done(function (data1
+                , data2
+                ) {
+                $(popupSelector).unblock();
+                var totalReopenTests =
+                    failedTestSessionIDs.length +
+                    data1[0].TotalReopenTests;
+                viewModel.GetProctorViewData();
+                var message = '';
+                if (totalReopenTests == 0) { message = 'No '; }
+                else { message = totalReopenTests + ' ' }
+                vMessage = message + 'test(s) have been reopened.';
+                popupAlertMessage('alert', vMessage, 300, 500);
+            }).fail(function (error1, error2) {
+                viewModel.GetProctorViewData();
+                $(popupSelector).unblock();
+            });
+    }
+
+    function ReopenNormalTestSession(data) {
+        var url = '@Url.Action("ReopenTest")';
+        return $.ajax({
+            type: 'POST',
+            url: url,
+            data: data,
+            contentType: 'application/json'
+        });
+    }
+
+    function ReopenFailedGradingProcess(data) {
+        var url = '@Url.Action("ReopenFailedGradingProcess")';
+        return $.ajax({
+            type: 'POST',
+            url: url,
+            data: data,
+            contentType: 'application/json'
+        });
+    }
+
+    function ConfirmDialog(options, yesCallBack, noCallBack) {
+        var n = new Date().getTime();
+        var confirmDialogID = 'confirmDialog_' + n;
+        var yesButtonID = 'ConfirmYesButton_' + n;
+        var noButtonID = 'ConfirmNoButton_' + n;
+        var yesButtonHtml = '<button id="' + yesButtonID + '" style="width:63px;">Yes</button>';
+        var noButtonHtml = '<button id="' + noButtonID + '" style="width:63px;">No</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + options.Message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + yesButtonHtml + '&nbsp;&nbsp;' + noButtonHtml + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", confirmDialogID)
+            .appendTo("body")
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+                dialogClass: "noclose",
+                open: function () {
+                    if (options.HideCloseButton == 1) $('.noclose').find(".ui-dialog-titlebar-close").hide();
+                }
+            });
+
+        $('#' + yesButtonID).click(function () {
+            $("#" + confirmDialogID).dialog("close");
+            if (typeof yesCallBack === "function") yesCallBack(options);
+        });
+
+        $('#' + noButtonID).click(function () {
+            $("#" + confirmDialogID).dialog("close");
+            if (typeof noCallBack === "function") noCallBack(options);
+        });
+    }
+</script>

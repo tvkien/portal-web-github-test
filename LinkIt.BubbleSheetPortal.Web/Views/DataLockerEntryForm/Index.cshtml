@@ -1,0 +1,283 @@
+@{
+    ViewBag.Title = "Build Entry Forms";
+}
+
+@section stylesheet {
+    <link rel="stylesheet" href="/Content/css/vue-components/vue-modal.css">
+    <link rel="stylesheet" href="https://cdn.materialdesignicons.com/5.0.45/css/materialdesignicons.min.css">
+    <link href="/Content/libs/select2/comboTreePlugin.css" rel="stylesheet" />
+}
+
+<div id="datalocker-entryform" class="manage-columns">
+    <div id="divTestBanks" class="manage-columns-left">
+        @Html.Partial("_FormBanks")
+    </div>
+    <div id="divVirtualTests" class="manage-columns-center" v-bind:class="gradeLevelClasses">
+        @Html.Partial("_FormTests")
+    </div>
+    <div id="divPropertiy" class="manage-columns-right">
+        <div id="divTestBankProperties" v-bind:class="gradeLevelClasses"></div>
+        <div id="divVirtualTestProperties" v-bind:class="gradeLevelClasses"></div>
+    </div>
+    <modal-component v-bind:show.sync="isShowModalEditDescription" v-bind:width="520" class="modal-component-studententry is-dark" style="display: none;">
+        <div slot="header"></div>
+        <div slot="body">
+            <div id="divRubricDescription" class="DivFieldSet" v-loading-directive="isShowLoading">
+                <ul style="display: none" id="update-description-error-messages" class="message error" v-show="isShowError"></ul>
+                <fieldset>
+                    <h4 class="u-m-b-10">Rubric Description:</h4>
+                    <div class="qContent u-clearfix">
+                        <textarea cols="80" id="txtRubricDescription" name="editor1" rows="10"></textarea>
+                    </div>
+                </fieldset>
+                <div class="u-m-t-10 u-text-right">
+                    <button onclick="SaveRubricDescription()">Save</button>
+                </div>
+                <div style="display: none;" class="alert alert-success u-m-t-10" v-show="isShowSuccess">
+                    <span>Save successfully!</span>
+                </div>
+            </div>
+        </div>
+        <div slot="footer"></div>
+    </modal-component>
+    <div style="clear: both"></div>
+    <input type="hidden" id="SelectedTestBankId" value="0" />
+</div>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_mk.js"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_utils.js"></script>
+<script src="/Content/libs/select2/comboTreePlugin.js"></script>
+<style>
+    html {
+        overflow-x: auto;
+    }
+
+    body {
+        min-width: 1035px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .sticky {
+        padding-left: 500px;
+    }
+
+    #dataTableTestBank_filter {
+        float: left !important;
+    }
+
+    #dataTableVirtualTest_filter {
+        float: left !important;
+    }
+</style>
+
+<script>
+    $(function () {
+        $('.datalocker').addClass('current');
+        $('#datalockerBuildEntryForm').addClass('current');
+    });
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+</script>
+<!-- Custom alert message box -->
+<script type="text/javascript">
+    function CustomAlert(message, isLongMessage) {
+        var yesButton = '<button style="width:63px;margin-left:0px;" onclick="CustomAlertYesClick(this);">OK</button>';
+        var messageTextAlign = 'center';
+        var messageBoxWidth = 240;
+        var diaglogWidth = 300;
+
+        if (typeof isLongMessage != "undefined" && isLongMessage === true) {
+            messageTextAlign = 'left';
+            messageBoxWidth = 540;
+            diaglogWidth = 600;
+        }
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + messageBoxWidth + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;text-align:center;"><div style="text-align:' + messageTextAlign + ';line-height: 18px;">' + message +
+            '</div><div style="text-align: center;padding-top:20px;padding-bottom:10px;">' + yesButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "CustomAlertDialog")
+            .appendTo("body")
+
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: diaglogWidth,
+                maxheight: 400,
+                resizable: false,
+                open: function () { $(".ui-dialog-titlebar-close").hide(); }
+            });
+    }
+
+    function CustomAlertYesClick(item) {
+        $("#CustomAlertDialog").dialog("close");
+        var url = $(item).attr('url');
+        if (url != undefined && $.trim(url) != '') window.open(url);
+    }
+</script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor.js"></script>
+<script type="text/javascript">
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+</script>
+@section scripts {
+    <script type="text/javascript">
+        var EntryFormModel = new Vue({
+            el: '#datalocker-entryform',
+            data: {
+                gradeLevelClasses: '',
+                isShowModalEditDescription: false,
+                isShowError: false,
+                isShowSuccess: false,
+                isShowLoading: false
+            },
+            ready: function () {
+                var gradeLabel = '@LabelHelper.GradeLabel';
+
+                if (gradeLabel == null || gradeLabel.length <= 6) {
+                    this.gradeLevelClasses = 'gradeLevelClasses';
+                } else {
+                    this.gradeLevelClasses = 'noGradeLevelClasses';
+                }
+            }
+        });
+
+        function registerEventEditDescriptionClick() {
+            $('#btnEditDescription').click(function () {
+                EntryFormModel.isShowModalEditDescription = true;
+                EntryFormModel.isShowError = false;
+                EntryFormModel.isShowSuccess = false;
+            });
+        }
+
+        $(function () {
+            MKEditor = {
+                imgUrl: "../../Content/themes/TestMaker/",
+                audioUrl: "/PassageEditor/AudioUpload/",
+                objectId: '0',
+                loadAudioUrl: window.location.protocol + "//" + window.location.hostname + "/PassageEditor/GetAudio",
+                imgUpload: "/PassageEditor/ImageUpload/",
+                GetViewReferenceImg: window.location.protocol + "//" + window.location.hostname + '/TestAssignmentRegrader/GetViewReferenceImg?imgPath=' //This is config for view image on test maker
+            };
+            CKEDITOR.replace('txtRubricDescription', {
+                extraPlugins: 'mathjax,sharedspace,multiplechoice,mathfraction,indent,dialog,contextmenu,liststyle,tabspaces',
+                /*alphaBeta: alphabet,*/
+                height: 150,
+                toolbar: [
+                    ['JustifyLeft', 'JustifyCenter', 'JustifyRight', '-', 'NumberedList', 'BulletedList'],
+                    ['Bold', 'Italic', 'Underline'],
+                    ['Sameline'],
+                    ['FontSize', 'Subscript', 'Superscript', '-', 'RemoveFormat'],
+                    ['Link', 'Unlink', 'Table', 'SpecialChar', 'Indent', 'Outdent', 'Tabspaces', 'ImageUpload']
+                ],
+                sharedSpaces:
+                {
+                    top: 'topSpace',
+                    bottom: 'bottomSpace'
+                },
+                extraAllowedContent: 'span[stylename]; span(smallText,normalText,largeText,veryLargeText);'
+            });
+            if (CKEDITOR.env.ie && CKEDITOR.env.version == 8)
+                document.getElementById('ie8-warning').className = 'warning';
+        });
+
+        function xmlInstructionImport(element) {
+
+            var xmlContent = element.val();
+
+            CKEDITOR.instances["txtRubricDescription"].setData(xmlContent, function () {
+                //This to make sure state of CKEditor is false after loaded data. Waiting 1s
+                var that = this;
+                window.setTimeout(function () {
+                    that.resetDirty();
+                }, 1000);
+
+            });
+
+            CKEDITOR.instances["txtRubricDescription"].resetDirty();
+        }
+
+        function xmlInstructionExport() {
+            return CKEDITOR.instances["txtRubricDescription"].getData();
+        }
+
+        function SaveRubricDescription() {
+            var testId = $('#hdTestId').val();
+            var description = xmlInstructionExport();
+            var vbankId = $('#SelectedTestBankId').val();
+            if (description === undefined || description === null)
+                return;
+            EntryFormModel.isShowLoading = true;
+            $.post('@Url.Action("UpdateRubricDescription", "DataLockerEntryForm")', { bankId: vbankId, testId: testId, description: description.trim() }, function (response) {
+                EntryFormModel.isShowLoading = false;
+                if (response.success == true) {
+                    $('#xmlContent').val(description);
+                    EntryFormModel.isShowError = false;
+                    EntryFormModel.isShowSuccess = true;
+
+                    setTimeout(function () {
+                        EntryFormModel.isShowSuccess = false;
+                    }, 3000);
+                } else {
+                    $('#update-description-error-messages').html('<li>' + response.Error + '</li>');
+                    EntryFormModel.isShowError = true;
+                    EntryFormModel.isShowSuccess = false;
+                }
+            });
+        }
+    </script>
+}

@@ -1,0 +1,762 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models.Constants
+@using LinkIt.BubbleSheetPortal.Web
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Techsupport, "Data Preview");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleCustomBundle()
+
+<style>
+    .filter-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .checkbox-label {
+        background-color: var(--blue1);
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+    }
+
+    .block-checkbox {
+        height: 190px;
+        overflow: auto;
+        background: var(--bg-white);
+        border-top: 1px solid var(--grey);
+    }
+
+    .fileter-checkbox {
+        border: 1px solid var(--selectBorder);
+        position: relative;
+    }
+
+    .bg-full {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        top: 0;
+        background: rgba(76, 76, 76, 0.8);
+        z-index: 100;
+    }
+
+    .loading-dot {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 101;
+        color: var(--white);
+        font-size: 20px;
+    }
+
+        .loading-dot:after {
+            content: ' .';
+            animation: dots 1s steps(5, end) infinite;
+        }
+
+    @@keyframes dots {
+        0%, 20% {
+            color: rgba(0,0,0,0);
+            text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0);
+        }
+
+        40% {
+            color: white;
+            text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0);
+        }
+
+        60% {
+            text-shadow: .25em 0 0 white, .5em 0 0 rgba(0,0,0,0);
+        }
+
+        80%, 100% {
+            text-shadow: .25em 0 0 white, .5em 0 0 white;
+        }
+    }
+
+    .checkbox-child {
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+    }
+
+        .checkbox-child:nth-last-child(even) {
+            background: #f1f1f1
+        }
+
+    #portal-v2-containter input[type=checkbox]:not(.form-check-input) {
+        flex: 0 0 18px;
+    }
+
+    .btn-container {
+        display: flex;
+        justify-content: flex-end;
+        gap: 18px;
+    }
+
+    .block-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .center-icon-result {
+        text-align: center !important;
+    }
+
+    .student-results {
+        color: #2abe5b;
+        cursor: pointer;
+    }
+
+    .dataTable tbody tr.gray {
+        background: var(--grey);
+    }
+
+    .dataTable tbody tr.light-blue {
+        background: #39c;
+    }
+
+    .input-search {
+        padding: 12px;
+    }
+
+        .input-search input {
+            width: 85%;
+        }
+
+    .dataTable td:nth-child(3) {
+        width: 220px;
+    }
+
+    .dataTable td:nth-child(4) {
+        width: 200px;
+    }
+</style>
+<link rel="stylesheet" href="https://cdn.materialdesignicons.com/5.0.45/css/materialdesignicons.min.css">
+<link href="@Url.Content("~/Content/libs/awesome-icon/css/font-awesome.css")" rel="stylesheet" />
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleStudentPreferenceBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptStudentPreferenceBundle()
+<script src="@Url.Content("~/Scripts/TagIt/js/tag-it.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Scripts/TagIt/css/jquery.tagit.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Scripts/TagIt/css/tagit.ui-zendesk.css")" rel="stylesheet" type="text/css" />
+<link href="/Content/libs/select2/comboTreePlugin.css" rel="stylesheet" />
+<link href="@BundleHelper.Version("~/Content/css/v2/generate-bubble-sheet.css")" rel="stylesheet" type="text/css" />
+<script src="/Content/libs/select2/comboTreePlugin.js"></script>
+
+<article class="container_12">
+    <div id="student-references" class="grid_12">
+        <div class="block-border form">
+            <div class="">
+                <div class="tabs-details">
+                    <div id="" class="block-section-custom mb-4">
+                        <p class="title-large mb-4">Select Options Level</p>
+                        <div class="row">
+                            <div class="col-3">
+                                <label>State</label>
+                                <div class="block-text-name w-100">
+                                    <select v-model="selectedState" v-on:change="selectStates" class="">
+                                        <option v-for="item in state" :value="item.Id">{{item.Name}}</option>
+                                    </select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <label>{{districtLabel}}</label>
+                                <div class="block-text-name w-100">
+                                    <select id="selectedDistrictID" v-model="selectedDistrict" v-on:change="onDistrictChange" class="">
+                                        <option v-for="item in districts" :value="item.Id">{{item.Name}}</option>
+                                    </select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="" class="block-section-custom mb-4">
+                        <p class="title-large mb-4">Select Test Filters</p>
+                        <div class="row filter-container">
+                            <div class="col">
+                                <div class="fileter-checkbox filter-test-types">
+                                    <div v-show="showLoadingTest" class="bg-full">
+                                        <div class="loading-dot">Loading</div>
+                                    </div>
+                                    <div class="checkbox-label">
+                                        <input id="test-types" v-model="checkTestTypes" v-on:change="allSelectTestTypes" type="checkbox" name="test-types" class="chechbox" />
+                                        <label style="margin-left: 0.25rem" for="test-types">All Categories</label>
+                                    </div>
+
+                                    <div class="block-checkbox">
+                                        <div class="input-search">
+                                            <input class="search-bar" type="text" placeholder="Input to search" />
+                                        </div>
+                                        <div v-for="item in testType" class="checkbox-child">
+                                            <input :id="'test-type' + item.Id" v-on:change="selectCheckBoxTestTypes" type="checkbox" :value="item.Id" v-model="arrTestTypes" :name="item.Id"
+                                                   class="chechbox" :disabled="item.IsShow === false">
+                                            <label style="margin-left: 0.25rem" :title="item.Tooltip" :for="'test-type' + item.Id">{{item.Name}}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="fileter-checkbox">
+                                    <div v-show="showLoadingGrades" class="bg-full">
+                                        <div class="loading-dot">Loading</div>
+                                    </div>
+                                    <div class="checkbox-label">
+                                        <input id="grades" v-model="checkGrades" v-on:change="allSelectGrades" type="checkbox" name="grades" class="chechbox" />
+                                        <label style="margin-left: 0.25rem" for="grades">All @LabelHelper.TestGrades</label>
+                                    </div>
+                                    <div class="block-checkbox">
+                                        <div class="input-search" v-model="arrGrades">
+                                            <input class="search-bar" type="text" placeholder="Input to search" />
+                                        </div>
+                                        <div v-for="item in grades" class="checkbox-child">
+                                            <input :id="item.Id" v-on:change="selectCheckBoxGrades" type="checkbox" :value="item.Id" v-model="arrGrades" :name="item.Id"
+                                                   class="chechbox">
+                                            <label style="margin-left: 0.25rem" :for="item.Id">{{item.Name}}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="fileter-checkbox checkbox-subject">
+                                    <div v-show="showLoadingSubjects" class="bg-full">
+                                        <div class="loading-dot">Loading</div>
+                                    </div>
+                                    <div class="checkbox-label">
+                                        <input id="subjects" type="checkbox" name="subjects" v-model="checkSubject" v-on:change="allSelectSubjects" class="chechbox" />
+                                        <label style="margin-left: 0.25rem" for="subjects">All @LabelHelper.Subjects</label>
+                                    </div>
+                                    <div class="block-checkbox">
+                                        <div class="input-search">
+                                            <input class="search-bar" type="text" placeholder="Input to search" />
+                                        </div>
+                                        <div v-for="item in subjects" class="checkbox-child">
+                                            <input :id="item.Name" :value="item.Name" v-model="arrSubject" v-on:change="selectCheckBoxSubjects" type="checkbox" :name="item.Name"
+                                                   class="chechbox">
+                                            <label style="margin-left: 0.25rem" :for="item.Name">{{item.Name}}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="fileter-checkbox">
+                                    <div v-show="showLoadingPBSInEffect" class="bg-full">
+                                        <div class="loading-dot">Loading</div>
+                                    </div>
+                                    <div class="checkbox-label">
+                                        <input id="pbsEffect" type="checkbox" name="pbsEffect" v-model="checkPbsEffect" v-on:change="allSelectPbsEffect" class="chechbox" />
+                                        <label style="margin-left: 0.25rem" for="pbsEffect">All PBS in Effect</label>
+                                    </div>
+                                    <div class="block-checkbox">
+                                        <div class="input-search">
+                                            <input class="search-bar" type="text" placeholder="Input to search" />
+                                        </div>
+                                        <div v-for="item in pbsEffects" class="checkbox-child">
+                                            <input :id="item.Id" :value="item.Id" v-model="arrPbsEffects" v-on:change="selectCheckBoxPbsEffect" type="checkbox" :name="item.Id"
+                                                   class="chechbox">
+                                            <label style="margin-left: 0.25rem" :for="item.Name">{{item.Name}}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="fileter-checkbox">
+                                    <div v-show="showLoadingPBSGroup" class="bg-full">
+                                        <div class="loading-dot">Loading</div>
+                                    </div>
+                                    <div class="checkbox-label">
+                                        <input id="pbsGroup" type="checkbox" name="pbsGroup" v-model="checkPbsGroup" v-on:change="allSelectPbsGroup" class="chechbox" />
+                                        <label style="margin-left: 0.25rem" for="pbsGroup">All PBS Group</label>
+                                    </div>
+                                    <div class="block-checkbox">
+                                        <div class="input-search">
+                                            <input class="search-bar" type="text" placeholder="Input to search" />
+                                        </div>
+                                        <div v-for="item in pbsGroups" class="checkbox-child">
+                                            <input :id="item.Id" :value="item.Id" v-model="arrPbsGroups" v-on:change="selectCheckBoxPbsGroup" type="checkbox" :name="item.Id"
+                                                   class="chechbox">
+                                            <label style="margin-left: 0.25rem" :for="item.Name">{{item.Name}}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="btn-container mt-4">
+                            <button v-on:click="onClearFilter" class="btn-blue" type="submit">Clear Filters</button>
+                            <button v-on:click="onFilter" id="btnFilter" :disabled='disabled' class="btn-filter btn-red" type="submit">Apply Filters</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div id="studentPreferencePage">
+            <div id="listVirtualTest">
+                <article class="container_12 mt-4">
+                    <section class="grid-full-with">
+                        <div class="block-border">
+                            <div class="block-content form">
+                                <div class="block-heading mb-4">
+                                    <p class="title-large mb-0">
+                                        Tests
+                                    </p>
+                                    <div>
+                                        <a id="btnRemove" href="javascript:void(0)" class="btn btn-link pe-3 disabled">
+                                            Remove settings
+                                            <i class="fa-solid fa-minus ms-2"></i>
+                                        </a>
+                                        <a id="btnAddNew" href="javascript:void(0)" class="btn btn-link pe-0 disabled">
+                                            Apply settings
+                                            <i class="fa-solid fa-plus ms-2"></i>
+                                        </a>
+                                    </div>
+
+                                </div>
+                                <table id="dataTable" width="100%" cellspacing="0" class="datatable table no-margin">
+                                    <colgroup>
+                                        <col />
+                                        <col style="width: 40%" />
+                                    </colgroup>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" style="width: 35px;text-align: center">
+                                                <input type="checkbox" class="check-box-all" />
+                                            </th>
+                                            <th scope="col">
+                                                <span class="column-sort">
+                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                </span>
+                                                Test Name
+                                            </th>
+
+                                            <th scope="col">
+                                                <span class="column-sort">
+                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                </span>
+                                                Category
+                                            </th>
+                                            <th scope="col">
+                                                <span class="column-sort">
+                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                </span>
+                                                @LabelHelper.Subject
+                                            </th>
+                                            <th scope="col">
+                                                <span class="column-sort">
+                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                </span>
+                                                @LabelHelper.TestGrade
+                                            </th>
+                                            <th scope="col">
+                                                <span class="column-sort">
+                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                </span>
+                                                PBS in Effect
+                                            </th>
+                                            <th scope="col">
+                                                <span class="column-sort">
+                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                </span>
+                                                Performance Band Group
+                                            </th>
+                                            <th scope="col">
+                                                <span class="column-sort">
+                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                </span>
+                                                View Results
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td style="height: 60px;"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </article>
+            </div>
+        </div>
+    </div>
+</article>
+
+<script type="text/javascript">
+    var virtualTestID = '';
+    var rolesValue = '@Model';
+    var isSetDelay = false;
+    var districtLabel = '@LocalizeHelper.LocalizedWithoutComment(LocalizeResourceKeys.DISTRICT_LABEL)';
+</script>
+<script type="text/javascript" src="/Scripts/Lib/vue.min.2.5.js"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Scripts/PerformanceBandAutomation/callAjax.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Scripts/PerformanceBandAutomation/optionDefaults.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Scripts/PerformanceBandAutomation/v2/PerformanceBandAutomation.js")"></script>
+<script src='@Url.Content("~/Scripts/Qtip/jquery.qtip.js")'></script>
+<link rel="stylesheet" href="/Scripts/Qtip/jquery.qtip.css">
+<script type="text/javascript">
+    $(function () {
+        $('#selectedDistrictID').marquee();
+        var textSearch = "";
+        var urlSchoolName = replace ? replace : '';
+        var showTest = false;
+        var options = {
+            bServerSide: true,
+            bRetrieve: true,
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetPerformanceBandAutomations")',
+            bInfo: true,
+            oSearch: {
+                sSearch: textSearch
+            },
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "DistrictID", value: app.selectedDistrict },
+                    { name: "VirtualTestTypeIds", value: app.addFilteredTestTypes.toString() },
+                    { name: "GradeIDs", value: app.addFilteredGrades.toString() },
+                    { name: "SubjectNames", value: app.arrSubject.toString() },
+                    { name: "PBSInEffect", value: app.arrPbsEffects.toString() },
+                    { name: "PBSGroup", value: app.arrPbsGroups.toString() },
+                );
+            },
+            bAutoWidth: true,
+            iDisplayLength: 50,
+            aaSorting: [[1, "asc"]],
+            aLengthMenu: [50, 100, 500],
+            aoColumns: [
+                { mData: 'VirtualTestID', sName: 'VirtualTestID', bSearchable: false, bSortable: false, sClass: 'css-align-center' },
+                { mData: 'TestName', sName: 'TestName', bSearchable: true, bSortable: true },
+                { mData: 'DataSetCategory', sName: 'DataSetCategory', bSearchable: false, bSortable: true },
+                { mData: 'Subject', sName: 'Subject', bSearchable: true, bSortable: true },
+                { mData: 'Grade', sName: 'Grade', bSearchable: true, bSortable: true },
+                { mData: 'PBSInEffect', sName: 'PBSInEffect', bSearchable: true, bSortable: true },
+                { mData: 'PerformanceBandGroupList', sName: 'PerformanceBandGroupList', bSearchable: true, bSortable: true },
+                { mData: 'VirtualTestID', sName: 'VirtualTestID', bSearchable: false, bSortable: false, sClass: 'center-icon-result' }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData.VirtualTestID));
+                $('td:eq(6)', nRow).html(hideFromSecondItems(aData));
+                $('td:eq(7)', nRow).html(setViewResult(aData.VirtualTestID, aData.ResultDate));
+
+                var pbg = $('td:eq(6)', nRow);
+                if (pbg.text() !== 'None') {
+                    getPBSQtip(pbg, aData.PerformanceBandGroupList);
+                }
+
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                if (!window.isApplayRemoveSettings) {
+                    ShowBlock($('#dataTable'), "Loading");
+                }
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('.with-tip').tip();
+                if (!isSetDelay) {
+                    searchDelay($("#dataTable_filter input[type='text']"), $("#dataTable"));
+                    isSetDelay = true;
+                }
+                $('.check-box-all').attr('checked', false);
+
+                if (window.isApplayRemoveSettings) {
+                    app.handleAfterApplyRemoveSettings(window.virtualTests);
+                    window.isApplayRemoveSettings = false;
+                    window.virtualTests = null;
+                }
+
+                $('#dataTable').unblock();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTable_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTable_filter').addClass('data-search');
+            }
+
+        };
+
+        $("#dataTable").data("options", options);
+
+        initializeDataTable($("#dataTable"));
+
+        function hideFromSecondItems(aData) {
+            var str = '';
+            if (aData.PerformanceBandGroupList) {
+                var list = aData.PerformanceBandGroupList.split(',');
+                str += list[0];
+                if (list.length > 1) {
+                    str += ' ...';
+                }
+            }
+            return str;
+        }
+
+        function setIconVisibility(virtualTestId) {
+            var iconString = '<input type="checkbox" class="cbTestId" value="' + virtualTestId + '" />';
+            return iconString;
+        }
+
+        function setViewResult(virtualTestId, resultDate) {
+            var btn =
+                `<span style="float: unset !important" class="view-result fa-stack fa-lg student-results" virtualtestid="${virtualTestId}" resultdate="${resultDate}">
+                    <i class="fa fa-solid fa-circle fa-stack-2x" style="font-size: 2em"></i>
+                    <i class="fa fa-child fa-stack-1x fa-inverse" style="line-height: 28px !important; font-family: 'FontAwesome' !important"></i>
+                </span>`
+            return btn;
+        }
+
+        function searchDelay(inputFilter, dataTable) {
+            var delay = null;
+
+            inputFilter.off('keyup.DT input.DT');
+
+            inputFilter.on("keyup", function () {
+                var search = inputFilter.val();
+                clearTimeout(delay);
+                delay = setTimeout(function () {
+                    if (search != null) {
+                        dataTable.dataTable().fnFilter(search);
+                    }
+                }, 1000);
+            });
+        }
+
+        $(document).on('change', '.check-box-all', function () {
+            var checked = $(this).is(':checked');
+            $('#dataTable_wrapper tbody .cbTestId').removeClass('input-checked-v2').attr('checked', checked || false);
+
+            var arrChecked = $('#dataTable_wrapper tbody .cbTestId:checked');
+            if (arrChecked.length > 0) {
+                $('#btnAddNew').removeClass('disabled');
+                $('#btnRemove').removeClass('disabled');
+            }
+            else
+            {
+                $('#btnAddNew').addClass('disabled');
+                $('#btnRemove').addClass('disabled');
+            }
+        });
+
+        $(document).on('change', '#dataTable_wrapper tbody .cbTestId', function () {
+            $('.check-box-all').attr('checked', false);
+            $('.check-box-all').removeClass('input-checked-v2');
+            var arrChecked = $('#dataTable_wrapper tbody .cbTestId:checked');
+            if ($('#dataTable_wrapper tbody .cbTestId').length == $('#dataTable_wrapper tbody .cbTestId:checked').length) {
+                $('.check-box-all').attr('checked', true);
+            }
+            if (arrChecked.length === 0) {
+                $('#btnAddNew').addClass('disabled');
+                $('#btnRemove').addClass('disabled');
+            } else {
+                $('#btnAddNew').removeClass('disabled');
+                $('#btnRemove').removeClass('disabled');
+            }
+        });
+
+        $('#dataTable').on('click', '.view-result', function (event) {
+            virtualTestID = $(this).attr('virtualtestid');
+            resultDate = $(this).attr('resultdate');
+            app.viewResult(virtualTestID, resultDate);
+        });
+
+        $('#btnAddNew').on('click', function (e) {
+            e.preventDefault();
+            var testIds = [];
+            $('.cbTestId:checked').each(function(i, elem) {
+                testIds.push($(elem).val());
+            });
+            testIds.length > 0 && app.applySettings(testIds)
+        });
+
+        $('#btnRemove').on('click', function (e) {
+            var message = "Are you sure you want to remove settings?";
+            confirmMessageV2(
+                {
+                    message,
+                    cbYesBtnFuncName: "processRemoveSetting()",
+                    cbCancelBtnFuncName: 'closeConfirm()'
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'removeSettingConfirm'
+                        }
+                    }
+                }
+            )
+        });
+
+        $('.search-bar').on('keyup', function () {
+            var search = $(this).val().toLowerCase();
+            $(this).parents('.block-checkbox').find('.checkbox-child').each(function () {
+                var value = $(this).text().toLowerCase();
+                if (value.indexOf(search) > -1) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            })
+        });
+    });
+
+    function closeConfirm() {
+        $("#removeSettingConfirm").dialog("close");
+    }
+
+    function processRemoveSetting() {
+        closeConfirm();
+        var testIds = [];
+        $('.cbTestId:checked').each(function (i, elem) {
+            testIds.push($(elem).val());
+        });
+        testIds.length > 0 && app.removeSettings(testIds)
+    }
+
+    function loadData() {
+        $("#dataTable").dataTable().fnDraw();
+    }
+
+     var comboTree1 = null;
+     var categoryElementId = '#dataSetCategoryId';
+    if (rolesValue != '5' && rolesValue != '27') {
+        GetDataSetCategories();
+    }
+
+     function GetDataSetCategories(districtId = 0) {
+         $.get('@Url.Action("GetDataSetCategoriesForStudentPreference", "CategoriesAPI")' + '?districtId=' + districtId, function (categories) {
+             if (!comboTree1) {
+                 comboTree1 = $(categoryElementId).comboTree({
+                     source: [],
+                     isMultiple: false,
+                     cascadeSelect: true,
+                     collapse: false,
+                     selected: []
+                 });
+                 comboTree1.onChange(function () {
+                     studentDefaultClass.tryGetOptionDefault();
+                 });
+             }
+             comboTree1.setSource(categories);
+            $(categoryElementId).change(function(e) {
+                $(this).val(comboTree1 ? comboTree1.getSelectedNames() : '');
+            });
+        });
+    }
+
+    function getPBSQtip(el, data) {
+        el.qtip({
+            content: {
+                text: function () {
+                    return getPBSList(data);
+                }
+            },
+            hide: {
+                fixed: true,
+                delay: 300
+            },
+            style: {
+                classes: 'qtip-students qtip-bootstrap qtip-shadow'
+            },
+            position: {
+                at: 'center left',
+                my: 'right center',
+                viewport: $('#studentPreferencePage'),
+                adjust: {
+                    method: 'none shift'
+                }
+            }
+        });
+    }
+
+    function getPBSList(list) {
+        var title = '';
+        var arr = list.split(',');
+
+        arr = arr.filter(function (item) {
+            return item.trim() !== '';
+        }).map(function (item) {
+            return "</span> " + item + '<br/>';
+        });
+
+        title = arr.join('');
+
+        return title;
+    }
+
+    function getPBSQtip(el, data) {
+        el.qtip({
+            content: {
+                text: function () {
+                    return getPBSList(data);
+                }
+            },
+            hide: {
+                fixed: true,
+                delay: 300
+            },
+            style: {
+                classes: 'qtip-students qtip-bootstrap qtip-shadow'
+            },
+            position: {
+                at: 'center left',
+                my: 'right center',
+                viewport: $('#studentPreferencePage'),
+                adjust: {
+                    method: 'none shift'
+                }
+            }
+        });
+    }
+
+    function getPBSList(list) {
+        var title = '';
+        var arr = list.split(',');
+
+        arr = arr.filter(function (item) {
+            return item.trim() !== '';
+        }).map(function (item) {
+            return "</span> " + item + '<br/>';
+        });
+
+        title = arr.join('');
+
+        return title;
+    }
+
+</script>

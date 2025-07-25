@@ -1,0 +1,438 @@
+
+<fieldset>
+    <legend>Select Filter</legend>
+    <div class="columns">
+        <div class="colx2-left">
+            @if ((ViewBag.IsPublisher != null && ViewBag.IsPublisher) || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+            {
+                <div class="mb-3">
+                    <label>State</label>
+                    <select id="selectStateRoster" class="full-width"></select>
+                </div>
+            }
+            <div class="mb-3">
+                <label>From Date</label>
+                <input type="text" id="selectFromDateRoster" style="width: 235px" />
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>School</label>
+
+                <div class="block-text-name">
+                    <select id="selectSchoolRoster" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Class</label>
+                <div class="block-text-name">
+                    <select id="selectClassRoster" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="colx2-right">
+            @if ((ViewBag.IsPublisher != null && ViewBag.IsPublisher) || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+            {
+                <div class="mb-3 block-content-dropdown-marquee">
+                    <label>@LabelHelper.DistrictLabel</label>
+                    <div class="block-text-name">
+                        <select id="selectDistrictRoster" class="full-width"></select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+            <div class="mb-3">
+                <label>To Date</label>
+                <input type="text" id="selectToDateRoster" style="width: 235px" />
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>User</label>
+                <div class="block-text-name">
+                    <select id="selectUserRoster" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3" style="width: 250px; ">
+                <label>Selected Class</label>
+                <ul id="selectedClassListExtract" class="tagit ui-widget ui-widget-content ui-corner-all"></ul>
+            </div>
+        </div>
+        <input id="divDistrictIDRoster" type="hidden" value="@ViewBag.DistrictID" />
+    </div>
+</fieldset>
+<fieldset>
+    <legend>Select Template</legend>
+    <div class="tabs-content" style="margin-bottom: 10px;">
+        <div class="columns" id="ExportTemplateRoster">
+            <ul id="exportsRoster" class="generate-student-list generate-student-list-custom student-col"></ul>
+        </div>
+        <div class="clear"></div>
+    </div>
+</fieldset>
+<button id="filterSheetsRoster" class="float-right" type="button" disabled="disabled">Apply Filters</button>
+<button id="clearFilterRoster" class="float-right grey" type="button" style="margin-right: 2px;">Clear Filter</button>
+
+<script type="text/javascript">
+    //var districtId = 0;
+    var selectedClassTagsDict = {};
+    var orgDtStart;
+    var orgDtEnd;
+    var lstClassIds = '';
+    $(function () {
+        ShowBlock($('#divExtractRosterArea'), 'Loading');
+        $('#selectSchoolRoster').marquee();
+        $('#selectClassRoster').marquee();
+        $('#selectDistrictRoster').marquee();
+        $('#selectUserRoster').marquee();
+        LoadListExtractRoster();
+
+        $("#selectedClassListExtract").tagit({
+            beforeTagAdded: function (event, ui) {
+                var tagId = $('#selectClassRoster').val();
+                if (tagId != undefined) {
+                    selectedClassTagsDict[$('#selectClassRoster option:selected').text()] = tagId; //remember Id of selected tag
+                }
+            },
+            beforeTagRemoved: function (event, ui) {
+                //clear the selected tag out of memory
+                delete selectedClassTagsDict[ui.tagLabel];
+                populateClasses();
+            }
+        });
+
+        $('#selectedClassListExtract').find('.ui-autocomplete-input').attr('readonly', true); // Disallow to type into selected test tagit
+        $('#selectedClassListExtract').find('.tagit-dropdown').hide();
+
+        //populateTemplateList();
+        GetRosterTemplates();
+
+        var dtEnd = new Date();
+        var dtStart = new Date();
+        dtStart.setFullYear(dtStart.getFullYear() - 1);
+        dtStart.setMonth(dtStart.getMonth() - 3);
+        orgDtStart = dtStart;
+        orgDtEnd = dtEnd;
+       // $("#selectFromDateRoster").datepicker().datepicker('setDate', dtStart);
+        //$("#selectToDateRoster").datepicker().datepicker('setDate', dtEnd);
+        displayDateWithFormatDatePicker('selectFromDateRoster', dtStart);
+        displayDateWithFormatDatePicker('selectToDateRoster', dtEnd);
+
+
+        InitData();
+
+        $('#selectStateRoster').change(function () {
+            $('#selectDistrictRoster').empty();
+            $('#selectSchoolRoster').empty();
+            $('#selectUserRoster').empty();
+            $('#selectClassRoster').empty();
+            ClearTemplateRoster();
+            selectedClassTagsDict = {};
+            $("#selectedClassListExtract").tagit("removeAll");
+            if ($('#selectStateRoster').val() != 'select') {
+                populateDistricts();
+            }
+            $('#filterSheetsRoster').disableBt();
+        });
+
+        $('#filterSheetsRoster').click(function () {
+            $('#btnRosterSubmitSelected').attr('disabled', 'disabled');
+            $('#chkAllRoster').removeAttr('checked');
+            $('#filterSheetsRoster').attr('disabled', 'disabled');
+            $('#hdfTrackRosterIdSelected').val('');
+            $('#hdfAllRosterIds').val('');
+            lstClassIds = '';
+            SetupFilters();
+        });
+
+        $('#clearFilterRoster').click(function () {
+            $('#btnRosterSubmitSelected').attr('disabled', 'disabled');
+            $('#chkAllRoster').removeAttr('checked');
+            //selectAllStudents();
+            $('input[type=text]').each(function (index) {
+                $(this).val('');
+            });
+
+            $('#selectSchoolRoster').empty();
+            $('#selectUserRoster').empty();
+            $('#selectClassRoster').empty();
+            $("#selectedClassListExtract").tagit("removeAll");
+            selectedClassTagsDict = {};
+            lstClassIds = '';
+            SetupFilters();
+        });
+    });
+
+    function InitData() {
+        @if (@ViewBag.IsPublisher == true)
+        {
+            <text>
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            AddSelectListItems($('#selectStateRoster'), states, 'Select State');
+        });
+        </text>
+        }
+        else if (@ViewBag.IsNetworkAdmin == true)
+        {
+            <text>
+        $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+            addDefaultOption($('#selectStateRoster'), "State");
+            addSelectListItems($('#selectStateRoster'), states);
+            $('#selectStateRoster').val(@ViewBag.StateId);
+            $('#selectStateRoster').trigger('change');
+        });
+        </text>
+        }
+        else
+        {
+            <text>
+        populateSchools();
+        </text>
+        }
+    }
+
+    function populateDistricts() {
+        $('#selectDistrictRoster').empty();
+        var stateValue = $('#selectStateRoster').val();
+        if (stateValue != 'select') {
+            if ('@ViewBag.IsNetworkAdmin' == 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrictRoster'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrictRoster'), districts);
+                });
+            } else {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    AddSelectListItems($('#selectDistrictRoster'), districts, 'Select @LabelHelper.DistrictLabel');
+                });
+            }
+        }
+    }
+
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        //if (results.length == 0) {
+        //    return;
+        //}
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+    }
+
+    $('INPUT[name="chkTemplate"][type=checkbox]').live("click", function (e) {
+        setDisabledButtonsRoster();
+    });
+
+    function GetRosterTemplates() {
+        //TODO: Reset All UnSelect
+        $('.student-col').children().css('background-color', "#e0e0e0");
+
+        $.get('@Url.Action("GetRosterTemplates", "TestExtract")', { districtId: GetDistrictID() }, function (listTemplateIDs) {
+            if (listTemplateIDs.length == 0) {
+                return;
+            } else {
+                addListGetRosterTemplates($('#exportsRoster'), listTemplateIDs);
+            }
+        });
+    }
+
+    function addListGetRosterTemplates(el, listTemplate) {
+        var $el = $(el);
+        var listTemplateHtml = [];
+
+        for (var i = 0, len = listTemplate.length; i < len; i++) {
+            var value = listTemplate[i];
+            listTemplateHtml.push('<li id="template' + value.ID + '" templateid="' + value.ID + '" class="student-item RosterTemplateItem" isselected="yes" style="background-color:#82CAFA"><a href="javascript:void(0)">' + value.Name + '</a></li>');
+        }
+
+        $el.html(listTemplateHtml.join(''));
+    }
+
+    $('#selectDistrictRoster').change(function () {
+        $('#selectSchoolRoster').empty();
+        $('#selectSchoolRoster').empty();
+        $('#selectUserRoster').empty();
+        $('#selectClassRoster').empty();
+        selectedClassTagsDict = {};
+        $('.tagit-choice').hide();
+        ClearTemplateRoster();
+        var vDistrictId = GetDistrictID();
+        if (vDistrictId > 0) {
+            populateSchools();
+            GetRosterTemplates(); //TODO: Select default template
+        }
+        $('#filterSheetsRoster').enableBt();
+    });
+
+
+    $('#selectSchoolRoster').change(function () {
+        $('#selectUserRoster').empty();
+        $('#selectClassRoster').empty();
+        populateTeachers();
+    });
+
+    $('#selectUserRoster').change(function () {
+        $('#selectClassRoster').empty();
+        populateClasses();
+    });
+
+    $('#selectClassRoster').change(function () {
+        var classId = $('#selectClassRoster').val();
+        if (classId > 0) {
+            $("#selectedClassListExtract").tagit("createTag", $('#selectClassRoster option:selected').text());
+            $('#selectClassRoster option:selected').remove();
+        }
+    });
+
+
+    function populateSchools() {
+        $('#selectSchoolRoster').empty();
+        var districtId = GetDistrictID();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        if (districtId > 0) {
+            $.get('@Url.Action("GetSchoolHaveStudent", "TestExtract")',
+                {
+                    DistrictId: districtId,
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue
+                }, function (schools) {
+                    AddSelectListItems($('#selectSchoolRoster'), schools, 'Select Schools');
+                });
+        }
+    }
+    function populateTeachers() {
+        $('#selectUserRoster').empty();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        var schoolValue = $('#selectSchoolRoster').val();
+        if (schoolValue > 0) {
+            $.get('@Url.Action("GetTeacherHaveStudent", "TestExtract")',
+                {
+                    DistrictId: GetDistrictID(),
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    SchoolId: schoolValue
+                }, function (teachers) {
+                    AddSelectListItems($('#selectUserRoster'), teachers, 'Select Teacher');
+                });
+        }
+    }
+    function populateClasses() {
+        $('#selectClassRoster').empty();
+        var startDateValue = $('#selectFromDate').val();
+        var endDateValue = $('#selectToDate').val();
+        var schoolValue = $('#selectSchoolRoster').val();
+        var teacherValue = $('#selectUserRoster').val();
+        if (teacherValue > 0) {
+            $.get('@Url.Action("GetClassHaveStudent", "TestExtract")',
+                {
+                    DistrictId: GetDistrictID(),
+                    StrStartDate: startDateValue,
+                    StrEndDate: endDateValue,
+                    SchoolId: schoolValue,
+                    TeacherId: teacherValue
+                }, function (classes) {
+                    // Remove selected tests out of return list
+                    for (var i = classes.length - 1; i >= 0; i--) {
+                        if (selectedClassTagsDict[classes[i].Name] != undefined) {
+                            classes.splice(i, 1);
+                        }
+                    }
+                    AddSelectListItems($('#selectClassRoster'), classes, 'Select Class');
+                });
+        }
+    }
+
+    function BuildListClassSelected() {
+        var x = '';
+        for (var key in selectedClassTagsDict) {
+            x += selectedClassTagsDict[key] + ';';
+        }
+
+        if (x.length > 0)
+            return x.substring(0, x.length - 1);
+        return '';
+
+    }
+
+    function GetDistrictID() {
+        if ($('#selectDistrictRoster').length) {
+            return $('#selectDistrictRoster').val();
+        }
+        return $('#divDistrictIDRoster').val();
+    }
+
+    function ClearTemplateRoster() {
+        $('#exportsRoster').html('');
+    }
+
+
+    function SetupFilters() {
+        ShowBlock($('#divExtractRosterArea'), 'Loading');
+        var dataTable = $('#dataTableRoster').dataTable();
+        var settings = dataTable.fnSettings();
+        fnResetAllFilters(settings);
+        dataTable.fnFilter('');
+        dataTable.fnDraw();
+    }
+
+    function CheckSelectTemplatesRoster() {
+        var templatesSelected = [];
+        $(".RosterTemplateItem[isSelected=yes]").each(function () {
+            templatesSelected.push($(this).attr('templateid'));
+        });
+        return templatesSelected.length > 0;
+    }
+
+    $("#selectFromDateRoster").change(function () {
+        DoWhenChangeDate();
+    });
+
+    $("#selectToDateRoster").change(function () {
+        DoWhenChangeDate();
+    });
+
+    function DoWhenChangeDate() {
+        //var fDate = $('#selectFromDateRoster').val();
+        //var tDate = $('#selectToDateRoster').val();
+        var fDate = $('#selectFromDateRoster').datepicker("getDate");
+        var tDate = $('#selectToDateRoster').datepicker("getDate");
+
+        var fromDate = new Date(fDate);
+        var toDate = new Date(tDate);
+
+        var totalMonth = datediff(fromDate, toDate, "months");
+        //alert(totalDate);
+        if (totalMonth > 15 || (totalMonth == 15 && fromDate.getDate() < toDate.getDate())) {
+            alert("Time frame cannot exceed 15 months.");
+            var resetToDate = new Date(fromDate).addYears(1).addMonths(3);
+            //$('#selectToDateRoster').val(resetToDate);
+            displayDateWithFormatDatePicker('selectToDateRoster', resetToDate);
+            orgDtEnd = resetToDate;
+            return;
+        }
+
+        if (new Date(fromDate) > new Date(toDate)) {
+            alert("To Date should be later than From Date.");
+            //$('#selectFromDateRoster').val(orgDtStart);
+            //$('#selectToDateRoster').val(orgDtEnd);
+            displayDateWithFormatDatePicker('selectFromDateRoster', orgDtStart);
+            displayDateWithFormatDatePicker('selectToDateRoster', orgDtEnd);
+            return;
+        }
+
+        orgDtStart = fDate;
+        orgDtEnd = tDate;
+    }
+</script>

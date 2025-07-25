@@ -1,0 +1,136 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Managebubblesheets, "Correct Corrupt File Error");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<link href="@BundleHelper.Version("~/Content/css/v2/unreadable-scans.css")" rel="stylesheet" type="text/css" />
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleCustomBundle()
+
+<script type="text/javascript">
+    $(function () {
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+        if (window.FormData !== undefined) {
+            $('#file_upload').uploadifive({
+                'uploadScript': '@Url.Action("SubmitNewSheetForError")',
+                'overrideEvents': ['onDialogClose'],
+                'buttonText': 'Select File',
+                'fileObjName': 'postedFile',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 100,
+                'auto': true,
+                'onUpload': function (file) {
+                    $('#file_upload').data('uploadifive').settings.formData = getFormData(auth);
+                },
+                'onUploadComplete': function (file, data) {
+                    var result = $.parseJSON(data);
+                    if (result) {
+                        location.href = '@Url.Action("ProcessErrors")';
+                    }
+                }
+            });
+        }
+    });
+
+    function getFormData(auth) {
+        var bubbleSheetErrorId = '@Model.BubbleSheetErrorId';
+        return { 'AUTHID': auth, 'bubbleSheetErrorId': bubbleSheetErrorId };
+    }
+</script>
+
+<article class="container_12">
+    <section class="error-detail-content">
+        <div class="block-content form mb-4">
+            <h1>Corrupt File Error</h1>
+            <ul class="message caution">
+                <li>When submitting a bubble sheet, the file was categorized as a corrupt file.</li>
+            </ul>
+        </div>
+        <div class="block-content mb-4">
+            <div>
+                <p class="title-large">Step 1</p>
+                <ul class="message warning">
+                    <li>Download the file that caused the error to verify that it is corrupt by right-clicking and selecting the "Save Link As..." option.</li>
+                </ul>
+                <a href="@Model.RelatedImage" target="_new"><img src="@Url.Content("~/Content/images/downloadimage.png")" width="128px" height="170px" /></a>
+            </div>
+
+        </div>
+        <div class="block-content">
+            <div>
+                <p class="title-large">Step 2</p>
+                <ul class="message warning">
+                    <li>The only solution to a corrupt file error is to upload a new, non-corrupt bubble sheet file for grading.</li>
+                </ul>
+                <input id="file_upload" type="button" />
+            </div>
+            <div class="group-btn">
+                <button id="btnCancel" type="button" class="btn-blue me-3">Cancel</button>
+                <button id="btnDelete" type="button" class="btn-blue">Delete</button>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function() {
+        $('#generateTab').addClass('current');
+
+        $('#btnDelete').click(function () {
+            confirmMessageV2(
+                {
+                    message: "Are you sure you want to delete this error?",
+                    cbYesBtnFuncName: 'yesDelete()',
+                    cbCancelBtnFuncName: 'closeDelete()',
+                    cbCloseBtnFuncName: 'closeDelete()'
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'deleteConfirm'
+                        }
+                    }
+                }
+            )
+        });
+
+        $('#btnCancel').click(function () {
+            location.href = '@Url.Action("ProcessErrors")';
+        });
+    });
+
+    function closeDelete() {
+        $("#deleteConfirm").dialog("close");
+    }
+
+    function yesDelete() {
+        closeDelete();
+        $.post('@Url.Action("RemoveBubbleSheetError")', { bubbleSheetErrorId: '@Model.BubbleSheetErrorId' }, function (response) {
+            if (response == true) {
+                location.href = '@Url.Action("ProcessErrors")';
+            } else {
+                alert('Error does not exist, please try again.');
+            }
+        });
+    }
+</script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        breadcrumbDetailPage('#generateTab', '#errorCorrection');
+    })
+</script>

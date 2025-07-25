@@ -1,0 +1,192 @@
+﻿<div class="block-content form" style="height:425px;">
+    <div class="toggle" style="padding-top: 0px; height: 30px; margin-top: -55px">
+        <h1 style="margin-top: -5px">
+            Selected Tag(s)
+        </h1>
+        <button id="btnDeselectDistrictTag" type="button" style="margin-left: 170px;margin-right: 2px;height: 35px;margin-top: 5px" disabled="disabled">Deselect Tag(s)</button>
+    </div>
+    <div class="no-margin last-child" style="height:415px;overflow: auto;padding-top: 37px">
+        <table id="dataTableSelectedDistrictTag" class="datatable table no-margin" width="100%">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 100px">
+                        <input type="checkbox" id="chkAllItemDeselect" />
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Category
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Tag
+                    </th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+<script type="text/javascript">
+    var oTableDistrictTagSelected;
+    $(function () {
+        LoadSelectedDistrictTagTable();
+    });
+
+    
+    function LoadSelectedDistrictTagTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceForSelectedDistrictTag(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox 
+                var item = null;
+
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+
+                }
+
+            },
+            bFilter: false,
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'ItemTagId', bSearchable: false, bSortable: false, sWidth: '20px' },
+                { sType: 'string', sName: 'CategoryName', bSearchable: false, bSortable: true, sWidth: '82px' },
+                { sType: 'string', sName: 'TagName', bSearchable: false, bSortable: true, sWidth: '300px' }
+                
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBoxDistrictTagSelected(aData[0]));
+                var tag = $('#txtDistrictTag').val();
+                tag = tag + aData[1] + '-' + aData[2] + ', ';
+                $('#txtDistrictTag').val(tag);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableSelectedDistrictTag'), "Loading");
+                $('#txtDistrictTag').val('');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableSelectedDistrictTag').unblock();
+                $('.with-tip').tip();
+                
+                var tag = $('#txtDistrictTag').val();
+                tag = tag.trim();
+                tag = tag.substring(0, tag.length - 1);
+                $('#txtDistrictTag').val(tag);
+            }
+        };
+
+        $("#dataTableSelectedDistrictTag").data("options", options);
+        initializeDataTable($("#dataTableSelectedDistrictTag"));
+        oTableDistrictTagSelected = $('#dataTableSelectedDistrictTag').dataTable();
+    }
+    
+    function getAjaxSourceForSelectedDistrictTag() {
+        var hdSelectedDistrictTags = $('#hdSelectedDistrictTags').val();
+        return '@Url.Action("GetSelectedDistrictTags", "ItemBank")/?selectedDistrictTags=' + hdSelectedDistrictTags;
+    }
+    function setCheckBoxDistrictTagSelected(itemTagId) {
+        var checkboxString = '<input type="checkbox" name="chkDistrictTagItemDeselect" value="' + itemTagId + '"  />';
+
+        return checkboxString;
+    }
+   
+    function ReloadDistrictTagSelected() {
+        $("#dataTableSelectedDistrictTag").dataTable().fnReloadAjax(getAjaxSourceForSelectedDistrictTag());
+    }
+    
+    //Multiple select
+    $('#btnDeselectDistrictTag').die('click');
+    $('#btnDeselectDistrictTag').live("click", function (e) {
+        var selectedItemId = getSelectedDistrictTagIdSelect();
+        var hdSelectedDistrictTags = $('#hdSelectedDistrictTags').val();
+        var ids = selectedItemId.split(',');
+        var i = 0;
+        
+        while (i < ids.length) {
+            
+            var id = ids[i];
+            hdSelectedDistrictTags = $('#hdSelectedDistrictTags').val();
+            
+            hdSelectedDistrictTags = hdSelectedDistrictTags.replace(',-' + id + '-', '');
+            $('#hdSelectedDistrictTags').val(hdSelectedDistrictTags);
+            
+            i++;
+        }
+
+        //Reload selected tag
+        ReloadDistrictTagSelected();
+    });
+
+
+    $('#chkAllItemDeselect').die('click');
+    $('#chkAllItemDeselect').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkDistrictTagItemDeselect"][type=checkbox]').attr('checked', 'checked');
+            $('#btnDeselectDistrictTag').removeAttr('disabled');
+        }
+        else {
+            $('INPUT[name="chkDistrictTagItemDeselect"][type=checkbox]').removeAttr('checked');
+            $('#btnDeselectDistrictTag').attr('disabled', 'disabled');
+        }
+    });
+
+    $('INPUT[name="chkDistrictTagItemDeselect"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            $('#btnDeselectDistrictTag').removeAttr('disabled');
+            var checkboxes = $('INPUT[name="chkDistrictTagItemDeselect"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllItemDeselect').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllItemDeselect').attr('checked', 'checked');
+            }
+        }
+        else {
+            $('#chkAllItemDeselect').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkDistrictTagItemDeselect"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+            }
+            else {
+                $('#btnDeselectDistrictTag').attr('disabled', 'disabled');
+            }
+        }
+    });
+    function getSelectedDistrictTagIdSelect() {
+        var Ids = '';
+        $('INPUT[name="chkDistrictTagItemDeselect"][type=checkbox]:checked').each(function (i, e) {
+            Ids += $(e).val() + ',';
+        });
+        return Ids.substr(0, Ids.length - 1);
+    }
+
+</script>

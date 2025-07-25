@@ -1,0 +1,244 @@
+﻿@{
+    ViewBag.Title = "Modify Class Roster";
+}
+<script src="@Url.Content("~/Content/themes/TestMaker/ckeditor_utils.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Lib/handsontable/pro/handsontable.full.min.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Scripts/Lib/handsontable/pro/handsontable.full.min.css")" rel="stylesheet" type="text/css">
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleCustomBundle()
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>
+                    @ViewBag.ClassName Roster
+                </h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>Student successfully updated.</li>
+                </ul>
+
+                <label>
+                    Show <select size="1" name="dataTable_length" aria-controls="dataTable">
+                        <option value="10" selected="selected">@ViewBag.PayByClass</option>
+                    </select> entries
+                </label>
+
+                <div id="studentsList"></div>
+                <br />
+                <p>
+                    <button id="btnSubmit" type="button" name="Save">Save</button>
+                    <button id="btnCancel" type="button" class="grey">Cancel</button>
+                </p>
+
+            </div>
+        </div>
+    </section>
+</article>
+
+<style>
+    .htCore {
+        width: 290px !important;
+    }
+
+    .htCore-icon-question {
+        background: url(/Content/themes/Constellation/images/icons/question-mark.png);
+        display: inline-block;
+        vertical-align: middle;
+        width: 16px;
+        height: 16px;
+        position: relative;
+        top: -1px;
+    }
+</style>
+<script type="text/javascript">
+    var vStudentList;
+    var vListItemHighLight;
+    var vIcon = 'Student Local Code <span class="htCore-icon-question" title="The student local code is a numeric value used to uniquely identify this student from all other students in your class(es)."></span>';
+    var data;
+    var $studentsList = $("#studentsList");
+    var hot;
+
+    function firstRowRenderer(instance, td, row, col, prop, value, cellProperties) {
+        Handsontable.renderers.TextRenderer.apply(this, arguments);
+        td.style.fontWeight = 'bold';
+        td.style.color = 'green';
+        td.style.background = '#cec';
+        if (td.innerHTML === 'Student Local Code') {
+            td.innerHTML = vIcon;
+        }
+    }
+
+
+    function loadStudents(classId) {
+        ShowBlock($studentsList, "Loading");
+
+        if (typeof hot !== 'undefined') {
+            hot.destroy();
+        }
+
+        $.ajax({
+            type: 'POST',
+            url: '@Url.Action("GetStudentByClassId", "RegisterClasses")',
+            data: { classId: classId },
+            success: function (response) {
+                data = [
+                    ["Student Local Code", "Student First Name", "Student Last Name"]
+                ];
+
+                $.each(response, function (i, item) {
+                    data.push([item["Code"], item["FirstName"], item["LastName"], item["StudentID"]]);
+                });
+
+                var hotStudent = document.getElementById('studentsList');
+                var hotStudentSettings = {
+                    data: data,
+                    minSpareRows: 1,
+                    maxRows: parseInt('@ViewBag.PayByClass') + 1, // Add 1 for header row
+                    colHeaders: false,
+                    contextMenu: false,
+                    cells: function (row, col, prop) {
+                        var cellProperties = {};
+
+                        if (data[row] != null) {
+
+                            if (row === 0 || (col === 0 && data[row][3] != null && data[row][3] != '')) {
+                                cellProperties.readOnly = true;
+                            } else {
+                                cellProperties.readOnly = false;
+                            }
+
+                            if (row === 0) {
+                                cellProperties.renderer = firstRowRenderer;
+                            }
+
+                            if (data[row][1] == '' && data[row][2] == '' && data[row][3] != null) {
+                                this.instance.alter('remove_row', row, 1);
+                            }
+                        }
+
+                        return cellProperties;
+                    },
+                    licenseKey: 'a70f6-b55ab-a3862-0471e-e915a'
+                }
+
+                hot = new Handsontable(hotStudent, hotStudentSettings);
+
+                $studentsList.unblock();
+            }
+        });
+    }
+
+    function saveStudentData() {
+        ShowBlock($studentsList, "Loading");
+        $.ajax({
+            type: 'POST',
+            url: '@Url.Action("UpdateStudentRoster", "RegisterClasses")',
+            data: { classId: '@ViewBag.ClassId', studentsData: JSON.stringify(vStudentList) },
+            success: function (response) {
+
+                $studentsList.unblock();
+                if (response.Success) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                    loadStudents('@ViewBag.ClassId');
+                } else {
+                    addErrorMessages(response);
+                    $('#success-message').hide();
+
+                    if (response.DuplicateStudentCodes != undefined) {
+                        highLightDuplicateRows(response.DuplicateStudentCodes);
+                    }
+                }
+            }
+        });
+    }
+
+
+    function showDuplicateCodeWithDiffName() {
+        var alertMessage = '<div style="text-align: left">Some of the codes you provided are already in use for students with a different name. Those student are highlighted in red. Are you sure you want to continue?</div> ';
+        popupAlertMessage('confirm', alertMessage, 450, 500);
+    }
+
+    function highLightDuplicateRows(duplicateStudentCodes) {
+        $('.htCore > tbody  > tr').each(function () {
+            var vCode = $(this.cells[0]).text().toLowerCase();
+            if (duplicateStudentCodes.indexOf(';' + vCode + ";") !== -1) {
+                $(this.cells[0]).css('background-color', '#ffe6e6');
+                $(this.cells[1]).css('background-color', '#ffe6e6');
+                $(this.cells[2]).css('background-color', '#ffe6e6');
+            }
+        });
+    }
+
+    function YesConfirmPopup(e) {
+        saveStudentData();
+        var $self = $(e);
+        $self.parents('.ui-dialog').remove();
+    }
+
+    $(function () {
+        $('.dataadmin').addClass('current');
+        $('#dtaRegisterClasses').addClass('current');
+
+        loadStudents('@ViewBag.ClassId');
+
+        $('#btnSubmit').click(function () {
+            vStudentList = null;
+            var students = [];
+            $.each(data, function (i, item) {
+
+                if (i > 0) { // Do not add header row into student list
+                    if ((item[0] != null && item[0] != '') || (item[1] != null && item[1] != '') || (item[2] != null && item[2] != '')) { // check data to remove last row in case it's new row
+                        students.push({
+                            Code: item[0],
+                            FirstName: item[1],
+                            LastName: item[2],
+                            StudentID: item[3]
+                        });
+                    }
+                }
+            });
+            vStudentList = students;
+            ShowBlock($studentsList, "Loading");
+
+            $.ajax({
+                type: 'POST',
+                url: '@Url.Action("UpdateStudentValidation", "RegisterClasses")',
+                data: { classId: '@ViewBag.ClassId', studentsData: JSON.stringify(students) },
+                success: function (response) {
+                    $studentsList.unblock();
+
+                    if (response.Success) {
+                        saveStudentData();
+                    } else {
+                        $('#success-message').hide();
+
+                        if (response.ErrorList.length > 0) {
+                            addErrorMessages(response);
+                        }
+
+                        if (response.DuplicateStudentCodes != undefined) {
+                            highLightDuplicateRows(response.DuplicateStudentCodes);
+                        }
+
+                        if (response.HasDuplicateStudent != undefined) {
+                            highLightDuplicateRows(response.DuplicateCodesDiffName);
+                            showDuplicateCodeWithDiffName();
+                        }
+                    }
+                }
+            });
+        });
+
+        $('#btnCancel').click(function () {
+            window.location.href = '@Url.Action("Index")';
+        });
+
+    });
+
+
+</script>

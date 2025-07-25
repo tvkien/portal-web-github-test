@@ -1,0 +1,580 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.ItemTagCategoryViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@{
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+<style>
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .sticky {
+        padding-left: 500px;
+    }
+
+    .districtTagTable .no-margin.last-child {
+        margin: 0 !important
+    }
+    .districtTagTable tbody tr td:first-child a:not(:last-child) {
+        margin-right: .75em;
+    }
+    .districtTagTable .block-pagination {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    #portal-v2-containter #divDistrictTagCategoryList .CreateNewDistrictTagCategory:after {
+        top: 42%;
+    }
+    #portal-v2-containter .ui-dialog div.ui-dialog-content {
+        display: flex;
+        justify-content: center;
+    }
+    #portal-v2-containter .ui-dialog div.ui-dialog-content section {
+        width: 100%
+    }
+</style>
+
+<article class="container_12" id="artDistrict">
+    <section class="grid_12">
+        @if (Model.IsPublisher || Model.IsNetworkAdmin)
+        {
+            <div class="block-border mb-4">
+                <div class="block-content form bubbleSheetSelector">
+                    <h2 class="header">Filter @LabelHelper.DistrictLabel Categories</h2>
+                    <div class="row g-3">
+                        <div class="col-3">
+                            <label>State</label>
+                            <div class="block-text-name" style="width: 100%">
+                                <select id="selectState" class="full-width"></select>
+                                <div class="box-select" style="width: 100%">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <label>@LabelHelper.DistrictLabel</label>
+
+                            <div class="block-text-name" style="width: 100%">
+                                <select id="selectDistrict" class="full-width"></select>
+                                <div class="box-select" style="width: 100%">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-3 justify-content-end m-0">
+                        <button id="clearFilterDistrictTagCategory" class="grey" type="button" style="display: none">Clear Filter</button>
+                        <button id="btnApplyFilterDistrictTagCategory" class="" type="button" style="display: none">Apply Filters</button>
+                    </div>
+                </div>
+            </div>
+        }
+        <div class="block-border" id="divDistrictTagCategoryList">
+            <div class="block-content form">
+                <div class="d-flex flex-row justify-content-between">
+                    <h2 class="header">Categories</h2>
+                    <button class="btn-text btn-plus-icon CreateNewDistrictTagCategory pt-1" style="margin-bottom: auto">Add new @LabelHelper.DistrictLabel category</button>
+                </div>
+                <div class="districtTagTable">
+                    <table id="DistrictTagCategoryDataTable" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="black-cell">Actions</th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.DistrictLabel
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Category
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Description
+                                </th>
+                                <th scope="col"> Item count  </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </section>
+</article>
+<input type="hidden" id="hdParameterPageLoad" />
+<input type="hidden" id="hdSearchBoxText" />
+<script type="text/javascript">
+    var IsPublisher;
+    $(function() {
+        if ('@Model.IsPublisher' === 'True') {
+            //Init State
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                AddSelectListItems($('#selectState'), states, 'Select State');
+                $('#hdParameterPageLoad').val('Y');
+                //recover search condition
+                $('#selectState').val(@Model.SelectedStateId);
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: @Model.SelectedStateId }, function (districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select All');
+                    $('#selectDistrict').val(@Model.SelectedDistrictId);
+                    LoadDistrictTagCategoryToTable();
+                });
+
+            });
+
+        }
+        else if ('@Model.IsNetworkAdmin' === 'True') {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                AddSelectListItems($('#selectState'), states, 'Select State');
+                $('#hdParameterPageLoad').val('Y');
+                //recover search condition
+                $('#selectState').val(@Model.SelectedStateId);
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: @Model.SelectedStateId }, function (districts) {
+                     AddSelectListItems($('#selectDistrict'), districts, 'Select All');
+                     $('#selectDistrict').val(@Model.SelectedDistrictId);
+                    LoadDistrictTagCategoryToTable();
+                });
+
+             });
+        } else {
+            LoadDistrictTagCategoryToTable();
+        }
+
+        var textDistrict = '@LabelHelper.DistrictLabel';
+        $('.CreateNewDistrictTagCategory').text('Add new ' + textDistrict.toLowerCase() + ' category');
+        const SearchBoxText = '@Model.SearchBoxText';
+    });
+
+    $("#selectState").die("change");
+    $('#selectState').change(function () {
+        if ($('#selectState').val() != 'select') {
+            $('#selectDistrict').empty();
+            var stateValue = $('#selectState').val();
+            if (stateValue != 'select') {
+                if ('@Model.IsPublisher' === 'True') {
+                    $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                        AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                    });
+                }
+                if ('@Model.IsNetworkAdmin' === 'True') {
+                    $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                        AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                    });
+                }
+            }
+        }
+    });
+
+    $("#btnApplyFilterDistrictTagCategory").die("click");
+    $("#btnApplyFilterDistrictTagCategory").click(function () {
+        $("#DistrictTagCategoryDataTable").dataTable().fnReloadAjax(getAjaxSourceDistrictTagCategory());
+    });
+    $('#selectDistrict').die('change');
+    $('#selectDistrict').change(function () {
+        $("#DistrictTagCategoryDataTable").dataTable().fnReloadAjax(getAjaxSourceDistrictTagCategory());
+    });
+    $('#selectState').marquee();
+    $('#selectDistrict').marquee();
+    function LoadDistrictTagCategoryToTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceDistrictTagCategory(),
+            fnServerParams: function (aoData) {
+                if ($('#hdParameterPageLoad').val()=='Y') {
+                    var item = null;
+                    for (var i = 0; i < aoData.length; i++) {
+                        item = aoData[i];
+                        if (item.name == 'sSearch') {
+                            $('#hdSearchBoxText').val('@Model.SearchBoxText');
+                            item.value = $("#hdSearchBoxText").html('@Model.SearchBoxText').text();
+                            //alert('iii3:' + item.value);
+                            do {
+                                item.value = item.value.replace('""', '"');
+                            } while (item.value.indexOf('""') >= 0)
+
+                            if (item.value == '"') {
+                                item.value = item.value.replace('"', "''");
+                            } else {
+                                item.value = encodeURIComponent(item.value);
+                            }
+                            //alert('iii4:' + item.value);
+                            break;
+                        }
+                    }
+                }
+
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bFilter: true,
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'ItemTagCategoryID', bSearchable: false, bSortable: false, sWidth: "65px" },
+                { sType: 'string', sName: 'District', bSearchable: true, bSortable: true, sWidth: "0px",bVisible:false },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: "350px" },
+                { sType: 'string', sName: 'Description', bSearchable: true, bSortable: false },
+                { sType: 'integer', sName: 'CountQtiItem', bSearchable: false, bSortable: false,bVisible:false, sWidth: "0px" }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0],aData[2],aData[4]));
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#DistrictTagCategoryDataTable'), 'Load');
+
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#DistrictTagCategoryDataTable').unblock();
+                $('.with-tip').tip();
+                loadValueSearchBox();
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('DistrictTagCategoryDataTable_filter')
+                loadValueSearchBox();
+            }
+        };
+
+        $("#DistrictTagCategoryDataTable").data("options", options);
+
+    }
+
+    function getAjaxSourceDistrictTagCategory() {
+        var districtId = 0;
+        var stateId = 0;
+        if('@Model.IsPublisher' === 'True'||'@Model.IsNetworkAdmin' === 'True') {
+            districtId = $('#selectDistrict').val();
+            if (districtId == null || districtId=='' || districtId == 'select' || districtId < 0)
+            {
+                districtId = '0';
+            }
+
+            stateId = $('#selectState').val();
+            if (stateId == null || stateId == '' || stateId == 'select') {
+                stateId = '0';
+            }
+            if(stateId < 0)
+            {
+                stateId = 0;
+            }
+
+        } else {
+            districtId = '@Model.DistrictId';
+        }
+
+        return '@Url.Action("SearchItemTagCategory", "ItemTag")?categoryToSearch=' + '&districtId=' + districtId + '&stateId=' + stateId;
+    }
+    function setIconVisibility(itemTagCategoryID,categoryName,countQtiItem) {
+        var editIcon = '<span class="icon fa-solid fa-pencil icon-grey"></span>';
+        var editString = '<a href="javascript:void(0)" title="Update Category" ItemTagCategoryID="' + itemTagCategoryID + '" class="with-tip EditItemTagCategory d-inline-block">' + editIcon +'</a>';
+
+        var deleteIcon = '<span class="icon fa-solid fa-circle-xmark icon-red"></span>';
+        var deleteIconString = '<a href="javascript:void(0)" title="Delete Category" ItemTagCategoryID="' + itemTagCategoryID + '" countQtiItem="' + countQtiItem + '" class="with-tip DeleteItemTagCategory d-inline-block">' + deleteIcon + '</a>';
+
+        var viewTags = '@Url.Content("~/Content/images/icons/text_snippet.svg")';
+        var viewTagsIconString = '<a href="javascript:void(0)" title="View Item Tag" ItemTagCategoryID="' + itemTagCategoryID + '" CategoryName="' + encodeURIComponent(categoryName) + '" class="with-tip ViewItemTag"><img src="' + viewTags + '" width="16" height="16" style="margin-right: 0px"></a>';
+
+        return '<div class="d-flex flex-row align-items-center">' + editString + deleteIconString + viewTagsIconString +'</div>';
+    }
+
+    var isOpenAddNewItemTagCategory = false;
+
+    $('.CreateNewDistrictTagCategory').die('click');
+    $('.CreateNewDistrictTagCategory').live('click', function () {
+
+        var districtId = 0;
+        if('@Model.IsPublisher' === 'True'||'@Model.IsNetworkAdmin' === 'True')
+        {
+            districtId = $('#selectDistrict').val();
+            if (districtId == null || districtId=='' || districtId == 'select')
+            {
+                districtId = '0';
+            }
+        }
+        else
+        {
+            districtId = '@Model.DistrictId'
+
+        }
+        var url = '@Url.Action("LoadCreateItemTagCategory")?\districtId=' + districtId;
+        if (isOpenAddNewItemTagCategory == true) {
+            return;
+        }
+        isOpenAddNewItemTagCategory = true;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divDistrictTagCategoryList").append('<div id="PopupCreateItemTagCategory" class="dialog"></div>');
+                $("#PopupCreateItemTagCategory").append(html);
+                $('#PopupCreateItemTagCategory').dialog({
+                    title: "",
+                    open: function () {
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#DistrictTagCategoryDataTable').dataTable().fnDraw(false);
+                        $('#PopupCreateItemTagCategory').remove();
+                        $("body .my-overlay").remove();
+                        isOpenAddNewItemTagCategory = false;
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    });
+    $('.EditItemTagCategory').die('click');
+    $('.EditItemTagCategory').live('click', function () {
+        var itemTagCategoryID = $(this).attr('itemTagCategoryID');
+        LoadEditItemTagCategory(itemTagCategoryID);
+    });
+    function LoadEditItemTagCategory(itemTagCategoryID) {
+        ShowBlock($('#DistrictTagCategoryDataTable'), "Loading");
+        var url = '@Url.Action("LoadEditItemTagCategory")?itemTagCategoryID=' + itemTagCategoryID;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divDistrictTagCategoryList").append('<div id="PopupEditItemTagCategory" class="dialog"></div>');
+                $("#PopupEditItemTagCategory").append(html);
+                $('#PopupEditItemTagCategory').dialog({
+                    title: "",
+                    open: function () {
+                        $('#DistrictTagCategoryDataTable').unblock();
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupEditItemTagCategory').remove();
+                        $('#DistrictTagCategoryDataTable').dataTable().fnDraw(false);
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    $('.DeleteItemTagCategory').die('click');
+    $('.DeleteItemTagCategory').live('click', function () {
+        var itemTagCategoryId = $(this).attr('ItemTagCategoryID');
+        var countQtiItem = $(this).attr('countQtiItem');
+        var confirmMessage = 'Do you want to delete this category?';
+        if (countQtiItem > 0) {
+            confirmMessage = 'This category is used in ' + countQtiItem + ' item(s). Do you want to delete this category?';
+        }
+        ConfirmDistrictCategoryDelete(confirmMessage, itemTagCategoryId);
+
+    });
+
+
+    $('.ViewItemTag').die('click');
+    $('.ViewItemTag').live('click', function () {
+        var stateId = 0;
+        var districtId = 0;
+        if ('@Model.IsPublisher' === 'True'||'@Model.IsNetworkAdmin' === 'True') {
+            stateId = $('#selectState').val();
+            districtId = $('#selectDistrict').val();
+            if (stateId == null || stateId == '' || stateId == 'select') {
+                stateId = '0';
+            }
+            if (stateId < 0) {
+                stateId = 0;
+            }
+            if (districtId == null || districtId == '' || districtId == 'select') {
+                districtId = '0';
+            }
+            if (districtId < 0) {
+                districtId = 0;
+            }
+        }
+        var searchBoxText = $("#DistrictTagCategoryDataTable_filter input:first").val();
+        searchBoxText = encodeURIComponent(searchBoxText);
+        var itemTagCategoryID = $(this).attr('itemTagCategoryID');
+        var categoryName = $(this).attr('CategoryName'); //categoryName has been already encoded
+        var url = '@Url.Action("ShowItemTagPage")?itemTagCategoryID=' + itemTagCategoryID + '&stateId=' + stateId + '&districtId=' + districtId + '&searchBoxText=' + searchBoxText;
+        window.location.href = url;
+
+    });
+    $("#clearFilterDistrictTagCategory").die("click");
+    $("#clearFilterDistrictTagCategory").click(function () {
+        if('@Model.IsPublisher' === 'True')
+         {
+             $('#selectState').val(0);
+             $('#selectDistrict').empty();
+
+        }
+        //$('#txtCategory').val('');
+    });
+</script>
+<script type="text/javascript">
+    function ConfirmDistrictCategoryDelete(message, id) {
+        confirmMessageV2(
+            {
+                message: message,
+                cbYesBtnFuncName: 'ConfirmDistrictCategoryDeleteOkClick(' + id + ')',
+                cbCancelBtnFuncName: 'ConfirmDistrictCategoryDeleteCancelClick()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'ConfirmDistrictCategoryDeleteDialog'
+                    }
+                },
+                option: {
+                    width: 377
+                }
+            }
+        )
+
+    }
+
+    function ConfirmDistrictCategoryDeleteOkClick(itemTagCategoryId) {
+        ShowBlock($('#DistrictTagCategoryDataTable'), "Loading");
+        $.post('@Url.Action("DeleteItemTagCategory")', { itemTagCategoryId: itemTagCategoryId }, function (response) {
+
+            $('#DistrictTagCategoryDataTable').unblock();
+            $('#DistrictTagCategoryDataTable').dataTable().fnDraw(false);
+            $("#ConfirmDistrictCategoryDeleteDialog").dialog("close");
+            if (response == true) {
+            } else {
+                //addErrorMessages(response);
+            }
+        });
+    }
+
+    function ConfirmDistrictCategoryDeleteCancelClick() {
+        $("#ConfirmDistrictCategoryDeleteDialog").dialog("close");
+    }
+
+    function loadValueSearchBox() {
+        if ($('#hdParameterPageLoad').val() == 'Y') {
+            $("input[aria-controls|='DistrictTagCategoryDataTable']").val('@Model.SearchBoxText');
+            $('#hdParameterPageLoad').val('');
+        }
+    }
+</script>
+<script type="text/javascript">
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+
+</script>

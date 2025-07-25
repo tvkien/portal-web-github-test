@@ -1,0 +1,172 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Help, "Help Resources");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+<link href="@BundleHelper.Version("~/Content/css/v2/help-resource.css")" rel="stylesheet" type="text/css" />
+<style>
+    #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-deleteResourceConfirm"] {
+        background: none;
+        width: auto !important;
+        padding: 0;
+        height: auto !important;
+        border: 0;
+    }
+
+        #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-deleteResourceConfirm"] #deleteResourceConfirm {
+            width: 330px !important;
+            padding: 0;
+        }
+
+            #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-deleteResourceConfirm"] #deleteResourceConfirm section {
+                float: none;
+                margin: 0;
+            }
+</style>
+@*@MvcHtmlString.Create(
+        Bundle.Css()
+            .Add(@Url.Content("~/Content/themes/HelpResource/HelpResourceCss.css"))
+            .Render("/Content/themes/Constellation/css/helpresource_combined_#.css")
+    )*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleHelpResourceBundle()
+
+<article class="container_12">
+    <section class="mb-0">
+        <div id="selectFilters" class="mb-4">
+            <div id="divFilterTestAssignments" class="block-content form bubbleSheetSelector">
+                <h1>Filter Help Resources</h1>
+                @Html.Partial("v2/_Filter")
+                <div class="d-flex justify-content-end">
+                    <button class="btn-blue d-block me-3" type="button" data-bind="click: SelectAll">Select All</button>
+                    <button class="btn-blue d-block me-3" type="button" data-bind="click: SelectNone">Select None</button>
+                    <button id="clearFilter" class="btn-blue d-block me-3" type="button" data-bind="click: ClearFilter">Clear Filter</button>
+                    <button id="filterSheets" class="btn-blue d-block" type="button">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+
+
+        @Html.Partial("v2/_SearchResultAdmin")
+    </section>
+</article>
+@*@MvcHtmlString.Create(
+        Bundle.JavaScript()
+             .Add("/Scripts/knockout-3.4.2.js")
+            .Add("/Scripts/HelpResource/ShowDiaglog.js")
+            .Add("/Scripts/HelpResource/KnockModel.js")
+            .Add("/Scripts/HelpResource/SearchResultCallBackAdmin.js")
+            .Add("/Scripts/HelpResource/SearchResultAdmin.js")
+            .Render("/Content/themes/Constellation/js/helpresource_admin_combined_#.js")
+    )*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptHelpResourceAdminBundleV2()
+
+<script type="text/javascript">
+    var customCategoryType = 'PortalType';
+    var viewModel = new HelpResourceViewModel();
+    var tableSelector = "#helpResourceDataTable";
+
+    $(function () {
+        viewModel.PostAjax('@Url.Action("GetHelpResourceCategories", "HelpResource")', null, function (allData) {
+            var mappedObjects = $.map(allData, function (item) {
+                return new Category(item);
+            });
+            viewModel.Categories(mappedObjects);
+        }, null);
+
+        viewModel.PostAjax('@Url.Action("GetHelpResourceTypes", "HelpResource")', null, function (allData) {
+            var mappedObjects1 = $.map(allData, function (item) {
+                return new HelpResourceType(item);
+            });
+            viewModel.HelpResourceTypes(mappedObjects1);
+        }, null);
+
+        ko.applyBindings(viewModel);
+
+        $(tableSelector).data("options", BuildSearchResultDataTable(tableSelector));
+
+        $('#filterSheets').click(function () {
+            var dataTable = $(tableSelector).dataTable();
+            dataTable.fnDraw();
+        });
+
+        $('#btnAddHelpResource').click(function () {
+            var url = '@Url.Action("Index", "HelpResourceUpload")';
+            window.location = url;
+        });
+    });
+
+    $(tableSelector).on('click', '.jsOpenHelpResource', function (event) {
+        var $self = $(this);
+        var helpresourcefiletypeid = $self.attr('helpresourcefiletypeid');
+        var helpresourcefilepath = $self.attr('helpresourcefilepath');
+        var helpresourcelink = $self.attr('helpresourcelink');
+
+        if (helpresourcefiletypeid != null && helpresourcefiletypeid == 2) {
+            window.open(helpresourcelink, '_blank');
+        } else {
+            var url = '@Url.Action("Download", "HelpResourceUpload")' + '?filePath=' + helpresourcefilepath;
+            window.open(encodeURI(url), '_blank');
+        }
+    });
+
+    $(tableSelector).on('click', '.jsDeleteHelpResource', function (event) {
+        var $self = $(this);
+        var helpResourceID = $self.attr('helpResourceID');
+
+        @*ConfirmDiaglog({ 'helpResourceID': helpResourceID, 'Message': 'Do you want to delete the resource?', 'width': 400 }, function (options) {
+            viewModel.PostAjax('@Url.Action("DeleteHelpResource", "HelpResource")', options, function (allData) {
+                $(tableSelector).dataTable().fnDraw();
+            }, null);
+        }, null);*@
+
+        confirmMessageV2(
+            {
+                message: "Do you want to delete the resource?",
+                cbYesBtnFuncName: 'yesDeleteResource(' + helpResourceID + ')',
+                cbCancelBtnFuncName: 'closeDeleteResource()',
+                cbCloseBtnFuncName: 'closeDeleteResource()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'deleteResourceConfirm'
+                    }
+                }
+            }
+        )
+    });
+
+    function closeDeleteResource() {
+        $("#deleteResourceConfirm").dialog("close");
+    }
+    function yesDeleteResource(helpResourceID) {
+        closeDeleteResource();
+        viewModel.PostAjax('@Url.Action("DeleteHelpResource", "HelpResource")', { helpResourceID }, function (allData) {
+                $(tableSelector).dataTable().fnDraw();
+            }, null);
+    }
+
+     $(tableSelector).on('click', '.jsEditHelpResource', function (event) {
+        var $self = $(this);
+        var helpResourceID = $self.attr('helpResourceID');
+        var url = '@Url.Action("Index", "HelpResourceUpload")' + '?HelpResourceID=' + helpResourceID;
+        $self.attr('href', encodeURI(url));
+    });
+
+
+</script>

@@ -1,0 +1,547 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.LoginAccountViewModel
+@{
+    Layout = "~/Views/Shared/_LogOnPartial_v2.cshtml";
+}
+
+@BundleHelper.ScriptAccountLogOnBundleV2()
+
+<style>
+    /*  html {
+            overflow-x: auto;
+        }*/
+</style>
+<style type="text/css">
+    .login-bg .NetworkSection {
+        position: static;
+        margin: 0px;
+        padding: 0px;
+        width: 470px;
+    }
+
+    .text-left {
+        text-align: left;
+    }
+
+    #dataTableNetworkAdminSelect {
+        clear: both;
+    }
+</style>
+<script type="text/javascript">
+    $(document).ready(function () {
+        localStorage.removeItem("LOCAL_STORAGE_DISTRICT_KEY");
+        localStorage.setItem("ACCEPT_TO_HIDE_BROWSERSUPPORT", "false");
+        clearStudentHubStorage();
+        checkValidBrowser();
+
+        if ('@Model.HasTemporaryPassword' == "True") {
+            $('#login-block').removeBlockMessages({ animate: false }).blockMessage("We have sent you an email with a link to finish resetting your password. Unable to find the email? Try checking your spam folder. If you still can't log in, have us resend the email or contact your district administrator.", { type: 'warning',animate:false });
+        }
+
+        $('#login-form').submit(function (event) {
+            event.preventDefault();
+
+            var login = $('#login').val();
+            var pass = $('#pass').val();
+            var district = @Model.District;
+
+            if (district == 0) {
+                district = $('#districts').val();
+            }
+
+            if (!login || login.length == 0) {
+                $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please enter your user name', { type: 'warning', animate: false });
+            }
+            else if (!pass || pass.trim().length == 0) {
+                $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please enter your password', { type: 'warning', animate: false });
+            } else if ($('#divDisclaimerContent').is(":visible") && !$('#idchbTermsOfUse').is(':checked')) {
+                $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please check the agreement', { type: 'warning', animate: false});
+            } else {
+
+                $('#btnSubmit').disableBt();
+
+                // Target url
+                var target = $(this).attr('action');
+                if (!target || target == '') {
+                    // Page url without hash
+                    target = document.location.href.match(/^([^#]+)/)[1];
+                }
+
+                var returnUrl = '';
+                if (document.URL.split('ReturnUrl=')[1] != undefined) {
+                    returnUrl = decodeURIComponent(document.URL.split('ReturnUrl=')[1]);
+                }
+
+                // Request
+                var data = {
+                    UserName: login,
+                    Password: pass.trim(),
+                    District: district,
+                    RedirectUrl: returnUrl,
+                    IsKeepLoggedIn: $('#keep-logged').attr('checked') ? true : false,
+                    g_recaptcha_response:$('#g-recaptcha-response').val(),
+                    TermsOfUse:$('#idchbTermsOfUse').is(':checked')
+                };
+                // Start timer
+                var sendTimer = new Date().getTime();
+
+                // Send
+                $.ajax({
+                    url: target,
+                    dataType: 'json',
+                    type: 'POST',
+                    data: data,
+                    success: function (data) {
+                        // Small timer to allow the 'checking login' message to show when server is too fast
+                        var receiveTimer = new Date().getTime();
+
+                        $('#btnSubmit').enableBt();
+
+                        if (!data.IsAuthenticated) {
+                            $('#login-block').removeBlockMessages({ animate: false }).blockMessage(data.Message, { type: data.Type, animate: false });
+                            if (data.ShowCaptcha) {
+                                $('#divCaptcha').show();
+                                $('#btnSubmit').disableBt();
+                                //reload recatcha
+                                grecaptcha.reset();
+                            }
+
+                        }
+                        else if (!data.HasEmailAddress || !data.HasSecurityQuestion || data.HasTemporaryPassword) {
+                            location.href = "/Account/SetAccountInformation/?id=" + data.UserID;
+                        }else if (data.ShowDisclaimerContent == true) {
+                            $('#login-block').removeBlockMessages({ animate: false });
+                            $('#divDisclaimerMessage').text(data.DisclaimerContent);
+                            $('#lbDisclaimerCheckboxLabel').text(data.DisclaimerCheckboxLabel);
+                            $('#divDisclaimerContent').show();
+                            $('#btnSubmit').disableBt();
+                        }
+                        else if (receiveTimer - sendTimer < 500) {
+                            setTimeout(function () {
+                                if (data.IsAuthenticated) {
+                                    //TODO: Show message have
+                                    if (data.IsShowWarningLogOnUser) {
+                                        $('#idhdfWarningUserLogOn').val(data.RedirectUrl);
+                                        var alertMessage = '<div class="text-left">'+ data.MessageWarningLogOnUser +'</div>';
+                                        CustomAlert(alertMessage, true, null, null, 'continueLogon()');
+                                    } else {
+                                        location.href = data.RedirectUrl;
+                                    }
+                                }
+                                else {
+                                    //reload recatcha
+                                    grecaptcha.reset();
+                                    $('#login-block').removeBlockMessages({ animate: false }).blockMessage(data.Message, { type: data.Type, animate: false });
+                                }
+                            }, 500 - (receiveTimer - sendTimer));
+                        }
+                        else {
+                            if (data.IsAuthenticated) {
+                                if(data.IsNetworkAdmin) {
+                                    showNetworkAdminSelectDialog();
+                                } else {
+                                    //TODO: Show message have
+                                    if (data.IsShowWarningLogOnUser) {
+                                        $('#idhdfWarningUserLogOn').val(data.RedirectUrl);
+                                        var alertMessage = '<div class="text-left">'+ data.MessageWarningLogOnUser +'</div>';
+                                        CustomAlert(alertMessage, true, null, null, 'continueLogon()');
+                                    } else {
+                                        location.href = data.RedirectUrl;
+                                    }
+                                }
+                            }
+                            else {
+                                $('#login-block').removeBlockMessages({ animate: false }).blockMessage(data.Message, { type: data.Type, animate: false });
+                                if (data.ShowCaptcha) {
+                                    $('#divCaptcha').show();
+                                    $('#btnSubmit').disableBt();
+                                    //reload recatcha
+                                    grecaptcha.reset();
+                                }
+                            }
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        // Message
+                        $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Error while contacting server, please try again', { type: 'error', animate: false });
+
+                        $('#btnSubmit').enableBt();
+                    }
+                });
+                // Message
+                $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please wait, checking login...', { type: 'loading', animate: false });
+            }
+        });
+
+        $('#idchbTermsOfUse').live("change", function () {
+            if ($(this).is(':checked')) {
+                if($('#divCaptcha').css('display') == 'none' || ($('#g-recaptcha-response').val() != '' && $('#g-recaptcha-response').val() != 'false')){
+                    $('#btnSubmit').enableBt();
+                }
+            } else {
+                $('#btnSubmit').disableBt();
+            }
+        })
+
+        $('#password-recovery').submit(function(event) {
+            event.preventDefault();
+
+            if ($('#recovery-username').val() == '') {
+                $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please enter your user name', { type: 'warning', animate: false});
+                $('#recovery-username').focus();
+            } else {
+                AttemptPasswordReset(@Model.District)
+            }
+        });
+
+        function AttemptPasswordReset(districtId) {
+            var data = {
+                Username: $('#recovery-username').val(),
+                District: districtId
+            };
+            $.ajax({
+                url:'@Url.Action("ResetPassword", "Account")',
+                type:'POST',
+                data: data,
+                success: function (result) {
+                    $(this).disableBt();
+                    $('#login-block').removeBlockMessages({ animate: false }).blockMessage(result.message, { type: 'success', animate: false });
+                }
+            });
+        }
+        @if (Model.District > 0)
+        {
+            if (!string.IsNullOrEmpty(Model.LogOnHeaderHtmlContent))
+            {
+                <text>
+        $('#divLogOnHeader').show();
+        </text>
+            }
+        }
+        if ('@SessionManager.ShowCaptcha'=='True')
+        {
+            $('#divCaptcha').show();
+            $('#btnSubmit').disableBt();
+        }
+
+        $(".btn-google").click(function (event) {
+            $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please wait, checking login...', { type: 'loading', animate: false});
+        });
+    });
+
+    function CheckStateAndDistrictFields() {
+        if ($('#states').val() != "Select State" || $('#districts').val() != "Select @LabelHelper.DistrictLabel") {
+            $('#login').removeAttr("disabled");
+            $('#pass').removeAttr("disabled");
+            $("#recovery-username").removeAttr("disabled");
+        }
+    }
+
+    function continueLogon(str) {
+        location.href = $('#idhdfWarningUserLogOn').val();
+    }
+
+    function clearStudentHubStorage() {
+        localStorage.removeItem("SHselectedStudents");
+        localStorage.removeItem("SHselectedDistrict");
+    }
+</script>
+
+<section id="login-block" class="box-shadow">
+    @*-------------------BLOCK-HEADER------------------------*@
+    <div class="block-border" id="divLogOn">
+        @if (Model.District == 0)
+        {
+            <div class="block-header">LinkIt! Login </div>
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty(Model.LogOnHeaderHtmlContent))
+            {
+                <div id="divLogOnHeader" class="block-header LogOnHeader" style="display: none">
+                    @Html.Raw(Model.LogOnHeaderHtmlContent)
+                </div>
+            }
+            else
+            {
+                <div class="block-header">LinkIt! Login </div>
+            }
+        }
+        @*-------------------BLOCK-CONTENT------------------------*@
+        <div class="block-content">
+
+            @if (Model.IsDisableLoginForm)
+            {
+                <p id="loginMessage">This log-in page is no longer available. Please log into LinkIt! using your district-specific URL.</p>
+            }
+            else if (!Model.HideLoginCredentials)
+            {
+                @*-------------------login-form-section------------------------*@
+
+                using (Html.BeginForm("LogOn", "Account", FormMethod.Post, new { @class = "form", id = "login-form" }))
+                {
+                    <div class="account-login-form">
+                        <div>
+                            <label for="login"><span class="big">Username</span></label>
+                            <input type="text" placeholder="Enter your username" name="login" id="login" class="full-width first-focus" value="" />
+                        </div>
+                        <div>
+                            <label for="pass"><span class="big">Password</span></label>
+                            <input type="password" placeholder="Enter your password" autocomplete="off" name="pass" id="pass" class="full-width" value="" maxlength="50" />
+                            <i id="togglePassword" class="fa-sharp fa-solid fa-eye-slash text-navy icon-input-password"></i>
+                        </div>
+
+                    </div>
+                    @*-------------------terms-section------------------------*@
+                    <div id="divDisclaimerContent" style="display:none">
+                        <div>Terms Of Use</div>
+                        <div class="teacherRegistration-terms">
+                            <div class="teacherRegistration-terms-content">
+                                <div id="divDisclaimerMessage">
+                                    Term of Use
+                                </div>
+                            </div>
+                            <div class="teacherRegistration-terms-argree">
+                                <input id="idchbTermsOfUse" tabindex="10" type="checkbox" value="true">
+                                <label for="idchbTermsOfUse" style="display: inline-block;font-weight:700" id="lbDisclaimerCheckboxLabel">I agree with your term of use</label>
+                            </div>
+                        </div>
+                        <br />
+                    </div>
+                    @*-------------------recaptcha-section------------------------*@
+                    <div id="divCaptcha" style="display:none" class="g-recaptcha recatcha" data-sitekey="6Lf7ggwTAAAAABY1PZKfYruOIvY8oZae2obJH0os" data-callback="enableBtn"></div>
+                    <p class="input-height">
+                        <input type="hidden" type="checkbox" name="keep-logged" id="keep-logged" value="1" class="mini-switch">
+                        <label style="display: none;margin-top:1.5rem" for="keep-logged" class="inline">Keep me logged in</label>
+                    </p>
+                    <input type="hidden" id="idhdfWarningUserLogOn" />
+                }
+                @*-------------------forgot-password-section------------------------*@
+                <form class="form" id="password-recovery" method="post" action="@Url.Action("ResetPassword", "Account")">
+                    <div class="forgot-password-container">
+                        <div id="title-forgot-password">
+                            <a href="#">Forgot Password?</a>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                        <div id="content-forgot-password">
+                            @if (Model.District == 0)
+                            {
+                                <p class="colx2-left">
+                                    <label for="simple-select">State</label>
+                                    <select id="password-recovory-states" name="simple-select" class="full-width" onchange="GetPasswordRecovoryDistrictsByState($(this).val())">
+                                        <option class="current align-center" style="horiz-align: center">Select State</option>
+                                    </select>
+                                </p>
+                                <p class="colx2-right">
+                                    <label for="simple-select">@LabelHelper.DistrictLabel</label>
+                                    <select id="password-recovory-districts" name="simple-selcet" class="full-width">
+                                        <option class="current align-center" style="horiz-align: center">Select @LabelHelper.DistrictLabel</option>
+                                    </select>
+                                </p>
+                            }
+                            <div>
+                                <label for="recovery-username">Username</label>
+                                <div class="input-with-button">
+                                    @Html.TextBoxFor(x => x.UserName, new { id = "recovery-username", placeholder = "Enter your username" })
+                                    <button type="submit" class="btn-accept" id="btnSubmitCheckUsername">Submit</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <button form="login-form" style="width:100%" type="submit" class="btn-accept" id="btnSubmit">Login</button>
+            }
+
+            @*-------------------sso-section------------------------*@
+            @if (Model.EnableLoginByGoogle || Model.EnableLoginByMicrosoft || Model.EnableLoginByClever || Model.EnableLoginByNYC)
+            {
+                @*-------------------break-section------------------------*@
+                if (!Model.HideLoginCredentials)
+                {
+                    <div class="break-section my-4">
+                        <div class="break__content">OR</div>
+                    </div>
+                }
+
+        <div class="sso-section">
+            @if (Model.EnableLoginByGoogle)
+            {
+                <a class="btn-sso" href="@Url.Action("singlesignon", new { provider = "google", returnUrl = Request.Params["ReturnUrl"] })">
+                    <div class="btn-sso-group">
+                        <img src="@Url.Content("~/Content/images/logo/logo-google.svg")" />
+                        <span>Sign in with Google</span>
+                    </div>
+                </a>
+            }
+
+            @if (Model.EnableLoginByMicrosoft)
+            {
+                <a class="btn-sso" href="@Url.Action("singlesignon", new { provider = "microsoft", returnUrl = Request.Params["ReturnUrl"] })">
+                    <div class="btn-sso-group">
+                        <img src="@Url.Content("~/Content/images/logo/logo-microsoft.svg")" />
+                        <span>Sign in with Microsoft</span>
+                    </div>
+                </a>
+            }
+
+                    @if (Model.EnableLoginByClever)
+                    {
+                        <a class="btn-sso" href="@Url.Action("singlesignon", new { provider = "clever", returnUrl = Request.Params["ReturnUrl"] })">
+                            <div class="btn-sso-group">
+                                <img src="@Url.Content("~/Content/images/logo/logo-clever.svg")" />
+                                <span>Sign in with Clever</span>
+                            </div>
+                        </a>
+                    }
+
+                    @if (Model.EnableLoginByNYC)
+                    {
+                        <a class="btn-sso" href="@Url.Action("NYCSignIn", "PassThrough")">
+                            <div class="btn-sso-group">
+                                <img src="@Url.Content("~/Content/images/logo/logo-nyc.png")" />
+                                <span>Sign in with NYC Auth</span>
+                            </div>
+                        </a>
+                    }
+
+                    @if (Model.EnableLoginByClassLink)
+                    {
+                        <a class="btn-sso" href="@Url.Action("singlesignon", new { provider = "classlink", returnUrl = Request.Params["ReturnUrl"] })">
+                            <div class="btn-sso-group">
+                                <img src="@Url.Content("~/Content/images/logo/logo-classlink.png")" />
+                                <span>Sign in with ClassLink</span>
+                            </div>
+                        </a>
+                    }
+                </div>
+
+            }
+
+        </div>
+    </div>
+    <div id="custom-footer-logon" style="bottom: 15px; position: fixed; right: 10%;">
+        <img src="../../Content/images/loog-linkit-16x16.png" style="position: relative; top: 5px;"></img>
+        <span style="font-size: 11px;">Copyright &copy; @DateTime.Now.ToString("yyyy") | Powered by LinkIt!</span>
+    </div>
+</section>
+@if (Model.ShowAnnouncement && !string.IsNullOrEmpty(Model.AnnouncementText))
+{
+    <section id="message">
+        <div class="block-content no-title light-bg">
+            <p class="mini-infos-update">
+                @Html.Raw(Model.AnnouncementText)
+            </p>
+        </div>
+    </section>
+}
+
+<script type="text/javascript">
+    $('#details').click(function () {
+        $('#messages-list').toggle();
+    });
+
+    $('.btn-sso').on('click', function (e) {
+        var currentHref = $(this).attr('href');
+        var fragment = window.location.hash;
+        if (fragment) {
+            $(this).attr('href', currentHref + encodeURIComponent(fragment));
+        }
+    });
+</script>
+
+@*@if (Request.Url.Host.ToLower().Contains("linkit.com") || Request.Url.Host.ToLower().Contains("linkitau.com"))*@
+@{
+    var script = HelperExtensions.GetGoogleAnalyticsTrackingScript();
+    if (script.Contains("<script"))
+    {
+        @Html.Raw(script);
+    }
+    else
+    {
+        <script type="text/javascript">
+        @Html.Raw(script);
+        </script>
+    }
+
+}
+<script type="text/javascript">
+
+    function enableBtn(){
+        if(!$('#divDisclaimerContent').is(":visible") || $('#idchbTermsOfUse').is(':checked')){
+            $('#btnSubmit').enableBt();
+        }
+    }
+
+    function showNetworkAdminSelectDialog() {
+        var url = '@Url.Action("LoadNetworkAdminSelect")';
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            //< h1 style = "font-size: 1.375rem; padding: 0; margin-bottom: 1.5rem" > Email Content</h1 >
+            .done(function (html) {
+                if (html != undefined) {
+                    var htmlString = `<section class="grid_5">
+	                                <div class="block-border container-content">
+		                                <div class="block-content form" style="padding: 1.5em;">
+			                                <div class="main-content" style="font-weight: normal;"><div>
+                                            `+
+                        html +
+                        `</div></div>
+		                                </div>
+		                            <div class="foot-content" style="justify-content: space-around;">
+			                            <a class="button-custom-new-skin btn-accept" onclick="(function(){$('#PopupCreateItemTagCategory').dialog('close')})()">Close</a>
+		                            </div>
+                                </section>`
+                }
+                $("#divLogOn").append('<div id="PopupCreateItemTagCategory" class="dialog dialog-custom-new-skin"></div>');
+                $("#PopupCreateItemTagCategory").append(htmlString);
+                $('#PopupCreateItemTagCategory').dialog({
+                    title: "",
+                    open: function () {
+                        //Create overlay for popup
+                        var win = $('body');
+                        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        //$('#DistrictTagCategoryDataTable').dataTable().fnDraw(false);
+                        $('#PopupCreateItemTagCategory').remove();
+                        $(".ui-widget-overlay").remove();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                }).parent().find('.ui-dialog-titlebar-close').remove();
+            });
+
+        }
+
+    $("#btnSubmitCheckUsername").on('click', function () {
+        //$(this).disableBt();
+        $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please wait, checking username...', { type: 'loading', animate: false});
+    });
+    $(function () {
+        var togglePassword = $("#togglePassword");
+        var password = $("#pass");
+        togglePassword.on("click", function () {
+            // toggle the type attribute
+            var type = password.attr("type") === "password" ? "text" : "password";
+            password.prop("type", type);
+
+            // toggle the icon
+            $(this).toggleClass("fa-eye fa-eye-slash");
+        });
+
+        $("#title-forgot-password").on("click", function () {
+            // toggle the icon
+            $('#content-forgot-password').toggle(200);
+            $(this).children().last().toggleClass("fa-chevron-down fa-chevron-up");
+        });
+    })
+
+</script>

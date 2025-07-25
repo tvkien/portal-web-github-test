@@ -1,0 +1,1066 @@
+@using LinkIt.BubbleSheetPortal.Models.Enum
+@model LinkIt.BubbleSheetPortal.Models.Enum.AccessRightEnum
+@{
+    ViewBag.Title = "TLDS Manager";
+}
+<style>
+
+    .block-border {
+        overflow: hidden;
+    }
+
+    .txt-loading {
+        position: absolute;
+        z-index: 111111;
+        left: 50%;
+        -webkit-transform: translateX(-50%);
+        -ms-transform: translateX(-50%);
+        -o-transform: translateX(-50%);
+        transform: translateX(-50%);
+        color: #fff;
+        top: 220px;
+    }
+
+    @@-webkit-keyframes spin {
+        0% {
+            -webkit-transform: rotate(0deg);
+        }
+
+        100% {
+            -webkit-transform: rotate(360deg);
+        }
+    }
+
+    @@keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+<div id="TLDSSchoolAdminHome">
+    <article class="container_12">
+        <div class="grid_12 sgo-selector box-shadow">
+            <div class="block-border">
+                <div class="block-content form">
+                    <div class="block-heading">
+                        <a href="#" class="block-heading-item is-active">
+                            TLDS Home
+                        </a>
+                    </div>
+                    <div class="u-m-t-20">
+                        <p>
+                            - Click the <span class="icon icon-tlds-link"></span> icon below to link a TLDS to a student record
+                        </p>
+                        <p>
+                            - Click the <span class="icon icon-tlds-return"></span> icon to return a TLDS to the early childhood service if the child did not enrol at your school
+                        </p>
+                        <p>
+                            - If section 1.2 has been completed <span class="c-checkbox checked"></span>, this means the child has a disability or developmental delay.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </article>
+
+    <article class="container_12" id="idTopNavigation">
+        <section class="grid_12">
+            <div class="block-border">
+                <div class="block-content form" id="divOnTop">
+                    <div class="block-heading">
+                        <a href="javascript:void(0)" id="btnShowArchived" class="block-heading-item">
+                            Show Linked:
+                            <span id="showArchivedText">OFF</span>
+                        </a>
+                        <a href="javascript:void(0)" id="btnBatchPrint" class="block-heading-item">
+                            DOWNLOAD PDF
+                        </a>
+                        <a href="javascript:void(0)" id="btnSummaryReport" class="block-heading-item">
+                            Summary Report
+                        </a>
+                        <a href="javascript:void(0)" class="block-heading-item" v-on:click="openUploadPdf()">
+                            Upload a PDF
+                        </a>
+                    </div>
+                    <div class="u-clearfix u-m-t-40">
+                        <div class="tlds-feature-enrollment-year js-enrollment-year is-school-admin hide">
+                            <label>| &nbsp; Enrolment year</label>
+                            <select id="selectEnrollmentYear"></select>
+                        </div>
+                        <div class="no-margin last-child">
+                            <table id="dataTable" class="datatable table no-margin datatable-schoolAdminHome" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">
+                                            Select
+                                            <input type="checkbox" id="chkAllProfiles" />
+                                        </th>
+                                        <th scope="col">Submitted Student</th>
+                                        <th scope="col">Linked Student</th>
+                                        <th scope="col">Date of birth</th>
+                                        <th scope="col">Gender</th>
+                                        <th scope="col">Name of ECEC service</th>
+                                        <th scope="col">Section 1.2 has been completed</th>
+                                        <th scope="col">Enrolment Year</th>
+                                        <th scope="col"></th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </article>
+
+    @Html.Partial("_ModalUploadStatementPdf")
+</div>
+<div id="generateContent" class="block-border form" style="display:none;"></div>
+
+<script src="/Scripts/TLDSManage/SchoolAdmin.js"></script>
+<script type="text/javascript">
+    var oTable;
+
+    $(function () {
+        loading($('#idTopNavigation .block-border'), false, { postionY: '35%'});
+        SchoolAdminModel.url = '@Url.Action("SaveStatementUploadInfo")';
+        SchoolAdminModel.getGenderUrl = '@Url.Action("GetGender")';
+        populateEnrollmentYearFilter();
+
+        //populateTeacherSubmittedFilter();
+        uploadFilePdfSchoolAdmin();
+    });
+
+    function createElCheckbox (profileId) {
+        var divEl = createEl('div', {}, { 'class': 'tlds-feature-item last' });
+
+        var inputEl = createEl('input', {}, {
+            'class': 'is-modify',
+            'type': 'checkbox',
+            'name': 'chkProfilePrint',
+            'value': profileId
+        });
+
+        divEl.appendChild(inputEl);
+
+        return divEl;
+    }
+
+    function createEl(tagName, properties, attributes, textContent) {
+        var el = document.createElement(tagName);
+        var isText = Boolean(textContent);
+
+        Object.getOwnPropertyNames(properties).forEach(function (propName) {
+            var val = properties[propName];
+
+            if (propName.indexOf('aria-') !== -1 || propName !== 'role' || propName !== 'type') {
+                el.setAttribute(propName, val);
+            } else {
+                el[propName] = val;
+            }
+        });
+
+        Object.getOwnPropertyNames(attributes).forEach(function (attrName) {
+            el.setAttribute(attrName, attributes[attrName]);
+        });
+
+        if (isText) {
+            el.innerHTML = textContent;
+        }
+
+        return el;
+    }
+
+    function getGenderName(genderId) {
+        switch (genderId) {
+            case 24:
+                return "Female";
+            case 25:
+                return "Male";
+            case 26:
+                return "Unknown";
+            default:
+                return "";
+        }
+    }
+
+    function createSection102IsNotRequiredCheckbox(Section102IsNotRequired) {
+        if (Section102IsNotRequired == 'True') {
+            return '<span class="c-checkbox unchecked"></span>';
+        } else {
+            return '<span class="c-checkbox checked"></span>';
+
+        }
+    }
+
+    function getECSCompledDateYear(ECSCompledDate) {
+        if (ECSCompledDate == null) {
+            return '';
+        }
+        var d = new Date(parseInt(ECSCompledDate));
+        return d.getFullYear() + 1;
+    }
+    function getAjaxSourceFilterTLDSProfileForSchoolAdmin(isUpload) {
+        var t = new Date().getTime();
+        var url = '@Url.Action("GetTDLSProfileForSchoolAdmin")?t=' + t;
+        if ($('#selectEnrollmentYear').length > 0) {
+            var enrollmentYear = $('#selectEnrollmentYear').val();
+            if (enrollmentYear == 'select' || enrollmentYear < 0 || isUpload) {
+                enrollmentYear = 0;//it's now allow user to search all when 'Select All' is choosen
+            }
+            url = url + '&enrollmentYear=' + enrollmentYear;
+        }
+        var text = $("#showArchivedText").html();
+        var showArchived = true;
+        if (text.toLowerCase() == 'off') {
+            showArchived = false;
+        }
+        url = url + '&showArchived=' + showArchived;
+        return url;
+
+    }
+
+    function tldsPrintConfirm(profileId) {
+
+        var url = '@Url.Action("LoadPrintConfirm", "TLDSManage")?profileId=' + profileId;
+        $.ajax({ url: url, cache: false })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="idPopupTLDSPrintConfirm" class="dialog"></div>');
+                $("#idPopupTLDSPrintConfirm").append(html);
+                $('#idPopupTLDSPrintConfirm').dialog({
+                    title: "",
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                    },
+                    beforeclose: function () {
+                        return true;
+                    },
+                    close: function () {
+                        $('#btnBatchPrint').removeClass('is-disabled');
+                        $('#idPopupTLDSPrintConfirm').remove();
+                        // hideLoading();
+                        loading($('#idTopNavigation .block-border'), false, { postionY: '35%'});
+                    },
+                    modal: false,
+                    width: 360,
+                    resizable: false
+                });
+            });
+    }
+    function closeTLDSPrintPopup() {
+        $('#btnBatchPrint').removeClass('is-disabled');
+        $("#idPopupTLDSPrintConfirm").dialog("close");
+        $('#idTopNavigation').unblock();
+    }
+    function populateTeacherSubmittedFilter() {
+        $('#selectTeacher').empty();
+        $.get('@Url.Action("GetTeachersSubmitted", "TLDSManage")', function (teachers) {
+            addDefaultOption($('#selectTeacher'), "Teacher");
+            addSelectListItemsWithSelectedValue($('#selectTeacher'), teachers);
+        });
+    }
+
+    function initDataTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceFilterTLDSProfileForSchoolAdmin(false),
+            bStateSave: false,
+            bAutoWidth: true,
+            iDisplayLength: 25,
+            aaSorting: [[1, 'asc']],
+            aoColumns: [
+                { sType: 'integer', sName: 'ProfileId', bSearchable: false, bSortable: false, sWidth: '90px' },
+                { sType: 'string', sName: 'LastName', bSearchable: true, bSortable: true, sWidth: '100px',},
+                { sType: 'string', sName: 'FirstName', bSearchable: false, bSortable: true, sWidth: '100px', },
+                { sType: 'string', sName: 'DateOfBirth', bSearchable: false, bSortable: true, sWidth: '120px' },
+                { sType: 'string', sName: 'GenderID', bSearchable: false, bSortable: true, sWidth: '100px' },
+                { sType: 'string', sName: 'ECSName', bSearchable: false, bSortable: true, sWidth: '120px' },
+                { sType: 'string', sName: 'Section102IsNotRequired', bSearchable: false, bSortable: true, sClass: "text-center-important" },
+                { sType: 'string', sName: 'EnrolmentYear', bSearchable: false, bSortable: true },
+                { sType: 'string', sName: 'StudentID', bSearchable: false, bSortable: true, bVisible: false },
+                { sType: 'integer', sName: 'IsUploadedStatement', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'integer', sName: 'PDFUrl', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityFilterTLDSProfileForSchoolAdmin(aData[0], aData[8], aData[9], aData[1], aData[2], aData[10]));
+                $('td:eq(3)', nRow).html(displayDateWithFormat(aData[3], false));
+                $('td:eq(4)', nRow).html(getGenderName(aData[4]));
+                $('td:eq(6)', nRow).html(createSection102IsNotRequiredCheckbox(aData[6]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                $('.js-enrollment-year').removeClass('hide');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+
+                var dataTable = $('#dataTable').dataTable();
+                dataTable.fnSetFilteringDelay(500);
+            }
+        };
+
+        $("#dataTable").data("options", options);
+    }
+   function populateEnrollmentYearFilter(forceReloadGrid = false) {
+        $('#selectEnrollmentYear').empty();
+        var text = $("#showArchivedText").html();
+        var showArchived = true;
+        if (text.toLowerCase() == 'off') {
+            showArchived = false;
+        }
+        $.get('@Url.Action("GetEnrollmentYearFilter", "TLDSManage")?showArchived=' + showArchived, function (data) {
+            addDefaultOption($('#selectEnrollmentYear'), "All");
+            addSelectListItemsWithSelectedValue($('#selectEnrollmentYear'), data);
+            if (data && data.length > 0) {
+                var defaultSelect = data.find(function (item) { return item.Selected });
+                defaultSelect = defaultSelect ? defaultSelect : data[0];
+                $('#selectEnrollmentYear').val(defaultSelect.Id);
+                initDataTable();
+
+            }
+            if (forceReloadGrid ) {
+                reloadGrid();
+                }
+        });
+
+    }
+    function reloadGrid() {
+           var dataTable = $('#dataTable').dataTable();
+        dataTable.fnSettings().sAjaxSource = getAjaxSourceFilterTLDSProfileForSchoolAdmin(false);
+        dataTable.fnDraw();
+    }
+
+    function setIconVisibilityFilterTLDSProfileForSchoolAdmin(profileId, studentId, isUploadedStatement, firstName, lastName, pdfUrl) {
+            var isStudentId = studentId == null || studentId <= 0;
+            var container = document.createElement('div', {
+                'stype': '"float:left; width:80px'
+            });
+
+            var iconTldsLink = createEl('span', {}, { 'class': 'icon icon-tlds-link' });
+            var iconTldsUnLink = createEl('span', {}, { 'class': 'icon icon-tlds-link is-grey' });
+            var iconTldsReturn = createEl('span', {}, { 'class': 'icon icon-tlds-return' });
+            var iconTldsNoReturn = createEl('span', {}, { 'class': 'icon icon-tlds-return is-grey' });
+            var iconTldsCheckbox = createElCheckbox(profileId);
+
+            // Statement not uploaded by schooladmin
+            if (isUploadedStatement == null || isUploadedStatement == 'false') {
+                var associateStudentDiv;
+
+                if (isStudentId) {
+                    associateStudentDiv = createEl('div', {}, {
+                        'class': 'with-tip tlds-feature-item',
+                        'title': 'Link with student',
+                        'onclick': 'showStudentToAssociate(' + profileId + ')'
+                    });
+
+                    associateStudentDiv.appendChild(iconTldsLink);
+
+                    var rejectDiv = createEl('div', {}, {
+                        'class': 'with-tip tlds-feature-item',
+                        'title': 'Return',
+                        'onclick': 'showRejectDialog(' + profileId + ')'
+                    });
+
+                    rejectDiv.appendChild(iconTldsReturn);
+                } else {
+                    associateStudentDiv = createEl('div', {}, {
+                        'class': 'with-tip tlds-feature-item',
+                        'title': 'Unlink TLDS from Student',
+                        'onclick': 'removeAssociatedStudent(' + profileId + ')'
+                    });
+
+                    associateStudentDiv.appendChild(iconTldsUnLink);
+
+                    rejectDiv = createEl('div', {}, {
+                        'class': 'with-tip tlds-feature-item',
+                        'title': 'Has linked student, unable to return'
+                    });
+
+                    rejectDiv.appendChild(iconTldsReturn)
+                }
+
+                container.appendChild(associateStudentDiv);
+                container.appendChild(rejectDiv);
+            } else {
+                if (isStudentId) {
+                    var linkStudentIcon = createEl('div', {}, {
+                        'class': 'with-tip tlds-feature-item',
+                        'title': 'Link with student',
+                        'onclick': 'showStudentToAssociate(' + profileId + ')'
+                    });
+                    linkStudentIcon.appendChild(iconTldsLink);
+                    container.appendChild(linkStudentIcon);
+                } else {
+                    var removeLinkStudent = createEl('div', {}, {
+                        'class': 'with-tip tlds-feature-item',
+                        'title': 'Unlink TLDS from Student',
+                        'onclick': 'removeAssociatedStudent(' + profileId + ')'
+                    });
+                    removeLinkStudent.appendChild(iconTldsUnLink);
+                    container.appendChild(removeLinkStudent);
+                }
+
+                var deleteIcon = createEl('a', {}, {
+                    'href': 'javascript:void(0)',
+                    'title': 'Delete',
+                    'firstName': firstName,
+                    'lastName': lastName,
+                    'profileId': profileId,
+                    'class': 'with-tip DeleteTLDS tlds-feature-item'
+                });
+
+                var spanDeleteIcon = createEl('span', {}, {
+                    'class': 'icon icon-tlds-trash'
+                });
+                if (studentId != null && studentId > 0) {
+                    deleteIcon.className = 'tlds-feature-item is-disabled';
+                    spanDeleteIcon.className += ' is-grey';
+                }
+                deleteIcon.appendChild(spanDeleteIcon);
+                container.appendChild(deleteIcon);
+
+                var viewIcon = createEl('a', {}, {
+                    'href': pdfUrl,
+                    'target': 'blank',
+                    'title': 'View PDF',
+                    'class': 'with-tip ViewTDLS tlds-feature-item',
+                    'profileId': profileId
+                });
+                var spanIcon = createEl('span', {}, {
+                    'class': 'icon icon-16 icon-tlds-View small'
+                }, 'View PDF');
+
+                viewIcon.appendChild(spanIcon);
+                container.appendChild(viewIcon);
+
+                iconTldsCheckbox.setAttribute('uploadedBySchool', true);
+                iconTldsCheckbox.setAttribute('pdfUrl', pdfUrl);
+            }
+
+            container.appendChild(iconTldsCheckbox);
+            return container;
+        }
+    $('#btnFilterSubmit').click(function() {
+        var dataTable = $('#dataTable').dataTable();
+        dataTable.fnSettings().sAjaxSource = getAjaxSourceFilterTLDSProfileForSchoolAdmin(false);
+        dataTable.fnDraw();
+    });
+
+    function printreportTLDS(profileId) {
+        var input = $('input[name="chkProfilePrint"][type=checkbox]:checked').eq(0).parent();
+        var uploadedBySchool = input.attr('uploadedbyschool');
+        if (typeof uploadedBySchool != 'undefined' && uploadedBySchool == 'true') {
+            var url = input.attr('pdfurl');
+            if (typeof url != 'undefined' && url != '') {
+                window.open(url);
+            }
+        } else {
+            // showLoading();
+            loading($('#idTopNavigation .block-border'), true, { postionY: '35%'});
+            $('#idPopupTLDSPrintConfirm').parent().hide();
+            var reportFileName = "demo_blank.pdf";
+            var data = {
+                profileId: profileId,
+                ReportFileName: reportFileName,
+                TimezoneOffset: new Date().getTimezoneOffset()
+            };
+            $.ajax({
+                url: '@Url.Action("Generate", "TLDSReport")',
+            traditional: true,
+            type: 'POST',
+            data: data,
+            success: function (response) {
+                getTLDSReportS3File(response.fileName, profileId);
+            },
+            failure: function (response) {
+                CustomAlert(response);
+            },
+            timeout: 300000
+        });
+}
+    }
+    function getTLDSReportS3File(checkUrl, profileId) {
+
+        $.ajax({
+            url: '@Url.Action("GetTLDSReportS3File", "TLDSReport")',
+            type: 'POST',
+            data: { fileName: checkUrl, profileId: profileId },
+            success: function (response) {
+                if (response.Result != true) {
+                    setTimeout(function () {
+                        getTLDSReportS3File(checkUrl, profileId);//try again
+                    }, 3000);
+                } else {
+                    $('#idPopupTLDSPrintConfirm').parent().show();
+                    $('#idTopNavigation').unblock();
+
+                    $('#idlinkSGOFilePrint').attr('href', response.Url);
+                    $('#idlinkSGOFilePrint').show();
+                    $('#idTopNavigation').unblock();
+                    $('#idPopupTLDSPrintConfirm').parent().unblock();
+                    $('#idbtnSGOSavePDFFile').prop('disabled', true);
+
+                }
+            }
+        });
+    }
+    function showStudentToAssociate(tldsProfileId) {
+        ShowBlock($('#divFilterStudents').parent(), 'Loading');
+
+        var url = '@Url.Action("LoadStudentFilterForTLDS", "TLDSManage")/?tldsProfileId=' + tldsProfileId;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $('#divOnTop').parent().unblock();
+
+                $("#generateContent").append('<div id="PopupTLDSAddEditBand" class="dialog"></div>');
+                $("#PopupTLDSAddEditBand").append(html);
+                $('#PopupTLDSAddEditBand').dialog({
+                    title: "",
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupTLDSAddEditBand').remove();
+                        //hideLoading();
+                        loading($('#idTopNavigation .block-border'), false, { postionY: '35%'});
+                        populateEnrollmentYearFilter(true);
+                    },
+                    modal: false,
+                    width: 1000,
+                    resizable: false
+                });
+            });
+    }
+    $('#btnShowArchived').click(function () {
+        var text = $("#showArchivedText").html();
+        if (text.toLowerCase() == 'off') {
+            text = 'ON';
+        } else {
+            text = 'OFF';
+        }
+        $("#showArchivedText").html(text);
+
+        $('#chkAllProfiles').prop('checked', false);
+
+        //reload enrolment year dropdown
+        populateEnrollmentYearFilter(true);
+    });
+
+    function removeAssociatedStudent(profileId) {
+        CustomConfirm({
+            message: 'Do you want to remove the linked student?',
+            yes: function () {
+                var studentId = $(this).attr('studentId');
+                $(this).hide();
+                ShowBlock($('#TLDSSchoolAdminHome'), 'Removing');
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("RemoveAssociateStudentFromProfile", "TLDSManage")',
+                    data: { 'ProfileId': profileId },
+                    dataType: 'json',
+                    traditional: true,
+                    success: function (data) {
+                        $('#TLDSSchoolAdminHome').unblock();
+                        if (data.Success) {
+                            populateEnrollmentYearFilter(true);
+                        } else {
+                            alert(data.error);
+                        }
+                    },
+                    error: function () {
+                        $('#TLDSSchoolAdminHome').unblock();
+                    }
+                });
+
+
+            },
+            no: function () {
+            }
+        });
+    }
+
+
+    function showRejectDialog(tldsProfileId) {
+        ShowBlock($('#divOnTop'), "Loading");
+        var url = '@Url.Action("LoadRejectProfileDialog", "TLDSManage")/?tldsProfileId=' + tldsProfileId;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $('#divOnTop').parent().unblock();
+
+                $("#divOnTop").append('<div id="PopupTLDSReject" class="dialog"></div>');
+                $("#PopupTLDSReject").append(html);
+                $('#PopupTLDSReject').dialog({
+                    title: "",
+                    open: function () {
+                    },
+                    beforeclose: function () {
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupTLDSReject').remove();
+                        $('#divOnTop').unblock();
+                        populateEnrollmentYearFilter(true);
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    $('#chkAllProfiles').die('click');
+    $('#chkAllProfiles').live("click", function (e) {
+        //not escalte the click event to the header of the table
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+        else if (window.event) {
+            window.event.cancelBubble = true;
+        }
+        if (this.checked) {
+            $('INPUT[name="chkProfilePrint"][type=checkbox]').attr('checked', 'checked');
+            disableActionButton(false);
+        }
+        else {
+            $('INPUT[name="chkProfilePrint"][type=checkbox]').removeAttr('checked');
+            disableActionButton(true);
+        }
+
+    });
+
+    $('INPUT[name="chkProfilePrint"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkProfilePrint"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllProfiles').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllProfiles').attr('checked', 'checked');
+            }
+            disableActionButton(false);
+        }
+        else {
+            $('#chkAllProfiles').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkProfilePrint"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                disableActionButton(false);
+            }
+            else {
+                disableActionButton(true);
+            }
+        }
+    });
+
+    function getSelectedProfileIdsToPrint() {
+        var idList = '';
+        $('INPUT[name="chkProfilePrint"][type=checkbox]:checked').each(function (i, e) {
+            idList += $(e).val() + ',';
+        });
+        return idList.substr(0, idList.length - 1);
+    }
+
+
+    function disableActionButton(disabled) {
+        if (disabled != undefined && disabled == true) {
+            $('#btnBatchPrint').prop('disabled', true);
+        } else {
+            $('#btnBatchPrint').prop('disabled', false);
+        }
+    }
+
+    $('#btnBatchPrint').on("click", function (e) {
+        //Batch print
+        $('#btnBatchPrint').addClass('is-disabled');
+        var idList = getSelectedProfileIdsToPrint();
+
+
+        if (idList.length == 0) {
+            $('#btnBatchPrint').removeClass('is-disabled');
+            CustomAlert('Please select Profile(s) to download and print.');
+            return;
+        }
+        if (idList.indexOf(',') < 0) {
+            //There's only one
+            tldsPrintConfirm(idList);
+        } else {
+            //There's more than one
+            tldsBatchPrintConfirm();
+        }
+    });
+
+    function tldsBatchPrintConfirm() {
+        var url = '@Url.Action("LoadBatchPrintConfirm", "TLDSManage")?profileIdList=' + getSelectedProfileIdsToPrint();
+        $.ajax({ url: url, cache: false })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="idPopupTLDSPrintConfirm" class="dialog"></div>');
+                $("#idPopupTLDSPrintConfirm").append(html);
+                $('#idPopupTLDSPrintConfirm').dialog({
+                    title: "",
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                    },
+                    beforeclose: function () {
+                        return true;
+                    },
+                    close: function () {
+                        $('#idPopupTLDSPrintConfirm').remove();
+                        // hideLoading();
+                        loading($('#idTopNavigation .block-border'), false, { postionY: '35%'});
+                    },
+                    modal: false,
+                    width: 360,
+                    resizable: false
+                });
+            });
+    }
+    function printBatchReportTLDS(profileIdList) {
+        loading($('#idTopNavigation .block-border'), true, { postionY: '180px'});
+        var idList = getSelectedProfileIdsToPrint();
+
+        $('#idPopupTLDSPrintConfirm').parent().hide();
+        $.ajax({
+            url: '@Url.Action("GenerateBatchPdfZipFileName", "TLDSReport")',
+            traditional: true,
+            type: 'POST',
+            data: {},
+            success: function (response) {
+
+                var zipFileName = response.zipFileName;
+
+                //call ajax to generate the pdf file
+                var reportFileName = "demo_blank.pdf";
+                var data = {
+                    profileId: 0,
+                    ReportFileName: reportFileName,
+                    TimezoneOffset: new Date().getTimezoneOffset(),
+                    profileIdList: idList,
+                    zipFileName: encodeURIComponent(zipFileName)
+                };
+                $.ajax({
+                    url: '@Url.Action("GenerateBatchPdf", "TLDSReport")',
+                    traditional: true,
+                    type: 'POST',
+                    data: data,
+                    success: function (response) {
+                        //No need to wait for the ajax finish, call another ajax to get the zip file ( to avoid timeout error)
+                        //Because this ajax might take long time to finish and that will lead to timeout error
+                    },
+                    failure: function (response) {
+                        CustomAlert(response);
+                    },
+                    timeout: 300000
+                });
+                //No
+                //cal ajax to get the zip file right a
+                getTLDSZipBatchReportS3File(zipFileName);
+                $('#btnBatchPrint').removeClass('is-disabled');
+            },
+            failure: function (response) {
+                $('#btnBatchPrint').removeClass('is-disabled');
+                CustomAlert(response);
+            },
+            timeout: 300000
+        });
+    }
+
+    function getTLDSZipBatchReportS3File(zipFileName) {
+        var completedLoading = $('.dvloading');
+        var text = $('.dvloading').children('.txt-loading');
+
+        $.ajax({
+            url: '@Url.Action("GetTLDSZipBatchReportS3File", "TLDSReport")',
+            type: 'POST',
+            data: { zipFileName: encodeURIComponent(zipFileName) },
+            success: function (response) {
+                if (response.Result != true) {
+                    if(text.length === 0 &&  response.Total > 0) {
+                        text = '<p class="txt-loading">Generated ' + response.CompletedFiles + ' of ' + response.Total +' profiles</p>';
+                        completedLoading.append(text);
+                    } else {
+                        $(text).text('Generated ' + response.CompletedFiles + ' of ' + response.Total + ' profiles');
+                    }
+                    setTimeout(function () {
+                        getTLDSZipBatchReportS3File(zipFileName);//try again
+                    }, 3000);
+                } else {
+                    loading($('#idTopNavigation .block-border'), false, { postionY: '35%' });
+                    $('#idPopupTLDSPrintConfirm').parent().show();
+                    $('#idTopNavigation').unblock();
+                    $(text).remove();
+                    $('#idlinkSGOFilePrint').attr('href', response.Url);
+                    $('#idlinkSGOFilePrint').show();
+                    $('#idTopNavigation').unblock();
+                    $('#idPopupTLDSPrintConfirm').parent().unblock();
+                    $('#idbtnSGOSavePDFFile').prop('disabled', true);
+
+                }
+            }
+        });
+    }
+    $('#btnSummaryReport').die('click');
+    $('#btnSummaryReport').live("click", function (e) {
+        $('#btnSummaryReport').addClass('is-disabled');
+        tldsSummaryReportPrintConfirm();
+    });
+    function tldsSummaryReportPrintConfirm() {
+
+        var url = '@Url.Action("LoadPrintSummaryReportConfirm", "TLDSManage")';
+        $.ajax({ url: url, cache: false })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="idPopupTLDSPrintConfirm" class="dialog"></div>');
+                $("#idPopupTLDSPrintConfirm").append(html);
+                $('#idPopupTLDSPrintConfirm').dialog({
+                    title: "",
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                    },
+                    beforeclose: function () {
+                        return true;
+                    },
+                    close: function () {
+                        $('#idPopupTLDSPrintConfirm').remove();
+                        //hideLoading();
+                        loading($('#idTopNavigation .block-border'), false, { postionY: '35%'});
+                        $('#btnSummaryReport').removeClass('is-disabled');
+                    },
+                    modal: false,
+                    width: 360,
+                    resizable: false
+                });
+            });
+    }
+
+    function printSummaryReportTLDS() {
+        // showLoading();
+        loading($('#idTopNavigation .block-border'), true, { postionY: '35%'});
+        $('#idPopupTLDSPrintConfirm').parent().hide();
+        var enrollmentYear = $('#selectEnrollmentYear').val();
+
+
+        var reportFileName = "summary_report.pdf";
+        var text = $("#showArchivedText").html();
+        var showArchived = true;
+        if (text.toLowerCase() == 'off') {
+            showArchived = false;
+        }
+        var data = {
+            profileId: 0,
+            ReportFileName: reportFileName,
+            TimezoneOffset: new Date().getTimezoneOffset(),
+            enrollmentYear: enrollmentYear,
+            showArchived: showArchived,
+            sortingColumns: $("#dataTable").dataTable().fnSettings().aaSorting
+        };
+        $.ajax({
+            url: '@Url.Action("GenerateSummaryReport", "TLDSReport")',
+            traditional: true,
+            type: 'POST',
+            data: data,
+            success: function (response) {
+                $('#btnSummaryReport').removeClass('is-disabled');
+                getTLDSZipSummaryReportS3File(response.zipFileName);
+            },
+            failure: function (response) {
+                $('#btnSummaryReport').removeClass('is-disabled');
+               CustomAlert(response);
+            },
+            timeout: 300000
+        });
+
+    }
+
+    function getTLDSZipSummaryReportS3File(zipFileName) {
+
+        $.ajax({
+            url: '@Url.Action("GetTLDSZipSummaryReportS3File", "TLDSReport")',
+            type: 'POST',
+            data: { zipFileName: encodeURIComponent(zipFileName) },
+            success: function (response) {
+                if (response.Result != true) {
+                    setTimeout(function () {
+                        getTLDSZipSummaryReportS3File(zipFileName);//try again
+                    }, 3000);
+                } else {
+                    $('#idPopupTLDSPrintConfirm').parent().show();
+                    $('#idTopNavigation').unblock();
+
+                    $('#idlinkSGOFilePrint').attr('href', response.Url);
+                    $('#idlinkSGOFilePrint').show();
+                    $('#idTopNavigation').unblock();
+                    $('#idPopupTLDSPrintConfirm').parent().unblock();
+                    $('#idbtnSGOSavePDFFile').prop('disabled', true);
+
+                }
+            }
+        });
+    }
+
+    $("#selectEnrollmentYear").change(function () {
+        var dataTable = $('#dataTable').dataTable();
+        dataTable.fnSettings().sAjaxSource = getAjaxSourceFilterTLDSProfileForSchoolAdmin(false);
+        dataTable.fnDraw();
+    });
+
+    $('.DeleteTLDS').live('click', function () {
+        var profileId = $(this).attr('profileId');
+        var firstName = $(this).attr('firstName');
+        var lastName = $(this).attr('lastName');
+        if (firstName == null) {
+            firstName = '';
+        }
+        if (lastName == null) {
+            lastName = '';
+        }
+        var fullName = '';
+        if (firstName.length > 0 && lastName.length > 0) {
+            fullName = lastName + ', ' + firstName;
+        } else {
+            fullName = lastName + firstName;
+        }
+        var message = 'Do you want to delete "' + fullName + '"';
+        CustomConfirm({
+            message: message,
+            yes: function () {
+                $('#tlds-manage-success-error-message').hide();
+                $('#tlds-manage-success-success-message').hide();
+                //call action to delete
+                $(this).hide();
+                ShowBlock($('#idTopNavigation'), 'Deleting');
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("DeleteProfileSchoolAdmin", "TLDSManage")',
+                    data: { 'ProfileId': profileId },
+                    dataType: 'json',
+                    traditional: true,
+                    success: function (data) {
+
+                        if (data.Success) {
+                            $('#tlds-manage-success-message').show();
+
+                            $('#tlds-manage-success-message').html('<li>Profile has been deleted successfuly.</li>');
+                            setTimeout(function () {
+                                $('#tlds-manage-success-message').hide();
+                                //reload table
+                                var dataTable = $('#dataTable').dataTable();
+                                dataTable.fnSettings().sAjaxSource = getAjaxSourceFilterTLDSProfileForSchoolAdmin(false);
+                                dataTable.fnDraw();
+                                populateEnrollmentYearFilter();
+                                $('#idTopNavigation').unblock();
+                            }, 3000);
+
+                        } else {
+                            $('#tlds-manage-error-message').show();
+                            $('#tlds-manage-error-message').html('<li>' + data.error + '</li>');
+                            $('#idTopNavigation').unblock();
+                        }
+                    },
+                    error: function () {
+                        $('#TLDSSchoolAdminHome').unblock();
+                    }
+                });
+            },
+            no: function () {
+            },
+        });
+    });
+
+    function uploadFilePdfSchoolAdmin() {
+        var profileId = 0;
+        var $modalUploadFileSchoolAdmin = $('#modal-upload-file-school-admin').find('.modal-component-content');
+
+        $('#filePdfSchoolAdmin').uploadifive({
+            'uploadScript': '@Url.Action("UploadStatementPdf")',
+            'overrideEvents': ['onDialogClose'],
+            'formData': { profileId: profileId },
+            'buttonText': ' ',
+            'fileObjName': 'postedFile',
+            'multi': false,
+            'removeCompleted': true,
+            'width': 32,
+            'height': 32,
+            'auto': true,
+            'fileSizeLimit': '71680KB',
+            'fileType': ['application\/pdf'],
+            'buttonClass': 'file_upload_child_form',
+            'onInit': function () {
+                $('#uploadifive-filePdfSchoolAdmin-queue').hide();
+            },
+            'onUpload': function (file) {
+                $('#uploadifive-filePdfSchoolAdmin-queue').hide();
+
+                if (file) {
+                    SchoolAdminModel.errorFileUploadMsg = '';
+                    ShowBlock($modalUploadFileSchoolAdmin, 'Uploading');
+                }
+            },
+            'onUploadComplete': function (file, data) {
+                $('#uploadifive-filePdfSchoolAdmin-queue').hide();
+
+                var result = JSON.parse(data);
+
+                if (typeof result === 'undefined') {
+                    SchoolAdminModel.errorFileUploadMsg = 'An error has occured.  Please try again';
+                }
+
+                if (result.Success) {
+                    SchoolAdminModel.errorFileUploadMsg = '';
+                    SchoolAdminModel.isDisable = false;
+                    SchoolAdminModel.uploadData.uploadFileUrl = result.fileNameUrl;
+                    SchoolAdminModel.uploadData.fileName = result.S3FileName;
+                } else {
+                    SchoolAdminModel.errorFileUploadMsg = result.ErrorMessage;
+                    $('#filePdfSchoolAdmin').uploadifive('cancel', $('.uploadifive-queue-item').first().data('file'));
+                }
+
+                $modalUploadFileSchoolAdmin.unblock();
+            },
+            'onError': function (errorType, file) {
+                $('#uploadifive-filePdfSchoolAdmin-queue').hide();
+
+                if (errorType == 'FORBIDDEN_FILE_TYPE') {
+                    SchoolAdminModel.errorFileUploadMsg = 'The file you are trying to upload is not a .pdf file. Please try again';
+                } else {
+                    SchoolAdminModel.errorFileUploadMsg = 'The file ' + file.name + ' returned an error and was not added to the queue.';
+                }
+
+                $modalUploadFileSchoolAdmin.unblock();
+            },
+            'onCancel': function (file) {
+                $('#uploadifive-filePdfSchoolAdmin-queue').hide();
+                $modalUploadFileSchoolAdmin.unblock();
+            }
+        });
+    }
+</script>

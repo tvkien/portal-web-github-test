@@ -1,0 +1,230 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.DataLocker.TestFormViewModel
+
+<style>
+    #dvCreateVirtualTest .columns label {
+        font-weight: 500;
+    }
+
+    #dvCreateVirtualTest .block-content-dropdown-marquee {
+        width: 100%
+    }
+    #dvCreateVirtualTest #categoryListCreateForm,
+    #dvCreateVirtualTest #categoryListCreateForm::placeholder,
+    #dvCreateVirtualTest .comboTreeWrapper::placeholder,
+    #dvCreateVirtualTest .comboTreeWrapper,
+    #dvCreateVirtualTest .block-text-name::placeholder,
+    #dvCreateVirtualTest .block-text-name {
+        width: 100% !important;
+        color: var(--textColor);
+    }
+    #dvCreateVirtualTest #categoryListCreateForm {
+        padding-right: 1.5rem !important;
+    }
+    #portal-v2-containter #dvCreateVirtualTest .block-text-name .box-select {
+        width: calc(100% - 28px) !important;
+    }
+    #dvCreateVirtualTest .comboTreeArrowBtn {
+        background-color: transparent;
+        width: 24px;
+    }
+    #dvCreateVirtualTest .comboTreeArrowBtn span {
+        position: relative;
+        top: 10px;
+    }
+    #dvCreateVirtualTest .comboTreeArrowBtn .mdi-chevron-down::before {
+        font-weight: 900;
+        font-size: 18px;
+        color: #343a40;
+    }
+    .comboTreeDropDownContainer li {
+        color: var(--selectColor);
+        padding: 0
+    }
+</style>
+
+<section style='z-index: 2004; margin-bottom: 6em'>
+    <div class='block-border' style='z-index: 2004'>
+        <div id="dvCreateVirtualTest" class='block-content block-24 bubbleSheetSelector form' style='z-index: 1004'>
+            <h2 class="header">
+                Create New Form
+            </h2>
+            <ul style="display: none" id="error-messages" class="message error"></ul>
+            <ul style="display: none" id="success-message" class="message success">
+                <li>Form created.</li>
+            </ul>
+            <fieldset class="p-2">
+                <div class="columns">
+                    @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                    {
+                        <div class="mb-3">
+                            <label>State</label>
+                            <select id="selectStateForm"></select>
+                        </div>
+                        <div class="mb-3 block-content-dropdown-marquee">
+                            <label>@LabelHelper.DistrictLabel</label>
+                            <div class="block-text-name">
+                                <select id="selectDistrictForm" style="width: 100%;"></select>
+                                <div class="box-select">
+                                    <span class="overlay"></span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <div class="mb-3 block-content-dropdown-marquee">
+                        <label>Template</label>
+                        <div class="block-text-name">
+                            <select id="selectTemplate" style="width: 100%;"></select>
+                            <div class="box-select">
+                                <span class="overlay"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <p>
+                        <label> Category</label>
+                        <input id="categoryListCreateForm" type="text" placeholder="Select Category" autocomplete="off" style="width: 390px;" />
+                    </p>
+                    <p>
+                        <label>Form Name</label>
+                        <input type="text" id="inputVirtualTestName" style="width: 100%;" />
+                    </p>
+                </div>
+            </fieldset>
+            <div class="modal-component-footer" style="margin: 0 -24px -24px -24px">
+                <div slot="footer">
+                    <button type="button" id="btnCancelCreateTestBank" onclick="cancelCreateVirtualTest()">Cancel</button>
+                    <button type="button" id="btnCreateTestBank" onclick="createVirtualTest()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+
+    $(function () {
+        $('#selectDistrictForm').marquee();
+        $('#selectTemplate').marquee({ widthSelected: 360 });
+        $('.virtualtest-legend').on('click', function () {
+            var $virtualtestContent = $('.virtualtest-content');
+            $virtualtestContent.toggle();
+        });
+        $('#PopupCreateVirtualTest').css({ "overflow": 'hidden' });
+
+        @if (Model.IsPublisher || Model.IsNetworkAdmin)
+        {
+            <text>
+                populateSate();
+            </text>
+        }
+        else {
+            <text>
+                PopularTemplate();
+                GetDataSetCategories();
+        $('#categoryListCreateForm').parents('.comboTreeInputWrapper').css('pointer-events', 'none');
+            </text>
+        }
+    });
+
+    $('#selectStateForm').change(function () {
+        $('#selectDistrictForm').empty();
+        $('#selectTemplate').empty();
+        if ($('#selectStateForm').val() !== 'select') {
+            populateDistricts();
+        }
+    });
+
+    $('#selectDistrictForm').change(function () {
+        $('#selectTemplate').empty();
+        if ($('#selectDistrictForm').val() !== 'select') {
+            PopularTemplate();
+            GetDataSetCategories();
+        }
+    });
+
+    function populateSate() {
+        $('#selectStateForm').empty();
+        $.get('@Url.Action("GetStateByPublisherOrNetworkAdmin", "PopulateStateDistrict")', function (states) {
+            AddSelectListItems($('#selectStateForm'), states, 'Select State');
+        });
+
+    }
+
+    function populateDistricts() {
+        $('#selectDistrictForm').empty();
+        var stateValue = $('#selectStateForm').val();
+        if (stateValue !== 'select') {
+            if ('@Model.IsPublisher' === 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrictForm'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrictForm'), districts);
+                });
+            }
+            if ('@Model.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrictForm'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrictForm'), districts);
+                });
+            }
+        }
+    }
+
+    function PopularTemplate()
+    {
+       // var districtId = -1;
+        var districtId = $('#selectDistrictForm').val();
+        if (districtId == null || districtId <= 0 || districtId === 'select') {
+            districtId = -1;
+        }
+        $('#selectTemplate').empty();
+        $.get('@Url.Action("LoadTemplateCreateForm", "DataLockerEntryForm")', { districtId: districtId }, function (template) {
+            AddSelectListItems($('#selectTemplate'), template, 'Select Template');
+        });
+    }
+
+    function numberQuestionTextBox_Keydown(e) {
+        // Allow: backspace, delete, tab, escape, enter and .
+        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+            // Allow: Ctrl+A
+            (e.keyCode === 65 && e.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (e.keyCode >= 35 && e.keyCode <= 39)) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+    }
+    var comboTree1 = null;
+    var categoryElementId = '#categoryListCreateForm';
+
+    function GetDataSetCategories() {
+        $.get('@Url.Action("GetDataSetCategoriesToComboTreeByDistrictId", "CategoriesAPI")?districtid=' + $('#selectDistrictForm').val(), function (categoryList) {
+            //defaul datalocker category
+            if (!comboTree1) {
+                comboTree1 = $(categoryElementId).comboTree({
+                    source: [],
+                    isMultiple: false,
+                    cascadeSelect: true,
+                    collapse: false,
+                    selected: [24]
+                });
+
+
+
+            }
+            if (comboTree1) {
+                comboTree1.setSource(categoryList);
+                $(categoryElementId).parent().parent().css({ 'width': '250px' });
+                $(categoryElementId).css({ 'width': '250px' });
+                $(categoryElementId).change(function (e) {
+                    $(this).val(comboTree1 ? comboTree1.getSelectedNames() : '');
+                });
+            }
+            if (comboTree1 && ('@Model.AllowChangeDataSetCategory' === 'False')) {
+                $(categoryElementId).parents('.comboTreeInputWrapper').addClass('disabled');
+            }
+        });
+    }
+</script>

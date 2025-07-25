@@ -1,0 +1,389 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.StudentLoginViewModel
+@{
+    Layout = "~/Views/Shared/_LogOnPartial_v2.cshtml";
+}
+
+@{
+    var RegistrationCodeUrl = Model.IsStudentLogin == true ? Url.Action("RegistrationCode", "Student") : Url.Action("RegistrationCode", "Parent");
+}
+
+<section id="login-block" class="box-shadow">
+    @*-------------------BLOCK-HEADER------------------------*@
+    @if (!string.IsNullOrEmpty(Model.LogOnHeaderHtmlContent))
+    {
+        <div id="divLogOnHeader" class="block-header LogOnHeader">
+            @Html.Raw(Model.LogOnHeaderHtmlContent)
+        </div>
+    }
+    else
+    {
+        if (Model.IsStudentLogin)
+        {
+            <div class="block-header bg-student-login">LinkIt! Student Login</div>
+        }
+        else
+        {
+            <div class="block-header bg-parent-login">LinkIt! Parent Login</div>
+        }
+
+    }
+    @*-------------------BLOCK-CONTENT------------------------*@
+    <div class="block-border" id="divLogOn">
+        <div class="block-content">
+            @if (!Model.HideLoginCredentials)
+            {
+                @*-------------------login-form-section------------------------*@
+                using (Html.BeginForm("LogOn", "Student", FormMethod.Post, new { @class = "form with-margin", id = "login-form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.HiddenFor(m => m.DistrictId)
+                    @Html.HiddenFor(m => m.IsStudentLogin)
+                    <div class="account-login-form">
+                        <div>
+                            <label for="Username"><span class="big">Username</span></label>
+                            @Html.TextBoxFor(m => m.UserName, new { @class = "full-width first-focus", placeholder = "Enter your username" })
+                        </div>
+                        <div>
+                            <label for="Password"><span class="big">Password</span></label>
+                            @*<input type="password" placeholder="Enter your password" autocomplete="on" name="pass" id="pass" class="full-width" value="" maxlength="50" />*@
+                            @Html.PasswordFor(m => m.Password, new { @class = "full-width pass", maxlength = "50", placeholder = "Enter your password", autocomplete = "off" })
+                            <i id="togglePassword" class="fa-sharp fa-solid fa-eye-slash text-navy icon-input-password"></i>
+                        </div>
+
+                    </div>
+
+                    @*-------------------recaptcha-section------------------------*@
+                    <div id="divCaptcha" style="display: none" class="g-recaptcha recatcha" data-sitekey="6Lf7ggwTAAAAABY1PZKfYruOIvY8oZae2obJH0os"></div>
+                    <p class="input-height">
+                        <input type="hidden" type="checkbox" name="KeepLogged" id="KeepLogged" value="1" class="mini-switch">
+                        <label style="display: none" for="KeepLogged" class="inline">Keep me logged in</label>
+                    </p>
+                }
+
+                @*-------------------forgot-password-section------------------------*@
+                <form class="form" id="password-recovery" method="post" action="@Url.Action("ResetPassword", "Student")">
+                    <div class="forgot-password-container">
+                        <div id="title-forgot-password">
+                            <a href="#">Forgot Password?</a>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                        <div id="content-forgot-password">
+                            <label for="recovery-username">Username</label>
+                            <div class="input-with-button">
+                                @Html.TextBoxFor(x => x.UserName, new { id = "recovery-username", placeholder = "Enter your username" })
+                                <button type="submit" class="btn-accept">Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                @*-------------------resgistration-code-section------------------------*@
+                <form class="form" id="r-code" method="post" action="@RegistrationCodeUrl" style="margin-top:1.5rem;">
+                    <div class="resgistration-code-container">
+                        <div id="title-resgistration-code">
+                            <a href="#">Have a registration code?</a>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                        <div id="content-resgistration-code">
+                            <label for="rcode-rcode">Registration Code</label>
+                            <div class="input-with-button">
+                                @Html.HiddenFor(m => m.IsStudentLogin)
+                                @Html.TextBoxFor(x => x.RCode, new { id = "rcode-rcode", placeholder = "Enter your Registration Code" })
+                                <button type="submit" class="btn-accept">Submit</button>
+                            </div>
+
+                        </div>
+                    </div>
+                </form>
+                <button form="login-form" style="width:100%" type="submit" class="btn-accept">Login</button>
+            }
+
+            @*-------------------sso-section------------------------*@
+            @if (Model.EnableLoginByGoogle || Model.EnableLoginByMicrosoft || (Model.EnableLoginByClever && Model.IsStudentLogin) || Model.EnableLoginByNYC)
+            {
+                @*-------------------break-section------------------------*@
+                if (!Model.HideLoginCredentials)
+                {
+                    <div class="break-section my-4">
+                        <div class="break__content">OR</div>
+                    </div>
+                }
+
+                <div class="sso-section">
+                    @if (Model.EnableLoginByGoogle)
+                    {
+                        <a class="btn-sso" href="@Url.Action("singlesignon", new { provider = "google" , isStudentLogin = Model.IsStudentLogin, returnUrl = Request.Params["ReturnUrl"] })">
+                            <div class="btn-sso-group">
+                                <img src="@Url.Content("~/Content/images/logo/logo-google.svg")" />
+                                <span>Sign in with Google</span>
+                            </div>
+                        </a>
+                    }
+
+                    @if (Model.EnableLoginByMicrosoft)
+                    {
+                        <a class="btn-sso" href="@Url.Action("singlesignon", new { provider = "microsoft", isStudentLogin = Model.IsStudentLogin, returnUrl = Request.Params["ReturnUrl"] })">
+                            <div class="btn-sso-group">
+                                <img src="@Url.Content("~/Content/images/logo/logo-microsoft.svg")" />
+                                <span>Sign in with Microsoft</span>
+                            </div>
+                        </a>
+                    }
+
+                    @if (Model.EnableLoginByClever && Model.IsStudentLogin)
+                    {
+                        <a class="btn-sso" href="@Url.Action("singlesignon", new { provider = "clever", isStudentLogin = Model.IsStudentLogin, returnUrl = Request.Params["ReturnUrl"] })">
+                            <div class="btn-sso-group">
+                                <img src="@Url.Content("~/Content/images/logo/logo-clever.svg")" />
+                                <span>Sign in with Clever</span>
+                            </div>
+                        </a>
+                    }
+
+                    @if (Model.EnableLoginByNYC)
+                    {
+                        if (Model.IsStudentLogin)
+                        {
+                            <a class="btn-sso" href="@Url.Action("NYCSignIn", "PassThrough", new { loginType = "student" })">
+                                <div class="btn-sso-group">
+                                    <img src="@Url.Content("~/Content/images/logo/logo-nyc.png")" />
+                                    <span>Sign in with NYC Auth</span>
+                                </div>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="btn-sso" href="@Url.Action("NYCSignIn", "PassThrough", new { loginType = "parent" })">
+                                <div class="btn-sso-group">
+                                    <img src="@Url.Content("~/Content/images/logo/logo-nyc.png")" />
+                                    <span>Sign in with NYC Auth</span>
+                                </div>
+                            </a>
+                        }
+                    }
+					@if (Model.EnableLoginByClassLink)
+					{
+						<a class="btn-sso" href="@Url.Action("singlesignon", new { provider = "classlink", isStudentLogin = Model.IsStudentLogin, returnUrl = Request.Params["ReturnUrl"] })">
+							<div class="btn-sso-group">
+								<img src="@Url.Content("~/Content/images/logo/logo-classlink.png")" />
+								<span>Sign in with ClassLink</span>
+							</div>
+						</a>
+					}
+                </div>
+
+
+            }
+        </div>
+    </div>
+    <div id="custom-footer-logon" style="bottom: 15px; position: fixed;right: 10%;">
+        <img src="../../Content/images/loog-linkit-16x16.png" style="position: relative; top: 5px;"></img>
+        <span style="font-size: 11px;">Copyright &copy; @DateTime.Now.ToString("yyyy") | Powered by LinkIt!</span>
+    </div>
+</section>
+
+@if (Model.ShowAnnouncement && !string.IsNullOrEmpty(Model.AnnouncementText))
+{
+    <section id="message">
+        <div class="block-content no-title light-bg">
+            <p class="mini-infos-update">
+                @Html.Raw(Model.AnnouncementText)
+            </p>
+        </div>
+    </section>
+}
+
+<script type="text/javascript">
+    $(document).ready(function () {
+
+        if ('@Model.IsRequireKioskMode' === 'True' && '@ViewBag.PortalPageType' === 'Student')
+        {
+            //Check Kiosk Mode
+            if ( navigator.userAgent.indexOf('CrOS') === -1 ||
+			(navigator.userAgent.indexOf('CrOS') !== -1 && screen.height !== document.documentElement.clientHeight))
+            {
+                window.location.href = '@Url.Action("StudentLogonError", "Error")';
+            }
+        }
+
+        if ('@Model.HasTemporaryPassword' == "True") {
+            $('#login-block').removeBlockMessages({ animate: false }).blockMessage("We have sent you an email with a link to finish resetting your password. Unable to find the email? Try checking your spam folder. If you still can't log in, have us resend the email or contact your district administrator.", { type: 'warning', animate: false});
+        }
+
+        $('#login-form').submit(function (event) {
+            event.preventDefault();
+
+            var userName = $('#UserName').val();
+            var password = $('#Password').val();
+            var districtId = $('#DistrictId').val();
+            var keepLogged = $('#KeepLogged').attr('checked') ? true : false;
+            var redirectUrl = '@Model.RedirectUrl';
+            var requestVerificationToken = $('input[name="__RequestVerificationToken"]').val();
+
+            if (!userName || userName.length == 0) {
+                $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please enter your user name', { type: 'warning', animate: false });
+            }
+            else if (!password || password.length == 0) {
+                $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please enter your password', { type: 'warning', animate: false });
+            } else {
+                var submitBt = $(this).find('button[type=submit]');
+                submitBt.disableBt();
+
+                var target = $(this).attr('action');
+                if (!target || target == '') {
+                    target = document.location.href.match(/^([^#]+)/)[1];
+                }
+
+                var data = {
+                    UserName: userName,
+                    Password: password,
+                    DistrictId: districtId,
+                    KeepLogged: keepLogged,
+                    RedirectUrl: redirectUrl,
+                    __RequestVerificationToken: requestVerificationToken,
+                    g_recaptcha_response: $('#g-recaptcha-response').val(),
+                     IsStudentLogin: '@Model.IsStudentLogin'
+                };
+
+                $.ajax({
+                    url: target,
+                    type: 'POST',
+                    data: data,
+                    success: function (result) {
+                        if (result.IsAuthenticated == undefined) {
+                            $('#login-block').replaceWith(result);
+                            $('#message').hide();
+                            if (result.ShowCaptcha) {
+                                $('#divCaptcha').show();
+                                //reload recatcha
+                                grecaptcha.reset();
+                            }
+                        } else {
+                            if (!result.IsAuthenticated) {
+                                $('#login-block').removeBlockMessages({ animate: false }).blockMessage(result.Message, { type: result.Type,animate:false });
+                                if (result.ShowCaptcha) {
+                                    $('#divCaptcha').show();
+                                    //reload recatcha
+                                    grecaptcha.reset();
+                                }
+                            }
+                            else {
+                                if (result.HasTemporaryPassword) {
+                                    location.href = "/Account/SetAccountInformation/?id=" + result.UserID + "&pw=" + result.HasTemporaryPassword;
+                                } else {
+                                    location.href = result.RedirectUrl;
+                                }
+                            }
+                        }
+
+                        submitBt.enableBt();
+                    },
+                    error: function () {
+                        $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Error while contacting server, please try again', { type: 'error', animate: false });
+                        submitBt.enableBt();
+                    }
+                });
+
+                $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please wait, checking login...', { type: 'loading', animate: false });
+            }
+        });
+
+        $('#password-recovery').submit(function (event) {
+            event.preventDefault();
+
+            var userName = $('#recovery-username').val();
+            var districtId = $('#DistrictId').val();
+
+            if (!userName || userName.length == 0) {
+                $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please enter your user name', { type: 'warning', animate: false });
+            } else {
+                var data = {
+                    Username: userName,
+                    DistrictId: districtId,
+                    IsStudentLogin: '@Model.IsStudentLogin'
+                };
+
+                $.ajax({
+                    url: '@Url.Action("ResetPassword", "Student")',
+                    type: 'POST',
+                    data: data,
+                    success: function (result) {
+                        $('#login-block').removeBlockMessages({ animate: false }).blockMessage(result.message, { type: 'success', animate: false });
+                    }
+                });
+            }
+        });
+
+        $('#r-code').submit(function (event) {
+            event.preventDefault();
+
+            var rcode = $('#rcode-rcode').val();
+            var isStudentLogin = $('#IsStudentLogin').val();
+
+            if (!rcode || rcode.length == 0) {
+                $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please enter your Registration Code', { type: 'warning', animate: false });
+            } else {
+                var data = {
+                    rcode: rcode,
+                    isStudentLogin: isStudentLogin
+                };
+
+                $.ajax({
+                    url: '@Url.Action("RegistrationCode", "Student")',
+                    type: 'POST',
+                    data: data,
+                    success: function (result) {
+                        if (result.type == 'error') {
+                            $('#login-block').removeBlockMessages({ animate: false }).blockMessage(result.message, { type: 'error', animate: false });
+                        }
+                        else {
+                            $('#login-block').replaceWith(result);
+                        }
+                    }
+                });
+            }
+        });
+
+        if ('@SessionManager.ShowCaptcha' == 'True') {
+            $('#divCaptcha').show();
+        }
+
+         $(".btn-google").click(function () {
+             $('#login-block').removeBlockMessages({ animate: false }).blockMessage('Please wait, checking login...', { type: 'loading', animate: false });
+         });
+
+        $('.btn-sso').on('click', function (e) {
+            var currentHref = $(this).attr('href');
+            var fragment = window.location.hash;
+            if (fragment) {
+                $(this).attr('href', currentHref + encodeURIComponent(fragment));
+            }
+        });
+
+
+        $(function () {
+            var togglePassword = $("#togglePassword");
+            var password = $(".pass");
+            togglePassword.on("click", function () {
+                // toggle the type attribute
+                var type = password.attr("type") === "password" ? "text" : "password";
+                password.prop("type", type);
+
+                // toggle the icon
+                $(this).toggleClass("fa-eye fa-eye-slash");
+            });
+
+            $("#title-forgot-password").on("click", function () {
+                // toggle the icon
+                $('#content-forgot-password').toggle(200);
+                $(this).children().last().toggleClass("fa-chevron-down fa-chevron-up");
+            });
+            $("#title-resgistration-code").on("click", function () {
+                // toggle the icon
+                $('#content-resgistration-code').toggle(200);
+                $(this).children().last().toggleClass("fa-chevron-down fa-chevron-up");
+            });
+        })
+    });
+</script>

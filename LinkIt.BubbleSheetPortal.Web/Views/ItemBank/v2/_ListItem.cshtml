@@ -1,0 +1,442 @@
+<style>
+    #qtiItemDataTableView tbody tr {
+        height: 100% !important; /* Fix for IE9 */
+    }
+</style>
+<style type="text/css">
+
+    .qtiItemDataTableView .dataTables_empty {
+        height: 366px;
+        text-align: center;
+    }
+
+    .qtiItemDataTableView {
+        min-height: 100px;
+    }
+
+    .ui-dialog .block-border {
+        width: 100% !important;
+    }
+
+    .dialog-custom-new-skin .grid_5 {
+        float: none;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+        width: 100% !important;
+        display: block;
+    }
+
+    .qtiItemDataTableView th:first-child .divContainerStyle,
+    .qtiItemDataTableView td:first-child .divContainerStyle {
+        width: 50px;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-CustomAlertDialog"] .block-content {
+        padding: var(--spacingDefault) !important;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-CustomAlertDialog"] .block-content > div {
+        line-height: normal !important;
+    }
+
+    .qtiItemDataTableView td:last-child .divContainerStyle {
+        width: 100% !important;
+    }
+</style>
+<div id="divListItem">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h3 id="headingGroupName" class="h3 mb-0"></h3>
+        <div>
+            <img src="/Content/themes/AssignmentRegrader/images/create-test.png" id="imgCreateTestPopup" onclick="createTestView()" class="img-action" title="Save as Test" style="padding-top: 0px !important; display: none">
+            <img src="/Content/themes/AssignmentRegrader/images/create-test-grey.png" id="imgCreateTestPopupGrey" class="img-action" style="cursor: auto !important; display:none;padding-top: 0px !important" title="Save as Test">
+            <img src="/Content/themes/AssignmentRegrader/images/pdf-create.png" onclick="PrintQTIItemGroupView()" class="img-action" title="Create PDF" style="padding-top: 0px !important;display: none">
+        </div>
+    </div>
+    <div>
+        <table id="qtiItemDataTableView" class="datatable table no-margin qtiItemDataTableView w-100" width="100%">
+            <thead>
+                <tr>
+                    <th scope="col" class="black-cell"><span class="loading"></span></th>
+                    <th scope="col" style="text-align: center;">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Question Order
+                    </th>
+                    <th scope="col" style="text-align: center;">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Content
+                    </th>
+                    <th scope="col" style="text-align: center;">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                    </th>
+                    <th style="display: none"></th>
+                    <th style="display: none"></th>
+                    <th style="display: none"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="height: 60px;"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+    function htmlEncode(value) {
+        //create a in-memory div, set it's inner text(which jQuery automatically encodes)
+        //then grab the encoded contents back out.  The div never exists on the page.
+        return $('<div />').text(value).html();
+    }
+    displayGroupNameView();
+
+    var oTableQtiItemView;
+    function LoadQTIItemsToTableView() {
+        var optionsQTIItemsToTableView = {
+            bServerSide: true,
+            bFilter: false,
+            bStateSave: false,
+            sServerMethod: "GET",
+            bDestroy: true,
+            bAutoWidth: false,
+            //bProcessing: false,
+            sAjaxSource: '@Url.Action("GetQTIItems", "QTIITem")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "QTIItemGroupID", value: $("#hiddenQIItemGroupID").val() }
+                );
+            },
+            iDisplayLength: 100,
+            aoColumns: [
+                { sType: 'string', sName: 'QuestionOrder', bSearchable: true, bSortable: false, sClass: 'col-action', sWidth: '75px' },
+                { sType: 'string', sName: 'QTIItemID', bSearchable: true, bSortable: false, sClass: 'col-action', sWidth: '80px' },
+                { sType: 'string', sName: 'Title', bSearchable: true, bSortable: false},
+                { sType: 'string', sName: 'VirtualTestCount', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'TestDisplay', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'ToolTip', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'int', sName: 'MaxItemTooltipLength', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+
+            aaSorting: [[0, "asc"]],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(DisplayIconsPopupView(aData[1], aData[0],aData[3],aData[4]));
+                $('td:eq(2)', nRow).html(DisplayQTIItemTileView1(aData[1], aData[2]));
+                $('td:eq(1)', nRow).html(aData[0]);
+                $('td:eq(0)', nRow).closest('tr').attr('id', aData[1]);
+                $('td:eq(2)', nRow).attr('id', aData[1]);//Add attribute Id for column Item Bank as QTIItemID
+                $('td:eq(2)', nRow).attr("onclick", 'showEditQtiItem(' + aData[1] + ',1)');
+                $('td:eq(2)', nRow).addClass('cursor-pointer');
+                $('td:eq(2)', nRow).addClass('with-tip');
+                $('td:eq(2)', nRow).bind({
+                    mouseenter: function () {
+                        displayAssignedItemTooltipView($(this), aData[5],aData[6]);
+                    },
+                    mouseleave: function () {
+                        $(this).removeClass('with-tip');
+                        $('#tips div:last-child').html('');
+                    }
+                });
+                //$('td:eq(2)', nRow).css('font-size','10px');
+                addWordBreakToTableCellItem($('td:eq(2)', nRow), 35, aData[2]);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                $('#filterSheets').attr("disabled", "disabled");
+                ShowBlock($('#qtiItemDataTableView'), 'Loading');
+                $('#qtiItemDataTableView').find('.loading').show();
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#qtiItemDataTableView').unblock();
+                $('#filterSheets').removeAttr("disabled");
+                $('.with-tip').tip();
+                $('#qtiItemDataTableView').find('.loading').hide();
+
+                var oSettings1 = $('#qtiItemDataTableView').dataTable().fnSettings();
+                var iTotalRecords1 = oSettings1.fnRecordsTotal();
+
+                //if (iTotalRecords1 == 0) {
+                //    $("#imgCreateTestPopupGrey").show();
+                //    $("#imgCreateTestPopup").hide();
+                //} else {
+                //    $("#imgCreateTestPopupGrey").hide();
+                //    $("#imgCreateTestPopup").show();
+                //}
+
+                LoadImages('#qtiItemDataTableView');
+
+                MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+                formatTableForAddingVertialScrollBar('qtiItemDataTableView', 'scrollItemQtiItemDataTableView', 'noscrollItemQtiItemDataTableView', 'scrollItemQtiItemDataTableViewIE9', 'noscrollItemQtiItemDataTableViewIE9');
+                loadContentImageHotSpot('#qtiItemDataTableView');
+                loadContentNumberLineHotspot('#qtiItemDataTableView');
+                loadContentDragAndDrop('#qtiItemDataTableView');
+
+                calculatorSequenceWidth("#qtiItemDataTableView partialsequence");
+
+                return true;
+            },
+            fnInitComplete: function () {
+                var tableEl = $('#qtiItemDataTableView')[0];
+                var wrapper = document.createElement('div');
+                wrapper.classList.add('table-wrapper-scroll');
+                tableEl.parentNode.insertBefore(wrapper, tableEl);
+                wrapper.appendChild(tableEl);
+            }
+        };
+
+        $("#qtiItemDataTableView").data("options", optionsQTIItemsToTableView);
+        initializeDataTable($("#qtiItemDataTableView"));
+
+        $('#qtiItemDataTableView').dataTable()
+            .rowReordering({
+                sURL: '@Url.Action("UpdateQuestionOrder","QTIItem")',
+                idToMaskLoading: 'qtiItemDataTableView',
+                fnAlert: (function (message) {
+                    alert(message);
+                })
+            });
+        oTableQtiItemView = $('#qtiItemDataTableView').dataTable();
+        $('#qtiItemDataTableView').on('draw.dt', function () {
+            $('.with-tip').tip();
+        });
+    }
+
+    function DisplayQTIItemTileView(xmlContent) {
+        var title = '';
+        $(xmlContent).find('.mainbody, .mainBody').each(function () {
+            title = $(this).text();
+        });
+        return title;
+    }
+
+    function DisplayQTIItemTileView1(qtiItemID, xmlContent) {
+        var title = '';
+
+        xmlContent = correctInlineChoice(xmlContent);
+
+        $(xmlContent).find('.itemBody, itemBody, itembody').each(function () {
+            var itemBody = $(this);
+            itemBody.find("videolinkit").replaceWith(function () {
+                return $('');
+            });
+            if ($(xmlContent).find("responsedeclaration").attr("partialgrading") == "1") {
+                itemBody.find("sourcetext").each(function () {
+                    if ($(this).attr("pointvalue") > 0) {
+                        $(this).addClass("marker-correct");
+                    }
+                });
+            } else {
+                $(xmlContent).find("correctResponse").each(function () {
+                    var id = $(this).attr("identifier");
+                    itemBody.find("sourcetext[identifier=\"" + id + "\"]").addClass("marker-correct");
+                });
+            }
+
+            title = itemBody.html();
+        });
+        //title = title.replace(/<videolinkit/g, "<video").replace(/<\/videolinkit>/g, "</video>").replace(/<sourcelinkit /g, "<source ").replace(/<\/sourcelinkit>/g, "</source>");
+        title = title.replaceAll("<object", "<object style='display: none;'");
+        var divTitle = '<div class="fontFamily" style="max-height:60px; overflow:hidden;" onclick="showEditQtiItem(' + qtiItemID + ',1)">' + title + '</div>';///LNKT-5785
+        return divTitle;
+    }
+
+    function DisplayIconsPopupView(qtiItemID, qtiItemOrder, virtualTestCount, testDisplay) {
+        var duplicateIcon = '@Url.Content("~/Content/themes/AssignmentRegrader/images/icon-pencil.png")';
+        var duplicateLink = '<a href="javascript:void(0);" title="Duplicate item" class="with-tip jsDuplicateItem" '
+            + ' qtiItemID="' + qtiItemID + '"'
+            + '><img src ="' + duplicateIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        var tagIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle.png")';
+        var tagIconString = '<a href="javascript:void(0)" onclick="showTagPopup(' + qtiItemID + ')" title="Assign Tag" class="with-tip"><img src="' + tagIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        var standardIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")';
+        var standardIconString = '<a href="javascript:void(0)" onclick="showStandardPopup(' + qtiItemID + ')" title="Assign Standard" class="with-tip"><img src="' + standardIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        var deleteIcon = '<i class="custom-icon fa-solid fa-circle-xmark icon-red me-1"></i>';
+        var titleDelete = "<p style='font-size: 12px;'>Delete</p>";
+        var deleteIconString = '<a href="javascript:void(0)" onclick="removeItemView(' + qtiItemID + ',' + qtiItemOrder + ')" title="' + titleDelete + '" qtiItemID="' + qtiItemID + '" qtiItemOrder="' + qtiItemOrder + '" class="with-tip" style="white-space:nowrap">' + deleteIcon + '</a>';
+        //return duplicateLink + tagIconString + standardIconString + deleteIconString;
+        var virtualTestIconLink = '';
+        //LNKT-5663:Linkit want to display icon in the leftmost column,not the last comlumn
+        if (virtualTestCount > 0) {
+            //var title = testDisplay.replace(/\, /g, '\n');// add line break for each item
+            var title = testDisplay.replace(/\, /g, '<br />');// add line break for each item
+
+            title = "<p style='text-align: left; font-size: 12px;'>" + title + "</p>";
+
+            var virtualTestIcon = '@Url.Content("~/Content/themes/AssignmentRegrader/images/virtual-question.svg")';
+            virtualTestIconLink = '<a href="javascript:void(0);" class="with-tip" title="' + title + '"'
+                + ' qtiItemID="' + qtiItemID + '"'
+                + '><img src ="/' + virtualTestIcon + '" width="16" height="16" style="margin-left: 4px;position:relative;top: -1px;"></a>';
+        }
+        return deleteIconString + virtualTestIconLink;
+    }
+    @*function removeItemView(qtiItemID, qtiItemOrder) {
+        if (confirm('Do you really want to delete the selected item?')) {
+            ShowBlock($('#qtiItemDataTableView'), 'Deleting');
+            $.post('@Url.Action("DeleteQtiItem","QTIItem")', { qtiItemId: qtiItemID }, function (response) {
+                $('#qtiItemDataTableView').unblock();
+                if (response.success == 'true') {
+                    ui.qtiItemDataTableView.fnReloadAjax();
+                } else {
+                    alert(response.errorMessage);
+                }
+            });
+        }
+    }*@
+
+    function removeItemView(qtiItemID, qtiItemOrder) {
+        confirmMessageV2(
+            {
+                message: 'Do you really want to delete the selected item?',
+                cbYesBtnFuncName: `yesDeleteItemView(${qtiItemID})`,
+                cbCancelBtnFuncName: 'closeDeleteItemView()',
+                cbCloseBtnFuncName: 'closeDeleteItemView()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'deleteItemViewConfirm'
+                    }
+                },
+            }
+        )
+    }
+
+    function closeDeleteItemView() {
+        $("#deleteItemViewConfirm").dialog("close");
+    }
+
+    function yesDeleteItemView(qtiItemID) {
+        closeDeleteItemView();
+        ShowBlock($('#qtiItemDataTableView'), 'Deleting');
+            $.post('@Url.Action("DeleteQtiItem","QTIItem")', { qtiItemId: qtiItemID }, function (response) {
+                $('#qtiItemDataTableView').unblock();
+                if (response.success == 'true') {
+                    ui.qtiItemDataTableView.fnReloadAjax();
+                } else {
+                    CustomAlert(response.errorMessage, true, 400)
+                }
+            });
+    }
+
+    function displayAssignedItemTooltipView(e, data, maxItemTooltipLength) {
+        if (data == null) {
+            data = '';
+        }
+        var width = '100px'; //default
+        if (maxItemTooltipLength <= 300) {
+            width = '300px';
+        }
+        else if (maxItemTooltipLength <= 400) {
+            width = '400px';
+        }
+        else {
+            width = '500px';
+        }
+
+        $(e).attr('title', '<p style="text-align:left;width:' + width + ';white-space: normal;word-break: break-all">' + data.split('|').join('<br />') + '</p>');
+    }
+    function displayGroupNameView() {
+        var groupName = $("#hdGroupName").val();
+        if (groupName == null) {
+            groupName = '';
+        }
+        if (groupName.length > 30) {
+            groupName = groupName.substring(0, 27) + '...';
+            $("#headingGroupName").attr('title', '<p style="text-align:left;width:400px;white-space: normal;word-break: break-all">' + htmlEncode( $("#hdGroupName").val()).split('|').join('<br />') + '</p>');
+            $("#headingGroupName").addClass('with-tip');
+        }
+        $("#headingGroupName").text(groupName);
+    }
+</script>
+<script type="text/javascript">
+    $(function () {
+        LoadQTIItemsToTableView();
+
+        $('#qtiItemDataTableView tbody').click(function (event) {
+            $(oTableQtiItemView.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+        });
+
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function (e) {
+
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+
+        });
+
+    });
+    function createTestView() {
+        $("#addNewItemFromLibraryPopup").parent().css('z-index', 1001);
+        PopupVirtualTestForm();
+    }
+    function PrintQTIItemGroupView() {
+        ShowBlock($('#qtiItemDataTableView'), 'Loading');
+        var url = '@Url.Action("PrintQTIItemGroup", "QTIItem")';
+
+        $.ajax({
+            url: url,
+            type: 'post',
+            cache: false,
+            data: { qtiItemGroupID: $("#hiddenQIItemGroupID").val() }
+        }).done(function (data) {
+            $('#qtiItemDataTableView').unblock();
+
+            var dataQuery = $(data);
+
+            var status = 'fail';
+            dataQuery.find("status").each(function () {
+                status = $(this).text();
+            });
+
+            var pdfUrl = '';
+            dataQuery.find("pdfurl").each(function () {
+                pdfUrl = $(this).text();
+            });
+
+            if (status === 'ok' && pdfUrl != undefined && $.trim(pdfUrl) != '') {
+                DownLoadAlertView('Successfully created PDF', pdfUrl);
+            } else {
+                DownLoadAlertView('Created PDF failed');
+            }
+        });
+    }
+    function DownLoadAlertView(message, url) {
+        var yesButton = '<button style="width:63px;margin-left:0px;" onclick="YesClickView(this);" url="' + url + '">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 240 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;text-align:center;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + yesButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "DownLoadAlertViewDialog")
+            .appendTo("body")
+
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 300,
+                maxheight: 400,
+                resizable: false,
+                open: function () { $(".ui-dialog-titlebar-close").hide(); }
+            });
+    }
+
+    function YesClickView(item) {
+        $("#DownLoadAlertViewDialog").dialog("close");
+        var url = $(item).attr('url');
+        if (url != undefined && $.trim(url) != '') window.open(url);
+    }
+</script>

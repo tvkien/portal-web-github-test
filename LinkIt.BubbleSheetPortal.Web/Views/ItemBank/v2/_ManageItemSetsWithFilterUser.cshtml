@@ -1,0 +1,405 @@
+<style>
+
+    /* No data available in table */
+    /*     #dataTableSet .dataTables_empty div {
+         width: 445px !important;
+     }
+
+    .scrollItemSet thead,
+    .scrollItemSet tbody{display: block;}
+    .scrollItemSet tbody {
+        height: 400px;
+        overflow: auto;
+        overflow-x: hidden;
+    }
+    .scrollItemSet{
+        width: 463px !important;
+    }*/
+    #dataTableSet thead tr th:first-child .divContainerStyle,
+    #dataTableSet tbody tr td:first-child .divContainerStyle {
+        text-align: center
+    }
+    .scrollItemSet tbody td {
+        /*word-break: break-all;*/ /* Not apply for whole table, just apply for long word in each td*/
+        word-wrap: break-word;
+    }
+
+/*    #dataTableSet_wrapper {
+        margin: 0
+    }*/
+    #divItemSets {
+        margin: 0;
+        width: 100%;
+    }
+    /* .scrollItemSet tbody td:nth-of-type(1) div{
+        width: 38px;
+        text-align: center;
+    }
+    .scrollItemSet tbody td:nth-of-type(2) div
+    {
+        width: 380px;
+    }
+    .scrollItemSet img {
+        padding-left: 0px;
+        padding-right: 0px;
+    }
+    .noscrollItemSet tbody td:nth-of-type(2) div
+    {
+        width: 385px !important;
+    }*/
+    /* IE9 */
+    /*  .scrollItemSetIE9 tbody td:nth-of-type(1) div
+    {
+        width: 89px;
+    }
+    .noscrollItemSetIE9 tbody td:nth-of-type(2) div
+    {
+        width: 328px !important;
+    }
+     #dataTableSet tbody tr {
+        height: 100% !important;
+    }
+     #divdataTableSet {
+        height: -20px;
+    }*/
+</style>
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form" id="divOnTopSet">
+                <h1>
+                    Item Sets
+                    <a href="javascript:void(0)" onclick="ShowMoveItemSet(this);"  class=" float-right btn btn-link pe-0">
+                        Copy / Move
+                        <i class="fa-solid fa-plus ms-2"></i>
+                    </a>
+                </h1>
+                <input type="hidden" id="hdfQtiBankIdSet" value="@ViewBag.ItemBankId" />
+                @*<p style="height: 14px"></p>*@
+                <div id="divItemSets" class="no-margin last-child">
+                    <table id="dataTableSet" class="datatable table no-margin scrollItemSet last-child" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" align="center"><div class="divContainerStyle"><input type="checkbox" id="ckCheckAll" class="m-auto" /></div></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Item Set
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<script type="text/javascript">
+
+    var oTableItemSet;
+    var keepCurrentPageItemSet = 0;
+    var displayStartItemSet = 0;
+
+    $(function () {
+        removeTips();
+
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            //bFilter: false,
+            bStateSave: false,
+            sAjaxSource: getAjaxSourceItemSetDefaultEmpty(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            //bAutoWidth: false,
+            //aLengthMenu: [[10], [10]],
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTIGroupId', bSearchable: false, bSortable: false, sWidth: "40px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: "423px" },
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityItemSet(aData[0], aData[1], aData[3]));
+                addWordBreakToTableCell($('td:eq(1)', nRow), 15, aData[1]);
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableSet'), "Loading");
+                if (keepCurrentPageItemSet == 1) {
+                    keepCurrentPageItemSet = 0;
+
+                    oTableItemSet.DataTable.settings[1]._iDisplayStart = displayStartItemSet;//settings[1] because settings[0] is ItemBank
+                }
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableSet').unblock();
+                $('.with-tip').tip();
+
+                formatTableForAddingVertialScrollBar('dataTableSet', 'scrollItemSet', 'noscrollItemSet', 'scrollItemSetIE9', 'noscrollItemSetIE9');
+                $('#ckCheckAll').prop('checked', false)
+                addEventChecked();
+                portalV2SkinCheckBox();
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('dataTableSet_filter');
+                $('#ckCheckAll').prop('checked', false)
+                addEventChecked();
+                portalV2SkinCheckBox();
+            }
+        };
+
+        $("#dataTableSet").data("options", options);
+        //initializeDataTable($("#dataTableSet"));
+        oTableItemSet = $('#dataTableSet').dataTable();
+
+        function setIconVisibilityItemSet(itemSetId, Name) {
+            var moveItemSetString = '<input type="checkbox" title="Move\/Copy Item Set" itemsetid="' + itemSetId + '" itemsetName="' + encodeURIComponent(Name) + '" class="with-tip moveQtiItem chkItemSet m-auto" />';
+            return moveItemSetString;
+        }
+
+        $('#ckCheckAll').change(function () {
+            var isChecked = $(this).is(':checked');
+            $('.chkItemSet').prop('checked', isChecked);
+            portalV2SkinCheckBox()
+        });
+
+    });
+
+    function addEventChecked() {
+        $('.chkItemSet').change(function () {
+            var isChecked = $(this).is(':checked');
+            if (!isChecked) {
+                $('#ckCheckAll').prop('checked', false)
+            }
+            var isCheckAll = true;
+            $('.chkItemSet').each(function () {
+                var itemChecked = $(this).is(":checked");
+                if (!itemChecked) {
+                    isCheckAll = false
+                }
+            });
+            if (isCheckAll) {
+                $('#ckCheckAll').prop('checked', true)
+            }
+            portalV2SkinCheckBox()
+        })
+    }
+
+    function getAjaxSourceItemSetDefaultEmpty() {
+        return '@Url.Action("LoadItemSetsWithFilterUser2")?itemBankId=0';//default
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        //$('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: 2000' + 'px; z-index: 1001;"></div>');
+    }
+
+    function cancelChange() {
+        $(".dialog").dialog("close");
+    }
+
+    function CheckItemSet(control) {
+        var itemSetId = $(control).attr('itemSetId');
+        var itemSetName = $(control).attr('itemSetName');
+    }
+
+    function ShowMoveItemSet(control) {
+        var itemSetIdList = [];
+
+        $(".chkItemSet:checked").each(function (index) {
+            var itemSetId = $(this).attr('itemsetid');
+            itemSetIdList.push(itemSetId);
+        });
+
+        //var itemSetId = $(control).attr('itemSetId');
+        //var itemSetName = $(control).attr('itemSetName');
+        if (itemSetIdList.length > 0) {
+            var worker = $('<div />');
+            worker
+                .addClass("dialog")
+                .attr("id", "divMoveCopyItemSetDialog")
+                .appendTo("body")
+                .load('@Url.Action("LoadMoveItemSetWithFilterUser", "ItemBank")?itemSetIdList=' + itemSetIdList.join(';'), function () {
+                    worker.dialog({
+                        title: $(this).attr("Move Item Set"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                            $('#dataTableSet').dataTable().fnDraw(false);
+                            $('#dataTableItemBank').dataTable().fnDraw(false);
+                        },
+                        modal: false,
+                        width: 750,
+                        resizable: false
+                    });
+
+                    InitFilterDialog();
+                });
+
+            showModalDialogBG();
+        }
+    }
+
+    function InitFilterDialog() {
+        if ('@ViewBag.IsNetworkAdmin' == 'True') {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                addDefaultOption($('#selectStateDialog'), "State");
+                addSelectListItems($('#selectStateDialog'), states);
+                $('#selectStateDialog').val(@ViewBag.StateId);
+                $('#selectStateDialog').trigger('change');
+            });
+        } else {
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                addDefaultOption($('#selectStateDialog'), "State");
+                addSelectListItems($('#selectStateDialog'), states);
+            });
+        }
+
+        $('#selectStateDialog').on("change", function () {
+            $('#selectDistrictDialog').empty();
+            $('#selectUserDialog').empty();
+            $('#selectDistrictDialog').trigger('change');
+            $('#selectUserDialog').trigger('change');
+            var stateValue = $('#selectStateDialog').val();
+            if (stateValue != 'select') {      
+                if ('@ViewBag.IsPublisher' === 'True') {
+                    $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        AddSelectListItems($('#selectDistrictDialog'), districts, 'Select @LabelHelper.DistrictLabel');
+                    });
+                } else {
+                    if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                        $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                            addDefaultOption($('#selectDistrictDialog'), "@LabelHelper.DistrictLabel");
+                            addSelectListItems($('#selectDistrictDialog'), districts);
+                        });
+                    }
+                }
+            }
+        });
+
+        $('#selectDistrictDialog').on("change", function () {
+            $('#selectUserDialog').empty();
+            $('#selectUserDialog').trigger('change');
+            var districtValue = $('#selectDistrictDialog').val();
+            if (districtValue != 'select' && districtValue != null) {
+                $.get('@Url.Action("GetActiveManagedUsers", "ItemBank")', { districtId: districtValue }, function (users) {
+                    AddSelectListItems($('#selectUserDialog'), users, 'Select User');
+                });
+            }
+        });
+
+        $('#selectUserDialog').on("change", function () {
+            if  ($('#selectUserDialog').val() != 'select') {
+                $("#dataTableItemBankOnTop").dataTable().fnReloadAjax(getAjaxSourceDialog());
+            }
+        });
+
+
+        $("#divMoveItemSet").append('<div id="divPopupMoveItemSetConfirmDialog" class="dialog"></div>');
+        $("#divPopupMoveItemSetConfirmDialog").append(html);
+        $('#divPopupMoveItemSetConfirmDialog').dialog({
+            title: "",
+            open: function () {
+                //Create overlay for popup
+                var zindex = $('#divMoveCopyItemSetDialog').parent().css('z-index');
+                var zIndexConfirm = parseInt(zindex) + 1;
+                var zIndexDialog = parseInt(zindex) + 2;
+                $("body").append('<div class="my-overlay" style="z-index: ' + zIndexConfirm + ';width:' + $(document).width() + 'px;height:2000' + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                $('#divPopupMoveItemSetConfirmDialog').parent().css('z-index', zIndexDialog);
+            },
+            beforeclose: function () {
+                //TODO if you want do anything after close popup.
+                return true;
+            },
+            close: function () {
+                $('#divPopupMoveItemSetConfirmDialog').remove();
+                $("body .my-overlay:last").remove();//remove the last only
+                $('#dataTableItemBankOnTop').unblock();
+            },
+            modal: false,
+            width: 500,
+            resizable: false
+        });
+    }
+</script>
+<script type="text/javascript">
+        //var posWas;
+        //$.browser.chrome = /chrom(e|ium)/.test(navigator.userAgent.toLowerCase());
+        //$(window).bind('scroll', function () { //when the user is scrolling...
+        //    SetItemSetPosition();
+        //    if ($.browser.chrome) {
+        //        var setPositionTime = setTimeout(function () {
+        //            SetItemSetPosition();
+        //            clearTimeout(setPositionTime);
+        //        },0);
+        //    } else {
+        //        //SetItemSetPosition();
+        //    }
+        //});
+
+        //window.onresize = function (event) {
+        //    SetItemSetPosition();
+        //    if ($.browser.chrome) {
+        //        var setPositionTime = setTimeout(function () {
+        //            SetItemSetPosition();
+        //            clearTimeout(setPositionTime);
+        //        }, 0);
+        //    } else {
+        //        //SetItemSetPosition();
+        //    }
+        //};
+        //var setPositionTimeOut;
+        //function SetItemSetPosition() {
+
+        //    var itemBankTop = $('#divItemBanks').offset().top;
+        //    var newTop = 0;
+        //    if ($('#divItemBanks').height() > $('#divItemSets').height()) {
+
+        //        if ($.browser.chrome) {
+        //            newTop = document.body.scrollTop;
+        //        } else {
+        //            newTop = document.documentElement.scrollTop;
+        //        }
+        //        if (newTop < itemBankTop) {
+        //            newTop = itemBankTop;
+        //        }
+
+        //    }
+        //    else {
+        //        newTop = itemBankTop;
+        //    }
+        //    if (newTop > $('#divItemBanks').height() + $('#divItemBanks').offset().top) {
+        //        newTop = $('#divItemBanks').height() + $('#divItemBanks').offset().top;
+        //    }
+
+        //    var newLeft = $('#divItemBanks').offset().left + $('#divItemBanks').width();
+        //    $('#divItemSets').css({ 'left': newLeft + 'px' + '', 'top': newTop + 'px', 'position': 'absolute' });
+        //    var setOffsetTime = setTimeout(function () {
+        //        $('#divItemSets').offset({ top: newTop, left: newLeft });
+        //        clearTimeout(setOffsetTime);
+        //    }, 0);
+        //}
+</script>

@@ -1,0 +1,522 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models.Constants
+@using LinkIt.BubbleSheetPortal.Web
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.RestrictionAccessRightViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Data Access Management");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<style>
+    .block-text-name {
+        width: 100% !important;
+    }
+
+    #restriction-access {
+        padding: 24px;
+    }
+
+        #restriction-access fieldset {
+            padding: 0 !important;
+        }
+
+        #restriction-access .block-content {
+            padding: 24px !important
+        }
+
+            #restriction-access .block-content h1 {
+                padding: 0 !important
+            }
+
+        #restriction-access .btn-container {
+            display: flex;
+            justify-content: flex-end;
+            gap: 18px;
+        }
+
+    #divOnTopCategory .last-child {
+        margin: 0 !important
+    }
+
+    #divOnTopCategory #dataTableCategory .dataTables_empty {
+        text-align: center
+    }
+
+    #divOnTopCategory #dataTableTest .dataTables_empty {
+        text-align: center;
+    }
+
+    #divOnTopCategory .block-footer {
+        display: none
+    }
+
+    #btnActions {
+        visibility: hidden;
+        display: inline-flex !important;
+    }
+
+    .fileter-checkbox {
+        border: 1px solid var(--selectBorder);
+        position: relative;
+    }
+
+
+    .block-checkbox {
+        height: 150px;
+        overflow: auto;
+        background: var(--bg-white);
+        border-top: 1px solid var(--grey);
+    }
+
+    .filter-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .checkbox-label {
+        background-color: var(--blue1);
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+    }
+
+    .bg-full {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        top: 0;
+        background: rgba(76, 76, 76, 0.8);
+        z-index: 100;
+    }
+
+    .loading-dot {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 101;
+        color: var(--white);
+        font-size: 20px;
+    }
+
+        .loading-dot:after {
+            content: ' .';
+            animation: dots 1s steps(5, end) infinite;
+        }
+
+    @@keyframes dots {
+        0%, 20% {
+            color: rgba(0,0,0,0);
+            text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0);
+        }
+
+        40% {
+            color: white;
+            text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0);
+        }
+
+        60% {
+            text-shadow: .25em 0 0 white, .5em 0 0 rgba(0,0,0,0);
+        }
+
+        80%, 100% {
+            text-shadow: .25em 0 0 white, .5em 0 0 white;
+        }
+    }
+
+    .checkbox-child {
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+    }
+
+        .checkbox-child:nth-last-child(even) {
+            background: #f1f1f1
+        }
+
+    #portal-v2-containter input[type=checkbox]:not(.form-check-input) {
+        flex: 0 0 18px;
+    }
+</style>
+<link href="@BundleHelper.Version("~/Content/themes/Constellation/css/custom.css") rel="stylesheet" type="text/css" />
+<div id="restriction-access">
+    <div class="block-border form">
+        <div class="filter-group  block-content">
+            <h1 class="mb-4">Data Access Management</h1>
+            <div class="tabs">
+                <ul class="p-0 nav nav-pills nav-theme mb-4">
+                    <li :class="tabActive === 1 ? 'nav-item current' : ''">
+                        <a class="nav-link" v-on:click="onSelectTab(1)">Category Restrictions</a>
+                    </li>
+                    <li :class="tabActive === 2 ? 'nav-item current' : ''">
+                        <a class="nav-link" v-on:click="onSelectTab(2)">Test Restrictions</a>
+                    </li>
+                </ul>
+            </div>
+            <div v-show="tabActive === 1" class="tabs-details">
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                {
+                    <text>
+                        <fieldset id="publisherContent" class="grey-bg">
+                            <p class="title-large mb-4">Select District</p>
+                            <div class="row">
+                                <div class="col-3">
+                                    <label>State</label>
+                                    <div class="block-text-name">
+                                        <select id="selectState" class="full-width"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-3 block-content-dropdown-marquee">
+                                    <label>@LabelHelper.DistrictLabel</label>
+                                    <div class="block-text-name">
+                                        <select id="selectDistrict" class="full-width"></select>
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </text>
+                }
+            </div>
+            <div v-show="tabActive === 2" class="tabs-details">
+                @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                {
+                    <fieldset class="background-filter">
+                        <p class="title-large mb-4">Select District</p>
+                        <div class="row">
+                            <div class="col-3 fileter-item">
+                                <label>State</label>
+                                <div class="block-text-name">
+                                    <select id="selectedStateID" v-model="selectedState" v-on:change="selectStates" class="full-width">
+                                        <option v-for="item in state" :value="item.Id">{{item.Name}}</option>
+                                    </select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3 fileter-item">
+                                <label>{{districtLabel}}</label>
+                                <div class="block-text-name">
+                                    <select id="selectedDistrictID" v-model="selectedDistrict" v-on:change="onDistrictChange" class="full-width">
+                                        <option v-for="item in districts" :value="item.Id">{{item.Name}}</option>
+                                    </select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                }
+                <fieldset class="background-filter checkbox-container mb-4">
+                    <p class="title-large mb-4">Select Test Filters</p>
+                    <div class="filter-container row">
+                        <div class="col-3">
+                            <div class="fileter-checkbox filter-test-types">
+                                <div v-show="showLoadingTest" class="bg-full">
+                                    <div class="loading-dot">Loading</div>
+                                </div>
+                                <div class="checkbox-label">
+                                    <input id="test-types" v-model="checkTestTypes" v-on:change="allSelectTestTypes" type="checkbox" name="test-types" class="chechbox" />
+                                    <label style="margin-left: 0.25rem" for="test-types">All Categories</label>
+                                </div>
+                                <div class="block-checkbox">
+                                    <div v-for="item in testType" class="checkbox-child">
+                                        <input :id="'test-type' + item.Id" v-on:change="selectCheckBoxTestTypes" type="checkbox" :value="item.Id" v-model="arrTestTypes" :name="item.Id"
+                                               class="chechbox">
+                                        <label style="margin-left: 0.25rem" :title="item.Tooltip" :for="'test-type' + item.Id">{{item.Name}}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-3">
+                            <div class="fileter-checkbox checkbox-subject">
+                                <div v-show="showLoadingSubjects" class="bg-full">
+                                    <div class="loading-dot">Loading</div>
+                                </div>
+                                <div class="checkbox-label">
+                                    <input id="subjects" type="checkbox" name="subjects" v-model="checkSubject" v-on:change="allSelectSubjects" class="chechbox" />
+                                    <label style="margin-left: 0.25rem" for="subjects">All @LabelHelper.Subjects</label>
+                                </div>
+                                <div class="block-checkbox">
+                                    <div v-for="item in subjects" class="checkbox-child">
+                                        <input :id="item.Id" :value="item.Id" v-model="arrSubject" v-on:change="selectCheckBoxSubjects" type="checkbox" :name="item.Name"
+                                               class="chechbox">
+                                        <label style="margin-left: 0.25rem" :for="item.Name">{{item.Name}}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-3">
+                            <div class="fileter-checkbox">
+                                <div v-show="showLoadingGrades" class="bg-full">
+                                    <div class="loading-dot">Loading</div>
+                                </div>
+                                <div class="checkbox-label">
+                                    <input id="grades" v-model="checkGrades" v-on:change="allSelectGrades" type="checkbox" name="grades" class="chechbox" />
+                                    <label style="margin-left: 0.25rem" for="grades">All @LabelHelper.TestGrades</label>
+                                </div>
+                                <div class="block-checkbox">
+                                    <div v-for="item in grades" class="checkbox-child">
+                                        <input :id="item.Id" v-on:change="selectCheckBoxGrades" type="checkbox" :value="item.Id" v-model="arrGrades" :name="item.Id"
+                                               class="chechbox">
+                                        <label style="margin-left: 0.25rem" :for="item.Id">{{item.Name}}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                </fieldset>
+                <div class="btn-container">
+                    <button v-on:click="onClearFilter" class="btn-blue" type="submit">Clear Filters</button>
+                    <button v-on:click="onFilter" id="btnFilter" :disabled='disabled ? true : false' class="btn-red" type="submit">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div v-show="tabActive === 1" id="restrictionCatogories">
+        @Html.Partial("v2/_ListCategories")
+    </div>
+    <div v-show="tabActive === 2" id="restrictionTest">
+        @Html.Partial("v2/_ListTests")
+    </div>
+</div>
+@Html.Partial("v2/_EditAccessRightsTemplate")
+<script type="text/javascript">
+    var virtualTestID = '';
+    var rolesValue = '@Model.UserRoleId';
+    var isSetDelay = false;
+    var districtLabel = '@LocalizeHelper.LocalizedWithoutComment(LocalizeResourceKeys.DISTRICT_LABEL)';
+    var districtId = 0;
+    var RESTRICTION_TYPE = {
+        FULL_ACCESS: "Full Access",
+        NO_ACCESS: "No Access",
+        PARTIAL_ACCESS: "Partial Access",
+    };
+</script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Scripts/Lib/vue.min.2.5.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Scripts/RestrictionAccessRight/callAjax.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Scripts/RestrictionAccessRight/v2/restrictionAccess.js")"></script>
+<script type="text/javascript">
+
+    $(function () {
+        @if (Model.IsPublisher)
+        {
+            <text>
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                populateStates(states);
+            });
+            </text>
+        }
+        @if (Model.IsDistrictAdmin)
+        {
+            <text>
+            districtId = '@Model.DistrictId';
+            </text>
+        }
+
+        $('#selectState').change(function () {
+            $('#selectDistrict').empty();
+            $('#selectDistrict').marquee();
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+        });
+
+        $('#selectedStateID').change(function () {
+            $('#selectedDistrictID').marquee();
+        })
+
+        $('#selectDistrict').change(function () {
+            if ($('#selectDistrict').val() != 'select') {
+                districtId = $('#selectDistrict').val();
+                $("#dataTableCategory").dataTable().fnDraw();
+            }
+        });
+
+        $('body').on('click', '#btnActions', function () {
+            var $listItems = app.tabActive == 1 ? $('input[name=chkCategory]:checked') : $('input[name=chkTest]:checked');
+            if (!$listItems.length) {
+                return;
+            }
+            var dataJson = {
+                CategoryTestId: 0,
+                XLITeacherModuleRoleId: 0,
+                TeacherRestriction: 'No Access',
+                SchoolAdminRestriction: 'No Access',
+                XLISchoolAdminModuleRoleId: 0,
+                DisplayName: app.tabActive == 1 ? 'Category' : 'Test',
+                RestrictionTypeName: app.tabActive == 1 ? 'category' : 'test',
+                SchoolAdminRestrictionContent: 'No Access',
+                TeacherRestrictionContent: 'No Access',
+                DistrictId: app.tabActive == 1 ? districtId : app.selectedDistrict
+            };
+            if ($listItems.length == 1) {
+                ShowBlock($('#restriction-access'), "Loading");
+                var $item = $listItems.first();
+                dataJson.CategoryTestId = app.tabActive == 1 ? $item.attr('categoryId') : $item.attr('virtualTestId');
+                dataJson.XLITeacherModuleRoleId = $item.attr('xLITeacherModuleRoleId');
+                dataJson.XLISchoolAdminModuleRoleId = $item.attr('xLISchoolAdminModuleRoleId');
+                dataJson.DisplayName = app.tabActive == 1 ? $item.attr('categoryName') : $item.attr('testName');
+                dataJson.CategoryId = $item.attr('categoryId');
+
+                $.ajax(`${URL_GET_RESTRICTION_BY_RESTRICTEDOBJECT}?categoryId=${dataJson.CategoryId}&virtualTestId=${dataJson.CategoryTestId}&districtId=${dataJson.DistrictId}`)
+                    .done(function (response) {
+                        if (response) {
+                            if (app.tabActive == 1) {
+                                dataJson.TeacherRestriction = response.CategoryTeacherRestriction;
+                                dataJson.SchoolAdminRestriction = response.CategorySchoolRestriction;
+                                dataJson.TeacherRestrictionContent = response.CategoryTeacherRestrictionContent;
+                                dataJson.SchoolAdminRestrictionContent = response.CategorySchoolRestrictionContent;
+                            }
+                            else {
+                                dataJson.TeacherRestriction = response.TestTeacherRestriction;
+                                dataJson.SchoolAdminRestriction = response.TestSchoolRestriction;
+                                dataJson.TeacherRestrictionContent = response.TestTeacherRestrictionContent;
+                                dataJson.SchoolAdminRestrictionContent = response.TestSchoolRestrictionContent;
+
+                                var testType = app.testType.find((m) => { return m.Id == dataJson.CategoryId });
+                                var testTypeIndex = app.testType.findIndex((m) => { return m.Id == dataJson.CategoryId });
+                                if (testType) {
+                                    testType.TeacherRestriction = response.CategoryTeacherRestriction;
+                                    testType.SchoolAdminRestriction = response.CategorySchoolRestriction;
+                                    testType.TeacherRestrictionContent = response.CategoryTeacherRestrictionContent;
+                                    testType.SchoolAdminRestrictionContent = response.CategorySchoolRestrictionContent;
+
+                                    app.testType.splice(testTypeIndex, 1, testType);
+                                }
+                            }
+                            handleLoadRestrictAccessDialog(dataJson);
+                            $('#restriction-access').unblock();
+                        }
+                    })
+                    .fail(function () {
+                        $('#restriction-access').unblock();
+                    })
+            }
+            else {
+                handleLoadRestrictAccessDialog(dataJson);
+            }
+        });
+
+        $('body').on('click', '.editRestrictAccess', function () {
+            ShowBlock($('#restriction-access'), "Loading");
+            var dataJson = {
+                CategoryTestId: app.tabActive == 1 ? $(this).attr('categoryId') : $(this).attr('virtualTestId'),
+                XLITeacherModuleRoleId: $(this).attr('xLITeacherModuleRoleId'),
+                TeacherRestriction: $(this).attr('teacherRestrictAccess'),
+                SchoolAdminRestriction: $(this).attr('schoolAdminRestrictAccess'),
+                XLISchoolAdminModuleRoleId: $(this).attr('xLISchoolAdminModuleRoleId'),
+                DisplayName: app.tabActive == 1 ? $(this).attr('categoryName') : $(this).attr('testName'),
+                RestrictionTypeName: app.tabActive == 1 ? 'category' : 'test',
+                CategoryId: $(this).attr('categoryId'),
+                SchoolAdminRestrictionContent: $(this).attr('schoolAdminRestrictAccessContent'),
+                TeacherRestrictionContent: $(this).attr('teacherRestrictAccessContent'),
+                DistrictId: app.tabActive == 1 ? districtId : app.selectedDistrict
+            };
+
+            $.ajax(`${URL_GET_RESTRICTION_BY_RESTRICTEDOBJECT}?categoryId=${dataJson.CategoryId}&virtualTestId=${dataJson.CategoryTestId}&districtId=${dataJson.DistrictId}`)
+                .done(function (response) {
+                    if (response) {
+                        if (app.tabActive == 1) {
+                            dataJson.TeacherRestriction = response.CategoryTeacherRestriction;
+                            dataJson.SchoolAdminRestriction = response.CategorySchoolRestriction;
+                            dataJson.TeacherRestrictionContent = response.CategoryTeacherRestrictionContent;
+                            dataJson.SchoolAdminRestrictionContent = response.CategorySchoolRestrictionContent;
+                        }
+                        else {
+                            dataJson.TeacherRestriction = response.TestTeacherRestriction;
+                            dataJson.SchoolAdminRestriction = response.TestSchoolRestriction;
+                            dataJson.TeacherRestrictionContent = response.TestTeacherRestrictionContent;
+                            dataJson.SchoolAdminRestrictionContent = response.TestSchoolRestrictionContent;
+
+                            var testType = app.testType.find((m) => { return m.Id == dataJson.CategoryId });
+                            var testTypeIndex = app.testType.findIndex((m) => { return m.Id == dataJson.CategoryId });
+                            if (testType) {
+                                testType.TeacherRestriction = response.CategoryTeacherRestriction;
+                                testType.SchoolAdminRestriction = response.CategorySchoolRestriction;
+                                testType.TeacherRestrictionContent = response.CategoryTeacherRestrictionContent;
+                                testType.SchoolAdminRestrictionContent = response.CategorySchoolRestrictionContent;
+
+                                app.testType.splice(testTypeIndex, 1, testType);
+                            }
+                        }
+                        handleLoadRestrictAccessDialog(dataJson);
+                        $('#restriction-access').unblock();
+                    }
+                })
+                .fail(function () {
+                    $('#restriction-access').unblock();
+                })
+        });
+    });
+
+    function populateStates(states) {
+        addDefaultOption($('#selectState'), "State");
+        addSelectListItems($('#selectState'), states);
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            if ('@Model.IsPublisher' === 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+                });
+            }
+            if ('@Model.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+                });
+            }
+        }
+    }
+
+
+    function handleLoadRestrictAccessDialog(data) {
+        data.DisplayName = decodeURI(data.DisplayName);
+        var container = loadEditAccessRights(data)
+        container.appendTo("body");
+        container.dialog({
+            title: "",
+            open: function () {
+                $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.maxZ - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+            },
+            close: function () {
+                container.remove();
+                $("body .my-overlay").remove();
+            },
+            modal: false,
+            width: 500,
+            resizable: false
+        });
+    }
+</script>

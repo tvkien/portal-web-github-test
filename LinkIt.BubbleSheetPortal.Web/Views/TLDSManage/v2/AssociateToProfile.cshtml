@@ -1,0 +1,384 @@
+@model  LinkIt.BubbleSheetPortal.Models.DTOs.TLDS.AssociateToProfileDTO
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.ReportItemTLDSManager, "Add Profiles to Group", true);
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+<style>
+    .block-footer {
+        display: none;
+    }
+
+    #portal-v2-containter .table-add-profile-group input[type=checkbox]:not(.form-check-input) {
+        margin: 0;
+    }
+</style>
+
+<form id="associateToProfileForm">
+    <article class="container_12">
+        <section class="m-0">
+            <div class="block-content form" id="divOnTop">
+                <h1>Add Profiles to Group</h1>
+                <div style="display:none; margin-top: 15px; z-index: 2" id="checkArchived" class="form-check form-switch align-items-center ms-0 p-0 float-left position-relative">
+                    <a class="block-heading-item js-change-inactive-profiles text-decoration-none" href="javascript:void(0)" style="color: inherit">Show archived: <span class="me-3">Off</span></a>
+                    <div>
+                        <input class="form-check-input" type="checkbox" id="btnArchived">
+                    </div>
+                </div>
+
+                <ul style="display: none" id="error-messages-create" class="message error"></ul>
+                @if (ViewBag.SelectGroups != null)
+                {
+                    <p>
+                        <label>Select the group to associate to profile:</label>
+                        @Html.DropDownListFor(m => m.TLDSGroupID, (List<SelectListItem>)ViewBag.SelectGroups)
+                    </p>
+                }
+
+
+                <div class="no-margin last-child" id="idTopNavigation">
+                    <table id="dataTable" class="datatable table no-margin table-add-profile-group" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col">
+                                    <input type="checkbox" id="chkAllProfiles" />
+                                </th>
+                                <th scope="col">Last Name</th>
+                                <th scope="col">First Name</th>
+                                <th scope="col">EC Educator</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Last Modified</th>
+                                <th scope="col">School</th>
+                                <th scope="col"></th>
+                                <th scope="col"></th>
+                                <th scope="col"></th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button class="btn-blue d-block me-3" id="btnBack" type="button">Back</button>
+                    <button class="btn-red d-block" id="btnSave" type="button">Save</button>
+                </div>
+            </div>
+
+        </section>
+    </article>
+</form>
+
+
+<script type="text/javascript">
+    var showReadonly = false;
+
+    // #region Page load
+    $(function () {
+        $('.stats').addClass('current');
+        $('#rpTLDSManager').addClass('current');
+
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceTLDSProfileOther(),
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aaSorting: [[2, 'desc']],
+            oLanguage: { sSearch: "" },
+            aoColumns: [
+                { sType: 'integer', sName: 'ProfileId', bSearchable: false, bSortable: false, sWidth: '60px', sClass: 'text-center' },
+                { sType: 'string', sName: 'LastName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'FirstName', bSearchable: true, bSortable: true},
+                { sType: 'string', sName: 'ECSCompletingFormEducatorName', bSearchable: true, bSortable: true },
+                { sType: 'int', sName: 'Status', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'LastStatusDate', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'School', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Viewable', bSearchable: false, bVisible: false },
+                { sType: 'string', sName: 'Updateable', bSearchable: false, bVisible: false },
+                { sType: 'string', sName: 'StatusName', bSearchable: false, bVisible: false },
+                { sType: 'string', sName: 'OnlyView', bSearchable: false, bVisible: false },
+                { sType: 'string', sName: 'ECSCompletingFormEducatorName', bSearchable: false, bVisible: false },
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+                $('td:eq(4)', nRow).html(getStatusName(aData[4]));
+                $('td:eq(5)', nRow).html(displayDateWithFormat(aData[5], true));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#idTopNavigation'), "Loading");
+                $('.js-enrollment-year').removeClass('hide');
+                $('#chkAllProfiles').prop("checked", false);
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#idTopNavigation').unblock();
+                $('.with-tip').tip();
+
+                var dataTable = $('#dataTable').dataTable();
+                dataTable.fnSetFilteringDelay(500);
+                auditCheckbox();
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('dataTable_filter');
+                $("#dataTable_wrapper .block-custom-header").prepend($('#checkArchived'));
+                $('#checkArchived').css('display', 'flex');
+            }
+        };
+
+        $("#dataTable").data("options", options);
+
+        function setIconVisibility(profileId) {
+            var container = document.createElement('div');
+
+            var checkboxIcon = createEl('div', {}, {
+                'class': 'tlds-feature-item'
+            });
+            var inputIcon = createEl('input', {}, {
+                'class': 'is-modify',
+                'type': 'checkbox',
+                'name': 'chkProfile',
+                'value': profileId
+            });
+            checkboxIcon.appendChild(inputIcon);
+
+            container.appendChild(checkboxIcon);
+
+            return container;
+        }
+        function getStatusName(statusId) {
+            switch (statusId) {
+                case 10: return "Draft";
+                case 20: return "Completed but not submitted";
+                case 30: return "Completed and submitted";
+                case 40: return "Linked with Student";
+                case 50: return "Returned By School";
+                case 60: return "Recalled";
+                default: return "";
+            }
+        }
+
+        $('.js-change-inactive-profiles').on('click', function (ev) {
+            ev.preventDefault();
+            changeInactiveUser();
+        });
+
+        $('#btnArchived').click(function () {
+            $(".js-change-inactive-profiles").trigger("click");
+        });
+    });
+    // #endregion Page load
+
+    // #region Functions
+    function changeInactiveUser(ev) {
+        var $self = $('.js-change-inactive-profiles');
+
+        if (!$self.hasClass('show-inactive')) {
+            showReadonly = true;
+            $self.addClass('show-inactive');
+            $self.find('span').html('On');
+            refreshDataTable();
+        } else {
+            showReadonly = false;
+            $self.removeClass('show-inactive');
+            $self.find('span').html('Off');
+            refreshDataTable();
+        }
+    }
+
+    function refreshDataTable() {
+        var url = getAjaxSourceTLDSProfileOther();
+        var oTable = $("#dataTable").dataTable();
+        oTable.fnSettings().sAjaxSource = url;
+        oTable.fnDraw();
+    }
+
+    function getAjaxSourceTLDSProfileOther() {
+        var url = '@Url.Action("GetTDLSProfileForAssociateToGroup")';
+        if (showReadonly) {
+            var $self = $('.js-change-inactive-profiles');
+            $self.addClass('show-inactive');
+            $self.find('span').html('On');
+        }
+        url += '?showArchived=' + showReadonly;
+        return url;
+    }
+
+    function disableActionButton(disabled) {
+        if (disabled != undefined && disabled == true) {
+            $('#btnSave').prop('disabled', true);
+        } else {
+            $('#btnSave').prop('disabled', false);
+        }
+    }
+
+    function createEl(tagName, properties, attributes, textContent) {
+        var el = document.createElement(tagName);
+        var isText = Boolean(textContent);
+
+        Object.getOwnPropertyNames(properties).forEach(function (propName) {
+            var val = properties[propName];
+
+            if (propName.indexOf('aria-') !== -1 || propName !== 'role' || propName !== 'type') {
+                el.setAttribute(propName, val);
+            } else {
+                el[propName] = val;
+            }
+        });
+
+        Object.getOwnPropertyNames(attributes).forEach(function (attrName) {
+            el.setAttribute(attrName, attributes[attrName]);
+        });
+
+        if (isText) {
+            el.innerHTML = textContent;
+        }
+
+        return el;
+    }
+
+    function getUrlParameter(sParam) {
+        var sPageURL = window.location.search.substring(1),
+            sURLVariables = sPageURL.split('&'),
+            sParameterName,
+            i;
+
+        for (i = 0; i < sURLVariables.length; i++) {
+            sParameterName = sURLVariables[i].split('=');
+
+            if (sParameterName[0] === sParam) {
+                return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+            }
+        }
+    };
+    // #endregion Functions
+
+    // # Events
+    $('#btnBack').click(function () {
+        var tldsGroupId = getUrlParameter('tldsGroupId');
+        location.href = 'EditGroup?tldsGroupID=' + tldsGroupId;
+    });
+
+    $('#btnSave').click(function () {
+        var associateFormData = {
+            tldsGroupID: 0,
+            tldsProfileIDs: []
+        }
+
+        var formData = $("#associateToProfileForm").serializeArray();
+        if (formData[0].value === "0") {
+            $('#error-messages-create').html('<li> Please select group first </li>');
+            $('#error-messages-create').show();
+            setTimeout(function () {
+                $('#error-messages-create').hide();
+            }, 5000);
+        }
+        else {
+            if ('@ViewBag.SelectGroups' !== '') {
+                associateFormData.tldsGroupID = formData[0].value;
+            }
+            else {
+                associateFormData.tldsGroupID = getUrlParameter("tldsGroupId");
+            }
+            var url = '@Url.Action("AssociateToProfile")'
+
+            $('INPUT[name="chkProfile"][type=checkbox]:checked').each(function (i, e) {
+                var tldsGroupId = $(e).val();
+                associateFormData.tldsProfileIDs.push(parseInt(tldsGroupId));
+            });
+
+            if (!associateFormData.tldsProfileIDs || associateFormData.tldsProfileIDs.length == 0) {
+                $('#error-messages-create').html('<li> Please select profiles </li>');
+                $('#error-messages-create').show();
+                setTimeout(function () {
+                    $('#error-messages-create').hide();
+                }, 5000);
+                return;
+            }
+
+            ShowBlock($('#divOnTop'), "Associate to profile");
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: JSON.stringify({ associateToProfileDto: associateFormData }),
+                contentType: "application/json",
+                success: function (response) {
+                    if (response.Success) {
+                        $('#dataTable').dataTable().fnDraw(false);
+                    }
+                    $('#divOnTop').unblock();
+                }
+            });
+        }
+    });
+
+    $('#chkAllProfiles').die('click');
+    $('#chkAllProfiles').live("click", function (e) {
+        //not escalte the click event to the header of the table
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+        else if (window.event) {
+            window.event.cancelBubble = true;
+        }
+        if (this.checked) {
+            $('INPUT[name="chkProfile"][type=checkbox]').attr('checked', 'checked');
+            disableActionButton(false);
+        }
+        else {
+            $('INPUT[name="chkProfile"][type=checkbox]').removeAttr('checked');
+            disableActionButton(true);
+        }
+
+    });
+
+    $('INPUT[name="chkProfile"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkProfile"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllProfiles').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllProfiles').attr('checked', 'checked');
+            }
+            disableActionButton(false);
+        }
+        else {
+            $('#chkAllProfiles').removeAttr('checked');
+            $('#chkAllProfiles').removeClass('input-checked-v2');
+            var checkedboxes = $('INPUT[name="chkProfile"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                disableActionButton(false);
+            }
+            else {
+                disableActionButton(true);
+            }
+        }
+    });
+    function auditCheckbox() {
+        var isChecked = $('#chkAllProfiles').is(":checked");
+        if (!isChecked) {
+            $('#chkAllProfiles').removeClass("input-checked-v2");
+        }
+    }
+    // #endregion Events
+</script>

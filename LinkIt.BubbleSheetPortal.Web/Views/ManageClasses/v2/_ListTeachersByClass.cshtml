@@ -1,0 +1,189 @@
+@model LinkIt.BubbleSheetPortal.Models.Class
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+<style type="text/css">
+    .not-active {
+        pointer-events: none;
+        cursor: default;
+        text-decoration: none;
+        color: black;
+    }
+</style>
+
+<div class="last-child">
+    <table id="dataTableClassTeacher" class="datatable table no-margin center-first-column" width="100%">
+        <thead>
+            <tr>
+                <th scope="col" style="width: 50px">Actions </th>
+
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    First Name
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Last Name
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Class Role
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        $('.dataadmin').addClass('current');
+        var optionClassStudent =
+        {
+            oLanguage: { sSearch: "" },
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetTeachersForClass")?classId=@Model.Id',
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'ClassUserId', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'TeacherFirstName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'TeacherLastName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'LOEName', bSearchable: true, bSortable: true },
+                { sType: 'integer', sName: 'ClassId', bVisible: false, bSearchable: false, bSortable: false },
+                { sType: 'integer', sName: 'UserId', bVisible: false, bSearchable: false, bSortable: false }
+            ],
+            fnServerData: function (sSource, aoData, fnCallback, oSettings) {
+                oSettings.jqXHR = $.ajax({
+                    "url": sSource,
+                    "data": aoData,
+                    "success": function (result) {
+                        if (result.success == false) {
+                            $('#btnCancel').trigger('click');
+                        } else {
+                            fnCallback(result);
+                        }
+                    },
+                    "failure": function (result) {
+                    }
+                });
+            },
+            fnRowCallback: function(nRow, aData) {
+                $('td:eq(0)', nRow).html(setTeacherIconVisibility(aData[0], aData[4], aData[5], aData[3]));
+                return nRow;
+            },
+            fnPreDrawCallback: function (oSettings) {
+                ShowBlock($('#dataTableClassTeacher'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                if ('@ViewBag.IsTeacher' == 'True')
+                checkIsEditableTeachers();
+                $('#dataTableClassTeacher').unblock();
+                $('.with-tip').tip();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTableClassTeacher_filter');
+                var elSearchInput = elSearchLabel.find('input');
+                elSearchInput.attr('style', 'padding-left: 32px !important; position: relative;');
+                $('#dataTableClassTeacher_filter').addClass('data-search');
+            }
+        };
+        $("#dataTableClassTeacher").data("options", optionClassStudent);
+        initializeDataTable($("#dataTableClassTeacher"));
+    });
+    function checkIsEditableTeachers() {
+        const $primaryTeacher = $('[userid].replaceprimaryteacher');
+        const isAllowEditTeachers = $primaryTeacher.attr('userid') == @ViewBag.CurrentUserId;
+
+        if (!isAllowEditTeachers) {
+          $('[userid]').each(function () {
+            const $image = $(this).find('img');
+            const $arrow = $(this).find('i');
+            $arrow.css('opacity', .5);
+            const isPrimaryTeacher = $primaryTeacher.attr('userid') === $(this).attr('userid');
+            $image.attr('src', isPrimaryTeacher ? '@BundleHelper.Version("~/Content/themes/Constellation/images/icons/fugue/move-icon-disable.png")' : '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle-disable.png")');
+            $(this).addClass('not-active');
+          });
+        }
+    }
+    function setTeacherIconVisibility(classUserId, classId, userId, classRole) {
+        var editClass = '';
+        var addIcon = '<i class="custom-icon fa-solid fa-circle-xmark icon-red"></i>';
+        var replaceTeacherIcon = '<i class="custom-icon fa-solid fa-circle-arrow-right icon-green"></i>';
+        var isAutoFocusGroup = ('@Model.ModifiedBy' === 'Focus Group Automation');
+
+        if ('@ViewBag.IsAlowEditTeacher' !== 'True') {
+            editClass = 'not-active';
+            addIcon = '<i class="custom-icon fa-solid fa-circle-xmark icon-red" style="opacity: 0.5"></i>';
+        }
+
+        if ('@ViewBag.IsAlowEditTeacher' !== 'True' || isAutoFocusGroup) {
+            replaceTeacherIcon = '<i class="custom-icon fa-solid fa-circle-arrow-right icon-green" style="opacity: 0.5"></i>';
+        }
+
+        if (classRole == 'Primary') {
+            if (isAutoFocusGroup) {
+                return '<a href="javascript:void(0)" title="Replace Primary Teacher" classUserId="' + classUserId + '" classId="' + classId + '" userId="' + userId + '" class="with-tip replaceprimaryteacher" style="pointer-events:none">' + replaceTeacherIcon + '</a>';
+            }
+            return '<a href="javascript:void(0)" title="Replace Primary Teacher" classUserId="' + classUserId + '" classId="' + classId + '" userId="' + userId + '" class="with-tip replaceprimaryteacher ' + editClass +'">' + replaceTeacherIcon + '</a>';
+        }
+        return '<a href="javascript:void(0)" title="Remove from class" classUserId="' + classUserId + '" classId="' + classId + '" userId="' + userId + '" class="with-tip removeTeacher ' + editClass +'">' + addIcon + '</a>';
+    }
+
+     $(".removeTeacher").die("click");
+     $('.removeTeacher').live('click', function () {
+        var classUserId = $(this).attr('classUserId');
+        var classId = $(this).attr('classId');
+        var userId = $(this).attr('userId');
+        confirmMessageV2(
+            {
+                message: "Are you sure you want to remove this teacher from this class?",
+                cbYesBtnFuncName: 'yesRemoveTeacher(' + classId + ',' + + classUserId + ',' + userId + ')',
+                cbCancelBtnFuncName: 'closeRemoveTeacher()',
+                cbCloseBtnFuncName: 'closeRemoveTeacher()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'deleteClassConfirm'
+                    }
+                }
+            }
+        )
+    });
+
+    function closeRemoveTeacher() {
+         $("#deleteClassConfirm").dialog("close");
+    }
+    function yesRemoveTeacher(classId, classUserId, userId) {
+        closeRemoveTeacher();
+        $.post('@Url.Action("RemoveTeacherFromClass")', { classUserId: classUserId, classId: classId, userId: userId}, function (response) {
+            if (response == true) {
+                ui.dataTableClassTeacher.fnDraw();
+            } else {
+                alert(response.message);
+            }
+        });
+    }
+
+    $(".replaceprimaryteacher").die("click");
+    $('.replaceprimaryteacher').live('click', function () {
+        $('#divSideContent').html('');
+        $('#divSideContent').load('@Url.Action("ReplacePrimaryTeacher", new { classId = Model.Id })');
+        window.location.hash = '#divSideContent';
+    });
+
+    function LoadTeachersInClass() {
+        ui.dataTableClassTeacher.fnDraw();
+    }
+</script>

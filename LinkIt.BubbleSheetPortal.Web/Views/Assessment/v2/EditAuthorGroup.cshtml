@@ -1,0 +1,297 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.AuthorGroup.AddAuthorGroupViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testdesign, "Edit Author Group");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<style>
+    #editAuthorGroupForm fieldset {
+        padding: 0;
+        margin-bottom: 64px;
+    }
+
+    #editAuthorGroupForm .block-text-name {
+        width: 100% !important;
+    }
+
+    #editAuthorGroupForm .title-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    #divUserList .no-margin,
+    #divSchoolList .no-margin,
+    #divDistrictList .no-margin {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    #editAuthorGroupForm .block-content .no-margin.last-child {
+        margin: 0;
+    }
+
+    #divUserList .block-footer,
+    #divSchoolList .block-footer,
+    #divDistrictList .block-footer {
+        display: none !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar {
+        display: none;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-confirmDeleteUserAuthorGroupDialog"],
+    .ui-dialog[aria-labelledby="ui-dialog-title-confirmDeleteSchoolAuthorGroupDialog"],
+    .ui-dialog[aria-labelledby="ui-dialog-title-confirmDeleteDistrictAuthorGroupDialog"] {
+        height: auto !important;
+        padding: 0 !important;
+    }
+
+    #confirmDeleteUserAuthorGroupDialog,
+    #confirmDeleteSchoolAuthorGroupDialog,
+    #confirmDeleteDistrictAuthorGroupDialog {
+        padding: 0;
+    }
+
+        #confirmDeleteUserAuthorGroupDialog section,
+        #confirmDeleteSchoolAuthorGroupDialog section,
+        #confirmDeleteDistrictAuthorGroupDialog section {
+            margin: 0 !important;
+        }
+
+    .btn-container-edit-popup {
+        display: flex;
+        justify-content: flex-end;
+        gap: 18px;
+    }
+</style>
+
+<article class="container_12">
+    <section>
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Edit Author Group</h1>
+                @using (Html.BeginForm("UpdateAuthorGroup", "Assessment", FormMethod.Post, new { id = "editAuthorGroupForm", @class = "form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <ul style="display: none" id="error-messages" class="message error"></ul>
+                    <ul style="display: none" id="success-message" class="message success">
+                        <li>Author group successfully updated.</li>
+                    </ul>
+
+                    <fieldset>
+                        @Html.HiddenFor(x => x.Id)
+                        <p class="title-large" style="font-size: 22px;">Author Group Detail</p>
+                        <div class="row">
+                            @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                            {
+                                <div class="col-3">
+                                    <label>State</label>
+                                    <span class="relative">
+                                        @Html.DropDownListFor(x => x.StateId, Model.States, new { id = "selectState", @class = "full-width" })
+                                    </span>
+                                </div>
+                                <div class="col-3">
+                                    <label>@LabelHelper.DistrictLabel</label>
+                                    <div class="relative block-text-name">
+                                        @Html.DropDownListFor(x => x.DistrictId, Model.Districts, new { id = "selectDistrict", @class = "full-width" })
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                @Html.HiddenFor(x => x.StateId)
+                                @Html.HiddenFor(x => x.DistrictId)
+                            }
+
+                            @if (Model.IsPublisher || Model.IsDistrictAdmin)
+                            {
+                                <div class="col-3">
+                                    <label>School</label>
+                                    <div class="relative block-text-name">
+                                        @Html.DropDownListFor(x => x.SchoolId, Model.Schools, new { id = "selectSchool", @class = "full-width" })
+                                        <div class="box-select">
+                                            <span class="overlay"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                @Html.HiddenFor(x => x.SchoolId)
+                            }
+
+                            <div class="col-3">
+                                <label>Name</label>
+                                <span class="relative">
+                                    @Html.TextBoxFor(model => model.Name, new { @class = "full-width", tabindex = "1", maxlength = 64 })
+                                </span>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="row">
+                        <div id="divUserList" class="col-6"></div>
+                        <div id="divSchoolList" class="col-6"></div>
+                    </div>
+                    <div class="row" style="margin-top: 64px">
+                        <div class="col-6" id="divDistrictList"></div>
+                        <div class="col-6"></div>
+                    </div>
+                    <div class="btn-container-edit-popup mt-4">
+                        <button id="btnCancel" type="button" class="btn-blue">Cancel</button>
+                        <button id="btnSubmit" type="submit" name="Save" class="btn-red">Submit</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+</article>
+<div id="divOnTop"></div>
+
+<script type="text/javascript">
+    $(function () {
+        breadcrumbDetailPage('.write', '#manageAuthorGroup');
+        $('#selectSchool').marquee();
+        $('#selectDistrict').marquee();
+        $('.write').addClass('current');
+        $('#manageAuthorGroup').addClass('current');
+
+        InitData();
+
+        $('#selectState').change(function () {
+            if ($(this).val() != 'select') {
+                populateDistricts($('#selectDistrict'));
+            }
+            else {
+                $('#selectDistrict').empty();
+                $('#selectSchool').empty();
+            }
+        });
+
+        $('#selectDistrict').change(function () {
+            if ($(this).val() != 'select') {
+                populateSchools($('#selectSchool'));
+            }
+            else {
+                $('#selectSchool').empty();
+            }
+        });
+
+        $('#editAuthorGroupForm').submit(function (event) {
+            event.preventDefault();
+            $('#btnSubmit').disableBt();
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function (response) {
+                    if (response.Success != false) {
+                        $('#success-message').show();
+                    }
+                    else {
+                        addErrorMessages(response);
+                        $('#success-message').hide();
+                    }
+
+                    $('#btnSubmit').enableBt();
+                },
+                failure: function (response) {
+                    alert(response);
+                    $('#btnSubmit').enableBt();
+                }
+            });
+        });
+
+        $('#btnCancel').click(function () {
+            location.href = '@Url.Action("AuthorGroupList")';
+        });
+    });
+
+    function InitData() {
+        var stateValue = '@Model.StateId';
+        var districtSelect = $('#selectDistrict');
+        var url = '@Url.Action("GetDistricts", "PopulateStateDistrict")';//IsPublisher
+        if ('@Model.IsNetworkAdmin' === 'True') {
+            url = '@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")';
+        }
+        $.get(url, { stateId: stateValue }, function (response) {
+            addDefaultOption(districtSelect, "@LabelHelper.DistrictLabel");
+            addSelectListItems(districtSelect, response);
+            districtSelect.val('@Model.DistrictId');
+        });
+
+        var districtValue = '@Model.DistrictId';
+        var schoolSelect = $('#selectSchool');
+        $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', { districtId: districtValue }, function (response) {
+            addDefaultOption(schoolSelect, "School");
+            addSelectListItems(schoolSelect, response);
+            schoolSelect.val('@Model.SchoolId');
+        });
+
+        PopulateDataGrids();
+    }
+
+    function populateDistricts(districtSelect) {
+        districtSelect.empty();
+        $('#selectSchool').empty();
+        var stateValue = $('#selectState').val();
+        var url = '@Url.Action("GetDistricts", "PopulateStateDistrict")';//publisher
+        if ('@Model.IsNetworkAdmin' === 'True') {
+            url = '@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")';
+        }
+        $.get(url, { stateId: stateValue }, function (response) {
+            addDefaultOption(districtSelect, "@LabelHelper.DistrictLabel");
+            addSelectListItems(districtSelect, response);
+        });
+    }
+
+    function populateSchools(schoolSelect) {
+        schoolSelect.empty();
+        var districtValue = $('#selectDistrict').val();
+        $.get('@Url.Action("GetSchools", "PopulateSchoolTeacher")', { districtId: districtValue }, function (response) {
+            addDefaultOption(schoolSelect, "School");
+            addSelectListItems(schoolSelect, response);
+        });
+    }
+
+    function PopulateDataGrids() {
+        var param = { authorGroupId: '@Model.Id' };
+        $('#divUserList').load('@Url.Action("LoadListAuthorGroupUserList")', param, function (response) {
+            if (response == false) {
+                alert("Error happen. Please refresh page.");
+            }
+        });
+
+        $('#divSchoolList').load('@Url.Action("LoadListAuthorGroupSchoolList")', param, function (response) {
+            if (response == false) {
+                alert("Error happen. Please refresh page.");
+            }
+        });
+
+        if ('@Model.IsPublisher' == 'True' || '@Model.IsNetworkAdmin' == 'True') {
+            $('#divDistrictList').load('@Url.Action("LoadListAuthorGroupDistrictList")', param, function (response) {
+                if (response == false) {
+                    alert("Error happen. Please refresh page.");
+                }
+            });
+        }
+    }
+</script>

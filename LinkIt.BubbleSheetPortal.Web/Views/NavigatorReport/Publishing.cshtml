@@ -1,0 +1,493 @@
+@{
+    ViewBag.Title = "Manage Access";
+}
+
+<style>
+    .padding-top-10 {
+        padding-top: 10px;
+    }
+
+    #publishTo {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+        #publishTo td, #publishTo th {
+            border: 1px solid #a2a2a2;
+            padding: 8px;
+        }
+
+        #publishTo tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        #publishTo tr th:first-child {
+            width: 130px;
+        }
+
+        #publishTo tr:hover {
+            background-color: #ddd;
+        }
+
+        #publishTo th {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            text-align: left;
+            background-color: transparent;
+            color: #333;
+        }
+
+    .ui-widget-content {
+        background-color: transparent;
+        border: none;
+        background: none;
+    }
+
+    .navigator-report-popup-button {
+        display: inline-block;
+        margin-bottom: 5px;
+    }
+
+    .centerDiv {
+        padding-top: 10px;
+        padding-bottom: 10px;
+        text-align: center;
+    }
+
+    .table thead th {
+        text-align: center;
+    }
+
+    .columns-filters {
+        margin-top: 10px;
+    }
+
+    .columns-filter-checkbox {
+        margin-top: 5px;
+    }
+
+    .manage-class-toggle .manage-class-legend.filter-by-program {
+        padding-left: 1em;
+        font-weight: 700;
+        margin-left: 11px;
+        position: relative;
+        top: 10px;
+        z-index: 111;
+    }
+
+    .manage-class-legend.filter-by-program:not(.arrow-expand) {
+        background: #e7e7e7 url(/Content/themes/base/images/collapsed.gif) no-repeat center left;
+        background-size: 10px 10px;
+    }
+
+    .manage-class-legend.arrow-expand.filter-by-program {
+        background: #e7e7e7 url(/Content/themes/base/images/expanded.gif) no-repeat center left;
+        background-size: 10px 10px;
+    }
+
+    #filterByProgram.expand-content {
+        border: 1px solid rgb(217, 217, 217);
+        padding: 1em 1.667em 1.667em;
+        border-radius: 0.25em;
+        background-color: rgb(230, 230, 230);
+    }
+
+    .manage-class-toggle.content-filter-by-program {
+        border: none;
+        background: transparent;
+        padding: 0;
+    }
+
+    .block-controls .float-center {
+        margin-right: 35%;
+        margin-top: 0.3em;
+    }
+</style>
+<div id="managePublishing">
+    <article class="container_12" id="filterPublishing">
+        <section class="grid_12">
+            <div class="block-border form">
+                <div class="filter-group  block-content">
+                    <h1>Filter</h1>
+                    <fieldset>
+                        <legend class=" manage-class-legend" disabled="disabled">Role:</legend>
+                        <div id="filterContent" class="columns">
+                            <div class="grid_1" v-if="canPublishStudent === true" style="width:70px"><input type="checkbox" v-model="studentSelected"> Student</div>
+                            <div class="grid_2" v-if="canPublishTeacher === true" style="width:70px"><input type="checkbox" v-model="classroomSelected"> Teacher</div>
+                            <div class="grid_3" style="width:100px" v-if="(currentRoleId !== roles.SCHOOLADMIN && canPublishSchoolAdmin === true)"><input type="checkbox" v-model="schoolSelected"> School Admin</div>
+                            <div class="grid_4" v-if="([roles.PUBLISHER,roles.NETWORKADMIN,roles.DISTRICTADMIN].includes(currentRoleId) && canPublishDistrictAdmin === true)"><input type="checkbox" v-model="districtSelected"> District Admin</div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset v-show="canPublishStudent" class="grey-bg manage-class-toggle content-filter-by-program">
+                        <legend class="u-cursor-pointer manage-class-legend filter-by-program">Filter by Program, Or @LabelHelper.TestGrade</legend>
+                        <div id="filterByProgram" class="columns expand-content">
+                            <div class="fleft u-w-p-75">
+                                <h4>Program</h4>
+                                <div class="columns-filters">
+
+                                    <div v-for="program in programs" class="columns-filter">
+                                        <label>
+                                            <input type="checkbox" v-bind:value="program.programID" v-model="program.programSelected" disabled="{{isDisable}}">
+                                            {{ program.programName }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="fleft u-w-p-25">
+                                <h4>@LabelHelper.TestGrade</h4>
+                                <div class="columns-filters">
+                                    <div v-for="grade in grades" class="columns-filter">
+                                        <label>
+                                            <input type="checkbox" v-bind:value="grade.gradeID" v-model="grade.gradeSelected" disabled="{{isDisable}}">
+                                            {{ grade.gradeName }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="u-text-right u-m-t-15">
+                        <button v-on:click="clearAllCheckBox" class="grey">Clear Filter</button>
+                        <button v-on:click="applyFilter" disabled="{{isDisableFilter}}" class="u-m-l-10">Apply Filters</button>
+                        <button v-on:click="backToNavigatorReports()" class="u-m-l-10">Back</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </article>
+
+
+    <article v-show="showDatatable" class="container_12">
+        <section class="grid_12">
+            <div class="block-border">
+                <div class="block-content form">
+                    <div class="block-heading">
+                        <a class="block-heading-item is-active" href="javascript:void(0)">Manage Access</a>
+                        <a class="block-heading-item js-change-published" v-on:click="showPublishedToStaff" href="#">Show Published to Users: <span>ON</span></a>
+                    </div>
+
+                    <ul style="display: none" id="error-messages" class="message error"></ul>
+                    <div style="margin-left: -13px;" class="u-text-left u-m-t-15">
+                        <button id="btnPublish" v-on:click="publishReport()">Publish</button>
+                        <button id="btnUnPublish" v-on:click="unPublishReport()" class="u-m-l-10">Un-Publish</button>
+                    </div>
+
+                    <div class="u-clearfix u-m-t-40">
+                        <div class="no-margin last-child">
+                            <table id="dataTable" class="datatable table no-margin" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" width="30" style="text-align: left">
+                                            <input type="checkbox" id="chkAllUsers" />
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Name
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Username
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Role
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            School
+                                        </th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Published Date
+                                        </th>
+                                        <th scope="col"></th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </article>
+    <article class="container_12" style="width: 600px;" v-show="publishDialog.showingPublishDialog" id="publishArticle">
+        <section class="grid_12" style="width: 93%">
+            <div class="block-border">
+                <div class="block-content form">
+                    <div class="block-heading">
+                        <a class="block-heading-item is-active" href="javascript:void(0)">Publish</a>
+                    </div>
+                    <ul style="display: none" id="error-messages" class="message error"></ul>
+                    <div class="clearfix">
+                        <div class="no-margin last-child">
+                            <div v-show="publishDialog.isloadingPublishDialog">Loading...</div>
+                            <div v-show="!publishDialog.isloadingPublishDialog">
+                                <fieldset class="background-filter" style="margin-bottom:0px" v-show="!publishDialogCanPublish">
+                                    <p>All selected users associated with the report(s) were published already.</p>
+                                </fieldset>
+                                <div id="emailDetail" style="margin: 0px 22px 0px 22px" v-show="publishDialogCanPublish">
+                                    <div class="padding-top-10">
+                                        <input id="alsoSendEmail" type="checkbox" v-model="publishDialog.alsoSendEmail" />
+                                        <label for="alsoSendEmail">Send email notification for newly published reports</label>
+                                    </div>
+                                    <div class="padding-top-10" v-show="publishDialog.alsoSendEmail">
+                                        <textarea style="width:100%; height:100px"
+                                                  v-model="publishDialog.customNote"
+                                                  placeholder="Add custom note">
+                                        </textarea>
+                                    </div>
+                                </div>
+                                <div class="centerDiv">
+                                    <button v-on:click="confirmPublishReports" class="navigator-report-popup-button" v-show="publishDialogCanPublish">Publish</button>
+                                    <button v-on:click="cancelPublish" class="navigator-report-popup-button">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </article>
+</div>
+
+<script>
+    // #region Form Load
+    var textSearch = '';
+    var showPublished = true;
+    var global = {
+        districtId: @ViewBag.DistrictId,
+        currentRoleId: @ViewBag.CurrentRoleId,
+        getNavigatorConfigurationUrl: '@Url.Action("GetNavigatorConfigurationPublishing")',
+        indexUrl: '@Url.Action("Index")',
+        publishUrl: '@Url.Action("Publish")',
+        getPublishPopupDetailUrl: '@Url.Action("GetManageAccessPublishDetail")',
+        unPublishUrl: '@Url.Action("UnPublish")',
+    };
+    var getAssociateUserUrl = '@Url.Action("GetAssociateUser")' ;
+    $('.stats').addClass('current');
+    $('#rpNavigatorReport').addClass('current');
+
+    $(document).ready(function () {
+        ShowBlock($('#filterPublishing'), 'Loading');
+        setTimeout(function () {
+            searchDelay();
+        }, 2000);
+
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: managePublishing.getAjaxSource(),
+            bAutoWidth: false,
+            aLengthMenu: [10, 50, 100, 500, 1000],
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            oSearch: {
+                sSearch: textSearch
+            },
+            aoColumns: [
+                { sType: 'integer', sName: 'UserID', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'UserFullName', bSearchable: true, bSortable: true, sWidth: '85px' },
+                { sType: 'string', sName: 'UserName', bSearchable: true, bSortable: true, sWidth: '85px' },
+                { sType: 'string', sName: 'RoleName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'SchoolName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'PublishTime', bSearchable: true, bSortable: true },
+                { sType: 'integer', sName: 'PublishStatus', bVisible: false },
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0], aData[6]));
+
+                var dateStr = displayDateWithFormatJsonDate(aData[5], true);
+                $('td:eq(5)', nRow).html(dateStr);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+                return true;
+            },
+            fnInitComplete: function () {
+                var greyIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/download-guide-dis.png")';
+                var goldIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/download-guide.png")';
+                var greenIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/download-guide-green.png")';
+                var tooltips = '<div class="float-center"><img src=" ' + greenIcon + '"> = <b>Published</b>, <img src="' + goldIcon + '"> = <b>Partially Published</b>,<img src="' + greyIcon + '"> = <b>Un-Published</b>';
+                $('.block-controls').append(tooltips);
+            }
+        };
+
+        $("#dataTable").data("options", options);
+    });
+
+    // #endregion
+
+    // #region Functions
+
+    function setIconVisibility(userId, publishStatus) {
+        var container = document.createElement('div');
+        var actionString = '';
+
+        var checkboxIcon = createEl('div', {}, {
+            'class': 'navigator-user-item'
+        });
+        var inputIcon = createEl('input', {}, {
+            'class': 'is-modify',
+            'type': 'checkbox',
+            'name': 'chkUser',
+            'value': userId
+        });
+        checkboxIcon.appendChild(inputIcon);
+
+        switch (publishStatus) {
+            case 0:
+                actionString = setIcon("download-guide-dis.png", "Un-Published");
+                break;
+            case 1:
+                actionString = setIcon("download-guide.png", "Partially Published");
+                break;
+            default:
+                actionString = setIcon("download-guide-green.png", "Published");
+        }
+        checkboxIcon.appendChild(actionString);
+        container.appendChild(checkboxIcon);
+        return container;
+    }
+
+    function setIcon(iconName, title) {
+        var icon = '/Content/themes/Constellation/images/icons/fugue/' + iconName;
+        var actionString = createEl('a', {}, {
+            'href': 'javascript:void(0)',
+            'title': title,
+            'class': 'with-tip pIcon'
+        });
+        var publishedIcon = createEl('img', {}, {
+            'src': icon,
+            'width': '16',
+            'height': '16'
+        });
+
+        actionString.appendChild(publishedIcon);
+        return actionString;
+    }
+
+    function createEl(tagName, properties, attributes, textContent) {
+        var el = document.createElement(tagName);
+        var isText = Boolean(textContent);
+
+        Object.getOwnPropertyNames(properties).forEach(function (propName) {
+            var val = properties[propName];
+
+            if (propName.indexOf('aria-') !== -1 || propName !== 'role' || propName !== 'type') {
+                el.setAttribute(propName, val);
+            } else {
+                el[propName] = val;
+            }
+        });
+
+        Object.getOwnPropertyNames(attributes).forEach(function (attrName) {
+            el.setAttribute(attrName, attributes[attrName]);
+        });
+
+        if (isText) {
+            el.innerHTML = textContent;
+        }
+        return el;
+    }
+
+    function searchDelay(inputFilter, dataTable) {
+        var inputFilter = $("#dataTable_filter input[type='text']");
+        var dataTable = $("#dataTable");
+        var delay = null;
+
+        inputFilter.off('keyup.DT input.DT');
+
+        inputFilter.on("keyup", function () {
+            var search = inputFilter.val();
+            clearTimeout(delay);
+
+            delay = setTimeout(function () {
+                if (search != null) {
+                    dataTable.dataTable().fnFilter(search);
+                    keepSession();
+                }
+            }, 1000);
+        });
+    }
+
+    function CollapsibleFilter() {
+        $content = $('#filterByProgram');
+        $content.toggleClass('expand-content');
+        $content.toggle();
+        $(".manage-class-legend").toggleClass('arrow-expand');
+    }
+    // #endregion Functions
+
+    // #region Events
+
+    $('#chkAllUsers').die('click');
+    $('#chkAllUsers').live("click", function (e) {
+        //not escalte the click event to the header of the table
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+        else if (window.event) {
+            window.event.cancelBubble = true;
+        }
+        if (this.checked) {
+            $('INPUT[name="chkUser"][type=checkbox]').attr('checked', 'checked');
+        }
+        else {
+            $('INPUT[name="chkUser"][type=checkbox]').removeAttr('checked');
+        }
+    });
+
+    $('INPUT[name="chkUser"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkUser"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllUsers').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllUsers').attr('checked', 'checked');
+            }
+        }
+        else {
+            $('#chkAllUsers').removeAttr('checked');
+        }
+    });
+
+    $(".manage-class-legend").click(function (e) {
+        if ($(e.target).attr('disabled') === 'disabled') {
+            return;
+        }
+        CollapsibleFilter();
+    });
+    // #endregion Events
+
+    CollapsibleFilter();
+</script>
+<script src="/Scripts/Navigator/ManagePublishing.js"></script>

@@ -1,0 +1,339 @@
+﻿<div class="block-border" id="divLockBankFilterl1" style="position: static; z-index: 1002">
+    <div id="divLockBankFilterl2" class="block-content form bubbleSheetSelector" style="z-index: 1002;">
+        <fieldset class="grey-bg" style="z-index: 1002">
+            <legend>Filter Bank</legend>
+            <div style="z-index: 1002">
+                <div class="colx2-left">
+                    <p>
+                        <label>@LabelHelper.GradeLabel</label>
+                        <select id="selectGrade"></select>
+                    </p>
+                    <p>
+                        <label>Lock Status</label>
+                        <select id="selectFilterType">
+                            <option value="0">All</option>
+                            <option value="1">Not Locked</option>
+                            <option value="2">Locked</option>
+                        </select>
+                    </p>
+                </div>
+                <div class="colx2-right">
+                    <p>
+                        <label>@LabelHelper.Subject</label>
+                        <select id="selectSubject"></select>
+                    </p>
+                </div>
+            </div>
+        </fieldset>
+        <div class="clearfix"></div>
+        <div class="float-right apply_filler">
+            <button id="filterSheets" type="button" style="display: none;">Apply Filters</button>
+        </div>
+        <div class="clearfix"></div>
+
+        <div class="block-border" id="divListLockbankdl1" style="z-index: 1002; display: none">
+            <div id="divListLockbankdl2" class="block-content form bubbleSheetSelector" style="z-index: 1002">
+                <div class="last-child testPreference">
+                    <table id="datatable" class="datatable table" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="black-cell"><span class="loading"></span></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Bank
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Status
+                                </th>
+                                <th scope="col" style="display: none">SubjectId</th>
+                                <th scope="col" style="display: none">DistrictId</th>
+                                <th scope="col" style="display: none">BankAccessId</th>
+                                @*   <th scope="col" style="display: none"></th>*@
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="height: 60px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(function () {
+        $.get('@Url.Action("GetGrades", "PopulateTest")', function (grades) {
+            populateGrades(grades);
+        });
+    });
+
+    $('#selectGrade').change(function () {
+        populateSubjects();
+
+        if ($('#selectGrade').val() == 'select') {
+            $('#selectSubject').empty();
+            $('#divListLockbankdl1').hide();
+        }
+    });
+
+    $('#selectSubject').change(function () {
+        $('#filterSheets').show();
+        if ($('#selectSubject').val() =='select') {
+            $('#divListLockbankdl1').hide();
+        }
+    });
+
+    function populateGrades(grades) {
+        $('#selectGrade').empty();
+        addDefaultOption($('#selectGrade'), "@LabelHelper.GradeLabel");
+        addSelectListItems($('#selectGrade'), grades);
+    }
+
+    function populateSubjects() {
+        var gradeValue = $('#selectGrade').val();
+        var districtValue = 0;
+        if ($('#selectDistrict').length && $('#selectDistrict').val() != null && $('#selectDistrict').val() != 'select') {
+            districtValue = $('#selectDistrict').val();
+        }
+        if (gradeValue != 'select') {
+            $.get('@Url.Action("GetSubjectsNew", "PopulateTest")', { gradeId: gradeValue, districtId: districtValue }, function (subjects) {
+                addDefaultOption($('#selectSubject'), "@LabelHelper.Subject");
+                addSelectListItems($('#selectSubject'), subjects);
+            });
+        }
+    }
+
+</script>
+
+<script type="text/javascript">
+    $(function () {
+        LoadTesClassAssignmentToTable();
+    });
+
+    function LoadTesClassAssignmentToTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            bProcessing: false,
+            sAjaxSource: '@Url.Action("GetBankByDistrict")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "SubjectId", value: $('#selectSubject').val() },
+                    { name: "DistrictId", value: $('#selectDistrict').val() },
+                    { name: "BankDistrictAccessId", value: $('#selectFilterType').val() }
+                );
+            },
+            iDisplayLength: 10,
+            aoColumns: [
+                { sType: 'int', sName: 'BankDistrictId', bSearchable: true, bSortable: false, bVisible: true, sWidth: '65px' },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, bVisible: true },
+                { sType: 'int', sName: 'BankDistrictAccessId', bSearchable: true, bSortable: true, bVisible: true },
+                { sType: 'int', sName: 'SubjectId', bSearchable: true, bSortable: true, bVisible: false },
+                { sType: 'int', sName: 'DistrictId', bSearchable: true, bSortable: true, bVisible: false },
+                { sType: 'int', sName: 'BankAccessId', bSearchable: true, bSortable: true, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(SetIconVisibilityBank(aData[0], aData[2], aData[5]));
+                $('td:eq(2)', nRow).html(ConverStatus(aData[2]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                $('#filterSheets').attr("disabled", "disabled");
+
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#divLockedBank').unblock();
+                $('#filterSheets').removeAttr("disabled");
+                //Update gray overlay for popup
+                $("body .my-overlay").css({"height": $(document).height()});
+                return true;
+            },
+            fnInitComplete: function () {
+            }
+        };
+        $("#datatable").data("options", options);
+    }
+
+    function setupFilters() {
+        ShowBlock($('#divLockedBank'), 'Loading');
+
+        var dataTable = $('#datatable').dataTable();
+        var settings = dataTable.fnSettings();
+        fnResetAllFilters(settings);
+
+        dataTable.fnDraw();
+    }
+
+    function fnResetAllFilters(oSettings) {
+        for (var iCol = 0; iCol < oSettings.aoPreSearchCols.length; iCol++) {
+            oSettings.aoPreSearchCols[iCol].sSearch = '';
+        }
+    }
+
+    function filterColumn(searchTerm, columnIndex, settings) {
+        settings.aoPreSearchCols[columnIndex].sSearch = searchTerm;
+        settings.aoPreSearchCols[columnIndex].bRegex = false;
+        settings.aoPreSearchCols[columnIndex].bSmart = true;
+    }
+
+    $('#filterSheets').unbind('click');
+    $('#filterSheets').click(function () {
+        if ($('#selectGrade').val() > 0 && $('#selectSubject').val() > 0) {
+            $('#divListLockbankdl1').show();
+            $(this).attr("disabled", "disabled");
+            setupFilters();
+            
+        } else {
+            $('#divListLockbankdl1').hide();
+        }
+        
+    });
+
+    function ResetGradeAndSubject() {
+        $('#selectSubject').empty();
+        $("#selectGrade").val($("#selectGrade option:first").val());
+        $('#filterSheets').hide();
+        $('#divListLockbankdl1').hide();
+    }
+
+    function ConverStatus(status) {
+        if (status == 1) {
+            return 'Not Locked';
+        } else if (status == 2) {
+            return 'Locked';
+        }
+        return 'Unknow';
+    }
+
+    function SetIconVisibilityBank(bankDistrictId, districtBankStatus, bankStatus) {
+        var result = '';
+        var unlockString = '';
+        var lockString = '';
+        if (bankDistrictId > 0) {
+            if (districtBankStatus == 1) {
+                var unlockIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/ujlock_70.png")';
+
+                if (bankStatus == 2) {
+                    unlockString = '<img class="Gray-Out" src ="' + unlockIcon + '" style="margin-right: 4px" title="The bank is locked by the author" width="24" height="24">';
+                    result += unlockString;
+                } else {
+                    unlockString = '<div onclick="LockAndUnLockBank(' + bankDistrictId + ')" class="with-tip actionIcon"><img src ="' + unlockIcon + '" style="margin-right: 4px" title="Lock Bank" width="24" height="24"></div>';
+                    result += unlockString;
+                }
+            } else {
+                var lockIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/lock_70.png")';
+                if (bankStatus == 2) {
+                    lockString = ' <img class="Gray-Out" src ="' + lockIcon + '" style="margin-right: 4px" title="The bank is locked by the author" width="24" height="24">';
+                    result += lockString;
+
+                } else {
+                    lockString = '<div  onclick="LockAndUnLockBank(' + bankDistrictId + ')" class="with-tip actionIcon"><img src ="' + lockIcon + '" style="margin-right: 4px" title="Unlock Bank" width="24" height="24"></div>';
+                    result += lockString;
+                }
+            }
+        }
+        return result;
+    }
+
+    function LockAndUnLockBank(bankDistrictId) {
+        $.get('@Url.Action("UpdateStatusBankDistrict", "TestPreference")', { bankDistrictId: bankDistrictId }, function (response) {
+            if (response.Success == 'Success') {
+                //TODO: Change Status Success
+                //alert("Change Status Success: " + bankDistrictId);
+                setupFilters();
+            } else {
+                //TODO: Change Status Fail
+                //alert("Change Status Fail: " + bankDistrictId);
+            }
+
+        });
+    }
+    
+    function ReloadListBank () {
+        if ($('#selectGrade').val() > 0 && $('#selectSubject').val() > 0) {
+            $('#divListLockbankdl1').show();
+            $(this).attr("disabled", "disabled");
+            setupFilters();
+
+        } else {
+            $('#divListLockbankdl1').hide();
+        }
+    }
+</script>
+
+<style type="text/css">
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        top: 100px !important;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    .block-content .no-margin {
+        margin-left: -0.667em !important;
+    }
+
+    .table thead td {
+        color: #000 !important;
+        text-shadow: 0 0px;
+    }
+
+    .ui-widget-header {
+        position: relative;
+        z-index: 9999;
+    }
+
+    .ui-widget-content {
+        z-index: 1002;
+    }
+</style>

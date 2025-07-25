@@ -1,0 +1,1334 @@
+@using LinkIt.BubbleSheetPortal.Models.AuthorizeItemLib
+@using LinkIt.BubbleSheetPortal.Common.DataFileUpload
+@using LinkIt.BubbleSheetPortal.Models
+<script>
+    var isInitItemBank = false;
+
+    function KeyValuePair(data) {
+        var self = this;
+        self.Text = ko.observable(data.Name);
+        self.Value = ko.observable(data.Id);
+    }
+
+    function KeyValuePairExtra(data) {
+        var self = this;
+        self.Text = ko.observable(data.Name);
+        self.Value = ko.observable(data.Id);
+        self.Description = ko.observable(data.Description);
+    }
+
+    function CreateItemFromLibraryViewModel() {
+        var self = this;
+
+        self.PersonalOrDistrict = ko.observable('PersonalItemLibrar');
+
+        self.DistrictCategoryId = ko.observable('');
+        self.DistrictCategories = ko.observableArray([]);
+
+
+        self.ItemBankId = ko.observable('');
+        self.ItemBanks = ko.observableArray([]);
+
+        self.ItemSetId = ko.observable('');
+        self.ItemSets = ko.observableArray([]);
+
+
+        self.DisplayItemSets = ko.computed(function () {
+            if (!isNaN(parseInt(self.ItemBankId()))) {
+                var url = '@Url.Action("GetItemSets", "ItemBank")/?itemBankId=' + self.ItemBankId();
+                $.ajax({
+                    url: url,
+                    type: 'get',
+                     async: true,
+                    cache: false,
+                }).done(function(data) {
+                    var mappedObjects = $.map(data, function(item) {
+                        return new KeyValuePair(item);
+                    });
+                    self.ItemSets(mappedObjects);
+                });
+            }
+        });
+
+        self.DisplayDistrictCategories = ko.computed(function() {
+
+            var url = '@Url.Action("GetDistrictCategory", "ItemTag")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                 async: true,
+                cache: false,
+                //data: { stateId: self.StateId() }
+            }).done(function(data) {
+                var mappedObjects = $.map(data, function(item) {
+                    return new KeyValuePair(item);
+                });
+                self.DistrictCategories(mappedObjects);
+            });
+        });
+    }
+
+    function isCheckedNWEAItemLibrary() {
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            return true;
+        }
+        return false;
+    }
+
+
+    $('li[data-tab="tab-item-criteria-new"]').click(function () 
+    { 
+        loadItemCriteriaStaticData(); 
+        showItemFilterResult(true);
+        showPassageResult(false);
+    });
+
+    $('li[data-tab="data-item-criteria-new"]').click(function () 
+    { 
+        loadItemCriteriaStaticData(); 
+        showItemFilterResult(true);
+        showPassageResult(false);
+    });
+
+    $('li[data-tab="tab-passage-criteria"]').click(function () 
+    { 
+        loadPassageCriteriaStaticData();
+        showItemFilterResult(false);
+        showPassageResult(true);
+    });
+
+    $('li[data-tab="data-passage-criteria"]').click(function () 
+    { 
+        loadPassageCriteriaStaticData();
+        showItemFilterResult(false);
+        showPassageResult(true); 
+    });
+
+    function InitDataTableQtiItemPassage() {
+        firstLoadListItemsFromLibraryNew = true;
+        firstLoadListItemsFromLibrary = true;
+        var optionPassageItem = {
+            bServerSide: true,
+            bDestroy: true,
+            bFilter: false,
+            sAjaxSource: getAjaxSourcePassageItem(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeParameter(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTIRefObjectID', bSearchable: false, bSortable: false, sWidth: "10px", bVisible: false },
+                { sType: 'string', sName: 'Source', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'Name', bSearchable: false, bSortable: false},
+                { sType: 'string', sName: 'Number', bSearchable: false, bSortable: false},
+                { sType: 'string', sName: 'Subject', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'GradeName', bSearchable: false, bSortable: false},
+                { sType: 'string', sName: 'TextType', bSearchable: false, bSortable: false},
+                { sType: 'string', sName: 'TextSubType', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'FleschKinkaidName', bSearchable: false, bSortable: false},
+                { sType: 'string', sName: 'ItemsMatchCount', bSearchable: false, bSortable: false},
+                { sType: 'string', sName: 'ItemsAllCount', bSearchable: false, bSortable: false},
+                { sType: 'string', sName: 'ItemsMatchXml', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'ItemsAllXml', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(1)', nRow).css('color', "var(--bs-blue)");
+                $('td:eq(1)', nRow).addClass('cursor-pointer');
+                $('td:eq(1)', nRow).click(function () {
+                    showPassageDetailPopupListItemPassageNew(aData[0]);
+                });
+                if (aData[9] > 0) {
+                    $('td:eq(8)', nRow).html(DisplayAssignMatchItemNewIcon(aData[0], aData[9], aData[11]));
+                }
+
+                $('td:eq(9)', nRow).html(DisplayAssignAllItemNewIcon(aData[0], aData[10], aData[12]));
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTablePassageItem'), 'Loading');
+                return true;
+            },
+            fnDrawCallback: function () {
+                firstLoadListItemsFromLibraryNew = false;
+                firstLoadListItemsFromLibrary = false;
+                LoadImages('#dataTablePassageItem');
+                $('.with-tip').tip();
+                $('#dataTablePassageItem').unblock();
+            },
+            fnInitComplete: function () {
+                var tableEl = $('#dataTablePassageItem')[0];
+                var wrapper = document.createElement('div');
+                wrapper.classList.add('table-wrapper-scroll');
+                tableEl.parentNode.insertBefore(wrapper, tableEl);
+                wrapper.appendChild(tableEl);
+            }
+        };
+        $("#dataTablePassageItem").data("options", optionPassageItem);
+    };
+
+    function InItDatatableQti3pItemPassage() {
+        firstLoadListItemsFromLibrary = true;
+        firstLoadListItemsFromLibraryNew = true;
+        var optionPassageItem3p = {
+            bServerSide: true,
+            bDestroy: true,
+            bFilter:false,
+            sAjaxSource: getAjaxSourcePassageItem3p(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURI(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength:25,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTI3pPassageID', bSearchable: false, bSortable: false, sWidth: "10px", bVisible: false },
+                { sType: 'string', sName: 'Source', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'Name', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'Number', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'Subject', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'GradeName', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'TextType', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'TextSubType', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'WordCount', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'FleschKinkaidName', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'PassageType', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'PassageGenre', bSearchable: false, bSortable: false, },
+                { sType: 'string', sName: 'Lexile', bSearchable: false, bSortable: false, },
+                { sType: 'string', sName: 'Spache', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'DaleChall', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'RMM', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'ItemsMatchCount', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'ItemsAllCount', bSearchable: false, bSortable: false, },                
+                { sType: 'string', sName: 'ItemsMatchXml', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'ItemsAllXml', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {                
+                $('td:eq(1)', nRow).css('color', "var(--bs-blue)");
+                $('td:eq(1)', nRow).addClass('cursor-pointer');
+                $('td:eq(1)', nRow).click(function () {
+                    showPassageDetailPopupListItemPassagel(aData[0]);
+                });
+                $('td:eq(3)', nRow).addClass('CerticaProperty');
+                $('td:eq(4)', nRow).addClass('CerticaProperty');
+                $('td:eq(5)', nRow).addClass('CerticaProperty');
+                $('td:eq(6)', nRow).addClass('CerticaProperty');
+                $('td:eq(7)', nRow).addClass('CerticaProperty');
+                $('td:eq(8)', nRow).addClass('CerticaProperty');
+
+
+                $('td:eq(9)', nRow).addClass('ProgressProperty');
+                $('td:eq(10)', nRow).addClass('ProgressProperty');
+                $('td:eq(11)', nRow).addClass('ProgressProperty');
+                $('td:eq(12)', nRow).addClass('ProgressProperty');
+                $('td:eq(13)', nRow).addClass('ProgressProperty');
+                $('td:eq(14)', nRow).addClass('ProgressProperty');
+
+                if (aData[16] > 0) {
+                    $('td:eq(15)', nRow).html(DisplayAssignMatchItemIcon(aData[0], aData[16], aData[18])); 
+                }
+
+                $('td:eq(16)', nRow).html(DisplayAssignAllItemIcon(aData[0], aData[17], aData[19]));
+                $('td:eq(6)', nRow).html(breakLongWordManually(aData[7]));//Text Sub Type
+
+            },
+            fnPreDrawCallback: function () {                
+                ShowBlock($('#dataTablePassageItem3p'), 'Loading');
+                var qti3pSourceId = $('#selectSource').val();
+                if (qti3pSourceId == null) {
+                    qti3pSourceId = 1;
+                }
+
+                if (qti3pSourceId == '@((int)QTI3pSourceEnum.Mastery)') {
+                    $('.ProgressProperty').hide();
+                    $('.CerticaProperty').show();
+                }
+                if (qti3pSourceId == '@((int)QTI3pSourceEnum.Progress)') {
+                    $('.CerticaProperty').hide();
+                    $('.ProgressProperty').show();
+                }
+                return true;
+            },
+            fnDrawCallback: function () {
+                firstLoadListItemsFromLibrary = false;
+                firstLoadListItemsFromLibraryNew = false;
+                LoadImages('#dataTablePassageItem3p');
+                $('.with-tip').tip();
+
+
+                var qti3pSourceId = $('#selectSource').val();
+                if (qti3pSourceId == null) {
+                    qti3pSourceId = 1;
+                }
+
+                if (qti3pSourceId == '@((int)QTI3pSourceEnum.Mastery)') {
+                    $('.ProgressProperty').hide();
+                    $('.CerticaProperty').show();
+                }
+                if (qti3pSourceId == '@((int)QTI3pSourceEnum.Progress)') {
+                    $('.CerticaProperty').hide();
+                    $('.ProgressProperty').show();
+                }
+                $('#dataTablePassageItem3p').unblock();
+            },
+            fnInitComplete: function () {
+                var tableEl = $('#dataTablePassageItem3p')[0];
+                var wrapper = document.createElement('div');
+                wrapper.classList.add('table-wrapper-scroll');
+                tableEl.parentNode.insertBefore(wrapper, tableEl);
+                wrapper.appendChild(tableEl);
+            }
+        };
+        $("#dataTablePassageItem3p").data("options", optionPassageItem3p);
+
+    };
+
+    function loadPassageCriteriaStaticData() {
+        if ($('#selectPassageGradeNew').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetAssignedGradesForPassages", "PassageEditor")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+                AddSelectListItems($('#selectPassageGradeNew'), data, 'All');
+            });
+        }
+
+        if ($('#selectPassageSubjectNew').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetQtiPassageSubjects", "Passage")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+                AddSelectListItems($('#selectPassageSubjectNew'), data, 'All');
+            });
+        }
+
+        if ($('#selectTextType').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetQTI3PTextType", "ItemBank")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+                 AddSelectListItems($('#selectTextType'), data, 'All');
+            });
+        }
+
+        if ($('#selectTextSubType').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetQTI3PTextSubType", "ItemBank")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+                 AddSelectListItems($('#selectTextSubType'), data, 'All');
+            });
+        }
+
+        if ($('#selectFleschKincaidIds').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetQTI3PFleschKincaid", "ItemBank")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+                 AddSelectListItems($('#selectFleschKincaidIds'), data, 'All');
+            });
+        }
+
+        if ($('#selectPassageGrade').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetPassageGrades", "ItemBank")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+                 AddSelectListItems($('#selectPassageGrade'), data, 'All');
+            });
+        }
+
+        if ($('#selectPassageSubject').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetQTI3PPassageSubject", "ItemBank")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+                AddSelectListItems($('#selectPassageSubject'), data, 'All');
+            });
+        }
+
+        if ($('#selectWordCount').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetQTI3PWordCount", "ItemBank")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+                 AddSelectListItems($('#selectWordCount'), data, 'All');
+            });
+        }
+
+        if ($('#selectPassageTitle').text().trim() == 'All') {
+            var qti3pSourceId = $('#selectSource').val();
+            if (qti3pSourceId == null) {
+                qti3pSourceId = 1;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GetQTI3PPassageTitle", "ItemBank")',
+                type: 'get',
+                 async: true,
+                data: { qti3pSourceId: qti3pSourceId }
+            }).done(function (data) {
+                AddSelectListItems($('#selectPassageTitle'), data, 'All');
+            });
+        }
+    }
+
+    function loadItemCriteriaStaticData() {
+        if ($('#isInitItemBankData').val()=='false') {
+            $('#isInitItemBankData').val('true');
+            reloadItemBanks();
+        }
+
+        if ($('#selectQTI3pSubjectId').text().trim() == 'All') {
+            $.ajax({
+                url: '@Url.Action("GetQTI3PSubject", "ItemBank")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+                AddSelectListItems($('#selectQTI3pSubjectId'), data, 'All');
+            });
+        }
+
+        if ($('#selectGradeId').text().trim() == 'All') {
+            $.ajax({
+                url: '@Url.Action("GetCriteriaGrades", "ItemBank")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+                AddSelectListItems($('#selectGradeId'), data, 'All');
+            });
+        }
+
+        if ($('#selectDifficultyId').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetQTI3PDifficulty", "ItemBank")',
+                 type: 'get',
+                 async: true,
+            }).done(function (data) {
+               AddSelectListItems($('#selectDifficultyId'), data, 'All');
+            });
+        }
+
+        if ($('#selectBloomsId').text().trim() == 'All') {
+            $.ajax({
+                url: '@Url.Action("GetQTI3PBlooms", "ItemBank")',
+                type: 'get',
+                 async: true,
+            }).done(function (data) {
+               AddSelectListItems($('#selectBloomsId'), data, 'All');
+            });
+        }
+
+        if ($('#divItemCriteria #selectItemType').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetCriteriaSchemaQtiItem", "ItemBank", new { @IsGet3pItem = true })',
+                 type: 'get',
+                 async: true,
+            }).done(function (data) {
+                 AddSelectListItems($('#divItemCriteria #selectItemType'), data, 'All');
+            });
+        }
+        //Load QTI3pItem Language
+        if ($('#divItemCriteria #selectQTI3pCerticaItemLanguage').text().trim() == 'All') {
+             $.ajax({
+                url: '@Url.Action("GetLanguageSupportImportQTI3pItem", "PopulateStateDistrict")',
+                 type: 'get',
+                 async: true,
+             }).done(function (results) {
+                 addOptionToSelectWithString($('#selectQTI3pCerticaItemLanguage'), results);
+                 $("#selectQTI3pCerticaItemLanguage").val('All');
+            });
+        }
+    }
+
+    $('#divItemCriteriaNew #selectItemsBankId').change(function () {
+        if ($(this).text() != 'All') {
+            $('#divItemCriteriaNew #selectItemsSetId').empty();
+        }
+    });
+
+    function getCriteriaSchema() {       
+        var itemBankId = $('#divItemCriteriaNew #selectItemsBankId').val();
+        var _url = '@Url.Action("GetCriteriaSchemaQtiItem", "ItemBank")';
+        var isPersonalChecked = $('#radioPersonalItemLibrary').is(':checked');
+        var isDistrictChecked = $('#radioDistrictItemLibrary').is(':checked');
+        var qtiGroupId = $('#divItemCriteriaNew #selectItemsSetId').val();
+        _url += '?ItemBankID=' + (itemBankId > 0 ? itemBankId : '0')  + '&QtiGroupID=' + (qtiGroupId > 0 ? qtiGroupId : '0') + '&IsGet3pItem=false&IsGetByPersonal=' + isPersonalChecked + '&IsGetByDistrict=' + isDistrictChecked;
+        if (qtiGroupId > 0) {
+            $.ajax({
+                url: _url,
+                type: 'get',
+                async: true,
+            }).done(function (data) {
+                if (data.length == 0) {
+                    $('#divItemCriteriaNew #selectItemType').empty();
+                    $('#divItemCriteriaNew #selectItemType').append($("<option></option>").attr("value", "-1").text('None'));
+                    return;
+                }
+                AddSelectListItems($('#divItemCriteriaNew #selectItemType'), data, 'All');
+            });
+        }        
+    }
+
+    function showPassageResult(visible) {
+        if (visible) {
+            if ($('#radioNWEAItemLibrary').is(':checked')) {
+                $('#passage3pResult').show();
+                $('#passageResult').hide();
+            } else {
+                $('#passage3pResult').hide();
+                $('#passageResult').show();
+            }
+
+        } else {
+            $('#passageResult').hide();
+            $('#passage3pResult').hide();
+        }
+    }
+    function showItemFilterResult(visible) {
+        if (visible) {
+            $('#divListItem').show();
+            if ($('#radioNWEAItemLibrary').is(':checked')) {
+                $('#qti3pItemResult').show();
+                $('#qtiItemResult').hide();
+            } else {
+                $('#qti3pItemResult').hide();
+                $('#qtiItemResult').show();
+            }
+            load3pItem();
+        } else {
+            $('#qti3pItemResult').hide();
+            $('#qti3pItemUploadResult').hide();
+            $('#qtiItemResult').hide();
+            $('#divListItem').hide();
+        }
+    }
+    function is3pUpload() {
+        var qti3pSourceID = $('#selectSource').val();
+        if (qti3pSourceID >= '@((int)QTI3pSourceEnum.Progress)') {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function isSearchedItem() {
+        if ($('#isSearched').val() == true || $('#isSearched').val() == 'true')
+            return true;
+        return false;
+    }
+
+    function setDisableFilterNWEA() {
+        if ($('#selectSource').val() == 'select') {
+            $('#setFilterNWEA').prop('disabled', true);
+            if ($('#radioNWEAItemLibrary').is(':checked')) {
+                $('#searchByPassage').prop('disabled', true);
+            }
+
+
+        } else {
+            $('#setFilterNWEA').prop('disabled', false);
+            $('#searchByPassage').prop('disabled', false);
+        }
+    }
+    function changeUISearchQti3pItem() {
+        var qti3pSourceId = $('#selectSource').val();
+        if (qti3pSourceId == null || qti3pSourceId == '' || qti3pSourceId == 0 || qti3pSourceId == 'select' || qti3pSourceId < 0) {
+            //show only linkit passage filter
+            hideProgressFilter();
+            hideCerticaFilter();
+            return;
+        }
+
+        loadDOK(qti3pSourceId);
+        loadPassageNumber(qti3pSourceId);
+        loadPassageTitle(qti3pSourceId);
+
+        if (qti3pSourceId == '@((int)QTI3pSourceEnum.Mastery)') {
+            hideProgressFilter();
+            showCerticaFilter();
+
+            //Load Language
+            loadPassageLanguage();
+        }
+        if (qti3pSourceId == '@((int)QTI3pSourceEnum.Progress)') {
+            hideCerticaFilter();
+            showProgressFilter();
+        }
+    }
+
+        function InitDataQti3pSource() {
+            $.ajax({
+                url: '@Url.Action("GetQTI3pSource")',
+                type: 'get',
+                 async: true,
+            }).done(function (sources) {
+                 addDefaultOption($('#selectSource'), "Source");
+            addSelectListItems($('#selectSource'), sources);
+            setDisableFilterNWEA();
+            });
+    }
+
+    function loadPassageTitle(qti3pSourceId) {
+
+        var url = '@Url.Action("GetQTI3PPassageTitle", "ItemBank")';
+        $.ajax({
+            url: url,
+            type: 'get',
+            async: true,
+            data: { qti3pSourceId: qti3pSourceId }
+        }).done(function (data) {
+            addDefaultOptionNoSelect($('#selectPassageTitle'), "All");
+            addSelectListItems($('#selectPassageTitle'), data);
+
+
+        });
+    }
+
+    function loadDOK(qti3pSourceId) {
+        var url = '@Url.Action("GetCriteriaQTI3PDOK", "ItemBank")';
+        $.ajax({
+            url: url,
+            type: 'get',
+             async: true,
+            data: { qti3pSourceId: qti3pSourceId }
+        }).done(function (data) {
+            addDefaultOptionNoSelect($('#selectQTI3pDOKId'), "All");
+            addSelectListItems($('#selectQTI3pDOKId'), data);
+        });
+    }
+    function loadPassageNumber(qti3pSourceId) {
+        var url = '@Url.Action("GetQTI3PPassageNumber", "ItemBank")';
+        $.ajax({
+            url: url,
+            type: 'get',
+             async: true,
+            data: { qti3pSourceId: qti3pSourceId }
+        }).done(function (data) {
+            addDefaultOptionNoSelect($('#selectPassageNumber'), "All");
+            addSelectListItems($('#selectPassageNumber'), data);
+        });
+    }
+
+    function loadPassageType() {
+        var url = '@Url.Action("GetQti3pProgressPassageType", "ItemBank")';
+        $.ajax({
+            url: url,
+            type: 'get',
+             async: true,
+        }).done(function (data) {
+            addDefaultOptionNoSelect($('#selectPassageType'), "All");
+            addSelectListItems($('#selectPassageType'), data);
+        });
+    }
+    function loadPassageGenre() {
+        var url = '@Url.Action("GetQti3pProgressPassageGenre", "ItemBank")';
+        $.ajax({
+            url: url,
+            type: 'get',
+             async: true,
+        }).done(function (data) {
+            addDefaultOptionNoSelect($('#selectPassageGenre'), "All");
+            addSelectListItems($('#selectPassageGenre'), data);
+        });
+    }
+    //Load Language on Certica Passage
+        function loadPassageLanguage() {
+        var url = '@Url.Action("GetLanguageSupportImportQTI3pItem", "PopulateStateDistrict")';
+        $.ajax({
+            url: url,
+            type: 'get',
+             async: true,
+        }).done(function (results) {
+            addOptionToSelectWithString($('#selectQTI3pPassageLanguage'), results);
+            $("#selectQTI3pPassageLanguage").val('All');
+        });
+    }
+
+    function showCerticaFilter() {
+        $('#lblPassageName').show();
+        $('#selectPassageTitle').show();
+
+        $('#selectQTI3pSubjectIdLabel').show();
+        $('#selectQTI3pSubjectId').show();
+
+        $('#selectGradeIdLabel').show();
+        $('#selectGradeId').show();
+
+        $('#divItemCriteria #selectItemTypeLabel').show();
+        $('#divItemCriteria #selectItemType').show();
+
+        $('#selectDifficultyIdLabel').show();
+        $('#selectDifficultyId').show();
+
+        $('#selectBloomsIdLabel').show();
+        $('#selectBloomsId').show();
+
+        $('#selectPassageGradeLabel').show();
+        $('#selectPassageGrade').show();
+
+        $('#selectPassageSubjectLabel').show();
+        $('#selectPassageSubject').show();
+
+        $('#selectWordCountLabel').show();
+        $('#selectWordCount').show();
+
+        $('#selectTextTypeLabel').show();
+        $('#selectTextType').show();
+
+        $('#selectTextSubTypeLabel').show();
+        $('#selectTextSubType').show();
+
+        $('#lblWordCountFilter').show();
+
+        $('#selectFleschKincaidIdsLabel').show();
+        $('#selectFleschKincaidIds').show();
+
+        $('#selectQTI3pItemLanguageLabel').show();
+        $('#selectQTI3pItemLanguage').show();
+        $('#selectQTI3pCerticaItemLanguageLabel').show();
+        $('#selectQTI3pCerticaItemLanguage').show();
+        $('#selectQTI3pPassageLanguageLabel').show();
+        $('#selectQTI3pPassageLanguage').show();
+
+    }
+
+    function hideCerticaFilter() {
+        $('#selectQTI3pSubjectIdLabel').hide('');
+        $('#selectQTI3pSubjectId').val('');
+        $('#selectQTI3pSubjectId').hide();
+
+        $('#selectGradeIdLabel').hide();
+        $('#selectGradeId').val('');
+        $('#selectGradeId').hide();
+
+        $('#selectDifficultyIdLabel').hide();
+        $('#selectDifficultyId').val('');
+        $('#selectDifficultyId').hide();
+
+        $('#selectBloomsIdLabel').hide();
+        $('#selectBloomsId').val('');
+        $('#selectBloomsId').hide();
+
+        $('#divItemCriteria #selectItemTypeLabel').hide();
+        $('#divItemCriteria #selectItemType').hide();
+        $('#divItemCriteria #selectItemType').val(-1);
+
+        $('#selectPassageGradeLabel').hide();
+        $('#selectPassageGrade').hide();
+
+        $('#selectPassageSubjectLabel').hide();
+        $('#selectPassageSubject').hide();
+
+        $('#selectWordCountLabel').hide();
+        $('#selectWordCount').hide();
+
+        $('#selectTextTypeLabel').hide();
+        $('#selectTextType').hide();
+
+        $('#selectTextSubTypeLabel').hide();
+        $('#selectTextSubType').hide();
+
+        $('#lblWordCountFilter').hide();
+
+        $('#selectFleschKincaidIdsLabel').hide();
+        $('#selectFleschKincaidIds').hide();
+
+        $('#selectQTI3pItemLanguageLabel').hide();
+        $('#selectQTI3pItemLanguage').hide();
+        $('#selectQTI3pCerticaItemLanguageLabel').hide();
+        $('#selectQTI3pCerticaItemLanguage').hide();
+        $('#selectQTI3pPassageLanguageLabel').hide();
+        $('#selectQTI3pPassageLanguage').hide();
+    }
+
+    function showProgressFilter() {
+        $('#lblPassageName').show();
+        $('#selectPassageTitle').show();
+
+        $('#selectPassageTypeLabel').show();
+        $('#selectPassageType').show();
+        if ($('#selectPassageType option').length == 0) {
+            loadPassageType();
+        }
+
+        $('#selectPassageGenreLabel').show();
+        $('#selectPassageGenre').show();
+        if ($('#selectPassageGenre option').length == 0) {
+            loadPassageGenre();
+        }
+
+    }
+
+    function hideProgressFilter() {
+        $('#selectPassageTitle').hide();
+
+        $('#selectPassageTypeLabel').hide();
+        $('#selectPassageType').hide();
+
+        $('#selectPassageGenreLabel').hide();
+        $('#selectPassageGenre').hide();
+
+    }
+
+    function showLinkitPassageFilter() {
+        $('#lblPassageName').show();
+        $('#txtRefObjectTitle').show();
+
+        $('#selectPassageGradeLabel').show();
+        $('#selectPassageGradeNew').show();
+
+        $('#selectPassageSubjectLabel').show('');
+        $('#selectPassageSubjectNew').show('');
+
+        $('#selectTextTypeLabel').show('');
+        $('#selectTextType').show();
+
+        $('#selectTextSubTypeLabel').show();
+        $('#selectTextSubType').show();
+
+        $('#selectFleschKincaidIdsLabel').show();
+        $('#selectFleschKincaidIds').show();
+    }
+
+    function hideLinkitPassageFilter() {
+        $('#lblPassageName').hide();
+        $('#txtRefObjectTitle').hide();
+
+        $('#selectPassageGradeLabel').hide();
+        $('#selectPassageGradeNew').hide();
+
+        $('#selectPassageSubjectLabel').hide('');
+        $('#selectPassageSubjectNew').hide('');
+
+        $('#selectTextTypeLabel').hide('');
+        $('#selectTextType').hide();
+
+        $('#selectTextSubTypeLabel').hide();
+        $('#selectTextSubType').hide();
+
+        $('#selectFleschKincaidIdsLabel').hide();
+        $('#selectFleschKincaidIds').hide();
+
+    }
+
+    function displayNWEASearchCriteria() {
+        $("#lblKeywords1").text($("#idKeyword").val());
+        $("#lblSubject").text($("#selectQTI3pSubjectId option:selected").text());
+        $("#lblGrade").text($("#selectGradeId option:selected").text());
+        $("#lblItemType").text($("#divItemCriteria #selectItemType option:selected").text());
+
+        $("#lblQTI3pDOKId").text($("#selectQTI3pDOKId option:selected").text());
+        $("#lblDifficulty").text($("#selectDifficultyId option:selected").text());
+        $("#lblBloomsTaxonomy").text($("#selectBloomsId option:selected").text());
+
+        $("#lblState").text($("#selectStateStandard option:selected").text());
+        $("#lblSubject1").text($("#selectSubjectStandard option:selected").text());
+        $("#lblGrade1").text($("#selectGradeStandard option:selected").text());
+        var masterStandards = '';
+        if ($('#divStandardContainer').html() && $('#divStandardContainer').html().trim().length > 0) {
+            masterStandards = getSelectedStandardNames(); //in _StandardFilter.cshtml
+        }
+
+        $("#lblMasterStandard").text(masterStandards);
+        $("#lblPassageNameSearch").text($("#selectPassageTitle option:selected").text());
+        $("#lblPassageNumber").text($("#selectPassageNumber option:selected").text());
+        $("#lblGrade3").text($("#selectPassageGrade option:selected").text());
+        $("#lblSubject3").text($("#selectPassageSubject option:selected").text());
+        $("#lblWordCount").text($("#selectWordCount option:selected").text());
+        $("#lblTextType").text($("#selectTextType option:selected").text());
+        $("#lblTextSubType").text($("#selectTextSubType option:selected").text());
+        $("#lblFleschKincaid").text($("#selectFleschKincaidIds option:selected").text());
+
+        $("#lblPassageType").text($("#selectPassageType option:selected").text());
+        $("#lblPassageGenre").text($("#selectPassageGenre option:selected").text());
+        var qti3pSourceId = $('#selectSource').val();
+        if (qti3pSourceId == '@((int)QTI3pSourceEnum.Mastery)') {
+            $('.CerticaFilterOnly').show();
+            $('.ProgressFilterOnly').hide();
+        }
+        if (qti3pSourceId == '@((int)QTI3pSourceEnum.Progress)') {
+            $('.CerticaFilterOnly').hide();
+            $('.ProgressFilterOnly').show();
+        }
+    }
+    function hideNWEAItemLibraryFilter() {
+        $('#divStandardContainer').parent().hide();
+        $('#divStandardContainerNew').parent().show();
+        $('#divItemCriteria').parent().hide();
+        $('#divItemCriteriaNew').parent().show();
+
+        $('#qti3pItemResult').hide();
+        $('#qti3pItemUploadResult').hide();
+        $('#qtiItemResult').show();
+        $("#setFilterNWEA").hide();
+        $("#setFilter").show();
+
+        $("#fsNonNWEACriteria").show();
+        $("#fsNWEACriteria").hide();
+
+        $('#selectPassageGrade').hide();
+        $('#selectPassageGradeNew').show();
+
+        $('#selectPassageSubject').hide();
+        $('#selectPassageSubjectNew').show();
+
+        $('#lblPassageNumberFilter').hide();
+        $('#selectPassageNumber').val('');
+        $('#selectPassageNumber').hide();
+        $('#lblPassageName').show();
+        $('#txtRefObjectTitle').show();
+        $('#lblWordCountFilter').hide();
+        $('#selectWordCount').hide();
+        $('#selectWordCount').val(0);
+        $('#selectPassageTitle').hide();
+        $('#txtRefObjectTitle').show();
+        //clear standart of filter
+        $('#divStandardContainer').html('');
+        //load standart for filter new
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+        var districtSearch = $('#radioDistrictItemLibrary').is(':checked');
+        var urlLoadStandard = '/ItemBank/LoadStandardFilter?qti3p=false&personal=' + personal + '&districtSearch=' + districtSearch;
+        var hasExpand = $('#divStandardContainerNew .manage-standard-criteria').hasClass('arrow-expand');
+        var isExistElement = $('#divStandardContainerNew .manage-standard-criteria').length;
+        $.ajax({
+            url: urlLoadStandard,
+            cache: false
+        })
+        .done(function(html) {
+            $('#divStandardContainerNew').html(html);
+
+            if (!firstLoad && !hasExpand && isExistElement > 0) {
+                ToggleStandardCriteria();
+            }
+        });
+        //reloadStandardFiltersUI('#divStandardContainerNew');
+    };
+
+
+    function updateFilterUI() {
+        var isPersonalChecked = $('#radioPersonalItemLibrary').is(':checked');
+        var isDistrictChecked = $('#radioDistrictItemLibrary').is(':checked');
+        var isThirdPartyChecked = $('#radioNWEAItemLibrary').is(':checked');
+        $('#selectSource').hide();
+        //Personal or @LabelHelper.DistrictLabel is checked
+        if (isPersonalChecked || isDistrictChecked) {
+            hideCerticaFilter();
+            hideProgressFilter();
+            hideNWEAItemLibraryFilter();
+            showLinkitPassageFilter();
+            showItemFilterResult(true);
+            showPassageResult(false);
+
+            if ($('#isInitItemBankData').val()=='true')
+               reloadItemBanks();
+        }
+
+        //Third party libraries is checked
+
+        if (isThirdPartyChecked) {
+            hideLinkitPassageFilter();
+            showItemFilterResult(false);
+            showPassageResult(false);
+            if ($('#selectSource').val() != 'select') {
+                $('#selectQTI3pPassageLabelLexileMin').show();
+                $('#selectQTI3pPassageLabelLexileMax').show();
+                $('#selectQTI3pPassageLexileMin').val('');
+                $('#selectQTI3pPassageLexileMax').val('');
+            }
+            $('#selectSource').show();
+            changeUISearchQti3pItem();
+            $('#divItemCriteriaNew #selectItemType').val('');
+        }
+    }
+
+    function displayNonNWEASearchCriteria() {
+        $("#lblKeywords").text($("#txtKeyword").val());
+        $("#lblItemBanks").text($("#selectItemsBankId option:selected").text());
+        $("#lblItemSet").text($("#selectItemsSetId option:selected").text());
+        $("#lblItemTypeNotThird").text($("#divItemCriteriaNew #selectItemType option:selected").text());
+        var standardName = '';
+        if ($('#divStandardContainerNew').html() && $('#divStandardContainerNew').html().trim().length > 0) {
+            standardName = getSelectedStandardNames(); //in _StandardFilter.cshtml
+        }
+        $("#lblNonNWEAStandardText").text(standardName);
+
+        $("#lblTopic").text($("#txtTopic").val());
+        $("#lblSkill").text($("#txtSkill").val());
+        $("#lblOther").text($("#txtOther").val());
+        $("#lblDistrictTag").text(getSelectedTagName());
+
+        $("#lblPassageNumberNew").text($("#txtRefObjectTitle").val());
+        $("#lblGrade3New").text($("#selectPassageGradeNew option:selected").text());
+        $("#lblSubject3New").text($("#selectPassageSubjectNew option:selected").text());
+        $("#lblWordCountNew").text($("#selectWordCount option:selected").text());
+        $("#lblTextTypeNew").text($("#selectTextType option:selected").text());
+        $("#lblTextSubTypeNew").text($("#selectTextSubType option:selected").text());
+        $("#lblFleschKincaidNew").text($("#selectFleschKincaidIds option:selected").text());
+    }
+
+    function displayUploadSearchCriteria() {
+        $("#lblKeywords").text($("#txtKeyword").val());
+        $("#lblItemBanks").text($("#selectItemsBankId option:selected").text());
+        $("#lblItemSet").text($("#selectItemsSetId option:selected").text());
+        $("#lblItemTypeNotThird").text($("#divItemCriteriaNew #selectItemType option:selected").text());
+        var standardName = '';
+        if ($('#divStandardContainerNew').html() && $('#divStandardContainerNew').html().trim().length > 0) {
+            standardName = getSelectedStandardNames(); //in _StandardFilter.cshtml
+        }
+        $("#lblNonNWEAStandardText").text(standardName);
+
+        $("#lblTopic").text($("#txtTopic").val());
+        $("#lblSkill").text($("#txtSkill").val());
+        $("#lblOther").text($("#txtOther").val());
+        $("#lblDistrictTag").text(getSelectedTagName());
+
+        $("#lblPassageNumberNew").text($("#txtRefObjectTitle").val());
+        $("#lblGrade3New").text($("#selectPassageGradeNew option:selected").text());
+        $("#lblSubject3New").text($("#selectPassageSubjectNew option:selected").text());
+        $("#lblWordCountNew").text($("#selectWordCount option:selected").text());
+        $("#lblTextTypeNew").text($("#selectTextType option:selected").text());
+        $("#lblTextSubTypeNew").text($("#selectTextSubType option:selected").text());
+        $("#lblFleschKincaidNew").text($("#selectFleschKincaidIds option:selected").text());
+        $("#lblItemType").text($("#divItemCriteria select#selectItemType option:selected").text());
+    }
+
+    function getQti3pFilterByPassageCriteria() {
+        var passageNumber = '';
+        if ($('#selectPassageNumber').length > 0) {
+            passageNumber = $('#selectPassageNumber').val();
+        }
+        
+        if (passageNumber != null && passageNumber != 'select' && passageNumber > 0) {
+            passageNumber = $("#selectPassageNumber option:selected").text();
+        }
+        var passageGradeId = 0;
+        if ($('#selectPassageGrade').length > 0) {
+            passageGradeId = $('#selectPassageGrade').val();
+        }
+
+        var passageSubejctText = $('#selectPassageSubject').val();
+        passageSubejctText = encodeParameter(passageSubejctText);
+
+
+        var passageWordCount = 0;
+        if ($('#selectWordCount').length > 0) {
+            passageWordCount = $('#selectWordCount').val();
+        }
+        var passageTextType = 0;
+        if ($('#selectTextType').length > 0) {
+            passageTextType = $('#selectTextType').val();
+        }
+        var passageTextSubType = 0;
+        if ($('#selectTextSubType').length > 0) {
+            passageTextSubType = $('#selectTextSubType').val();
+        }
+
+        var passageFleschKincaid = 0;
+        if ($('#selectFleschKincaidIds').length > 0) {
+            passageFleschKincaid = $('#selectFleschKincaidIds').val();
+        }		
+
+        var passageId = encodeParameter($('#selectPassageTitle').val());
+
+        var passageTypeId = $('#selectPassageType').val();
+        var passageGenreId = $('#selectPassageGenre').val();
+
+        var qTI3pPassageLanguage = $('#selectQTI3pPassageLanguage option:selected').text();
+
+        if (firstLoadListItemsFromLibrary == undefined) {
+            firstLoadListItemsFromLibrary = '';
+        }
+        var qti3pSourceId = $('#selectSource').val();
+
+        return 'FindResultWith=1&PassageNumber=' + passageNumber + '&passageGradeId=' + passageGradeId +
+            '&PassageSubject=' + passageSubejctText + '&WordCountID=' + passageWordCount + '&TextTypeId=' + passageTextType +
+            '&TextSubTypeId=' + passageTextSubType + '&FleschKincaidId=' + passageFleschKincaid +
+            '&firstLoadListItemsFromLibrary=' + firstLoadListItemsFromLibrary + '&qti3pSourceId=' + qti3pSourceId +
+            '&passageId=' + passageId +
+            '&passageTypeId=' + passageTypeId + '&passageGenreId=' + passageGenreId +
+            '&QTI3pPassageLanguage=' + qTI3pPassageLanguage;
+    }
+
+    function getQti3pFilterByItemCriteria() {
+        var searchKey = '';
+        if ($('#idKeyword').length > 0) {
+            searchKey = encodeParameter($('#idKeyword').val());
+        }
+        var qTI3pSubjectId = 0;
+        if ($('#selectQTI3pSubjectId').length > 0) {
+            qTI3pSubjectId = $('#selectQTI3pSubjectId').val();
+        }
+        var gradeId = 0;
+        if ($('#selectGradeId').length > 0) {
+            gradeId = $('#selectGradeId').val();
+
+            if (gradeId == -1) {
+                gradeId = $("#selectGradeStandard").val() ? $("#selectGradeStandard").val() : gradeId;
+            }
+        }
+
+        var difficultyId = 0;
+        if ($('#selectDifficultyId').length > 0) {
+            difficultyId = $('#selectDifficultyId').val();
+        }
+
+        var qTI3pDOKID = 0;
+        if ($('#selectQTI3pDOKId').length > 0) {
+            qTI3pDOKID = $('#selectQTI3pDOKId').val();
+        }
+
+        var bloomsId = 0;
+        if ($('#selectBloomsId').length > 0) {
+            bloomsId = $('#selectBloomsId').val();
+        }
+
+        var itemTypeId = 0;
+        if ($('#divItemCriteria #selectItemType').length > 0) {
+            itemTypeId = $('#divItemCriteria #selectItemType').val();
+        }
+        var qTI3pItemLanguage = $('#selectQTI3pItemLanguage').val();
+        var vSelectQTI3pCerticaItemLanguage = $('#selectQTI3pCerticaItemLanguage').val();        
+        if (vSelectQTI3pCerticaItemLanguage !== 'ALL' && vSelectQTI3pCerticaItemLanguage !== qTI3pItemLanguage) {
+            qTI3pItemLanguage = vSelectQTI3pCerticaItemLanguage;            
+        }
+
+        //------State Standards
+        var masterStandardId = '';
+        if ($('#divStandardContainer').length > 0) {
+            if ($('#divStandardContainer').html().trim().length > 0) {
+                masterStandardId = getSelectedStandardIds(); //in _StandardFilter.cshtml
+            }
+        }
+        
+        subject = encodeParameter(subject);
+        var subject = '';
+        if ($('#selectQTI3pSubjectId').length > 0) {
+            subject = $("#selectQTI3pSubjectId option:selected").text();
+        }
+        subject = encodeParameter(subject);
+
+        var difficulty = '';
+        if ($('#selectDifficultyId').length > 0) {
+            difficulty = $("#selectDifficultyId option:selected").text();
+        }
+        difficulty = encodeParameter(difficulty);
+
+        var blooms = '';
+        if ($('#selectBloomsId').length > 0) {
+            blooms = $("#selectBloomsId option:selected").text();
+        }
+        blooms = encodeParameter(blooms);
+
+        var itemTypes = '';
+        if ($('#selectItemType').length > 0) {
+            itemTypes = $('#selectItemType option:selected').text();
+        }
+
+        var qti3pSourceId = $('#selectSource').val();           
+
+        if (firstLoadListItemsFromLibrary == undefined) {
+            firstLoadListItemsFromLibrary = '';
+        }
+        return 'FindResultWith=1&Searchkey=' + searchKey + '&SubjectID=' + qTI3pSubjectId + '&GradeID=' + gradeId +
+            '&DifficultyId=' + difficultyId + '&QTI3pDOKID=' + qTI3pDOKID + '&BloomsID=' + bloomsId +
+            '&StateStandardIdString=' + masterStandardId + '&Subject=' + subject + '&Difficulty=' + difficulty + 
+            '&Blooms=' + blooms + '&firstLoadListItemsFromLibrary=' + firstLoadListItemsFromLibrary + '&qti3pSourceId=' + qti3pSourceId +
+            '&ItemTypeId=' + itemTypeId + '&QTI3pItemLanguage=' + qTI3pItemLanguage;
+    }
+
+    function getQtiFilterByPassageCriteria() {
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+        if ($('#radioPersonalItemLibrary').is(':checked') && $('#radioDistrictItemLibrary').is(':checked')) {
+            personal = '';
+        }
+        var IsPersonalSearch = $('#radioPersonalItemLibrary').is(':checked') || false;
+        var IsDistrictSearch = $('#radioDistrictItemLibrary').is(':checked') || false;
+        var passageGradeId = $('#selectPassageGradeNew').val();
+        var passageSubejctText = encodeParameter($('#selectPassageSubjectNew').val()) || '';
+        var passageWordCount = $('#selectWordCount').val();
+        var passageTextType = $('#selectTextType').val();
+        var passageTextSubType = $('#selectTextSubType').val();
+        var passageFleschKincaid = $('#selectFleschKincaidIds').val();
+        var txtRefObjectTitle = encodeParameter($('#txtRefObjectTitle').val());
+
+        return 'findResultWith=1&personal=' + encodeURI(personal) + '&firstLoadListItemsFromLibraryNew=' + firstLoadListItemsFromLibraryNew
+            + '&passageGradeId=' + passageGradeId + '&PassageSubject=' + passageSubejctText + '&WordCountID=' + passageWordCount
+            + '&TextTypeId=' + passageTextType + '&TextSubTypeId=' + passageTextSubType + '&FleschKincaidId=' + passageFleschKincaid
+            + '&RefObjectTitle=' + txtRefObjectTitle + '&IsPersonalSearch=' + IsPersonalSearch + '&IsDistrictSearch=' + IsDistrictSearch;
+    }
+
+    function getQtiFilterByItemCriteria() {
+        var qtiBankId = $('#selectItemsBankId').val();
+        var itemSetId = $('#selectItemsSetId').val();
+        var keyword = encodeParameter($("#txtKeyword").val());
+        var txtTopic = encodeParameter($("#txtTopic").val());
+        var txtSkill = encodeParameter($("#txtSkill").val());
+        var txtOther = encodeParameter($("#txtOther").val());
+        var txtDistrictTag = encodeParameter($("#txtDistrictTag").val());
+        var titleSpecial = '';
+        var standard = '';
+        if ($('#divStandardContainerNew').html() && $('#divStandardContainerNew').html().trim().length > 0) {
+            standard = encodeParameter(getSelectedStandardIds());//in _StandardFilter.cshtml
+        }
+
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+        if ($('#radioPersonalItemLibrary').is(':checked') && $('#radioDistrictItemLibrary').is(':checked')) {
+            personal = '';
+        }
+        var IsPersonalSearch = $('#radioPersonalItemLibrary').is(':checked') || false;
+        var IsDistrictSearch = $('#radioDistrictItemLibrary').is(':checked') || false;
+        
+        var districtCategoryId = $('#selectDistrictCategory').val();
+        if (districtCategoryId == null || districtCategoryId == 'select' || districtCategoryId == '' || districtCategoryId == 'All' || districtCategoryId < 0) {
+            districtCategoryId = 0;
+        }
+        var selectedTags = getSelectedTags();
+
+        var itemTypeId = 0;
+        if ($('#divItemCriteriaNew #selectItemType').length > 0) {
+            itemTypeId = $('#divItemCriteriaNew #selectItemType').val();
+            titleSpecial = $('#divItemCriteriaNew #selectItemType option:selected').attr('titlespecial');
+        }
+
+        return 'findResultWith=1&keyword=' + keyword + '&qtiBankId=' + qtiBankId + '&itemSetId=' + itemSetId
+            + '&standard=' + standard + '&topic=' + txtTopic + '&skill=' + txtSkill + '&other=' + txtOther + '&personal=' + encodeURI(personal) + '&districtTag=' + txtDistrictTag
+            + '&districtCategoryId=' + districtCategoryId + '&selectedTags=' + selectedTags + '&firstLoadListItemsFromLibraryNew=' + firstLoadListItemsFromLibraryNew
+            + '&IsPersonalSearch=' + IsPersonalSearch + '&IsDistrictSearch=' + IsDistrictSearch + '&ItemTypeId=' + itemTypeId + '&TitleSpecial=' + titleSpecial;
+    }
+
+    function getAjaxLoadItemFromLibraryByFilter(getEmptyData) {
+        if (getEmptyData != undefined) {
+            displayNWEASearchCriteria();
+            return '@Url.Action("LoadItemFromLibraryByFilter", "ItemBank")?FindResultWith=1&ForEmpty=True';
+        } else {
+            $('#chkAllItem').removeAttr('checked');
+
+            displayUploadSearchCriteria();
+            ShowBlock($('#dataTable1'), "Loading");
+            var filterCriteria = getQti3pFilterByItemCriteria();
+            return '@Url.Action("LoadItemFromLibraryByFilter", "ItemBank")?' + filterCriteria;
+        }
+
+    }
+
+    function getAjaxLoadItemFromLibraryByFilterNew(getEmptyData) {
+        if (getEmptyData != undefined) {
+            displayNonNWEASearchCriteria();
+            return '@Url.Action("LoadItemFromLibraryByFilterNew", "ItemBank")?FindResultWith=1&ForEmpty=True';
+
+        } else {
+            $('#chkAllItemNew').removeAttr('checked');
+            var filterCriteria = getQtiFilterByItemCriteria();
+            return '@Url.Action("LoadItemFromLibraryByFilterNew", "ItemBank")?' + filterCriteria;
+        }
+    }
+
+    function getAjaxGetQti3pItemsByFiltersPassage(getEmptyData) {
+        if (getEmptyData != undefined) {
+            displayNWEASearchCriteria();
+            return '@Url.Action("LoadItemFromLibraryByFilterNew", "ItemBank")?FindResultWith=1&ForEmpty=True';
+        } else {
+            $('#chkAllItem').removeAttr('checked');
+            ShowBlock($('#dataTablePassageItem3p'), "Loading");
+            var filterCriteria = getQti3pFilterByPassageCriteria();
+            return '@Url.Action("GetQti3pItemsByFiltersPassage", "ItemBank")?' + filterCriteria;
+        }
+
+    }
+
+    function reloadPassageForFoundItem(isPersonalChecked){
+        if (isPersonalChecked){
+            $("#dataTablePassageItem").dataTable().fnReloadAjax(showPassageForFoundItem(true));
+        }
+        else {
+            $("#dataTablePassageItem3p").dataTable().fnReloadAjax(showPassageForFoundItem(false));
+        }
+    }
+
+    function showPassageForFoundItem(isPersonalChecked) {
+        if (isPersonalChecked) {
+            ShowBlock($('#dataTablePassageItem'), "Loading");
+            var filterCriteria = getQtiFilterByItemCriteria();
+            filterCriteria = filterCriteria + '&IsShowPassageForFoundItem=true'
+            return '@Url.Action("GetQtiItemsByFiltersPassage", "ItemBank")?' + filterCriteria;
+        } else {
+            ShowBlock($('#dataTablePassageItem3p'), "Loading");
+            var filterCriteria = getQti3pFilterByItemCriteria();
+            filterCriteria = filterCriteria + '&IsShowPassageForFoundItem=true'
+            return '@Url.Action("GetQti3pItemsByFiltersPassage", "ItemBank")?' + filterCriteria;
+        }
+    }
+
+    function getAjaxGetQtiItemsByFiltersPassage(getEmptyData) {
+        if (getEmptyData != undefined) {
+            displayNonNWEASearchCriteria();
+            return '@Url.Action("GetQtiItemsByFiltersPassage", "ItemBank")?FindResultWith=1&ForEmpty=True';
+        } else {
+            ShowBlock($('#dataTablePassageItem'), "Loading");
+            var filterCriteria = getQtiFilterByPassageCriteria();
+            return '@Url.Action("GetQtiItemsByFiltersPassage", "ItemBank")?' + filterCriteria;
+        }
+    }
+
+    function setDisabledFillterButton(isNWEAItemTab) {
+        if ($('input[name="ItemLibrarySelection"]:checked').length == 0) {
+            $('.itemLibraryFilter-item button[type=submit]').attr('disabled', true);
+            if (isNWEAItemTab)
+                hideCerticaFilter();
+        }
+        else
+            $('.itemLibraryFilter-item button[type=submit]').removeAttr('disabled');
+    }
+
+    function ToggleStandardCriteria() {
+        $content = $('#divStateStandards');
+        $content.toggleClass('expand-content');
+        $content.toggle();
+        $(".manage-standard-criteria").toggleClass('arrow-expand');
+    }
+</script>

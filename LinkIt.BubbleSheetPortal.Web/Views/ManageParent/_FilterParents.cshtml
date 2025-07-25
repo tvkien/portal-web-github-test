@@ -1,0 +1,251 @@
+@using DevExpress.Web.ASPxRoundPanel
+@using LinkIt.BubbleSheetPortal.Web.Constant
+<fieldset>
+    <div class="columns">
+        <div class="colx2-left">
+            @if (ViewBag.IsPublisherOrNetworkAdmin != null && ViewBag.IsPublisherOrNetworkAdmin)
+            {
+                <div class="mb-3">
+                    <label>State</label>
+                    <select id="selectState" class="full-width"></select>
+                </div>
+            }
+            <div class="mb-3">
+                <label>Parent Name</label>
+                <input type="text" id="selectParentName" class="full-width filter-input-text" />
+            </div>
+            <div class="mb-3">
+                <label>Student Name</label>
+                <input type="text" id="selectStudentName" class="full-width filter-input-text" />
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Last Login</label>
+                <select id="selectLoginTimeframe" class="full-width">
+                    <option value="-1" selected>Select Last Login</option>
+                    <option value="0">Never</option>
+                    <option value="14">2 weeks</option>
+                    <option value="30">1 month</option>
+                    <option value="60">2 months</option>
+                    <option value="90">3 months</option>
+                    <option value="180">6 months</option>
+                    <option value="365">1 year</option>
+                    <option value="730">2 years</option>
+                </select>
+                <div class="box-select">
+                    <span class="overlay"></span>
+                </div>
+            </div>
+        </div>
+        <div class="colx2-right">
+            @if (ViewBag.IsPublisherOrNetworkAdmin != null && ViewBag.IsPublisherOrNetworkAdmin)
+            {
+                <div class="mb-3 block-content-dropdown-marquee">
+                    <label>@LabelHelper.DistrictLabel</label>
+
+                    <div class="block-text-name">
+                        <select id="selectDistrict" class="full-width"></select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <input id="selectDistrict" value="0" style="display:none" />
+            }
+            <div class="mb-3 ">
+                <label>Student @LabelHelper.StudentGrade</label>
+                <select id="selectGrade" class="full-width"></select>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Student School</label>
+
+                <div class="block-text-name">
+                    <select id="selectAdminSchool" class="full-width"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee">
+                <label>Has Registration Code</label>
+                <select id="selectHasRegistrationCode" class="full-width">
+                    <option value="">Select Code Status</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+                <div class="box-select">
+                    <span class="overlay"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</fieldset>
+<script type="text/javascript">
+
+    $(document).ready(function () {
+        $('#selectAdminSchool').marquee();
+        $('#selectDistrict').marquee();
+
+        if ('@ViewBag.IsPublisherOrNetworkAdmin'=='True')
+        {
+            if ('@ViewBag.IsPubliser' == 'True')
+            {
+                $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                    AddSelectListItems($('#selectState'), states, 'Select State');
+                    if (_historyData.stateID) {
+                        $("#selectState").val(_historyData.stateID);
+                        $("#selectState").change();
+                    }
+                });
+            }
+            if ('@ViewBag.IsNetworkAdmin' == 'True')
+            {
+                $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function(states) {
+                    AddSelectListItems($('#selectState'), states, 'Select State');
+                    if(states.length == 1){
+                    $("#selectState").change();
+                    }
+                    if (_historyData.stateID) {
+                        $("#selectState").val(_historyData.stateID);
+                        $("#selectState").change();
+                    }
+                });
+            }
+
+        } else {
+            populateSchools();
+            populateGrades();
+            $('#filterSheets').enable();
+        }
+    });
+
+        $('#selectState').change(function () {
+            if ($('#selectState').val() != null) {
+                populateDistricts();
+            }
+
+            if ($('#selectDistrict').val() != '-1' && $('#selectDistrict').val() != null) {
+                $('#filterSheets').enable();
+            } else {
+                $('#filterSheets').attr('disabled', 'disabled');
+            }
+        });
+
+        $('#selectDistrict').change(function () {
+            populateSchools();
+            populateGrades();
+            if ($('#selectDistrict').val() != '-1' && $('#selectDistrict').val() != null) {
+                $('#filterSheets').enable();
+            } else {
+                $('#filterSheets').attr('disabled', 'disabled');
+            }
+        });
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        $('#selectAdminSchool').empty();
+        $('#selectGrade').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            if ('@ViewBag.IsPubliser' == 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                    if (districts.length == 1) {
+                        $("#selectDistrict").change();
+                    }
+                    if (_historyData.districtID) {
+                        $("#selectDistrict").val(_historyData.districtID);
+                        $("#selectDistrict").change();
+                    }
+                });
+            }
+            if ('@ViewBag.IsNetworkAdmin' == 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    AddSelectListItems($('#selectDistrict'), districts, 'Select @LabelHelper.DistrictLabel');
+                    if (districts.length == 1) {
+                        $("#selectDistrict").change();
+                    }
+                    if (_historyData.districtID) {
+                        $("#selectDistrict").val(_historyData.districtID);
+                        $("#selectDistrict").change();
+                    }
+                });
+            }
+
+        }
+    }
+
+    function populateSchools() {
+        $('#selectAdminSchool').empty();
+        if ($('#selectDistrict').length) {
+            var districtValue = $('#selectDistrict').val();
+            if (districtValue != 'select') {
+                $.get('@Url.Action("GetAdminSchoolsByDistrict", "StudentLookup")', { districtId: districtValue }, function (schools) {
+                    districtValue = $('#selectDistrict').val();
+                    if (districtValue && districtValue != 'select') {
+                        AddSelectListItems($('#selectAdminSchool'), schools, 'Select School');
+                        if (_historyData.schoolID) {
+                            $("#selectAdminSchool").val(_historyData.schoolID);
+                            $("#selectAdminSchool").change();
+                        }
+                    }
+                });
+            }
+        } else {
+            $.get('@Url.Action("GetAdminSchoolsByDistrict", "StudentLookup")', function(schools) {
+                AddSelectListItems($('#selectAdminSchool'), schools, 'Select School');
+                if (_historyData.schoolID) {
+                    $("#selectAdminSchool").val(_historyData.schoolID);
+                    $("#selectAdminSchool").change();
+                }
+            });
+        }
+    }
+
+    function populateGrades() {
+        $('#selectGrade').empty();
+        var districtId = "-1";
+        if ($('#selectDistrict').length) {
+            var districtValue = $('#selectDistrict').val();
+            if (districtValue != 'select') {
+                districtId = districtValue;
+            }
+        }
+
+        $.get('@Url.Action("StudentLookupGetGradesFilter", "StudentLookup")', { districtId: districtId }, function(grades) {
+            var districtValue = $('#selectDistrict').val();
+            if (districtValue && districtValue != 'select') {
+                addDefaultOption($('#selectGrade'), '@LabelHelper.StudentGrade');
+                addSelectListItems($('#selectGrade'), grades);
+                if (_historyData.gradeID) {
+                    $("#selectGrade").val(_historyData.gradeID);
+                    $("#selectGrade").change();
+                }
+            }
+        });
+    }
+
+
+</script>
+
+<script type="text/javascript">
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+
+        if (results.length > 1) {
+            selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        }
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+    }
+
+</script>

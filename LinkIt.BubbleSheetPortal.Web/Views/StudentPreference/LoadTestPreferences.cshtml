@@ -1,0 +1,107 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.StudentPreferencesRequestModel
+<article class="container_12">
+    <section class="grid_12">
+        <div id="dvStudentTestPreferencesWraper" class="block-border">
+            <form class="block-content form bubbleSheetSelector">
+                <h1>Student Test Preferences</h1>
+                <fieldset class="grey-bg" id="fsSelectTest">
+                    <legend>Select Test</legend>
+
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <label>@LabelHelper.TestGrade</label>
+                                <select id="selectGrade"></select>
+                            </p>
+                            <p>
+                                <label>@LabelHelper.Subject</label>
+                                <select id="selectSubject"></select>
+                            </p>
+                        </div>
+                        <div class="colx2-right">
+                            <p>
+                                <label>Bank</label>
+                                <select id="selectBank"></select>
+                            </p>
+                            <p>
+                                <label>Test</label>
+                                <select id="selectTest"></select>
+                            </p>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="clear"></div>
+                <ul style="display: none" id="error-messages" class="message error">
+                    <li>Please set all option</li>
+                </ul>
+                <div id="dvStudentTestPreferences"></div>
+            </form>
+        </div>
+    </section>
+</article>
+<input type="hidden" id="hdDistrictId" value="@Model.DistrictID" />
+<input type="hidden" id="hdLevel" value="@Model.Level" />
+<input type="hidden" id="hdId" value="@Model.ID" />
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        populateGrade();
+
+        $('#selectGrade').change(function () {
+            $('#selectSubject').empty();
+            $('#selectBank').empty();
+            $('#selectTest').empty();
+            $('#dvStudentTestPreferences').html('');
+            populateSubject($(this).val());
+        });
+
+        $('#selectSubject').change(function () {
+            $('#selectBank').empty();
+            $('#selectTest').empty();
+            $('#dvStudentTestPreferences').html('');
+            populateBank($(this).val());
+        });
+
+        $('#selectBank').change(function () {
+            $('#selectTest').empty();
+            $('#dvStudentTestPreferences').html('');
+            populateTest($(this).val());
+        });
+
+        $('#selectTest').change(function () {
+            ShowBlock($('#dvStudentTestPreferencesWraper'), 'Loading');
+            $.post('@Url.Action("LoadPreferences")', { Level: $('#hdLevel').val(), VirtualTestID: $(this).val(), ID: $('#hdId').val(), DistrictId: $('#hdDistrictId').val() }, function (result) {
+                $('#dvStudentTestPreferences').html(result);
+                $('#dvStudentTestPreferencesWraper').unblock();
+            });
+        });
+    });
+
+    function populateGrade() {
+        $.get('@Url.Action("GetGradesByDistrict", "PopulateTest")', { districtId: $('#hdDistrictId').val() }, function (grades) {
+            addDefaultOption($('#selectGrade'), "@LabelHelper.TestGrade");
+            addSelectListItems($('#selectGrade'), grades);
+        });
+    }
+
+    function populateSubject(gradeValue) {
+        $.get('@Url.Action("GetSubjectsByGradeIdAndAuthor", "SearchBank")', { gradeId: gradeValue, districtId: $('#hdDistrictId').val() }, function (subjects) {
+            addDefaultOption($('#selectSubject'), "@LabelHelper.Subject");
+            addSelectListItems($('#selectSubject'), subjects);
+        });
+    }
+
+    function populateBank(subjectValue) {
+        $.get('@Url.Action("GetBanksBySubjectName", "SearchBank")', { subjectName: subjectValue, districtId: $('#hdDistrictId').val(), gradeId: $('#selectGrade').val() }, function (banks) {
+            addDefaultOption($('#selectBank'), "Bank");
+            addSelectListItems($('#selectBank'), banks);
+        });
+    }
+
+    function populateTest(bankValue) {
+        $.get('@Url.Action("GetTests", "PopulateTest")', { bankId: bankValue }, function (tests) {
+            addDefaultOption($('#selectTest'), "Test");
+            addSelectListItems($('#selectTest'), tests);
+        });
+    }
+</script>

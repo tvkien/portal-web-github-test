@@ -1,0 +1,90 @@
+﻿@using LinkIt.BubbleSheetPortal.Models.SGO
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGO.SGOReportMasterViewModel
+@{
+    var listDataPoints = Model.ListDataPoints.Where(x => x.SgoDataPoint.Type != (int) SGODataPointTypeEnum.PostAssessment
+                                                         && x.SgoDataPoint.Type != (int) SGODataPointTypeEnum.PostAssessmentCustom
+                                                         && x.SgoDataPoint.Type != (int) SGODataPointTypeEnum.PostAssessmentToBeCreated
+                                                         && x.SgoDataPoint.Type != (int)SGODataPointTypeEnum.PostAssessmentExternal
+                                                         && x.SgoDataPoint.Type != (int)SGODataPointTypeEnum.PostAssessmentHistorical).ToList();
+    var maxCutscore = listDataPoints.Count > 0 ? listDataPoints.Max(x => x.SgoDataPointBands.Count) : 0;
+}
+<div class="sgoPrintBreakNewPage"></div>
+<table class="table table-guidance">
+    <tr>
+        <td class="u-size-185">
+            <strong>
+                Starting Points and Preparedness Groupings
+            </strong>
+        </td>
+    </tr>
+</table>
+<table class="table table-sgo-info u-text-center">
+    <thead>
+        <tr>
+            <td rowspan="4"><strong>Preparedness Groups</strong></td>
+        </tr>
+        <tr>
+            @foreach (var dataPoint in listDataPoints)
+            {
+                <td>
+                     <strong>
+                        @dataPoint.SgoDataPoint.Name
+                    </strong>
+                </td>
+            }
+        </tr>
+        <tr>
+            @foreach (var dataPoint in listDataPoints)
+            {
+                <td>
+                    <strong> Weight:</strong>
+                    @string.Format(" {0} ({1:0.##}%)", dataPoint.SgoDataPoint.Weight > 0 ? dataPoint.SgoDataPoint.Weight : 1, dataPoint.WeightPercent)
+                </td>
+            }
+        </tr>
+        <tr>
+            <td colspan="@listDataPoints.Count">
+                <strong>
+                    Cut scores
+                </strong>
+            </td>
+        </tr>
+    </thead>
+    <tbody>
+        <tr style="text-align: left">
+            <td rowspan="@(maxCutscore + 1)">
+                @foreach (var group in Model.SgoGroups)
+            {
+                    <text>@string.Format("{0} - {1}", group.Order, group.Name) </text>
+                    <br />
+                }
+            </td>
+        </tr>
+        @for (int i = 0; i < maxCutscore; i++)
+        {
+            <tr>
+                @for (int j = 0; j < listDataPoints.Count; j++)
+                {
+                    var dataPointViewModel = listDataPoints[j];
+                    if (dataPointViewModel.SgoDataPointBands.Count == 0)
+                    {
+                        <td>N/A</td>
+                    }
+                    else if (dataPointViewModel.SgoDataPointBands.Count > i)
+                    {
+                        var cutscore = dataPointViewModel.SgoDataPointBands[i];
+                        <text>
+                            <td>
+                                @string.Format("{0}: {1} - {2}", cutscore.Name, cutscore.LowValue, cutscore.HighValue)
+                            </td>
+                        </text>
+                    }
+                    else
+                    {
+                        <td>-</td>
+                    }
+                }
+            </tr>
+        }
+    </tbody>
+</table>

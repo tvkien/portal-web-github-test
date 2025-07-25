@@ -1,0 +1,530 @@
+<style type="text/css">
+    tr.even.row_selected td {
+        background-color: var(--blue7) !important;
+    }
+
+    tr.odd.row_selected td {
+        background-color: var(--blue7) !important;
+    }
+
+    #qti3pItemDataTable tbody input[type="checkbox"] {
+        margin: 0;
+        padding: 0;
+        vertical-align: middle;
+    }
+
+    #qti3pItemDataTable p {
+        line-height: 20px;
+    }
+
+    sourceObject {
+        border: 1px solid var(--grey0);
+        background-color: var(--grey3);
+        cursor: pointer;
+        display: inline-block;
+        min-width: 30px;
+        min-height: 20px;
+    }
+
+        sourceObject[type=text] {
+            padding: 0 0 2px 1px;
+            margin: 2px 0px;
+            background-color: var(--grey3);
+            border: 1px solid var(--blue8);
+            color: var(--lightBlue);
+            font-weight: bold;
+            overflow: hidden;
+            max-width: 600px;
+        }
+
+    destinationObject {
+        display: inline-block;
+        position: relative;
+    }
+
+        destinationObject[type=text] {
+            border-radius: 6px;
+            border: solid 1px var(--grey0);
+            padding: 2px;
+            display: inline-block;
+            font-style: italic;
+            min-width: 50px;
+            min-height: 20px;
+            color: var(--borderColor);
+            margin: 2px 0px;
+        }
+
+    .questionItem {
+        max-height: 60px;
+        overflow: hidden;
+        max-width: 700px;
+        line-height: 1.57143em;
+        font-size: 14px;
+        font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif, dejavu_sansbook;
+    }
+</style>
+
+<section>
+    <div class="block-border">
+        <div class="block-content form" id="qti3pItemListView">
+            <table id="qti3pItemDataTable" class="datatable table no-margin">
+                <thead>
+                    <tr>
+                        <th scope="col" style="text-align: center;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Question Order
+                        </th>
+                        <th scope="col" style="text-align: center;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            File Name
+                        </th>
+                        <th scope="col" style="text-align: center;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Content
+                        </th>                        
+                    </tr>
+                </thead>
+                <tbody style="cursor: pointer">
+                    <tr>
+                        <td style="height: 60px;"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+
+    var oTableQtiItem;
+    var firstLoadItemSet = true;
+
+    $(function () {
+
+        LoadQTIItemsToTable();
+
+        $('#qti3pItemDataTable tbody').click(function (event) {
+            $(oTableQtiItem.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+
+        });
+
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function (e) {
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+        });
+
+
+    });
+
+    function LoadQTIItemsToTable() {
+
+        var options = {
+            bServerSide: true,
+            bStateSave: true,
+            bFilter: false,
+            sServerMethod: "POST",
+            bDestroy: true,
+            bProcessing: false,
+            sAjaxSource: '@Url.Action("GetQTI3pItems")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "dataFileUploadLogId", value: '@ViewBag.DataFileUploadLogId' }
+                );
+            },
+            iDisplayLength: 10,
+            aoColumns: [
+                { sType: 'string', sName: 'QuestionOrder', bSearchable: true, bSortable: true, sWidth: '140px' },
+                { sType: 'string', sName: 'ResourceFileName', bSearchable: true, bSortable: true, sWidth: '250px' },
+                { sType: 'string', sName: 'Content', bSearchable: true, bSortable: true, sWidth: '350px' },
+                { sType: 'integer', sName: 'QTI3pItemId', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+
+            aaSorting: [[0, "asc"]],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(2)', nRow).html(DisplayQTIItemTile(aData[2]));
+                $('td:eq(2)', nRow).find("video").each(function () {
+                    this.pause();
+                });
+                //$('td:eq(2)', nRow).attr('id', aData[1]);//Add attribute Id for column Item Bank as QTIItemID
+                $('td:eq(2)', nRow).attr("onclick", 'ShowQti3pItemDetail(' + aData[3] + ',1)');
+                
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                //ShowBlock($('#qti3pItemDataTable'), 'Loading');
+                return true;
+            },
+            fnDrawCallback: function () {                
+                LoadImages('#qti3pItemDataTable');
+                MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+                //fraction is broken in new line
+                $("#qti3pItemDataTable").find('span[class="math-tex"]').each(function (index, value) {
+                    var span = $(value);
+                    //add display:inline-block
+                    span.css('display', 'inline-block');
+                });
+
+                $('partialsequence sourceitem').each(function () {
+                    var sourceItem = $(this);
+                    sourceItem.css({ 'width': sourceItem.attr('width'), 'height': sourceItem.attr('height') });
+                });
+
+                $('.ui-widget-overlay').remove();
+                loadContentImageHotSpot('#qti3pItemDataTable');
+                loadContentNumberLineHotspot('#qti3pItemDataTable');
+                loadContentDragAndDrop('#qti3pItemDataTable');
+                $('#file_upload_blackboard').show();
+                return true;
+            },
+        };
+        $("#qti3pItemDataTable").data("options", options);
+        initializeDataTable($("#qti3pItemDataTable"));
+
+        oTableQtiItem = $('#qti3pItemDataTable').dataTable();
+    }
+
+
+    function CopyAttributes(from, to) {
+        var attrs = from.prop("attributes");
+        $.each(attrs, function (index, attribute) {
+            to.attr(attribute.name, attribute.value);
+        });
+    }
+
+    function DisplayQTIItemTile(xmlContent) {
+        //debugger;
+        var title = '';
+        xmlContent = correctInlineChoice(xmlContent);
+
+        $(xmlContent).find('.itemBody, itemBody, itembody').each(function () {
+            var itemBody = $(this);
+            itemBody.find("videolinkit").replaceWith(function () {
+                return $('');
+            });
+            if ($(xmlContent).find("responsedeclaration").attr("partialgrading") == "1") {
+                itemBody.find("sourcetext").each(function () {
+                    if ($(this).attr("pointvalue") > 0) {
+                        $(this).addClass("marker-correct");
+                    }
+                });
+            } else {
+                $(xmlContent).find("correctResponse").each(function () {
+                    var id = $(this).attr("identifier");
+                    itemBody.find("sourcetext[identifier=\"" + id + "\"]").addClass("marker-correct");
+                });
+            }
+
+            title = itemBody.html();
+        });
+
+        //var divTitle = '<div style=" overflow:hidden;max-width:700px;max-height:70px;line-height: 20px;" onclick="showEditQtiItemPopupIndex(' + qtiItemID + ',1)">' + title + '</div>';///LNKT-5785
+        var divTitle = '<div style=" overflow:hidden;max-width:700px;max-height:70px;line-height: 20px;">' + title + '</div>';///LNKT-5785
+
+        return divTitle;
+    }
+
+    jQuery.fn.outerHTML = function (s) {
+        return (s)
+            ? this.before(s).remove()
+            : jQuery("<p>").append(this.eq(0).clone()).html();
+    };
+
+    function displayClassDetailTooltip(e, data, maxItemTooltipLength) {
+        if (data == null) {
+            data = '';
+        }
+        var width = '100px'; //default
+        if (maxItemTooltipLength <= 50) {
+            width = '200px';
+        }
+        else if (maxItemTooltipLength <= 100) {
+            width = '300px';
+        }
+        else if (maxItemTooltipLength <= 150) {
+            width = '450px';
+        }
+        else if (maxItemTooltipLength <= 200) {
+            width = '600px';
+        }
+        else {
+            width = '800px';
+        }
+
+        $(e).attr('title', '<p style="text-align:left;width:' + width + ';white-space: normal;word-break: break-all">' + data.split('|').join('<br />') + '</p>');
+    }
+</script>
+
+<script>
+    //Tag
+    function showTagPopup() {
+        var selectedQtiItemIds = getSelectedQtiItemIds();
+        $('#hdSelectedQtiItemIds').val(getSelectedQtiItemIdsForRemark());
+        var worker = $('<div />');
+        worker
+            .addClass("dialog TagPopUpDialogCSS")
+            .attr("id", "addTagDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowTagPopup")\?qtiItemIdString=' + selectedQtiItemIds, function () {
+                worker.dialog({
+                    open: function () {
+                        $('#tips').html('');
+                    },
+                    title: $(this).attr("Tag"),
+                    close: function () {
+                        selectStateId_dt = $('#selectState').val();
+                        if (selectStateId_dt == null || selectStateId_dt == '' || selectStateId_dt == 'select' || selectStateId_dt == 'All') {
+                            selectStateId_dt = 0;
+                        }
+                        selectDistrictId_dt = $('#selectDistrict').val();
+                        if (selectDistrictId_dt == null || selectDistrictId_dt == '' || selectDistrictId_dt == 'select' || selectDistrictId_dt == 'All') {
+                            selectDistrictId_dt = '';
+                        }
+                        selectCategoryId_dt = $('#selectCategory').val();
+                        if (selectCategoryId_dt == null || selectCategoryId_dt == '' || selectCategoryId_dt == 'select' || selectCategoryId_dt == 'All') {
+                            selectCategoryId_dt = '';
+                        }
+                        textToSearch_dt = $('#txtTextToSearch').val();
+
+                        $('.ui-widget-overlay').remove();//will be remove when table display completelly
+                        $(this).remove();
+                        $('#tips').html('');
+                        //clearCheckAll();
+                        //disableActionButton(true);
+                        $('#qti3pItemDataTable').dataTable().fnDraw(false);
+                    },
+                    modal: false,
+                    width: 980,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    //Build custom alert window message
+    function alertMessageTagPopUp(message) {
+        var oldzIndex = $('.TagPopUpDialogCSS').parent('.ui-dialog').css('z-index');
+        //alert(oldzIndex);
+        $('.TagPopUpDialogCSS').parent('.ui-dialog').css({ 'z-index': '1000' });
+        var overlayHeight = $('.ui-widget-overlay').height();
+        //alert(overlayHeight);
+        //set the height for overlay
+        //alert($(document).height());
+        $('.ui-widget-overlay').height($(document).height());
+
+
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $('.TagPopUpDialogCSS').parent('.ui-dialog').css({ 'z-index': oldzIndex });//recover the old value
+                    $('.ui-widget-overlay').height($(document).height());
+                    $('.ui-widget-overlay:last').remove();//only the second overlay
+
+                    $(this).remove();
+
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+    function closeAlert() {
+        $('#alertDialog').dialog('close');
+    }
+    //Master Standard
+    function showStandardPopup() {
+
+        var selectedQtiItemIds = getSelectedQtiItemIds();
+        $('#hdSelectedQtiItemIds').val(getSelectedQtiItemIdsForRemark());
+        if (selectedQtiItemIds == null) {
+            return;
+        }
+        if (selectedQtiItemIds.length == 0) {
+            return;
+        }
+        var url = '@Url.Action("ShowStandardPopup")\?qtiItemId=' + selectedQtiItemIds;
+        if (selectedQtiItemIds.indexOf(",", 0) < 0) {
+            //If user has selected only one qti item to assign standard
+            var worker = $('<div />');
+            worker
+                .addClass("dialog StandardPopUpDialogCSS")
+                .attr("id", "addStandardDialog")
+                .appendTo("body")
+                .load(url, function () {
+                    worker.dialog({
+                        open: function () {
+                            $('#tips').html('');
+                        },
+                        title: $(this).attr("Standard"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();//will be remove when table display completelly
+                            selectStateId = $('#selectState').val();
+                            if (selectStateId == null || selectStateId == '' || selectStateId == 'select' || selectStateId == 'All') {
+                                selectStateId = 0;
+                            }
+                            selectSubjectId = $('#selectSubject').val();
+                            if (selectSubjectId == null || selectSubjectId == '' || selectSubjectId == 'select' || selectSubjectId == 'All') {
+                                selectSubjectId = '';
+                            }
+                            selectGradeId = $('#selectGrade').val();
+                            if (selectGradeId == null || selectGradeId == '' || selectGradeId == 'select' || selectGradeId == 'All') {
+                                selectGradeId = '';
+                            }
+
+                            $(this).remove();
+                            $('#tips').html('');
+                            //clearCheckAll();
+                            //disableActionButton(true);
+                            $('#qti3pItemDataTable').dataTable().fnDraw(false);
+                        },
+                        modal: false,
+                        width: 905,
+                        resizable: false
+                    });
+                });
+        }
+        else {
+            //If user has selected more than one qti item to assign standard
+            var worker = $('<div />');
+            worker
+                .addClass("dialog StandardPopUpDialogCSS")
+                .attr("id", "addStandardDialog")
+                .appendTo("body")
+                .load('@Url.Action("ShowStandardPopupForManyQtiItem")\?qtiItemIdString=' + selectedQtiItemIds, function () {
+                    worker.dialog({
+                        open: function () {
+                            $('#tips').html('');
+                        },
+                        title: $(this).attr("Standard"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();//will be remove when table display completelly
+                            selectStateId = $('#selectState').val();
+                            if (selectStateId == null || selectStateId == '' || selectStateId == 'select' || selectStateId == 'All') {
+                                selectStateId = 0;
+                            }
+                            selectSubjectId = $('#selectSubject').val();
+                            if (selectSubjectId == null || selectSubjectId == '' || selectSubjectId == 'select' || selectSubjectId == 'All') {
+                                selectSubjectId = '';
+                            }
+                            selectGradeId = $('#selectGrade').val();
+                            if (selectGradeId == null || selectGradeId == '' || selectGradeId == 'select' || selectGradeId == 'All') {
+                                selectGradeId = '';
+                            }
+                            $(this).remove();
+                            $('#tips').html('');
+                            //clearCheckAll();
+                            //disableActionButton(true);
+                            $('#qti3pItemDataTable').dataTable().fnDraw(false);
+                        },
+                        modal: false,
+                        width: 905,
+                        resizable: false
+                    });
+                });
+        }
+        showModalDialogBG();
+        $('.ui-dialog[aria-labelledby="ui-dialog-title-qti3pQuestionList"] .modal-component-body').removeClass('pt-5').addClass('pt-4')
+    }
+
+    //Build custom alert window message
+    function alertMessageStandardPopUp(message) {
+        var oldzIndex = $('.StandardPopUpDialogCSS').parent('.ui-dialog').css('z-index');
+        $('.StandardPopUpDialogCSS').parent('.ui-dialog').css({ 'z-index': '1000' });
+        $('.ui-widget-overlay').height($(document).height());
+
+
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $('.StandardPopUpDialogCSS').parent('.ui-dialog').css({ 'z-index': oldzIndex });//recover the old value
+                    $('.ui-widget-overlay').height($(document).height());
+                    $('.ui-widget-overlay:last').remove();//only the second overlay
+
+                    $(this).remove();
+                    //clearCheckAll();
+
+
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+
+</script>
+<script>
+    //Passage
+    function showPassagePopup() {
+        var selectedQtiItemIds = getSelectedQtiItemIds();
+        $('#hdSelectedQtiItemIds').val(getSelectedQtiItemIdsForRemark());
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassagePopUpDialogCSS")
+            .attr("id", "addPassageDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowPassagePopupForManyQtiItem")\?qtiItemIdString=' + selectedQtiItemIds, function () {
+                worker.dialog({
+                    open: function () {
+                        $('#tips').html('');
+                    },
+                    title: $(this).attr("Standard"),
+                    close: function () {
+                        $('.ui-widget-overlay').remove();//will be remove when table display completelly
+                        $(this).remove();
+                        $('#tips').html('');
+                        //$('#chkAllQtiItem').removeAttr('checked');
+                        //clearCheckAll();
+                        //disableActionButton(true);
+                        //reload qtiItem list
+                        $('#qti3pItemDataTable').dataTable().fnDraw(false);
+                    },
+                    modal: false,
+                    width: 1084,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+</script>

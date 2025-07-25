@@ -1,0 +1,1058 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.VirtualTestViewModel
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.TestdesignManageTest, "Create/Manage Tests",true);
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleVirtualTestBundle()
+
+<script src="@Url.Content("~/Scripts/knockout-3.0.0.js")" type="text/javascript"></script>
+<script src="@BundleHelper.Version("~/Scripts/jquery.coolfieldset.js")" type="text/javascript"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor_utils.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor_functions.js")"></script>
+<script type="text/javascript" src="@BundleHelper.Version("~/Content/themes/TestMaker/ckeditor_mkV2.js")"></script>
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script src="@Url.Content("~/Scripts/TestPreferences/v2/testPreferences.js")" type="text/javascript"></script>
+<link rel="stylesheet" href="https://cdn.materialdesignicons.com/5.0.45/css/materialdesignicons.min.css">
+<link href="/Content/libs/select2/comboTreePlugin.css" rel="stylesheet" />
+<script src="/Content/libs/select2/comboTreePlugin.js"></script>
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptVirtualTestBundle()
+<link href="@BundleHelper.Version("~/Content/css/v2/virtualTest.css")" rel="stylesheet" type="text/css" />
+
+@Html.Partial("~/Views/Passage/_KeepingDistrict.cshtml", (int)ViewBag.DistrictId)
+<article class="container_12" id="divMain">
+    <section class="grid_12">
+        <div class="block-border">
+            <div id="divTop" class="block-content block-24 divTop">
+                <div class="d-flex flex-row justify-content-between">
+                    <h1>@Model.Name</h1>
+                    <a id="btnClose" href="javascript:void(0)" class="btn btn-link pe-0"><i class="fa-solid fa-arrow-left me-2"></i>Back to Test Banks</a>
+                </div>
+                <div class="d-flex flex-row align-items-center justify-content-between">
+
+                    @if (!Model.IsSurvey)
+                    {
+                        <div class="DivFieldSet d-flex flex-row">
+                            <div class="d-flex flex-row">
+                                <input checked="checked" type="radio" name="radioItemGroup" id="radioItemGroup1" onclick="loadItemListNormalView()">
+                                <label for="radioItemGroup1" class="ms-2 vertualtest-view-control" style="font-weight: bold">View Items</label>
+                            </div>
+                            <div class="d-flex flex-row ms-4">
+                                <input type="radio" name="radioItemGroup" id="radioItemGroup2" onclick="loadItemListAnswerKeyView()">
+                                <label for="radioItemGroup2" class="ms-2 vertualtest-view-control" style="font-weight: bold">View Answer Key</label>
+                            </div>
+                        </div>
+                    }
+
+                    <div>
+                        @if (Model.RestrictionAccessList != null && Model.RestrictionAccessList.AllowToPrint == true && !Model.IsSurvey)
+                        {
+                            <button id="btnPrintTest" class="btn-text-secondary pd-btn-link" type="button">Print Test</button>
+                        }
+
+                        @if (Model.RestrictionAccessList != null && Model.RestrictionAccessList.AllowToReviewOnline == true)
+                        {
+                            <button id="btnPreviewOnline" class="btn-text-secondary pd-btn-link" type="button">Preview Online</button>
+                        }
+
+                        @if (!Model.IsSurvey)
+                        {
+                            <button @(Model.HasRetakeRequest ? "disabled" : "") id="btnImportItem" type="button" class="btn-text-secondary btn-plus-icon pd-btn-plus-icon" onclick="importItem()" disabled="disabled">
+                                Import Item
+                            </button>
+                        }
+
+                        <button @(Model.HasRetakeRequest ? "disabled" : "") id="btnCreateItem" class="btn-text btn-plus-icon pd-btn-plus-icon" type="button" onclick="createItem()">Create New Item</button>
+
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4 m-0" id="indexView">
+                <div class="col-4 ps-0" id="divLeft">
+                    @Html.Partial("v2/_VirtualSectionQuestion", Model)
+                </div>
+                <div class="col-8 pe-0" id="divRight" style="z-index: 0;">
+                </div>
+            </div>
+            <article class="container_12 form" id="quickViewContainer" style="display:none;padding-top:24px;">
+                <section class="grid_12">
+                    <div class="block-border">
+                        <div class="block-section-custom">
+                            <div style="text-align:right;">
+                                <button class="btn-blue" id="btnQuickCreateTest" type="button" style="display:none;" onclick="return OpenQuickCreateTest();">Bulk Create Items</button>
+                            </div>
+                            <div id="quickView" class="no-margin last-child" style="padding-top: 10px;">
+                            </div>
+                        </div>
+                        <div class="block-section-custom pt-0" style="display: flex; flex-direction: column;">
+                            <div id="divQuickCreate" class="d-flex align-items-center justify-content-between px-3 py-2" style="background-color: var(--blue1)">
+                                <div style="float: left">
+                                    <span id="selectSectionAddContainer" style="@if (Model.VirtualTestId > 0 && ViewBag.HasMoreThanOneSection){ <text>display: inline</text> } else { <text>display: none</text> }">
+                                        <p style="display:inline;">Select the section to add the items to </p> <select id="selectSectionAdd" style="width: 150px; margin-left: 8px;"></select>
+                                    </span>
+                                    <p style="display: inline;margin-left:24px">Number of choices on new items:</p>
+                                    <p style="display: inline">
+                                        <select id="selectDefaultNumberOfChoices" style="width: 64px; margin-left: 8px;">
+                                            <option value="1">1</option>
+                                        </select>
+                                    </p>
+                                </div>
+                                <div style="float: right">
+                                    <p style="display: inline">
+                                        Quick Create:
+                                    </p>
+                                    <p style="display: inline">
+                                        <input type="text" id="txtQuickCreateCorrectAnswer" style="width: 64px;text-transform:uppercase;" />
+                                    </p>
+                                </div>
+                            </div>
+                            <hr class="my-4">
+                            <div class="d-flex justify-content-end">
+                                <button class="btn-secondary-link" id="btnCancelQtiItem" type="button" class="grey" tabindex="18" style="margin-right: 20px;" onclick="javascript:window.location.href='@Url.Action("Index")?virtualTestId=@Model.VirtualTestId' + generateDistrictIdParamsFromURL();">Cancel</button>
+                                <button class="btn-red" type="button" id="btnSaveAnswerKey" onclick="saveAnswerKey()">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </article>
+
+            <input type="hidden" id="SelectedTestBankId" value="0" />
+            <input type="hidden" id="hiddenVirtualTestIdOnIndexPage" value="@Model.VirtualTestId" />
+        </div>
+    </section>
+</article>
+<input type="hidden" id="hidTestItemMediaPath" value="@ViewBag.TestItemMediaPath" />
+<input type="hidden" id="hdFirstLoadEditorOnCreateTest" value="1" />
+<input type="hidden" id="hdVirtualTestName" value="@Model.Name" />
+<input type="hidden" id="hdVirtualTestSubTypeID" value="@Model.NavigationMethodID" />
+<input type="hidden" id="hdVirtualTestSourceID" value="@Model.VirtualTestSourceId" />
+<input type="hidden" id="hdHasMoreThanOneSection" value="@ViewBag.HasMoreThanOneSection?.ToString()" />
+
+<div id="divOnTopLoadQuickAddVirtualTest"></div>
+<script type="text/javascript">
+    //Remember selected on StateStandard Popup
+    var selectStateId = 0; //used in _ListMasterStandard
+    var selectSubjectId = '';
+    var selectGradeId = '';
+    var parentId = 0;
+    var childId = 0;
+    //Remember selected on DistrictTag Popup
+    var selectStateId_dt = 0;
+    var selectDistrictId_dt = 0;
+    var selectCategoryId_dt = 0;
+    var textToSearch_dt = '';
+    var isSurvey = '@Model.IsSurvey';
+    var hasRetakeRequest = @(Model.HasRetakeRequest.ToString().ToLower());
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+    }
+
+    $(function ()
+    {
+        $('.write').addClass('current');
+        $('#manageTests').addClass('current');
+        if(@Model.VirtualQuestionId == 0) {
+            showPropertiesVirtualTest(); //default
+        } else {
+            LoadVirtualQuestionPropertyOnInit();//defined in _VirtualSectionQuestion.cshtml
+        }
+
+        if (@Model.VirtualTestId > 0) {
+            $.get('@Url.Action("GetSections", "VirtualTest")?virtualTestId=@Model.VirtualTestId', function(states) {
+                 $('#selectSectionAdd').html('');
+                AddSelectListItems($('#selectSectionAdd'), states, 'Select Section');
+            });
+        }
+    });
+
+    function showPropertiesVirtualTest() {
+        if (!checkTestIntrustionEditorDirty()) { //defined in Index.cshtml
+            return;
+        }
+        if (!checkSectionIntrustionEditorDirty()) { //defined in Index.cshtml
+            return;
+        }
+
+        if (!window.isClickQuestionGroup) {
+            ShowBlock($('#divRight'), 'Loading');
+        }
+
+        window.isClickQuestionGroup = false;
+
+        $('.autoListUL .ulItem').removeClass('selected');
+        $('.virtualGroup').removeClass('selected');
+
+        destroyEditorInstance('txtSectionTestPropertiesInstruction');
+        $('#divRight').load('@Url.Action("LoadVirtualTestProperties")?virtualTestId=@Model.VirtualTestId', function () {
+            $('#divRight').focus();
+            $('#divRight').unblock();
+        });
+    }
+    $('#btnClose').click(function () {
+        var url = '';
+        if (isSurvey === 'True')
+            url = '@Url.Action("Index", "ManageSurvey")';
+        else
+            url = '@Url.Action("Index", "ManageTest")';
+        window.location.replace(url);
+    });
+</script>
+<!-- Custom alert message box -->
+<script type="text/javascript">
+    function CustomAlert(message, isLongMessage) {
+        var yesButton = '<button style="width:63px;margin-left:0px;" onclick="CustomAlertYesClick(this);">OK</button>';
+        //var messageTextAlign = 'center';
+        var messageTextAlign = 'left';
+        var messageBoxWidth = 260;
+        var diaglogWidth = 310;
+        if (typeof isLongMessage != "undefined" && isLongMessage == true) {
+            messageTextAlign = 'left';
+            messageBoxWidth = 540;
+            diaglogWidth = 600;
+            if(message.length > 70) {
+                messageBoxWidth = 560;
+                diaglogWidth = 610;
+            }
+
+        }
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + messageBoxWidth + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;text-align:center;"><div style="text-align:' + messageTextAlign + ';line-height: 18px;">' + message +
+            '</div><div style="text-align: center;padding-top:20px;padding-bottom:10px;">' + yesButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "CustomAlertDialog")
+            .appendTo("body")
+
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: diaglogWidth,
+                maxheight: 400,
+                resizable: false,
+                open: function () { $(".ui-dialog-titlebar-close").hide(); }
+            });
+    }
+
+    function CustomAlertYesClick(item) {
+        $("#CustomAlertDialog").dialog("close");
+        var url = $(item).attr('url');
+        if (url != undefined && $.trim(url) != '') window.open(url);
+    }
+
+    function LoadImages(containerSelector) {
+        $(containerSelector).find("img").each(function () {
+            var image = $(this);
+            var imageUrl = image.attr("src");
+            if (IsNullOrEmpty(imageUrl)) {
+                imageUrl = image.attr("source");
+            }
+
+            if (IsNullOrEmpty(imageUrl)) imageUrl = '@Url.Content("~/Content/images/emptybg.png")';
+
+            if (imageUrl.charAt(0) == '/') imageUrl = imageUrl.substring(1);
+
+            image.attr("source", '');
+            image.attr("src", imageUrl);
+            if (imageUrl.toLowerCase().indexOf("http") == 0) return;
+        });
+    }
+
+    function IsNullOrEmpty(value) {
+        return typeof (value) === "undefined" || value == null || $.trim(value) == '';
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+</script>
+<script type="text/javascript">
+    var isOpenImportItem = false;
+    function importItem() {
+        location.href = '@Url.Action("ShowImportItemsFromLibrary")/?virtualTestId=@Model.VirtualTestId' + generateDistrictIdParamsFromURL();
+        return;
+        if (isOpenImportItem == true) {
+            return;
+        }
+        isOpenImportItem = true;
+
+        var worker = $('<div />');
+        worker
+            .addClass("dialog ddNewItemFromLibraryPopupCSS")
+            .attr("id", "addNewItemFromLibraryPopup")
+            .appendTo("body")
+            .load('@Url.Action("ShowImportItemsFromLibrary")/?virtualTestId=@Model.VirtualTestId' + generateDistrictIdParamsFromURL(), function () {
+                worker.dialog({
+                    open: function () {
+                        $('#tips').html('');
+                        $('#SelectSectionDialog').parent('.ui-dialog').empty();
+                        $('#SelectSectionDialog').remove();
+                    },
+                    title: $(this).attr("Add New Item From Library"),
+                    close: function () {
+                        //refresh qtitem
+                        $('#tips').html('');
+
+                        $('.ui-widget-overlay').remove();
+                        isOpenImportItem = false;
+                        viewModelItemLibrary = null;
+                        $('#addNewItemFromLibraryPopup').parent('.ui-dialog').empty();
+                        $('#addNewItemFromLibraryPopup').remove();
+                        LoadImages('#divVirutalSectionQuestion');
+                    },
+                    modal: false,
+                    width: 980,
+                    resizable: false
+                });
+            });
+
+        showModalDialogBG();
+    }
+</script>
+
+<script>
+
+    $(function () {
+        $('#btnPrintTest').click(function () {
+            PopupPrintTest(@Model.VirtualTestId);
+        });
+    });
+
+    function PopupPrintTest(virtualTestID) {
+        ShowBlock($('#divMain'), 'Loading');
+
+        var url = '@Url.Action("PrintVirtualTest", "PrintTest")';
+        url += '?layoutV2=true&testId=' + virtualTestID;
+
+        $.ajax({
+            url: url,
+            cache: false
+        }).done(function (html) {
+            $('#divMain').unblock();
+            $('body').append('<div id="PrintVirtualTestPanel" class="dialog"></div>');
+            $("#PrintVirtualTestPanel").append(html);
+            $('#PrintVirtualTestPanel').dialog({
+                title: "",
+                open: function () {
+
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+
+                    //Create overlay for popup
+                    $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $('#PrintVirtualTestPanel').remove();
+                    $("body .my-overlay").remove();
+                },
+                modal: false,
+                width: 1006,
+                resizable: false
+            });
+
+        });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+</script>
+<!-- Check test instruction, section instruction before leaving -->
+<script>
+
+    function checkTestIntrustionEditorDirty()
+    {
+        if ($('#txtTestPropertiesInstruction').length == 1) {
+            return checkEditor("Are you sure you want to leave the changes of test instruction made in the editor.", "txtTestPropertiesInstruction");
+        } else {
+            return true;
+        }
+    }
+    function checkSectionIntrustionEditorDirty() {
+        if ($('#txtSectionTestPropertiesInstruction').length == 1) {
+            return checkEditor("Are you sure you want to leave the changes of section instruction made in the editor.", "txtSectionTestPropertiesInstruction");
+        } else {
+            return true;
+        }
+    }
+
+    function checkQuestionGroupInstructionEditorDirty() {
+        if ($('#txtQuestionGroupInstruction').length == 1) {
+            return checkEditor("Are you sure you want to leave the changes of question group instruction made in the editor.", "txtQuestionGroupInstruction");
+        } else {
+            return true;
+        }
+    }
+
+    function checkTestIntrustionEditorDirtyLeave(evt) {
+        if ($('#txtTestPropertiesInstruction').length == 1) {
+            if (CKEDITOR.instances['txtTestPropertiesInstruction'].checkDirty()) {
+                var message = 'This page is asking you to confirm that you want to leave - test instruction you have entered may not be saved.';
+                if (typeof evt == 'undefined') {
+                    evt = window.event;
+                }
+                if (evt) {
+                    evt.returnValue = message;
+                }
+                return message;
+            }
+        }
+    }
+
+    function checkSectionIntrustionEditorDirtyLeave(evt) {
+        if ($('#txtSectionTestPropertiesInstruction').length == 1) {
+            if (CKEDITOR.instances['txtSectionTestPropertiesInstruction'].checkDirty()) {
+                var message = 'This page is asking you to confirm that you want to leave - section instruction you have entered may not be saved.';
+                if (typeof evt == 'undefined') {
+                    evt = window.event;
+                }
+                if (evt) {
+                    evt.returnValue = message;
+                }
+                return message;
+            }
+        }
+    }
+
+    function checkQuestionGroupInstructionEditorDirtyLeave (evt) {
+        if ($('#txtQuestionGroupInstruction').length == 1) {
+            if (CKEDITOR.instances['txtQuestionGroupInstruction'].checkDirty()) {
+                var message = 'This page is asking you to confirm that you want to leave - question group instruction you have entered may not be saved.';
+                if (typeof evt == 'undefined') {
+                    evt = window.event;
+                }
+                if (evt) {
+                    evt.returnValue = message;
+                }
+                return message;
+            }
+        }
+    }
+
+    $(document).ready(function() {
+
+        if (window.addEventListener) {
+            window.addEventListener('beforeunload', checkTestIntrustionEditorDirtyLeave, false);
+            window.addEventListener('beforeunload', checkSectionIntrustionEditorDirtyLeave, false);
+            window.addEventListener('beforeunload', checkQuestionGroupInstructionEditorDirtyLeave, false);
+        } else {
+            window.attachEvent('onbeforeunload', checkTestIntrustionEditorDirtyLeave);
+            window.attachEvent('onbeforeunload', checkSectionIntrustionEditorDirtyLeave);
+            window.attachEvent('onbeforeunload', checkQuestionGroupInstructionEditorDirtyLeave);
+        }
+
+        if(@Model.VirtualTestId ==0) {
+            //There's no virtual test
+            //Disable some buttons
+            $('#divTop button').attr('disabled','disabled');
+            $('#btnClose').removeAttr('disabled');
+        }
+
+        if (!hasRetakeRequest)
+            $('#btnImportItem').removeAttr('disabled');
+
+    });
+    function resetTestIntrustionEditorDirty() {
+        if ($('#txtTestPropertiesInstruction').length == 1) {
+            CKEDITOR.instances['txtTestPropertiesInstruction'].resetDirty();
+        }
+    }
+    function resetSectionIntrustionEditorDirty() {
+        if ($('#txtSectionTestPropertiesInstruction').length == 1) {
+            CKEDITOR.instances['txtSectionTestPropertiesInstruction'].resetDirty();
+        }
+    }
+
+    function resetQuestionGroupIntrustionEditorDirty() {
+        if ($('#txtQuestionGroupInstruction').length == 1) {
+            CKEDITOR.instances['txtQuestionGroupInstruction'].resetDirty();
+        }
+    }
+
+    function loadItemListNormalView() {
+        window.location.href = '@Url.Action("Index")?virtualTestId=@Model.VirtualTestId' + generateDistrictIdParamsFromURL();
+    }
+
+    function loadItemListAnswerKeyView() {
+        $("#indexView").hide();
+        $("#quickViewContainer").show();
+        ShowBlock($('#quickView'), 'Loading');
+
+        $('#quickView').load('@Url.Action("LoadItemListAnswerKeyQuickView")?virtualTestId=@Model.VirtualTestId', function () {
+            $('#quickView').focus();
+            $('#quickView').unblock();
+            $("#btnQuickCreateTest").show();
+        });
+    }
+</script>
+<script>
+    var isOpenCreateNewItemFromVirtualTest = false;
+    function createItem() {
+        if (isOpenCreateNewItemFromVirtualTest == true) {
+            return;
+        }
+        isOpenCreateNewItemFromVirtualTest = true;
+        window.location.href = '@Url.Action("Index","TestMaker")?qtiItemGroupId=0&qtiSchemaId=1&virtualTestId=@Model.VirtualTestId' + generateDistrictIdParamsFromURL();
+    }
+</script>
+
+<style>
+    .questionType {
+        background: none;
+        border-bottom: none;
+        border-left: none;
+    }
+
+    #txtQuickCreateCorrectAnswer {
+        padding: 0.65rem !important;
+        border: 2px solid var(--selectBorder);
+        border-radius: 0;
+        color: var(--selectColor);
+        font-size: var(--fontSizeText);
+        background: none;
+    }
+</style>
+<script type="text/javascript">
+
+    //Optimize: data here for the first time load pop up Add Item from Library
+</script>
+
+<!-- Preview Online -->
+<script>
+    var testPreferenceModel = null;
+
+    $(function () {
+        $('#btnPreviewOnline').click(function () {
+            $(".dialog").dialog("close");
+            PopupPreviewOnline(@Model.VirtualTestId);
+        });
+
+        breadcrumbDetailPage('.write', '#manageTests');
+    });
+
+    function PopupPreviewOnline(virtualTestId)
+    {
+        ShowBlock($('#divMain'), 'Loading');
+        var url = '@Url.Action("PreviewOnlineSettingForTestDesign", "TestAssignment")';
+        url += '?testId=' + virtualTestId;
+
+        $.ajax({
+            url: url,
+            cache: false
+        }).done(function (html) {
+            $('#divMain').unblock();
+
+            if (isSurvey === 'True') {
+                $('body').append('<div id="divPreviewOnlinePanel"></div>');
+                $("#divPreviewOnlinePanel").append(html);
+            }
+            else {
+                $('body').append('<div id="divPreviewOnlinePanel" class="dialog"></div>');
+                $("#divPreviewOnlinePanel").append(html);
+                $('#divPreviewOnlinePanel').dialog({
+                    title: "",
+                    open: function () {
+                        //If width of popup gt window width popup auto show on the left
+                        var currentPopup = $(this);
+                        if (currentPopup.width() > $(window).width()) {
+                            currentPopup.parent().css({ "left": "0" });
+                        }
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        return true;
+                    },
+                    close: function () {
+                        $('#divPreviewOnlinePanel').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 1006,
+                    resizable: false
+                });
+            }
+        });
+    }
+
+    $(".close").unbind("click");
+    $(".close").live("click", function (e) {
+        e.preventDefault();
+    });
+
+    $('#btnTeacherPreviewOnlineSubmitXXX').unbind('click');
+    $('#btnTeacherPreviewOnlineSubmitXXX').live("click", function ()
+    {
+        //check deadline time must be equal or greater than current time
+        var vdeadline = '';
+        if ($('#rdTimeLimitON:checked').length > 0 && $('#enableDeadline:checked').length > 0)
+        {
+            vdeadline = BuildLocalDateTimeToUTC();
+            var today = new Date();
+            var deadline = new Date(vdeadline);
+            if (deadline < today) {
+                alertMessageSetting('Deadline must be equal or greater than current time.');
+                return;
+            }
+        }
+        if ($('#rdTimeLimitON:checked').length > 0 && $('#enableDurationOption:checked').length > 0 && ($("#durationId").val() == '' || $("#durationId").val() == '0')) {
+            alertMessageSetting('Value must be provided.');
+            return;
+        }
+        var highlightTextOption = $('input[name=SupportHighlightText]:checked').val() == "OFF" ? 0 : 1;
+        if (highlightTextOption == 1) {
+            highlightTextOption = $('input[name=SupportHighlightText]:checked').val() == "ONLYSTUDENT" ? 2 : 1;
+        }
+        var vDurationValue = 0;
+        if ($('#rdTimeLimitON:checked').length > 0 && $('#enableDurationOption:checked').length > 0) {
+            vDurationValue = $("#durationId").val();
+        }
+        var vDisplayAnswerLables = '0';
+        if ($('#DisplayAnswerLabelSingleSelect').is(':checked')) {
+            if ($('#DisplayAnswerLabelMultiselect').is(':checked')) {
+                vDisplayAnswerLables = '1';
+            } else {
+                vDisplayAnswerLables = '2';
+            }
+        } else {
+            if ($('#DisplayAnswerLabelMultiselect').is(':checked')) {
+                vDisplayAnswerLables = '3';
+            } else {
+                vDisplayAnswerLables = '0';
+            }
+        }
+
+        var vOptions1 = {
+            SettingType: $('#selectSettingType').val(),
+            VerifyStudent: $('input[name=vStudent]:checked').val() == "ON" ? 1 : 0,
+            RequireTestTakerAuthentication: $('input[name=RequireTestTakerAuthentication]:checked').val() == "ON" ? 1 : 0,
+            ShuffleQuestions: $('input[name=ShuffleQuestions]:checked').val() == "ON" ? 1 : 0,
+            ShuffleAnswers: $('input[name=ShuffleAnswers]:checked').val() == "ON" ? 1 : 0,
+            AutoAdvanceTest: $('input[name=AutoAdvance]:checked').val() == "ON" ? 1 : 0,
+            MustAnswerAllQuestions: $('input[name=AnswerAllQuestions]:checked').val() == "ON" ? 1 : 0,
+            CanReviewTest: $('input[name=CanReviewTest]:checked').val() == "ON" ? 1 : 0,
+            CanPauseTest: $('input[name=CanPauseTest]:checked').val() == "ON" ? 1 : 0,
+            DisplayAnswerLabels: vDisplayAnswerLables,
+            AnswerLabelFormat: $('input[name=AnswerLabelFormat]:checked').val() == "ON" ? 1 : 0,
+            OverrideAutoGradedTextEntry: $('input[name=OverrideAutoGradedTextEntry]:checked').val() == "ON" ? 1 : 0,
+            PassagePositioninTestTaker: $('input[name=PassagePositioninTestTaker]:checked').val() == "LEFT" ? 1 : 0,
+            SupportHighlightText: highlightTextOption,
+            EliminateChoiceTool: $('input[name=EliminateChoiceTool]:checked').val() == "ON" ? 1 : 0,
+            FlagItemTool: $('input[name=FlagItemTool]:checked').val() == "ON" ? 1 : 0,
+            TimeLimit: $('input[name=TimeLimit]:checked').val() == "ON" ? 1 : 0,
+            Duration: vDurationValue,
+            Deadline: vdeadline,
+            ShowTimeLimitWarning: $('input[name=ShowTimeLimitWarning]:checked').val() == "ON" ? 1 : 0,
+            MultipleChoiceClickMethod: $('input[name=MultipleChoiceClickMethod]:checked').val() == "ClickAnswer" ? 1 : 0,
+            EnableVideoControls: $('input[name=EnableVideoControls]:checked').val() == "ON" ? 1 : 0,
+            TestExtract: '',
+            LockedDownTestTaker: $('input[name=LockedDownTestTaker]:checked').val() == "ON" ? 1 : 0,
+            EnableAudio: $('input[name=EnableAudio]:checked').val() == "ON" ? 1 : 0,
+            SectionBasedTesting: $('input[name=SectionBasedTesting]:checked').val() == "ON" ? 1 : 0,
+            AdaptiveTest: $('input[name=AdaptiveTest]:checked').val() == "ON" ? 1 : 0,
+        };
+        if ($('input[name=TestExtract]') != undefined) {
+            vOptions1.TestExtract = $('input[name=TestExtract]:checked').val() == "ON" ? 1 : 0;
+        }
+        var vTools1 = {
+            SimplePalette: $('input[name=simplePalette]:checked').val() == "ON" ? 1 : 0,
+            MathPalette: $('input[name=mathPalette]:checked').val() == "ON" ? 1 : 0,
+            SpanishPalette: $('input[name=spanishPalette]:checked').val() == "ON" ? 1 : 0,
+            FrenchPalette: $('input[name=frenchPalette]:checked').val() == "ON" ? 1 : 0,
+            Protractor: $('input[name=protractor]:checked').val() == "ON" ? 1 : 0,
+            SupportCalculator: $('input[name=supportCalculator]:checked').val() == "ON" ? 1 : 0,
+            ScientificCalculator: $('input[name=scientificCalculator]:checked').val() == "ON" ? 1 : 0,
+        };
+        var data = JSON.stringify({ vOptions: vOptions1, vTools: vTools1, testId: @Model.VirtualTestId });
+        $(".dialog").dialog("close");
+        ShowBlock($('#divMain'), 'Loading');
+        //Call process create OnlineTest
+        var url = '@Url.Action("OnlineTestPreviewForTestDesign", "TestAssignment")';
+        $.ajax({
+            url: url,
+            traditional: true,
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: data,
+            cache: false
+        }).done(function (response) {
+            $('#divMain').unblock();
+
+            $('body').append('<div id="divUrlPreviewOnlinePanel" class="dialog"></div>');
+            var yesButton = '<a style="text-decoration: none; font-weight: bold;" class="btn-red" href="' + response.testtakerUrl + '" target="_blank" onclick="closePopUpOnlineTearcherPreview();" >OK</a>';
+            var strHtml = '<section class="mb-0"><div class="block-border">' +
+                '<div class="form"><div class="d-flex" style="padding: 24px; background-color: var(--white); align-items: center; justify-content: center; font-weight: bold">Test is ready for preview' +
+                '</div><div class="btn-wrapper-popup">' + yesButton + '</div></div></div></section>';
+
+            $("#divUrlPreviewOnlinePanel").append(strHtml);
+            $('#divUrlPreviewOnlinePanel').dialog({
+                title: "",
+                open: function () {
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+                    //Create overlay for popup
+                    $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $('#divUrlPreviewOnlinePanel').remove();
+                    $("body .my-overlay").remove();
+                },
+                modal: false,
+                width: 360,
+                resizable: false
+            });
+        });
+    });
+
+    function closePopUpOnlineTearcherPreview() {
+        $('#divUrlPreviewOnlinePanel').dialog('close');
+    }
+
+    function alertMessageSetting(message) {
+        var oldzIndex = $('#divContentEditTestSettingSecond').parent('.ui-dialog').css('z-index');
+        $('#divContentEditTestSettingSecond').parent('.ui-dialog').css({ 'z-index': '1005' });
+        var overlayHeight = $('.my-overlayy').height();
+        //set the height for overlay
+        $('.my-overlay').height(2000);
+
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () {
+                    $('.ui-widget-overlay:last').remove();
+                    $('#divContentEditTestSettingSecond').parent('.ui-dialog').css({ 'z-index': oldzIndex });//recover the old value
+                    $('.my-overlay').height(overlayHeight);
+                    $(this).remove();
+                },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBGAlert();
+    }
+
+    function closeAlert() {
+        $('#alertDialog').dialog('close');
+    }
+
+    function showModalDialogBGAlert() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1005;"></div>');
+    }
+
+    var genSectionSettings = (tag_key, section, option_or_tool_tag) => {
+        let timeLimitParams = [
+            {
+                "Key": "sectionId",
+                "Value": `${section.VirtualSectionId}`
+            },
+            {
+                "Key": "duration",
+                "Value": section[option_or_tool_tag][`duration_${tag_key}`]
+            },
+            {
+                "Key": "timeLimitDurationType",
+                "Value": section[option_or_tool_tag][`timeLimitDurationType_${tag_key}`]
+            },
+            {
+                "Key": "on",
+                "Value": section[option_or_tool_tag][tag_key] == "1" ? "1" : "0"
+            },
+            {
+                "Key": "lock",
+                "Value": section[option_or_tool_tag][`chklock_${tag_key}`]
+            }
+        ]
+        let onOffParams = [
+            {
+                "Key": "sectionId",
+                "Value": `${section.VirtualSectionId}`
+            },
+            {
+                "Key": "on",
+                "Value": `${section[option_or_tool_tag][tag_key]}`
+                //"Value": section[option_or_tool_tag][tag_key] == "1" ? "1" : "0"
+            },
+            {
+                "Key": "lock",
+                "Value": section[option_or_tool_tag][`chklock_${tag_key}`]
+            }
+        ]
+
+        return tag_key == 'timeLimitSectionItems' ? timeLimitParams : onOffParams
+    }
+
+    var updateSectionsAttrsOfCurrentTags = (tags, option_or_tool_tag) => {
+        let customTags = tags.map(tag => {
+            return  {
+                "Key": tag.Key,
+                "Value": "",
+                "Attributes": [],
+                "SectionItems": [
+                //section list
+                    ...customSectionsSettting.map(section => ({
+                                "Key": "sectionItem",
+                                "Value": "",
+                                "SectionItems": [],
+                                "Attributes": genSectionSettings(tag.Key, section, option_or_tool_tag)
+                    }))
+                ]
+            }
+        })
+
+        return customTags
+    }
+
+    var customDataHaveSectionsItem = () => {
+        let optionTagsRemoveItems = testPreferenceModel.OptionTags.filter(opt => !opt.Key.includes("SectionItems"))
+        let toolTagsRemoveItems = testPreferenceModel.ToolTags.filter(opt => !opt.Key.includes("SectionItems"))
+        let currentOptionTags = sectionsOptionsToolsTags.filter( a => ["timeLimitSectionItems", 'mustAnswerAllQuestionsSectionItems'].includes(a.Key) )
+        let currentToolTags = sectionsOptionsToolsTags.filter( a => !["timeLimitSectionItems", 'mustAnswerAllQuestionsSectionItems'].includes(a.Key) )
+
+        let getUpdatedValsCurrentOptionTags = updateSectionsAttrsOfCurrentTags(currentOptionTags, 'option_tags')
+        let getUpdatedValsCurrentToolTags = updateSectionsAttrsOfCurrentTags(currentToolTags, 'tool_tags')
+
+        return {
+            OptionTags: [...optionTagsRemoveItems, ...getUpdatedValsCurrentOptionTags],
+            ToolTags:  [...toolTagsRemoveItems, ...getUpdatedValsCurrentToolTags]
+        }
+    }
+
+    function customDataSectionAvailability() {
+        let currentChecked = $("input[name='sectionAvailability']:checked").val()
+        let sectionAvailability = testPreferenceModel.OptionTags.filter(o => o.Key == "sectionAvailability")[0]
+
+        if (!sectionAvailability) {
+            testPreferenceModel.OptionTags.push({
+                "Key": "sectionAvailability",
+                "Value": "",
+                "Attributes": [],
+                "SectionItems": []
+            })
+
+            sectionAvailability = testPreferenceModel.OptionTags.filter(o => o.Key == "sectionAvailability")[0]
+        }
+
+        let sectionItems = testSections.map(s => (
+            {
+                "Key": "sectionItem",
+                "Value": "",
+                "Attributes": [
+                    {
+                    "Key": "sectionId",
+                    "Value": `${s.VirtualSectionId}`
+                    },
+                    {
+                    "Key": "open",
+                    "Value": `${$(`input[name='section_${s.VirtualSectionId}_open']:checked`).val()}`
+                    },
+                    {
+                    "Key": "lock",
+                    "Value": "True"
+                    }
+                ],
+                "SectionItems": []
+            }
+        ))
+
+
+        if (currentChecked == 1) {
+            sectionAvailability[`SectionItems`] = [...sectionItems]
+        } else {
+            sectionAvailability[`SectionItems`] = []
+        }
+        sectionAvailability.Attributes = [
+                {
+                    "Key": "on",
+                    "Value": `${currentChecked}`
+                },
+                 {
+                    "Key": "lock",
+                    "Value": `${$(`#chklockSectionAvailability`).is(":checked")}`
+                },
+        ]
+        sectionAvailability.Value = ''
+
+    }
+
+    function customDateTimeLimit() {
+        let timeLimitSectionItemsChecked = $("#timeLimitSectionItems").is(":checked")
+        let deadline = testPreferenceModel.OptionTags.filter(o => o.Key == "deadline")[0]
+        let duration = testPreferenceModel.OptionTags.filter(o => o.Key == "duration")[0]
+        if (timeLimitSectionItemsChecked) {
+            deadline.Value = ''
+            duration.Value = '1'
+            $('#hdfDurationId').val('1')
+        }
+    }
+
+    $('#btnTeacherPreviewOnlineSubmit').unbind('click');
+    $('#btnTeacherPreviewOnlineSubmit').live("click", function() {
+
+        if (!testSchedule.validateTestScheduleForm()) return;
+        var errMsg = UpdateTestPreferenceModel();
+
+        if (errMsg != '') {
+            CustomAlert(errMsg);
+            return;
+        }
+
+        if (customSectionsSettting.length > 1) {
+            let finalDataCustom = customDataHaveSectionsItem()
+            testPreferenceModel = finalDataCustom
+            customDataSectionAvailability()
+        }
+
+        customDateTimeLimit()
+
+        $(".dialog").dialog("close");
+        ShowBlock($('#divMain'), 'Loading');
+
+        var data = JSON.stringify({ objTestPreferenceModel: testPreferenceModel, testId: @Model.VirtualTestId });
+        $(".dialog").dialog("close");
+        ShowBlock($('#divMain'), 'Loading');
+        //Call process create OnlineTest
+        var url = '@Url.Action("OnlineTestPreviewForTestDesign", "TestAssignment")';
+        $.ajax({
+            url: url,
+            traditional: true,
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: data,
+            cache: false
+        }).done(function (response) {
+            $('#divMain').unblock();
+
+            $('body').append('<div id="divUrlPreviewOnlinePanel" class="dialog"></div>');
+            var yesButton = '<a style="text-decoration: none; font-weight: bold;" class="btn-red" href="' + response.testtakerUrl + '" target="_blank" onclick="closePopUpOnlineTearcherPreview();" >OK</a>';
+            var strHtml = '<section class="mb-0"><div class="block-border">' +
+                '<div class="form"><div class="d-flex" style="padding: 24px; background-color: var(--white); align-items: center; justify-content: center; font-weight: bold">Test is ready for preview' +
+                '</div><div class="btn-wrapper-popup">' + yesButton + '</div></div></div></section>';
+
+            $("#divUrlPreviewOnlinePanel").append(strHtml);
+            $('#divUrlPreviewOnlinePanel').dialog({
+                title: "",
+                open: function () {
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+                    //Create overlay for popup
+                    $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $('#divUrlPreviewOnlinePanel').remove();
+                    $("body .my-overlay").remove();
+                },
+                modal: false,
+                width: 360,
+                resizable: false
+            });
+        });
+    });
+</script>
+
+<script>
+    function OpenQuickCreateTest()
+    {
+        var url = '@Url.Action("LoadQuickAddVirtualTest", "ManageTest")?virtualTestId=@Model.VirtualTestId';
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="PopupdQuickAddCreateVirtualTest" class="dialog"></div>');
+                $("#PopupdQuickAddCreateVirtualTest").append(html);
+                $('#PopupdQuickAddCreateVirtualTest').dialog({
+                    title: "",
+                    open: function () {
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        return true;
+                    },
+                    close: function () {
+                        //$('#dataTableVirtualTest').dataTable().fnDraw(false);
+                        $('#PopupdQuickAddCreateVirtualTest').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+            });
+
+        return false;
+    }
+</script>
+
+@if (Model.IsSurvey)
+{
+    <script>
+        $(function () {
+            var item = $("#main-nav li a[href='@Url.Action("Index", "ManageTest")']");
+            item.parent().removeClass('current');
+            item.parent().parent().parent().removeClass('current');
+            item = $("#main-nav li a[href='@Url.Action("Index", "ManageSurvey")']");
+            item.parent().addClass("current");
+            item.parent().parent().parent().addClass("current");
+        })
+    </script>
+}

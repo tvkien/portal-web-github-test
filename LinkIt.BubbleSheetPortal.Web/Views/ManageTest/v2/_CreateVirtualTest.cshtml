@@ -1,0 +1,116 @@
+<style>
+    #portal-v2-containter .comboTreeInputWrapper {
+        border: 2px solid var(--selectBorder);
+    }
+
+    #portal-v2-containter .comboTreeInputWrapper #inputVirtualTestCategoryId {
+        border: 0;
+    }
+
+    #portal-v2-containter .ui-dialog .ui-dialog-titlebar-close:after, #portal-v2-containter .ui-dialog-titlebar-close:after {
+        bottom: -4px;
+    }
+
+    #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-PopupCreateVirtualTest"] {
+        width: 500px !important;
+        padding: 0;
+    }
+</style>
+
+<section>
+    <div id="dvCreateVirtualTest" class="block-content form p-4">
+        <p class="title-large mb-4">Quick Create Test</p>
+        <ul style="display: none" id="error-messages" class="message error"></ul>
+        <ul style="display: none" id="success-message" class="message success">
+            <li>Test created.</li>
+        </ul>
+
+        <div class="mb-4">
+            <div class="mb-3">
+                <label>Category</label>
+                <input type="text" id="inputVirtualTestCategoryId" placeholder="Select Category" autocomplete="off" class="w-100" />
+            </div>
+            <div class="mb-3">
+                <label>Test Name</label>
+                <input type="text" id="inputVirtualTestName" class="w-100" />
+            </div>
+            <div class="collapse" style="display:none;">
+                <p class="virtualtest-legend"><a class="text-decoration-none" href="#">Quick Create Questions</a></p>
+                <div class="virtualtest-content" style="display:none;">
+                    <div class="mb-3">
+                        <label for="simple-select">No. of MC Questions</label>
+                        <input class="w-100" type="text" value="0" id="numberOfMCQuestions" onkeydown="numberQuestionTextBox_Keydown(event)" />
+                    </div>
+
+                    <div>
+                        <label for="simple-select">No. of CR Questions</label>
+                        <input class="w-100" type="text" value="0" id="numberOfCRQuestions" onkeydown="numberQuestionTextBox_Keydown(event)" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-component-footer mx-n4 px-4">
+            <div slot="footer">
+                <button type="button" id="btnCancelCreateTestBank" onclick="cancelCreateVirtualTest()">Cancel</button>
+                <button class="btn-red" type="button" id="btnCreateTestBank" onclick="createVirtualTest()">Create</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    var comboTree1 = null;
+    var categoryElementId = '#inputVirtualTestCategoryId';
+
+    function numberQuestionTextBox_Keydown(e) {
+        // Allow: backspace, delete, tab, escape, enter and .
+        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+            // Allow: Ctrl+A
+            (e.keyCode == 65 && e.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (e.keyCode >= 35 && e.keyCode <= 39)) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+    }
+    function GetDataSetCategories() {
+        var districtIdVal = '';
+        if ($('#selectDistrict')) {
+             districtIdVal = $('#selectDistrict').val();
+        }
+        $.get('@Url.Action("GetDataSetCategoriesToComboTreeByDistrictId", "CategoriesAPI")?districtId=' + districtIdVal, function (categoryList) {
+            //defaul linkit category
+
+            comboTree1 = $(categoryElementId).comboTree({
+                source: categoryList,
+                isMultiple: false,
+                cascadeSelect: true,
+                collapse: false,
+                selected: [46]
+            });
+            if (comboTree1 &&  '@ViewBag.AllowChangeDataSetCategory' === 'False')
+            {
+                $(categoryElementId).parents('.comboTreeInputWrapper').addClass('disabled');
+            }
+            $(categoryElementId).change(function(e) {
+                $(this).val(comboTree1 ? comboTree1.getSelectedNames() : '');
+            });
+        });
+    }
+    $(function () {
+        $('.virtualtest-legend').on('click', function () {
+            var $virtualtestContent = $('.virtualtest-content');
+
+            $virtualtestContent.toggle();
+        });
+        if ($(categoryElementId).length) {
+            GetDataSetCategories();
+
+        }
+    });
+</script>

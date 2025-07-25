@@ -1,0 +1,281 @@
+<style>
+    #dataTablePassageItem tbody tr {
+        height: 100% !important; /* Fix for IE9 */
+    }
+</style>
+<div div="ListItemsPassageNew">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h3 class="h3 mb-0">Filtered Passages</h3>
+    </div>
+    <div>
+        <table id="dataTablePassageItem" class="datatable table no-margin dataTablePassageItem w-100" width="100%">
+            <thead>
+                <tr>
+                    <th scope="col">
+                        Action
+                    </th>
+                    <th scope="col">
+                        Source
+                    </th>
+                    <th scope="col">
+                        Name
+                    </th>
+                    <th scope="col">
+                        Number
+                    </th>
+                    <th scope="col">
+                        Subject
+                    </th>
+                    <th scope="col">
+                        @LabelHelper.GradeLabel
+                    </th>
+                    <th scope="col">
+                        Text Type
+                    </th>
+                    <th scope="col">
+                        Text Sub Type
+                    </th>
+                    <th scope="col">
+                        Flesch Kincaid
+                    </th>
+                    <th scope="col">
+                        Matched Items
+                    </th>
+                    <th scope="col">
+                        All Items
+                    </th>
+                    <th scope="col" style="display: none">
+                        ItemsMatchXml
+                    </th>
+                    <th scope="col" style="display: none">
+                        ItemsAllXml
+                    </th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script type="text/javascript">
+
+    $(document).ready(function () {
+
+        var optionPassageItem = {
+            bServerSide: true,
+            bDestroy: true,
+            bFilter:false,
+            sAjaxSource: getAjaxSourcePassageItem(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeParameter(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength:25,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTIRefObjectID', bSearchable: false, bSortable: false, sWidth: "10px" },
+                { sType: 'string', sName: 'Source', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'Name', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'Number', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'Subject', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'GradeName', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'TextType', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'TextSubType', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'FleschKinkaidName', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'ItemsMatchCount', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'ItemsAllCount', bSearchable: false, bSortable: false,},
+                { sType: 'string', sName: 'ItemsMatchXml', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'ItemsAllXml', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'HasQTI3pPassage', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'boolean', sName: 'CanEdit', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                //$('td:eq(0)', nRow).html(DisplayViewPassageNewIcon(aData[0]));
+                $('td:eq(0)', nRow).html(setIconVisibility(aData));
+                $('td:eq(2)', nRow).css('color', "var(--bs-blue)");
+                $('td:eq(2)', nRow).click(function () {
+                    let hasQTI3pPassageIndex = optionPassageItem.aoColumns.findIndex(x => x.sName === 'HasQTI3pPassage');
+                    showPassageDetailPopupListItemPassageNew(aData[0], aData[hasQTI3pPassageIndex]);
+                });
+                $('td:eq(2)', nRow).addClass("cursor-pointer");
+                if (aData[9] > 0) {
+                    $('td:eq(9)', nRow).html(DisplayAssignMatchItemNewIcon(aData[0], aData[9], aData[11]));
+                }
+
+                $('td:eq(10)', nRow).html(DisplayAssignAllItemNewIcon(aData[0], aData[10], aData[12]));
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTablePassageItem'), 'Loading');
+                return true;
+            },
+            fnDrawCallback: function () {
+                firstLoadListItemsFromLibrary = false;
+                LoadImages('#dataTablePassageItem');
+                $('.with-tip').tip();
+                $('#dataTablePassageItem').unblock();
+            },
+            fnInitComplete: function () {
+                var tableEl = $('#dataTablePassageItem')[0];
+                var wrapper = document.createElement('div');
+                wrapper.classList.add('table-wrapper-scroll');
+                tableEl.parentNode.insertBefore(wrapper, tableEl);
+                wrapper.appendChild(tableEl);
+            }
+        };
+        $("#dataTablePassageItem").data("options", optionPassageItem);
+    });
+    function getAjaxSourcePassageItemForEmpty() {
+        $('#chkAllItem').removeAttr('checked');
+        displayNWEASearchCriteria();
+        return getAjaxGetQtiItemsByFiltersPassage('true');
+
+    }
+    function getAjaxSourcePassageItem() {
+        return getAjaxGetQtiItemsByFiltersPassage();//defined in ItemBank/_ImportItemFromLibraryScript.cshtml
+    }
+
+
+
+    function ReloadPassageItem() {
+        $("#dataTablePassageItem").dataTable().fnReloadAjax(getAjaxSourcePassageItem());
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    function DisplayViewPassageNewIcon(qtiRefObjectID) {
+        var icon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/view-item.png")';
+        var string = '<a QTIRefObjectID="' + qtiRefObjectID + '" href="javascript:void(0)" onclick="showPassageDetailPopupListItemPassageNew('+ qtiRefObjectID + ')" title="View passage" class="with-tip"><img src="/' + icon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        return string;
+    }
+    function setIconVisibility(aData) {
+        if(!aData || aData[14] == "False"){
+            return '';
+        }
+        var editIcon =  '<i class="icon fa-solid fa-pencil icon-grey"></i>';
+        var passageId = aData[3];
+        var editUrl = '@Url.Action("Edit","PassageEditor")?id=' + passageId;
+        var nameSearch = aData[2];
+        var passageNumber = aData[3];
+        var subject = aData[4];
+        var gradeId =  aData[5];
+        var textTypeId = aData[6];
+        var textSubTypeId = aData[7];
+        var fleschKincaidId = aData[8];
+        var searchBox = $('#passageListDataTable_filter input').val();
+        editUrl += '&nameSearch=' + encodeURIComponent(nameSearch);
+        editUrl += '&passageNumber=' + passageNumber;
+        editUrl += '&gradeId=' + gradeId;
+        editUrl += '&subject=' + encodeURIComponent(subject);
+        editUrl += '&textTypeId=' + textTypeId;
+        editUrl += '&textSubTypeId=' + textSubTypeId;
+        editUrl += '&fleschKincaidId=' + fleschKincaidId;
+        editUrl += '&searchBox=' + encodeURIComponent(searchBox);
+        var editString = '<a href="' + editUrl + '" target="_blank" title="Edit Passage" passageId="' + passageId + '" class="with-tip " style="display: flex; justify-content: center; text-decoration: none;">' + editIcon + '</a>';
+        return editString;
+    }
+
+    function showPassageDetailPopupListItemPassageNew(qtiRefObjectID, hasQTI3pPassage) {
+        let url = '@Url.Action("ShowPassageDetail", "QTIItem")\?refObjectID=' + qtiRefObjectID;
+        if (hasQTI3pPassage === 'True') {
+            url = '@Url.Action("ShowPassage3pDetail", "QTIItem")\?qti3pPassageID=' + qtiRefObjectID;
+        }
+
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassageDetailPopupOnQtiItemDetailCSS")
+            .attr("id", "PassageDetailDialog")
+            .appendTo("body")
+            .load(url, function () {
+                worker.dialog({
+                    title: $(this).attr("PassageDetail"),
+                    open: function () {
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+
+                        if (window.playsound != null) {
+                            window.playsound.pause();
+                        }
+                    },
+                    modal: false,
+                    width: 780,
+                    resizable: false,
+                    position: {
+                        my: "center",
+                        at: "center",
+                        of: window
+                    }
+                });
+            });
+        showModalDialogBG();
+    }
+    function DisplayAssignAllItemNewIcon(qtiRefObjectID, allCount, matchItemXml) {
+        var showItemIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        //var showItemString = '<a qtiRefObjectID="' + qtiRefObjectID + '" matchItemXml="' + '" href="javascript:void(0)" onclick="showPassageItemForm(this)" title="Show Item(s)" class="with-tip"><img src="/' + showItemIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        var showItemLink = '<a qtiRefObjectID="' + qtiRefObjectID + '" matchItemXml="' + matchItemXml + '" href="javascript:void(0)" onclick="showPassageItemForm(this)" title="Show Item(s)" class="passage-found-item-link with-tip">' + allCount + '</a>';
+
+        return showItemLink;
+
+    }
+    function DisplayAssignMatchItemNewIcon(qtiRefObjectID, matchCount, matchItemXml) {
+        var showItemIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        //var showItemString = '<a qtiRefObjectID="' + qtiRefObjectID + '" matchItemXml="' + matchItemXml + '" href="javascript:void(0)" onclick="showPassageItemForm(this)" title="Show Item(s)" class="with-tip"><img src="/' + showItemIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+        var showItemLink = '<a qtiRefObjectID="' + qtiRefObjectID + '" matchItemXml="' + matchItemXml + '" href="javascript:void(0)" onclick="showPassageItemForm(this)" title="Show Item(s)" class="passage-found-item-link with-tip">' + matchCount + '</a>';
+
+        return showItemLink;
+
+    }
+
+    function showPassageItemForm(control) {
+        var self = $(control);
+        var qtiRefObjectID = self.attr('qtiRefObjectID');
+        var matchItemXml = self.attr('matchItemXml');
+        matchItemXml = encodeParameter(matchItemXml);
+        var worker = $('<div />');
+        var virtualTestId = $('#hiddenVirtualTestId ').val();
+        worker
+            .addClass("dialog")
+            .attr("id", "ShowPassageItemFormPopup")
+            .appendTo("body")
+        .load('@Url.Action("ShowPassageItemForm")/?virtualTestId='+ virtualTestId + '&qtiRefObjectID=' + qtiRefObjectID + '&matchItemXml=' + matchItemXml, function () {
+            worker.dialog({
+                title: $(this).attr("Associated items"),
+                close: function () {
+                    $('.ui-widget-overlay').remove();
+                    $(this).remove();
+                },
+                modal: false,
+                width: 950,
+                resizable: false,
+                dialogClass: 'ui-dialog-title-close',
+            });
+        });
+
+        showModalDialogBG();
+    }
+
+</script>

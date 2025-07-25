@@ -1,0 +1,127 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.ItemTagViewModel
+<style type="text/css">
+/*    .ui-menu .ui-menu-item:hover {
+        cursor: pointer;
+    }
+
+    .ui-autocomplete {
+        z-index: 2000 !important;
+        max-height: 200px !important;
+        overflow-x: hidden;
+        overflow-y: visible;
+        width: 250px !important;
+    }
+
+    .ui-menu .ui-menu-item {
+        background-color: transparent;
+    }*/
+    .ui-dialog .ui-dialog-titlebar.ui-widget-header {
+        display: none
+    }
+</style>
+<section>
+    <div class="block-border" id="divCreateEditItemTagCategory">
+        <div class="block-content block-24">
+            <h2 class="header">Create a @LabelHelper.DistrictLabel Tag</h2>
+            <ul style="display: none" id="error-messages" class="message error"></ul>
+            <ul style="display: none" id="success-message" class="message success">
+                <li>@LabelHelper.DistrictLabel Tag successfully created.</li>
+            </ul>
+            <div class="form full-width">
+                <div>
+                    <label>
+                        Name
+                    </label>
+                    <input type="text" id="inputItemTagName" class="full-width" maxlength="500" />
+                </div>
+                <div class="mt-3 mb-4">
+                    <label>
+                        Description
+                    </label>
+                    <input type="text" id="inputItemTagDescription" class="full-width" maxlength="1000" />
+                </div>
+            </div>
+            <div class="modal-component-footer" style="margin: 0 -24px -24px -24px">
+                <div slot="footer">
+                    <button type="button" id="btnCancelCreateItemTag">Cancel</button>
+                    <button type="button" id="btnCreateItemTag" class="btn-red">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<script type="text/javascript">
+    $(function () {
+        $.browser.chrome = /chrome/.test(navigator.userAgent.toLowerCase());
+
+        $("#inputItemTagName").autocomplete({
+            source: function (request, response) {
+                $.ajax({
+                    url: '@Url.Action("GetSuggestTags", "ItemTag")',
+                    type: "get",
+                    dataType: "json",
+                    data: {
+                        districtId: '@Model.DistrictId',
+                        textToSearch: encodeURIComponent(request.term)
+                    },
+                    success: function (data) {
+                        response(data);
+                    }
+                });
+            },
+            minLength: 2
+        });
+    });
+
+    $("#inputItemTagName").keypress(function( event) {
+        if($.browser.msie||$.browser.chrome) {
+            var limit = 500;
+            var len = $("#inputItemTagName").val().length ;
+            if(len+1>limit) {
+                event.preventDefault();
+            }
+        }
+    });
+
+    $("#inputItemTagDescription").keypress(function( event) {
+        if($.browser.msie||$.browser.chrome) {
+            var limit = 1000;
+            var len = $("#inputItemTagDescription").val().length ;
+            if(len+1>limit) {
+                event.preventDefault();
+            }
+        }
+    });
+
+    $('#btnCancelCreateItemTag').die('click');
+    $('#btnCancelCreateItemTag').live('click', function () {
+        $(".dialog").dialog("close");
+    });
+
+    $('#btnCreateItemTag').die('click');
+    $('#btnCreateItemTag').live('click', function () {
+
+        var tagName = $("#inputItemTagName").val();
+        tagName = tagName.trim();
+
+        var description = $("#inputItemTagDescription").val();
+
+        if (tagName.length > 0) {
+
+            $('#btnCreateItemTag').attr('disabled', true);
+
+            $.post('@Url.Action("CreateItemTag")', { itemTagCategoryId: @Model.ItemTagCategoryID, tagName: encodeURIComponent(tagName), description: encodeURIComponent(description) }, function (response) {
+                if (response == true) {
+                    $('#success-message').show();
+                    setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                } else {
+                    addErrorMessages(response);
+                    $('#btnCreateItemTag').removeAttr('disabled');
+                }
+            });
+        } else {
+            var response = { ErrorList:[{ErrorMessage:'Please input Item Tag Name'}]};
+            addErrorMessages(response);
+        }
+    });
+</script>

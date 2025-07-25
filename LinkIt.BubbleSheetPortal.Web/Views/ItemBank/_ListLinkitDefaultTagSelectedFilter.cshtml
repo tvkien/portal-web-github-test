@@ -1,0 +1,256 @@
+﻿<div class="block-content form" style="height:425px;">
+    <div class="toggle" style="padding-top: 0px; height: 30px; margin-top: -55px">
+        <h1 style="margin-top: -5px">
+            Selected Tag(s)
+        </h1>
+        <button id="btnDeselectTag" type="button" style="margin-left: 170px;margin-right: 2px;height: 35px;margin-top: 5px" disabled="disabled">Deselect Tag(s)</button>
+    </div>
+    <div class="no-margin last-child" style="height:415px;overflow: auto;padding-top: 37px">
+        <table id="dataTableSelectedLinkitDefaultTag" class="datatable table no-margin" width="100%">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 100px">
+                        <input type="checkbox" id="chkAllItemDeselect" />
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        Tag
+                    </th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+<script type="text/javascript">
+    var oTableLinkitDefaultTagSelected;
+    //get the mutal tag of selected qtiitems
+    $(function () {
+        LoadSelectedLinkitDefaultTagTable();
+    });
+
+    
+    function LoadSelectedLinkitDefaultTagTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceForSelectedLinkitDefaultTag(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox 
+                var item = null;
+
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+
+                }
+
+            },
+            bFilter: false,
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'TagId', bSearchable: false, bSortable: false, sWidth: '20px' },
+                { sType: 'string', sName: 'LinkitDefaultTagCategory', bSearchable: false, bSortable: true, sWidth: '50px' },
+                { sType: 'string', sName: 'Tag', bSearchable: false, bSortable: true }
+            
+                
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBoxLinkitDefaultTagSelected(aData[0], aData[1]));
+                var category = aData[1];
+                category = category.toLowerCase().trim();
+                if(category=='topic') {
+                    var tag = $('#txtTopicTag').val();
+                    tag = tag + aData[2] + ', ';
+                    $('#txtTopicTag').val(tag);
+                }
+                if (category == 'skill') {
+                    var tag = $('#txtSkillTag').val();
+                    tag = tag + aData[2] + ', ';
+                    $('#txtSkillTag').val(tag);
+                }
+                if (category == 'other') {
+                    var tag = $('#txtOtherTag').val();
+                    tag = tag + aData[2] + ', ';
+                    $('#txtOtherTag').val(tag);
+                }
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableSelectedLinkitDefaultTag'), "Loading");
+                $('#txtTopicTag').val('');
+                $('#txtSkillTag').val('');
+                $('#txtOtherTag').val('');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableSelectedLinkitDefaultTag').unblock();
+
+                $('.with-tip').tip();
+                var tag = $('#txtTopicTag').val();
+                tag = tag.trim();
+                tag = tag.substring(0, tag.length - 1);
+                $('#txtTopicTag').val(tag);
+                
+                tag = $('#txtSkillTag').val();
+                tag = tag.trim();
+                tag = tag.substring(0, tag.length - 1);
+                $('#txtSkillTag').val(tag);
+                
+                tag = $('#txtOtherTag').val();
+                tag = tag.trim();
+                tag = tag.substring(0, tag.length - 1);
+                $('#txtOtherTag').val(tag);
+                
+            }
+        };
+
+        $("#dataTableSelectedLinkitDefaultTag").data("options", options);
+        initializeDataTable($("#dataTableSelectedLinkitDefaultTag"));
+        oTableLinkitDefaultTagSelected = $('#dataTableSelectedLinkitDefaultTag').dataTable();
+    }
+    
+    function getAjaxSourceForSelectedLinkitDefaultTag() {
+        var hdSelectedTopicTags = $('#hdSelectedTopicTags').val();
+        var hdSelectedSkillTags = $('#hdSelectedSkillTags').val();
+        var hdSelectedOtherTags = $('#hdSelectedOtherTags').val();
+        if (hdSelectedTopicTags == null) {
+            hdSelectedTopicTags = '';
+        }
+        if (hdSelectedSkillTags == null) {
+            hdSelectedSkillTags = '';
+        }
+        if (hdSelectedOtherTags == null) {
+            hdSelectedOtherTags = '';
+        }
+        return '@Url.Action("GetSelectedLinkitDefaultTags", "ItemBank")/?selectedTopicTags=' + hdSelectedTopicTags + '&selectedSkillTags=' + hdSelectedSkillTags + '&selectedOtherTags=' + hdSelectedOtherTags;
+    }
+    function setCheckBoxLinkitDefaultTagSelected(tagId,category) {
+        var checkboxString = '<input type="checkbox" name="chkLinkitDefaultTagItemDeselect" value="' + category + '_' + tagId + '"  />';
+
+        return checkboxString;
+    }
+    
+    function ReloadLinkitDefaultTagSelected() {
+        $("#dataTableSelectedLinkitDefaultTag").dataTable().fnReloadAjax(getAjaxSourceForSelectedLinkitDefaultTag());
+    }
+    
+    //Multiple select
+    $('#btnDeselectTag').die('click');
+    $('#btnDeselectTag').live("click", function (e) {
+        var selectedItemId = getSelectedLinkitDefaultTagIdSelect();
+        var hdSelectedTopicTags = $('#hdSelectedTopicTags').val();
+        var hdSelectedSkillTags = $('#hdSelectedSkillTags').val();
+        var hdSelectedOtherTags = $('#hdSelectedOtherTags').val();
+        if (hdSelectedTopicTags == null) {
+            hdSelectedTopicTags = '';
+        }
+        if (hdSelectedSkillTags == null) {
+            hdSelectedSkillTags = '';
+        }
+        if (hdSelectedOtherTags == null) {
+            hdSelectedOtherTags = '';
+        }
+        var ids = selectedItemId.split(',');
+        var i = 0;
+
+        while (i < ids.length) {
+            var chkVal = ids[i];
+            var category = chkVal.split('_')[0];
+            category = category.toLowerCase().trim();
+            var id = chkVal.split('_')[1];
+            
+            if (category == 'topic') {
+                hdSelectedTopicTags = hdSelectedTopicTags.replace(',-' + id + '-', '');
+                $('#hdSelectedTopicTags').val(hdSelectedTopicTags);
+            }
+
+            if (category == 'skill') {
+                hdSelectedSkillTags = hdSelectedSkillTags.replace(',-' + id + '-', '');
+                $('#hdSelectedSkillTags').val(hdSelectedSkillTags);
+            }
+
+            if (category == 'other') {
+                hdSelectedOtherTags = hdSelectedOtherTags.replace(',-' + id + '-', '');
+                $('#hdSelectedOtherTags').val(hdSelectedOtherTags);
+            }
+
+            i++;
+        }
+
+        //Reload selected tag
+        ReloadLinkitDefaultTagSelected();
+    });
+
+
+    $('#chkAllItemDeselect').die('click');
+    $('#chkAllItemDeselect').live("click", function (e) {
+        if (this.checked) {
+            $('INPUT[name="chkLinkitDefaultTagItemDeselect"][type=checkbox]').attr('checked', 'checked');
+            $('#btnDeselectTag').removeAttr('disabled');
+        }
+        else {
+            $('INPUT[name="chkLinkitDefaultTagItemDeselect"][type=checkbox]').removeAttr('checked');
+            $('#btnDeselectTag').attr('disabled', 'disabled');
+        }
+    });
+
+    $('INPUT[name="chkLinkitDefaultTagItemDeselect"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            $('#btnDeselectTag').removeAttr('disabled');
+            var checkboxes = $('INPUT[name="chkLinkitDefaultTagItemDeselect"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllItemDeselect').removeAttr('checked');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllItemDeselect').attr('checked', 'checked');
+            }
+        }
+        else {
+            $('#chkAllItemDeselect').removeAttr('checked');
+            var checkedboxes = $('INPUT[name="chkLinkitDefaultTagItemDeselect"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+            }
+            else {
+                $('#btnDeselectTag').attr('disabled', 'disabled');
+            }
+        }
+    });
+    function getSelectedLinkitDefaultTagIdSelect() {
+        var Ids = '';
+        $('INPUT[name="chkLinkitDefaultTagItemDeselect"][type=checkbox]:checked').each(function (i, e) {
+            Ids += $(e).val() + ','; 
+        });
+        return Ids.substr(0, Ids.length - 1);
+    }
+    
+</script>

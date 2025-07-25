@@ -1,0 +1,566 @@
+<style type="text/css">
+    .grid_10
+    {
+        margin-left: 0px;
+        margin-right: 0px;
+        width: 834px !important;
+    }
+    
+    tr.even.row_selected td {
+        background-color: #82CAFA!important;
+    }
+    tr.odd.row_selected td {
+        background-color: #82CAFA!important;
+    }
+</style>
+    <section>   
+        <div class="block-border">
+            <div class="block-content form"  >
+                <h1>Assign Master Standard For Lesson
+                </h1>
+                <p style="height: 5px">
+                    <div id="masterStandardNotInLessonNotifications"></div>
+                </p>
+                <div>
+                    <div class="no-margin last-child" >
+                        <fieldset>
+                            <div class="columns">
+                                <div class="colx2-left" style="width:400px; padding-right: 0px">
+                                    <p id="states">
+                                        <label>State Standards</label>
+                                        <select id="selectState" class="full-width" onchange="ddlStateChange()"></select>
+                                    </p>
+                                    <p>
+                                    <select id="selectSubject1" class="full-width" onchange="ddlSubjectChange()" ></select>
+                                    <p>
+                                        <select id="selectGrade" class="full-width" onchange="ddlGradeChange()" ></select>
+                                    </p>
+                                    <p>
+                                        <div class="block-content form" style="height:400px;overflow: auto">
+                                            <div style="height:100%; width: 100%">
+                                                <table id="dataTableMasterStandards" class="datatable table no-margin" style="height:100%; width: 100%" >
+                                                    <thead>
+                                                        <tr>
+                                                            <th scope="col" style="width: 15px"></th>
+                                                            <th scope="col" style="width: 15px"></th>
+                                                            <th scope="col">
+                                                                <span class="column-sort">
+                                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                                </span>
+                                                                Number
+                                                            </th>
+                                                            <th scope="col">
+                                                                <span class="column-sort">
+                                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                                </span>
+                                                                Description
+                                                            </th>
+                                                            <th scope="col"></th><!--CountChildren-->
+                                                            <th scope="col"></th><!--ParentGUID-->
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </p>
+                                </div>
+                                <div class="colx2-right"style="width:400px; padding-right: 0px;padding-left: 2px ">
+                                    <label id="lblAssociatedStandards">Associated Standards</label>
+                                    <p>
+                                        <div class="block-content form" style="height:560px;overflow: auto; padding-left: 10px; padding-right: 10px; margin-top: -13px">
+                                            <div class="block-border">
+                                                <table id="dataTableAssignedMasterStandards" class="datatable table no-margin" width="100%" >
+                                                    <thead>
+                                                        <tr>
+                                                            <th scope="col" style="width: 15px"></th>
+                                                            <th scope="col">
+                                                                <span class="column-sort">
+                                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                                </span>
+                                                                Number
+                                                            </th>
+                                                            <th scope="col">
+                                                                <span class="column-sort">
+                                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                                </span>
+                                                                Description
+                                                            </th>
+                                                            <th scope="col">
+                                                                <span class="column-sort">
+                                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                                </span>
+                                                                State
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </p>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    
+                </div>
+                <div style="margin-top:40px; margin-bottom:-10px">
+                    <button id="btnCloseUserClick" type="button" data-dialog="close">Close</button>
+                    <input type="hidden" id="SelectedParentMasterStandardGUID"/>
+                </div>
+                <input type="hidden" id="hiddenCurrentParentGUID"/>
+                <input type="hidden" id="hiddenChildParentView"/>
+                
+            </div>
+            
+        </div>
+    </section>
+
+    <script type="text/javascript">
+    var oTable;
+    $(function () {
+        PopulateStandards();
+        PopulateAssignedStandards();
+        //innitDropdownListGrade();
+        $("#hiddenCurrentParentGUID").val('');
+        $("#hiddenChildParentView").val('viewchild');
+
+        function bindEvents() {
+            $(document).on('click', 'button[data-dialog="close"]', function (e) {
+
+
+                var self = $(e.target);
+                self.closest('.dialog').dialog('close');
+            });
+
+        }
+
+        bindEvents();
+
+
+    });
+
+    function PopulateStandards() {
+
+        var options = {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetMasterStandard")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "lessonId", value: 0 },
+                    { name: "state", value: $("#selectState").val() },
+                    { name: "subject", value: $("#selectSubject1 option:selected").text() },
+                    { name: "grade", value: $("#selectGrade").val() },
+                    { name: "childParentView", value: $("#hiddenChildParentView").val() },
+                    { name: "parentGUID", value: $("#hiddenCurrentParentGUID").val() }
+                );
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        //when passing parameter to searchbox then click on allpy filter, tabase does not recognize parameter, need to assign parameter to searchbox manually
+                        if (item.value.length == 0 && $("input[aria-controls|='dataTableMasterStandards']").val().length > 0) {
+                            item.value = $("input[aria-controls|='dataTableMasterStandards']").val();
+                        }
+
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''");
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;//only process searchbox
+                    }
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aaSorting: [[2, "asc"]],
+            aoColumns: [
+                { sType: 'string', sName: 'GUID', bSearchable: false, bSortable: false, bVisible: true },
+                { sType: 'integer', sName: 'MasterStandardId', bSearchable: false, bSortable: false,bVisible : true },
+                { sType: 'string', sName: 'Number', bSearchable: true, bSortable: true, sWidth: '80px' },
+                { sType: 'string', sName: 'Description', bSearchable: true, bSortable: true },
+                { sType: 'integer', sName: 'CountChildren', bSearchable: false, bSortable: false, bVisible: true },
+                { sType: 'string', sName: 'ParentGUID', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconViewParentStandards(aData[1], aData[5]));
+                $('td:eq(1)', nRow).html(setIconVisibilityNotMatch(aData[1]));
+                $('td:eq(4)', nRow).html(setIconViewChildStandards(aData[1], aData[0], aData[4]));
+                if (aData[0] == null || aData[0] == '') {
+                    $('td:eq(4)', nRow).html('');
+                } else {
+                    $('td:eq(4)', nRow).html(setIconViewChildStandards(aData[1], aData[0], aData[4]));
+                }
+                $('td:eq(1)', nRow).parent().attr('id', aData[4]);//Add attribute Id for each tr as GUID
+
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableMasterStandards'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableMasterStandards').unblock();
+                $('.with-tip').tip();
+                $('#dataTableMasterStandards_wrapper .block - controls').css('marginTop', '100px');
+
+            },
+            fnInitComplete: function () {
+                innitDropdownListState(@ViewBag.StateId);
+            }
+        };
+
+        $("#dataTableMasterStandards").data("options", options);
+        initializeDataTable($("#dataTableMasterStandards"));
+        oTable = $('#dataTableMasterStandards').dataTable();
+    }
+
+    function setIconVisibilityNotMatch(id) {
+        var addDisplayed = 'none';
+        var deleteDisplayed = 'none';
+        var standardIdList = $("#AssignedStandardIdString").val();
+        if (standardIdList == null) {
+            standardIdList = '';
+        }
+
+        if (standardIdList.indexOf(',-'+id + '-') >= 0) {
+            deleteDisplayed = 'inline';
+        } else {
+            addDisplayed = 'inline';//if standard has not been assigned, display green icon,else display the red icon
+        }
+
+
+        var addIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")';
+        var addString = '<a id="iconAdd_' + id + '" href="javascript:void(0)" title="Assign Standard" masterStandardId="' + id + '" class="with-tip assignMasterStandard" style="display:' + addDisplayed  + '"><img src="' + addIcon + '" width="16" height="16"></a>';
+
+        var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var deleteString = '<a id="iconDelete_' + id + '" href="javascript:void(0)" title="Remove" operation="1" masterStandardId="' + id + '" class="with-tip actionIcon removeAssignedMasterStandard" style="display:' + deleteDisplayed  + '"><img src="' + deleteIcon + '" width="16" height="16"></a>';
+
+
+        var result = '';
+        result = addString + deleteString;
+        return result;
+
+    }
+
+    function setIconViewChildStandards(id, guid, countChildren) {
+
+        if (countChildren > 0) {
+            var viewChildrenIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/viewchildstandard.png")';
+            return '<a href="javascript:void(0)" title="View Child Standards" masterStandardId="' + id + '" class="with-tip "><img src="' + viewChildrenIcon + '" width="16" height="16" onclick="loadStandard(' + "'" + guid + "','viewchild')" + '"></a>';
+        } else {
+            return '';
+
+        }
+
+    }
+    function setIconViewParentStandards(id, parentGuid) {
+        if (parentGuid == null) {
+            parentGuid = '';
+        }
+        if (parentGuid.length >= 36) {
+            var addIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/viewparentstandard.png")';
+            return '<a href="javascript:void(0)" title="View Parent Standards" masterStandardId="' + id + '" class="with-tip "><img src="' + addIcon + '" width="16" height="16" onclick="loadStandard(' + "'" + parentGuid + "','viewparent')" + '"></a>';
+        } else {
+            return '';
+        }
+    }
+    function resetFilterChildStandard(guid) {
+        guid = guid.replace("'", "");
+        //call child datatable to query database
+        //call table to query database and redisplay
+        $("#SelectedParentMasterStandardGUID").val(guid);//get id from tr element
+        var dataTable = $('#dataTableAssignedMasterStandards').dataTable();
+        dataTable.fnDraw();//fnDraw will automatically get value from SelectedParentMasterStandardGUID to query (see PopulateChildStandard)
+    }
+    function loadStandard(parentGuid,view) {
+        $("#hiddenChildParentView").val(view);
+        //alert(parentGuid);
+        //alert(view);
+        parentGuid = parentGuid.replace("'", "");
+        $("#hiddenCurrentParentGUID").val(parentGuid);
+        ui.dataTableMasterStandards.fnDraw();
+    }
+
+    function PopulateAssignedStandards() {
+
+        var optionsStudentNotInClass = {
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetAssignedMasterStandardsByState")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "lessonId", value: 0 },
+                    { name: "standardIdString", value: $("#AssignedStandardIdString").val() },
+                    { name: "stateId", value: $("#selectState").val() }
+                );
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        //when passing parameter to searchbox then click on allpy filter, tabase does not recognize parameter, need to assign parameter to searchbox manually
+                        if (item.value.length == 0 && $("input[aria-controls|='dataTableAssignedMasterStandards']").val().length > 0) {
+                            item.value = $("input[aria-controls|='dataTableAssignedMasterStandards']").val();
+                        }
+
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''");
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;//only process searchbox
+                    }
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'MasterStandardId', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'Number', bSearchable: true, bSortable: true ,sWidth:'80px'},
+                { sType: 'string', sName: 'Description', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'State', bSearchable: false, bSortable: false, bVisible: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityNotMatch(aData[0]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableAssignedMasterStandards'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableAssignedMasterStandards').unblock();
+                $('.with-tip').tip();
+                $('#dataTableAssignedMasterStandards_wrapper .block - controls').css('marginTop', '100px');
+
+            }
+        };
+
+        $("#dataTableAssignedMasterStandards").data("options", optionsStudentNotInClass);
+        initializeDataTable($("#dataTableAssignedMasterStandards"));
+
+        $('.control-next').css('margin-right', '0px');
+
+        $('#dataTableMasterStandards .assignMasterStandard').die("click");
+        $('#dataTableMasterStandards').on('click', '.assignMasterStandard', function () {
+            //if (confirm("Do you want to assign this master standard to this lesson?"))
+            {
+                var self = $(this);
+
+                var masterStandardId = self.attr('masterStandardId');
+
+                self.hide();
+
+                var standardIdList = $("#AssignedStandardIdString").val();//AssignedGradeIdString is declared in AddResource.cshtml
+                if (standardIdList == null) {
+                    standardIdList = '';
+                }
+                standardIdList = standardIdList + ",-" + masterStandardId + "-";
+                $("#AssignedStandardIdString").val(standardIdList);
+                LinkIt.success('#masterStandardNotInLessonNotifications', 'Master Standard Assigned');
+                ui.dataTableAssignedMasterStandards.fnDraw();
+                PopulateAssignedMasterStandards(standardIdList);
+
+                $("#iconAdd_" + masterStandardId).hide();
+                $("#iconDelete_" + masterStandardId).show();
+
+            }
+        });
+
+        $('#dataTableAssignedMasterStandards .removeAssignedMasterStandard').die("click");
+        $('#dataTableAssignedMasterStandards').on('click', '.removeAssignedMasterStandard', function () {
+            //if (confirm("Do you want to remove this master standard from this lesson?")) {
+                var self = $(this);
+
+                var masterStandardId = self.attr('masterStandardId');
+
+                self.hide();
+                $("#iconAdd_" + masterStandardId).show();
+                $("#iconDelete_" + masterStandardId).hide();
+                LinkIt.success('#masterStandardNotInLessonNotifications', 'Master Standard Removed');
+
+
+                var standardIdList = $("#AssignedStandardIdString").val();//AssignedGradeIdString is declared in AddResource.cshtml
+                if (standardIdList == null) {
+                    standardIdList = '';
+                }
+                standardIdList = standardIdList.replace(',-' + masterStandardId + '-','');
+                $("#AssignedStandardIdString").val(standardIdList);
+                ui.dataTableAssignedMasterStandards.fnDraw();
+                ui.dataTableMasterStandards.fnDraw();
+            PopulateAssignedMasterStandards(standardIdList);
+
+            //}
+        });
+
+        $('#dataTableMasterStandards .removeAssignedMasterStandard').die("click");
+        $('#dataTableMasterStandards').on('click', '.removeAssignedMasterStandard', function () {
+            //if (confirm("Do you want to remove this master standard from this lesson?")) {
+            var self = $(this);
+
+            var masterStandardId = self.attr('masterStandardId');
+
+            self.hide();
+            $("#iconAdd_" + masterStandardId).show();
+            $("#iconDelete_" + masterStandardId).hide();
+            LinkIt.success('#masterStandardNotInLessonNotifications', 'Master Standard Removed');
+
+
+            var standardIdList = $("#AssignedStandardIdString").val();//AssignedGradeIdString is declared in AddResource.cshtml
+            if (standardIdList == null) {
+                standardIdList = '';
+            }
+            standardIdList = standardIdList.replace(',-' + masterStandardId + '-', '');
+            $("#AssignedStandardIdString").val(standardIdList);
+            ui.dataTableMasterStandards.fnDraw();
+            ui.dataTableAssignedMasterStandards.fnDraw();
+            PopulateAssignedMasterStandards(standardIdList);
+
+            //}
+        });
+    }
+    function innitDropdownListState(stateId) {
+        var dropdownSelector = '#selectState';
+
+        $.ajax({
+            url: '@Url.Action("GetStates")',
+            dataType: 'json',
+            async: false,
+            success: function (data) {
+                addDefaultProviderOption($(dropdownSelector), "Select State");
+                //reset Select All -> All
+                addSelectListWithDefaultValue($(dropdownSelector), data, stateId);
+
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+                $.get('@Url.Action("GetStateCode")\?stateId=' + $(dropdownSelector).val(), function (data1) {
+                    if (data1.StateCd.length > 0) {
+                        $("#lblAssociatedStandards").text('Associated Standards (for ' + data1.StateCd + ' )');
+                    }
+                });
+            }
+        });
+    }
+    function innitDropdownListSubject(stateId) {
+        var dropdownSelector = '#selectSubject1';
+
+        $.ajax({
+            data: { stateId: stateId},
+            url: '@Url.Action("GetSubjectMasterStandardState")',
+            dataType: 'json',
+            async: false,
+            success: function (data) {
+                //addDefaultProviderOption($(dropdownSelector), "Select Subject");
+                addSelectListWithDefaultValue($(dropdownSelector), data, 0);
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+            }
+        });
+    }
+    function innitDropdownListGrade() {
+        var dropdownSelector = '#selectGrade';
+        var subject = $("#selectSubject1 option:selected").text();
+        $.ajax({
+            url: '@Url.Action("GetStateSubjectGradeByStateAndSubject")\?stateId=' +$("#selectState").val()+ '&subject=' + encodeURI(subject),
+            dataType: 'json',
+            async: false,
+            success: function (data) {
+                addDefaultProviderOption($(dropdownSelector), "Select @LabelHelper.TestGrade");
+                addSelectListWithDefaultValue($(dropdownSelector), data, 0);
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+            }
+        });
+    }
+    function addDefaultProviderOption(selectList, objectText) {
+        selectList.empty();
+        selectList
+            .append($("<option></option>")
+                .attr("value", "select")
+                .text(objectText));
+    }
+    function ddlStateChange() {
+        var dropdownSelector = '#selectState';
+        var selectedValue = $(dropdownSelector).val();
+        $('#selectSubject1').empty();
+        $("#lblAssociatedStandards").text('Associated Standards');
+        if (selectedValue != 'select') {
+            innitDropdownListSubject(selectedValue);
+            $.get('@Url.Action("GetStateCode")\?stateId=' + selectedValue, function (data) {
+                if (data.StateCd.length > 0) {
+                    $("#lblAssociatedStandards").text('Associated Standards (for ' + data.StateCd + ' )');
+                }
+            });
+        }
+        ui.dataTableAssignedMasterStandards.fnDraw();
+        //empty dropdownlist grade
+        $("#selectGrade").attr("disabled", true);
+        $("#selectGrade").empty();
+
+    }
+    function ddlSubjectChange() {
+        $("#selectGrade").empty();
+        $("#selectGrade").attr("disabled", true);
+        if ($("#selectSubject1").val() != 'select' && $("#selectSubject1").val() != '0' && $("#selectSubject1").val() != 'Select @LabelHelper.Subject') {
+            //call grade change to filter
+            if ($("#selectGrade").val() != 'select' && $("#selectGrade").val() != '0') {
+                //enable dropdownlist grade
+                $("#selectGrade").attr("disabled", false);
+                $("#selectGrade").empty();
+
+                innitDropdownListGrade();
+
+            }
+        }
+    }
+    function ddlGradeChange() {
+        if($("#selectState").val()=='select'||$("#selectState").val()=='0') {
+            alertMessageAvaiStandard("Please select a State");
+            return;
+        }
+        if($("#selectSubject1").val()=='select'||$("#selectSubject1").val()=='0') {
+            alertMessageAvaiStandard("Please select a @LabelHelper.Subject");
+            return;
+        }
+
+        if($("#selectGrade").val()!='select' && $("#selectGrade").val()!='0') {
+            //call table to query database and redisplay
+            $("#hiddenCurrentParentGUID").val('');
+            $("#hiddenChildParentView").val('viewchild');
+            var dataTable = $('#dataTableMasterStandards').dataTable();
+            dataTable.fnDraw();
+            $("#SelectedParentMasterStandardGUID").val('');
+            //clear child
+            //dataTable = $('#dataTableAssignedMasterStandards').dataTable();
+
+            //dataTable.fnDraw();
+        }
+
+    }
+
+    </script>

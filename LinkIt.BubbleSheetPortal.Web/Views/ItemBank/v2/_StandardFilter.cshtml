@@ -1,0 +1,312 @@
+<style>
+    standard-criteria standard-criteria-selector .filter-standard-criteria .manage-standard-criteria {
+        padding-left: 1em;
+        font-weight: 700;
+        margin-left: 11px;
+        position: relative;
+        top: 10px;
+        z-index: 111;
+    }
+
+    standard-criteria standard-criteria-selector {
+        border: none;
+        background: transparent;
+        padding: 0;
+    }
+
+
+    .treeview-list{
+        padding-left: 30px;
+    }
+
+    .treeview.m-t-15{
+        margin-top: 5px;
+    }
+
+    .treeview-list .treeview-list {
+        padding-left: 2px;
+    }
+
+</style>
+
+<div class="accordion-container">
+    <a class="accordion-header u-cursor-pointer manage-standard-criteria filter-standard-criteria">Standard Criteria <i class="fa-solid fa-chevron-down icon-arrow ms-auto"></i></a>
+
+    <div class="columns expand-content p-4 accordion-content" id="divStateStandards">
+        <div class="row gx-5">
+            <div class="col-5">
+                <div class="mb-3">
+                    <label>Standard State</label>
+                    <select id="selectStateStandard"></select>
+                </div>
+                <div class="mb-3">
+                    <label>Standard @LabelHelper.Subject</label>
+                    <select id="selectSubjectStandard"></select>
+                </div>
+                <div class="mb-3">
+                    <label>Standard @LabelHelper.TestGrade</label>
+                    <select id="selectGradeStandard"></select>
+                </div>
+                <div class="mb-3">
+                    <label id="selectQTI3pItemLanguageLabel">Standard Language</label>
+                    <select id="selectQTI3pItemLanguage"></select>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="mb-3">
+                    <label>Standard(s)</label>
+                    <div id="dvStandardTreeViewContainer" class="tree-wrapper">
+                        <div style="height: 200px; overflow: auto; background-color: var(--bg-white); padding: 10px 12px">
+                            <div id="dvStandardTreeView"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+    <input type="hidden" id="hiddenSelectedMasterStandardName" />
+    <script type="text/javascript">
+    var oTable;
+
+    $(function () {
+        sessionStorage.cacheGetStateURL = null;
+        PopulateSate();
+        $('#dvStandardTreeView').html('<span>Please use the filters to search</span>');
+    });
+
+    function loadStandardTreeView(reset) {
+        var url = getAjaxSourceForMasterStandard(reset);
+        //if (sessionStorage.getAjaxSourceForMasterStandard == url) return;
+        sessionStorage.getAjaxSourceForMasterStandard = url;
+
+        ShowBlock($('#dvStandardTreeViewContainer'), "Loading");
+        $.ajax({
+            url: url,
+            cache: false,
+            success: function (html) {
+                $('#dvStandardTreeView').html(html);
+                $('#dvStandardTreeViewContainer').unblock();
+            }
+        });
+    }
+    function PopulateSate() {
+        var qti3p = false;
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            qti3p = true;
+        }
+
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+
+        var districtSearch = $('#radioDistrictItemLibrary').is(':checked');
+        var qti3pSourceId = $('#selectSource').val();
+        if (qti3pSourceId == null || qti3pSourceId == '' || qti3pSourceId == 'select' || qti3pSourceId == 'undefined') {
+            qti3pSourceId = -1;
+        }
+        var url = '@Url.Action("GetStateStandardWithCCForFilter", "PopulateStateDistrict")/?qti3p=' + qti3p + '&personal=' + personal + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + districtSearch;
+
+        if (sessionStorage.cacheGetStateURL == url) return;
+        sessionStorage.cacheGetStateURL = url;
+
+        ShowBlock($('#divStateStandards'), 'Loading');
+        $.ajax({
+            url: url,
+            dataType: 'json',
+            async: true,
+            type: 'get',
+            success: function (data) {
+                addDefaultOption($('#selectStateStandard'), "All");
+                addSelectListWithDefaultValue($('#selectStateStandard'), data, 0);
+                $('#divStateStandards').unblock();
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+                var option = $('#selectStateStandard option[value="select"]');
+                if (option != null) {
+                    option.text('All');
+                }
+            }
+        });
+
+        //Binding Language
+        if (qti3p && qti3pSourceId == 1) {
+            $('#selectQTI3pItemLanguageLabel').show();
+            $('#selectQTI3pItemLanguage').show();
+            //binding language
+            $.ajax({
+                url: '@Url.Action("GetLanguageSupportImportQTI3pItem", "PopulateStateDistrict")',
+                dataType: 'json',
+                async: true,
+                type: 'get',
+                success: function (results) {
+                    addOptionToSelectWithString($('#selectQTI3pItemLanguage'), results);
+                    $("#selectQTI3pItemLanguage").val('ALL');
+                },
+                beforeSend: function () {},
+                complete: function () {}
+            });
+        } else {
+            //Hide select language
+            $('#selectQTI3pItemLanguageLabel').hide();
+            $('#selectQTI3pItemLanguage').hide();
+        }
+    }
+
+    $('#selectStateStandard').die('change');
+    $('#selectStateStandard').change(function () {
+        $('#selectSubjectStandard').empty();
+        $('#selectGradeStandard').empty();
+        $('#dvStandardTreeView').empty();
+
+        if ($('#selectStateStandard').val() == 'select') {
+            return;
+        }
+        var qti3p = false;
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            qti3p = true;
+        }
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+        var districtSearch = $('#radioDistrictItemLibrary').is(':checked');
+        var qti3pSourceId = $('#selectSource').val();
+        if (qti3pSourceId == 'select' || qti3pSourceId == 0 || qti3pSourceId == ''||qti3pSourceId == 'undefined') {
+            qti3pSourceId = -1;
+        }
+        ShowBlock($('#divStateStandards'), 'Loading');
+        $.ajax({
+            url: '@Url.Action("GetStateStandardSubjectByState", "ItemBank")/?stateId=' + $('#selectStateStandard').val() + '&qti3p=' + qti3p + '&personal=' + encodeURI(personal) + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + encodeURI(districtSearch),
+            dataType: 'json',
+            async: true,
+            type: 'get',
+            success: function (data) {
+                $('#divStateStandards').unblock();
+                addDefaultOption($('#selectSubjectStandard'), "All");
+                addSelectListWithDefaultValue($('#selectSubjectStandard'), data, 0);
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+                //rename Select All -> All
+                var option = $('#selectSubjectStandard option[value="select"]');
+                if (option != null) {
+                    option.text('All');
+                }
+            }
+        });
+
+    });
+
+    $('#selectSubjectStandard').die('change');
+    $('#selectSubjectStandard').change(function () {
+        $('#selectGradeStandard').empty();
+        $('#dvStandardTreeView').empty();
+
+        if ($('#selectSubjectStandard').val() == 'select') {
+            return;
+        }
+        var qti3p = false;
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            qti3p = true;
+        }
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+        var districtSearch = $('#radioDistrictItemLibrary').is(':checked');
+        var subject = $("#selectSubjectStandard option:selected").text();
+
+        var qti3pSourceId = $('#selectSource').val();
+        if (qti3pSourceId == 'select' || qti3pSourceId == 0 || qti3pSourceId == '' || qti3pSourceId == 'undefined') {
+            qti3pSourceId = -1;
+        }
+
+        ShowBlock($('#divStateStandards'), 'Loading');
+        $.ajax({
+            url: '@Url.Action("GetStateStandardGradeByStateAndSubject", "ItemBank")/?stateId=' + $('#selectStateStandard').val() + '&subjectName=' + encodeURIComponent(subject) + '&qti3p=' + qti3p + '&personal=' + encodeURI(personal) + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + encodeURI(districtSearch),
+            dataType: 'json',
+            async: true,
+            type: 'get',
+            cache: false,
+            success: function (data) {
+                $('#divStateStandards').unblock();
+                addDefaultOption($('#selectGradeStandard'), "All");
+                addSelectListWithDefaultValue($('#selectGradeStandard'), data, 0);
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+                //rename Select All -> All
+                var option = $('#selectGradeStandard option[value="select"]');
+                if (option != null) {
+                    option.text('All');
+                }
+            }
+        });
+
+    });
+
+    $('#selectGradeStandard').die('change');
+    $('#selectGradeStandard').change(function () {
+        $('#dvStandardTreeView').empty();
+        if ($("#selectGradeStandard option:selected").text() != null && $("#selectGradeStandard").val() != 'select') {
+            loadStandardTreeView(false);
+        }
+    });
+
+    function getAjaxSourceForMasterStandard(reset) {
+        $('#chkAllStandard').removeAttr('checked');
+        var qti3p = false;
+        if ($('#radioNWEAItemLibrary').is(':checked')) {
+            qti3p = true;
+        }
+        var personal = $('#radioPersonalItemLibrary').is(':checked');
+        var districtSearch = $('#radioDistrictItemLibrary').is(':checked');
+        var qti3pSourceId = $('#selectSource').val();
+        if (qti3pSourceId == 'select' || qti3pSourceId == 0 || qti3pSourceId == '' || qti3pSourceId == 'undefined') {
+            qti3pSourceId = -1;
+        }
+
+        if (reset) {
+            return '@Url.Action("GetStateStandardsForItemLibraryFilterTopLevel", "MasterStandard")/?stateId=0&subject=0&grade=0&qti3p=' + qti3p + '&personal=' + personal + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + encodeURI(districtSearch);
+        } else {
+            var stateId = $('#selectStateStandard').val();
+            var subject = $("#selectSubjectStandard option:selected").text();
+            var grade = $("#selectGradeStandard option:selected").text();
+            if (stateId != null && stateId != 'select' && subject != null && grade != null && $('#selectGradeStandard').val() != 'select') {
+                return '@Url.Action("GetStateStandardsForItemLibraryFilterTopLevel", "MasterStandard")/?stateId=' + stateId + '&subject=' + encodeURI(subject) + '&grade=' + encodeURI(grade) + '&qti3p=' + qti3p + '&personal=' + personal + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + encodeURI(districtSearch);
+            } else {
+                return '@Url.Action("GetStateStandardsForItemLibraryFilterTopLevel", "MasterStandard")/?stateId=0&subject=0&grade=0&qti3p=' + qti3p + '&personal=' + personal + '&qti3pSourceId=' + qti3pSourceId;
+            }
+        }
+    }
+    </script>
+    <script type="text/javascript">
+        function getSelectedStandardIds() {
+            var standardIds = '';
+            $('INPUT[name="chkStandard"][type=checkbox]:checked').each(function (i, e) {
+                standardIds += $(e).val() + ',';
+            });
+            return standardIds.substr(0, standardIds.length - 1);
+        }
+        function getSelectedStandardNames() {
+            var standardNames = '';
+            $('INPUT[name="chkStandard"][type=checkbox]:checked').each(function (i, e) {
+                standardNames += $(e).attr('data-name') + ', ';
+            });
+            return standardNames.substr(0, standardNames.length - 2);//remove the last ','
+        }
+
+        function CollapsibleStandardFilter() {
+            $content = $('#divStateStandards');
+            $content.toggleClass('expand-content');
+            $content.toggle();
+            $(".manage-standard-criteria").toggleClass('arrow-expand');
+        }
+
+        $(".manage-standard-criteria").click(function (e) {
+            if ($(e.target).attr('disabled') === 'disabled') {
+                return;
+            }
+            CollapsibleStandardFilter();
+        });
+        CollapsibleStandardFilter();
+    </script>

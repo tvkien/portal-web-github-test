@@ -1,0 +1,907 @@
+@using LinkIt.BubbleSheetPortal.Models.TestMaker
+@using LinkIt.BubbleSheetPortal.Common.Enum
+@using LinkIt.BubbleSheetPortal.Web.ViewModels
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.VirtualQuestionPropertiesViewModel
+<style>
+    #divInstrustion .topMenu {
+        width: 635px;
+    }
+
+    .DivFieldSet {
+        padding-left: 10px;
+        padding-right: 10px;
+        width: 677px;
+    }
+
+    .divBotButton {
+        padding-right: 10px;
+        padding-left: 10px;
+    }
+
+    #divEditItem #topSpace, #divQContent {
+        width: auto;
+    }
+
+    .Title {
+        font-weight: bold;
+        vertical-align: middle;
+    }
+
+    .question-properties-button {
+        width: 100%;
+        float: right;
+    }
+
+        .question-properties-button li {
+            float: right;
+        }
+
+    .disableInput {
+        opacity: 0.5;
+    }
+
+    table.datatable td {
+        vertical-align: middle;
+    }
+</style>
+<article class="container_12" style="width: 100%" id="artQuestionProperty">
+    <section class="grid_12" style="width: 93%">
+        <div class="block-border" style="width: 100%">
+            <div class="block-content form">
+                <h1 class="PropertyTitle">Question Properties</h1>
+                <ul style="display: none" id="error-messages-virtualquestion" class="message error"></ul>
+                <ul style="display: none" id="success-message-virtualquestion" class="message success">
+                    <li>Question Properties successfully updated.</li>
+                </ul>
+                <div class="u-clearfix">
+                    <ul class="question-properties-button">
+                        <li data-name="test-branching" style="display: none"><button type="button" id="btnEditBranching">Branching</button></li>
+                        <li><button type="button" id="btnEditItemButton" onclick="loadItemToEdit()">Edit Item</button></li>
+                    </ul>
+                </div>
+                @if (Model.IsCustomItemNaming)
+                {
+                    <div class="u-clearfix u-m-t-15 u-m-b-15">
+                        <fieldset>
+                            <div class="row u-m-b-10">
+                                <div class="u-inline-block u-w-120">
+                                    <label class="u-fw-400" for="txtQuestionLabel">Question Label:</label>
+                                </div>
+                                <div class="u-inline-block u-w-380">
+                                    @Html.TextBox("txtQuestionLabel", Model.QuestionLabel, new { @class = "full-width" })
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="u-inline-block u-w-120">
+                                    <label class="u-fw-400" for="txtQuestionNumber">Question Number:</label>
+                                </div>
+                                <div class="u-inline-block u-w-380">
+                                    @Html.TextBox("txtQuestionNumber", Model.QuestionNumber, new
+                                    {
+                                        @class = "full-width",
+                                        maxlength = "6"
+                                    })
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                }
+                <div id="divEditItem" style="width: 531px; overflow-y: auto" class="block-content"></div>
+                <div id="divQtiItemDetailVirtualTestTexttospeech" class="u-clearfix u-m-t-20"></div>
+
+                <div class="no-margin last-child">
+                    <table class="datatable table no-margin" width="100%" style="padding: 20px;">
+                        @if (!Model.IsSurvey)
+                        {
+                            <tr>
+                                <td style="width: 20%">
+                                    <span class="Title">Passage:</span>
+                                </td>
+                                <td>
+                                    @Html.Raw(Model.Passages)
+                                </td>
+                            </tr>
+                        }
+                        <tr>
+                            <td>
+                                <span class="Title">Item Type:</span>
+                            </td>
+                            <td>
+                                @Model.ItemType
+                            </td>
+                        </tr>
+                        @if (!Model.IsSurvey)
+                        {
+                            <text>
+                                <tr>
+                                    <td>
+                                        <span class="Title">Points Possible:</span>
+                                    </td>
+                            </text>
+                            if (Model.ResponseProcessingTypeId == 7)
+                            {
+                                <text>
+                                    <td class="is-algorithmic">
+                                </text>
+                            }
+                            else
+                            {
+                                <text>
+                                <td>
+                                </text>
+                            }
+                            if (Model.EditPointPossibleDirectly)
+                            {
+
+                                if (Model.ResponseProcessingTypeId == 7 || Model.IsRubricBasedQuestion)
+                                {
+                                    <text>
+                                        <input type="text" id="textPointPossible" onkeydown="numberTextBox_Keydown(event)" class="is-grey" disabled>
+                                    </text>
+                                }
+                                else
+                                {
+                                    <text>
+                                        <input type="text" id="textPointPossible" onkeydown="numberTextBox_Keydown(event)">
+                                    </text>
+                                }
+                                <span> (Original Points: @Model.OringinalPointPossible)</span>
+
+                                <br />
+                                if (Model.QtiSchemaId == (int)QTISchemaEnum.ChoiceMultipleVariable)
+                                {
+                                    <text>
+                                        <div id="divChoiceVariableAnswerScore">
+                                        </div>
+                                    </text>
+                                }
+                            }
+                            if (Model.IsComplexItem)
+                            {
+                                <text>
+                                    <span style="display: inline"> Possible Points </span>
+                                    <span id="spanPossiblePoints"> </span>
+                                    <br />
+                                    <div id="divComplexAnswerScore">
+                                    </div>
+                                </text>
+                            }
+                        @:</td>
+                    @:</tr>
+                }
+                        <tr>
+                            <td colspan="2"></td>
+                        </tr>
+                        @if (!Model.IsSurvey)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="Title">Scoring Method:</span>
+                                </td>
+                                <td>
+                                    <span>@Model.ScoringMethod</span>
+                                </td>
+                            </tr>
+                            if (Model.AttachmentSetting != null)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="Title">Attachments:</span>
+                                    </td>
+                                    <td>
+                                        <span>@Model.AttachmentSetting.SumaryValue</span>
+                                    </td>
+                                </tr>
+                            }
+                            <tr>
+                                <td>
+                                    <span class="Title">Standards:</span>
+                                </td>
+                                <td>
+                                    @Html.Raw(Model.Standards)
+                                </td>
+                            </tr>
+                        }
+                        <tr>
+                            <td>
+                                <span class="Title">Topics:</span>
+                            </td>
+                            <td>
+                                @Html.Raw(Model.Topics)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <span class="Title">Skills:</span>
+                            </td>
+                            <td>
+                                @Html.Raw(Model.Skills)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <span class="Title">Others:</span>
+                            </td>
+                            <td>
+                                @Html.Raw(Model.Others)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <span class="Title">@LabelHelper.DistrictLabel Tags:</span>
+                            </td>
+                            <td>
+                                @Html.Raw(Model.ItemTags)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2"></td>
+                        </tr>
+                        @if (!Model.IsSurvey)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="Title">Item Bank:</span>
+                                </td>
+                                <td>
+                                    @Model.ItemBank
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="Title">Item Set:</span>
+                                </td>
+                                <td>
+                                    @Model.ItemSet
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="Title">Criteria-based Scoring Question:</span>
+                                </td>
+                                <td>
+                                    <input type="checkbox" id="ckbGhostQuestion" style="margin-top: 7px;" onchange="ckbGhostQuestion_change()">
+                                    <select id="selectBaseQuestion" style="min-width: 50px; max-width: 160px; display: none"></select>
+                                </td>
+                            </tr>
+                            if (Model.VirtualTestId > 0)
+                            {
+                                if (ViewBag.HasMoreThanOneSection)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="Title">Select the section to move the items to:</span>
+                                        </td>
+                                        <td>
+                                            <select id="selectSectionQuestion" style="min-width: 175px; max-width: 160px"></select>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        }
+                        @if (Model.IsSurvey && Model.QtiSchemaId != (int)QTISchemaEnum.ExtendedText)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="Title">Score Name:</span>
+                                </td>
+                                <td>
+                                    @if (!Model.HasTestResult || string.IsNullOrEmpty(Model.ScoreName))
+                                    {
+                                        @Html.TextBox("txtScoreName", Model.ScoreName, new
+                                        {
+                                            @class = "full-width",
+                                            maxlength = "50"
+                                        });
+                                    }
+                                    else
+                                    {
+                                        @Model.ScoreName
+                                        @Html.Hidden("txtScoreName", Model.ScoreName);
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+                <br>
+                <div class="clear-10" style="margin-bottom: 10px;">
+                    <button @(Model.HasRetakeRequest ? "disabled" : "") id="btnDeleteQuestion" type="button" class="divBotButton" onclick="DeleteVirtualQuestion(@Model.VirtualQuestionId)" style="margin-bottom: 5px; margin-left: 0px; padding-top: 5px;">Delete Question</button>
+                    <button id="btnSaveChangeVirtualQuestionProperty" class="float-right" style="padding-top: 5px;" onclick="virtualQuestionPropSaveChanges()">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var linkitProtocol = window.location.protocol;
+        var linkitHostname = window.location.hostname;
+
+        MKEditor = {
+            imgUrl: "../../Content/themes/TestMaker/",
+            audioUrl: "/PassageEditor/AudioUpload/",
+            objectId: '0',
+            loadAudioUrl: linkitProtocol + "//" + linkitHostname + "/PassageEditor/GetAudio",
+            imgUpload: "/PassageEditor/ImageUpload/",
+            GetViewReferenceImg: linkitProtocol + "//" + linkitHostname + '/TestAssignmentRegrader/GetViewReferenceImg?imgPath=' //This is config for view image on test maker
+        };
+    });
+</script>
+<script>
+    function ckbGhostQuestion_change() {
+        var checked = $('#ckbGhostQuestion').is(':checked');
+        if (checked) {
+            //Show dropdown list base question
+            $('#selectBaseQuestion').show();
+            //Get Base question from server
+            loadBaseQuestion(0);
+        } else {
+            $('#selectBaseQuestion').hide();
+        }
+    }
+
+    function loadBaseQuestion(defaultValue) {
+        $('#selectBaseQuestion').show();
+        $('#selectBaseQuestion').empty();
+        $.get('@Url.Action("GetBaseQuestions", "VirtualTest")', { virtualTestId: @Model.VirtualTestId, virtualQuestionId: @Model.VirtualQuestionId }, function(data) {
+            AddSelectListItems($('#selectBaseQuestion'), data, 'Select Base Question');
+            if (defaultValue > 0) {
+                $('#selectBaseQuestion').val(defaultValue);
+            }
+        });
+
+    }
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            selectList.append($("<option></option>").attr("value", "-1").text('No Base Question Found'));
+        } else {
+            selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+            $.each(results, function(i, value) {
+                selectList
+                    .append($("<option></option>")
+                        .attr("value", value.Id)
+                        .text(value.Name));
+            });
+        }
+    }
+</script>
+
+<script type="text/javascript">
+    $(function() {
+        $('li[data-name="test-branching"]').hide();
+        if ($('#hdVirtualTestSubTypeID')) {
+            if ($('#hdVirtualTestSubTypeID').val() == '@((int)NavigationMethodEnum.NORMAL_BRANCHING)') {
+                $('li[data-name="test-branching"]').show();
+            }
+        }
+
+        $('#btnEditBranching').click(function() {
+            ShowBlock($('#divMain'), 'Loading');
+
+            var url = '@Url.Action("TestBranching")';
+            url += '?VirtualTestId=@Model.VirtualTestId&VirtualQuestionId=@Model.VirtualQuestionId';
+
+            $.ajax({
+                url: url,
+                cache: false
+            }).done(function (html) {
+                $('#divMain').unblock();
+                $('body').append('<div id="divTestBranchingPanel" class="dialog"></div>');
+                $("#divTestBranchingPanel").append(html);
+                $('#divTestBranchingPanel').dialog({
+                    title: "",
+                    open: function () {
+
+                        //If width of popup gt window width popup auto show on the left
+                        var currentPopup = $(this);
+                        if (currentPopup.width() > $(window).width()) {
+                            currentPopup.parent().css({ "left": "0" });
+                        }
+
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        if ($('#hdIsChange').val() == "0") {
+                            return true;
+                        }
+
+                        ConfirmExitBranching();
+                        return false;
+                    },
+                    close: function () {
+                        $('#divTestBranchingPanel').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 1006,
+                    resizable: false
+                });
+
+            });
+
+            $(".close").unbind("click");
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+        });
+
+        loadEditQtiItem(); //default
+        if ('@Model.EditPointPossibleDirectly' == 'True') {
+            if (('@Model.QtiSchemaId' == '@((int) QTISchemaEnum.TextEntry)' || '@Model.QtiSchemaId' == '@((int) QTISchemaEnum.ExtendedText)')
+                && '@Model.ResponseProcessingTypeId' == '3') {
+                $('#textPointPossible').attr('disabled', 'true');
+                $('#textPointPossible').addClass('disableInput');
+            }
+            $('#textPointPossible').val(@Model.PointPossible);
+            if ('@Model.QtiSchemaId' == '@((int)QTISchemaEnum.ChoiceMultipleVariable)') {
+                $('#divChoiceVariableAnswerScore').load('@Url.Action("LoadChoiceVariableAnswerScores")?virtualQuestionId=@Model.VirtualQuestionId', function() {
+                });
+            }
+        }
+
+        @*if ('@Model.IsComplexItem' == 'True') {
+            $('#divComplexAnswerScore').load('@Url.Action("LoadComplexAnswerScores")?virtualQuestionId=@Model.VirtualQuestionId', function() {
+            });
+        }*@
+
+        if('@Model.BaseVirtualQuestionId' > '0') {
+            loadBaseQuestion(@Model.BaseVirtualQuestionId);
+            $('#selectBaseQuestion').show();
+            $('#ckbGhostQuestion').prop('checked', true);
+        }
+
+        $('#textPointPossible').keyup(function() {
+            if ($('#textPointPossible').val() == '' || $('#textPointPossible').val() == '0') {
+            } else if ('@Model.QtiSchemaId' == '10') {
+                if ($('#ckbGhostQuestion').length > 0) {
+                    $('#ckbGhostQuestion').removeAttr('disabled');
+                }
+            }
+        });
+
+        if (@Model.VirtualTestId > 0) {
+                $.get('@Url.Action("GetSections", "VirtualTest")?virtualTestId=@Model.VirtualTestId', function(states) {
+                    AddSelectListItems($('#selectSectionQuestion'), states, 'Select Section');
+                    $("#selectSectionQuestion").val(@Model.VirtualSectionId);
+                });
+            }
+    });
+
+    function loadEditQtiItem() {
+        //ShowBlock($('#divRight'), 'Loading');
+        $('#divEditItem').empty();
+        //Check if can edit
+        //alert('@Model.CanEditQTIITem');
+        $('#btnEditItemButton').hide();
+        if ('@Model.CanEditQTIITem' == 'True') {
+            $('#btnEditItemButton').show();
+        }
+
+        //TODO: Only Review
+        $.ajax({
+            url: '@Url.Action("LoadQtiItemReview", "VirtualTest")',
+            data: {
+                qtiItemId: '@Model.QtiItemId',
+                virtualTestId: '@Model.VirtualTestId'
+            },
+            success: function(html) {
+
+                $('#divEditItem').html(html);
+
+                AdjustQtiItemDetail();//declared in _QtiItemDetail.cshtml
+
+                restrictLayoutForBaseQuestion();
+                loadContentGlossary();//declared in _QtiItemDetail.cshtml
+
+                if ('@Model.IsComplexItem' == 'True') {
+                    $('#divComplexAnswerScore').load('@Url.Action("LoadComplexAnswerScores")?virtualQuestionId=@Model.VirtualQuestionId', function() {
+
+                    });
+                } else {
+                    $('#divRight').focus();
+                    $('#divRight').unblock();
+                    $('#divMain').unblock();
+                }
+
+            }
+        });
+    }
+    function loadItemToEdit() {
+        var url = '@Url.Action("Edit", "TestMaker")';
+        var form = '<form action="' + url + '" method="get">' +
+            '<input type="hidden" name="qtiItemId" value="@Model.QtiItemId" />' +
+            '<input type="hidden" name="fromVirtualQuestionProperty" value="True" />' +
+            '<input type="hidden" name="virtualTestId" value="@Model.VirtualTestId" />' +
+            '<input type="hidden" name="virtualQuestionId" value="@Model.VirtualQuestionId" />';
+
+        var districtId = getDistrictIdFromURL();
+        if (districtId) {
+            form += '<input type="hidden" name="districtId" value="' + districtId + '" />';
+        }
+
+        form += '</form>'
+        form = $(form);
+        $('body').append(form);
+        $(form).submit();
+    }
+
+    function restrictLayoutForBaseQuestion() {
+        if ('@Model.HasChildQuestion' == 'True') {
+            $('#textPointPossible').attr("disabled", true);
+        }
+
+        if ('@Model.HasChildQuestion' == 'True' || '@Model.QtiSchemaId' != '10' || '@Model.PointPossible' == '0') {
+            $('#ckbGhostQuestion').attr("disabled", true);
+            $('#selectBaseQuestion').hide();
+        }
+    }
+
+    function numberTextBox_Keydown(e) {
+
+        // Allow: backspace, delete, tab, escape, enter and .
+        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110]) !== -1 ||
+            // Allow: Ctrl+A
+            (e.keyCode == 65 && e.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (e.keyCode >= 35 && e.keyCode <= 39)) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+    }
+
+    function virtualQuestionPropSaveChanges()
+    {
+        var selectedSectionId = 0;
+        if (@Model.VirtualTestId > 0 && '@ViewBag.HasMoreThanOneSection' == 'True') {
+            selectedSectionId = $('#selectSectionQuestion').val();
+            if (selectedSectionId == null || selectedSectionId < 0) {
+                CustomAlert('Please select the section to move the items to');
+                return;
+            }
+        }
+
+        if ('@Model.CanEditQTIITem' == 'True') {
+            updateItemClick();
+        }
+
+        if ($("#ckbGhostQuestion").prop('checked') == true && ($('#textPointPossible').val() == '' || $('#textPointPossible').val() == '0')) {
+            CustomAlert('Criteria-based scoring questions cannot be worth zero points.',true);
+            return;
+        }
+
+        //Save point possible
+        var pointPossible = null;
+        if($('#textPointPossible').val() == '' && '@Model.IsSurvey' == 'False')
+        {
+            CustomAlert('Please set point for this question.',true);
+            return;
+        }
+
+        var xmlPossiblePoints = '';
+        if('@Model.EditPointPossibleDirectly'=='True' && '@Model.IsSurvey' == 'False')
+        {
+            pointPossible = $('#textPointPossible').val();
+            if ('@Model.QtiSchemaId' == '@((int)QTISchemaEnum.ChoiceMultipleVariable)') {
+                xmlPossiblePoints = exportChoiceVariableItemPossiblePointXml();//defined in _MultipleChoiceVariablePossiblePoints.cshtml
+            }
+        }
+
+        if('@Model.IsComplexItem'=='True')
+        {
+            pointPossible = $('#spanPossiblePoints').text();
+            xmlPossiblePoints = exportComplexItemPossiblePointXml();//defined in _ComplexItemPossiblePoints.cshtml
+        }
+        if(pointPossible==null && '@Model.IsSurvey' == 'False') {
+            CustomAlert('Please set point for this question.',true);
+            return;
+        }
+        var isGhostQuestion = $('#ckbGhostQuestion').is(':checked');
+        var baseQuestionId = $('#selectBaseQuestion').val();
+        if(isGhostQuestion) {
+            if(baseQuestionId==null || baseQuestionId=='select' || baseQuestionId=='0') {
+                CustomAlert('Please select base question.');
+                return;
+            }
+        } else {
+            baseQuestionId = 0;
+        }
+
+        var scoreName = $('#txtScoreName').val();
+        if (scoreName && scoreName.length > 50) {
+            CustomAlert('Score Name length must be less than 50 characters!', true);
+            return;
+        }
+        var itemNumber = viewModel.selectedQuestion().ItemNumber();
+        var data = {
+            virtualQuestionId: '@Model.VirtualQuestionId',
+            pointPossible: pointPossible,
+            qtiSchemaId: '@Model.QtiSchemaId',
+            xmlPossiblePoints: xmlPossiblePoints,
+            isGhostQuestion: isGhostQuestion,
+            baseQuestionId: baseQuestionId,
+            responseProcessingTypeId: '@Model.ResponseProcessingTypeId',
+            virtualSectionId: selectedSectionId,
+            responseProcessingTypeId: '@Model.ResponseProcessingTypeId',
+            scoreName: scoreName,
+            itemNumberLabel: itemNumber.substring(0, itemNumber.length - 1) //remove the end dot "."
+        };
+
+        if (convertToBoolean('@Model.IsCustomItemNaming')) {
+            var questionLabel = $('#txtQuestionLabel').val();
+            var questionNumber = $('#txtQuestionNumber').val();
+            data['questionLabel'] = questionLabel;
+            data['questionNumber'] = questionNumber;
+            data['isCustomLevelNaming'] = true;
+        }
+
+        ShowBlock($('#divMain'), 'Saving');
+        var url = '@Url.Action("SaveVirtualQuestionProperties")';
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: data,
+            success: function (response) {
+                $('#divMain').unblock();
+                if (response.Success == true) {
+                    $('#error-messages-virtualquestion').hide();
+                    //$('#success-message-virtualquestion').show(); //Linkit doesn't want to show a message
+
+                    window.setTimeout(function () {
+                        $('#success-message-virtualquestion').hide();
+                    }, 1000);
+                    RefreshSectionQuestion(@Model.VirtualTestId);
+                    //window.location.reload();
+                } else {
+                    if (response.Ungraded != undefined && response.Ungraded) {
+                        $('#textPointPossible').val('0');
+                        if ('@Model.IsComplexItem' == 'True') {
+                            $('#dataTableComplexVirtualQuestionAnswerScores .PointsTextBox').each(function(idx, txt) {
+                                var id = $(txt).attr('id'); //responseIdentifier-qtischemaId
+                                var qtischemaId = id.split("-")[1];
+                                var responseProcessingTypeId = $(txt).attr('responseProcessingTypeId');
+                                if ((qtischemaId == '@((int) QTISchemaEnum.TextEntry)' || qtischemaId == '@((int) QTISchemaEnum.ExtendedText)') && responseProcessingTypeId == '3')
+                                    $(txt).val('0');
+                            });
+                        }
+
+                    }else{
+                        //addErrorMessages(response);
+                        $('#error-messages-virtualquestion').show();
+                        $('#error-messages-virtualquestion').html('<ul><li>' + response.ErrorMessage + '</li></ul>');
+                        $('#error-messages-virtualquestion').addClass('no-margin');
+                    }
+                }
+            },
+            failure: function (response) {
+                $('#divMain').unblock();
+                CustomAlert(response);
+            }
+        });
+
+    }
+
+    function DeleteVirtualQuestion(virtualQuestionId) {
+        var message = 'Are you sure you want to delete this question?';
+        //check if this is a base question or not
+        var length = $('li[basevirtualquestionid="' + virtualQuestionId + '"]').length;
+        if(length > 0) {
+            message = 'Deleting this base question will also delete all of its criteria-based scoring questions.';
+        }
+        message += ' This deletion is permanent and cannot be undone. Are you sure to continue?';
+
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section class="grid_5" style="height:140px;">' +
+            '<div class="block-border" style="width: 350px; min-height: 100px;">' +
+            '<div class="block-content form" style="padding-bottom:0px">' +
+            '<table cellpadding="0" cellspacing="0" style="margin-top:-15px;"><tr><td><p class="styleMessage" style="margin-bottom:10px;">' + message +
+            '</p></td></tr><tr><td>' +
+            '<p class="plButton"  style="margin-bottom:10px;text-align: center">' +
+            '<button id="btnOk" type="button" name="ok" onclick="ConfirmQuestionDeleteOkClick(' + virtualQuestionId + ')">OK</button>' +
+            '<button id="btnCancel" type="button" name="cancel" onclick="ConfirmQuestionDeleteCancellick()" style="margin-left:10px;">Cancel</button>' +
+            '</p></td></tr></table></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "ConfirmSectionDeleteDialog")
+            .appendTo("body")
+            .dialog({
+                open: function () {
+                    $('.ui-widget-header').css('right','0px');
+                },
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 420,
+                maxheight: 100,
+                resizable: false
+            });
+
+        $(".ui-dialog").css("height", hbody);
+
+    }
+
+    function ConfirmQuestionDeleteOkClick(virtualQuestionId) {
+        $("#ConfirmSectionDeleteDialog").dialog("close");
+        ShowBlock($('#divMain'), "Deleting");
+        $.post('@Url.Action("DeleteVirtualQuestion")', {virtualQuestionId:@Model.VirtualQuestionId,virtualTestId:@Model.VirtualTestId}, function (response) {
+            //$('#btnDeleteQuestion').attr('disabled','disabled');
+            //$('#btnSaveChangeVirtualQuestionProperty').attr('disabled','disabled');
+            $('#divRight').unblock();
+            if (response == true) {
+
+                //Remove section on the left, refresh section-question
+                //ShowBlock($('#divMain'), 'Loading');
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("RefreshSectionQuestionData","VirtualTest")',
+                    data: { virtualTestId: '@Model.VirtualTestId' },
+                    success: function(data, status, xhr) {
+                        $('#divMain').unblock();
+                        CustomAlert("Questions successfully deleted.");
+                        if (data.Success == true) {
+                            var newData = new sectionViewModel(data.newData.VirtualSectionList);
+                            viewModel.vmdata(newData.vmdata());//viewModel in _VirtualSectionQuestion.cshtml
+                            ResetQtiItemDetail();
+                            LoadImages('#divVirutalSectionQuestion');
+                            $('#divMain').unblock();
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        CustomAlert(error);
+                        $('#divMain').unblock();
+                    }
+                });
+                //clear the virtual question information
+                //$('#divRight').html('');
+                showPropertiesVirtualTest();
+
+            } else {
+                CustomAlert(response.ErrorMessage,true);
+                $('#divMain').unblock();
+            }
+        });
+    }
+
+    function ConfirmQuestionDeleteCancellick() {
+        $("#ConfirmSectionDeleteDialog").dialog("close");
+    }
+
+    //////////////////////////////////////
+    //Move button Save
+    function updateItemClick() {
+        if ('@ViewBag.HasTest' == 'True') {
+            ConfirmItemUpdate("This item is already used by existing tests. Saving it will update the content and the points possible for those tests; however, standards and tags will remain the same on those tests. Are you sure you want to save?");
+        } else {
+            updateItem();
+        }
+    }
+
+    function updateItem() {
+
+        // Validate input
+        var errorMessage = '';
+
+        var xmlContent = xmlExport();
+        if (xmlContent == '' || !xmlContent) {
+            return;
+        }
+
+        $('#btnUpdateItem').attr('disabled', true);
+        var qtiItemId = $('#qtiItemId').val();
+        ShowBlock($('#divEditQtiItem'), "Updating");
+        $.ajax({
+            url: '@Url.Action("UpdateItem","TestMaker")',
+            type: 'POST',
+            data: {
+                qtiItemId: qtiItemId,
+                //xmlContent: encodeURModel(xmlContent)
+                xmlContent: xmlContent
+            }
+        }).done(function (response) {
+            $('#divEditQtiItem').unblock();
+            $('#btnUpdateItem').removeAttr('disabled');
+
+            if (response.success == true) {
+                $('#success-message').show();
+                setTimeout(function () {
+                    $('#success-message').hide();
+                }, 5000);
+            } else {
+                addErrorMessages(response);
+                setTimeout(function () {
+                    $('#error-messages').hide();
+                }, 5000);
+            }
+        });
+    }
+
+    function ConfirmItemUpdate(message) {
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section class="grid_5" style="height:140px;">' +
+                        '<div class="block-border" style="width: 350px; min-height: 100px;">' +
+                        '<div class="block-content form" style="padding-bottom:0px">' +
+                        '<table cellpadding="0" cellspacing="0" style="margin-top:-15px;"><tr><td><p class="styleMessage" style="margin-bottom:10px;">' + message +
+                        '</p></td></tr><tr><td>' +
+                        '<p class="plButton"  style="margin-bottom:10px;text-align: center">' +
+                        '<button id="btnOk" type="button" name="ok" onclick="ConfirmItemUpdateOkClick()">OK</button>' +
+                        '<button id="btnCancel" type="button" name="cancel" onclick="ConfirmItemUpdateCancellick()" style="margin-left:10px;">Cancel</button>' +
+                        '</p></td></tr></table></div></div></section>';
+        $("<div></div>")
+                    .html(strHtml)
+                    .addClass("dialog")
+                    .attr("id", "ConfirmItemUpdateDialog")
+Model                    .appendTo("body")
+                    .dialog({
+                        close: function () { $(this).remove(); },
+                        modal: true,
+                        width: 420,
+                        maxheight: 100,
+                        resizable: false
+                    });
+
+        $(".ui-dialog").css("height", hbody);
+
+    }
+
+    function ConfirmItemUpdateOkClick(itemTagId) {
+        $(".dialog").dialog("close");
+        updateItem();
+    }
+
+    function ConfirmItemUpdateCancellick() {
+        $(".dialog").dialog("close");
+    }
+
+    function ConfirmExitBranching() {
+        var message = 'Do you want to exit this question without saving?';
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section class="grid_5" style="height:140px;">' +
+                        '<div class="block-border" style="width: 350px; min-height: 100px;">' +
+                        '<div class="block-content form" style="padding-bottom:0px">' +
+                        '<table cellpadding="0" cellspacing="0" style="margin-top:-15px;"><tr><td><p class="styleMessage" style="margin-bottom:10px;">' + message +
+                        '</p></td></tr><tr><td>' +
+                        '<p class="plButton"  style="margin-bottom:10px;text-align: center">' +
+                        '<button id="btnOk" type="button" name="ok" onclick="ConfirmExitBranchingOkClick()">OK</button>' +
+                        '<button id="btnCancel" type="button" name="cancel" onclick="ConfirmExitBranchingCancelClick()" style="margin-left:10px;">Cancel</button>' +
+                        '</p></td></tr></table></div></div></section>';
+        $("<div></div>")
+                    .html(strHtml)
+                    .addClass("dialog")
+                    .attr("id", "ConfirmExitBranchingDialog")
+                    .appendTo("body")
+                    .dialog({
+                        close: function () { $(this).remove(); },
+                        modal: true,
+                        width: 420,
+                        maxheight: 100,
+                        resizable: false
+                    });
+
+        $(".ui-dialog").css("height", hbody);
+
+    }
+
+    function ConfirmExitBranchingOkClick() {
+        $('#ConfirmExitBranchingDialog').remove();
+
+        $('#divTestBranchingPanel').remove();
+        $("body .my-overlay").remove();
+    }
+
+    function ConfirmExitBranchingCancelClick() {
+        $('#ConfirmExitBranchingDialog').remove();
+    }
+    function convertToBoolean(input) {
+        if (input == null || input == 'undefined')
+            return false;
+        input = input.trim().toLowerCase();
+        return input === 'true';
+    }
+    /////////////////////////////////////////////
+</script>

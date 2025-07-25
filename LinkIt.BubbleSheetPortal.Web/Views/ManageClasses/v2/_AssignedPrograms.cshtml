@@ -1,0 +1,105 @@
+@model LinkIt.BubbleSheetPortal.Models.Student
+
+
+<div class="last-child">
+    <table id="dataTableStudentProgram" class="datatable table center-first-column m-0" width="100%">
+        <thead>
+            <tr>
+                <th scope="col" style="width: 35px">
+                    Actions
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    Program Name
+                </th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script type="text/javascript">
+    $(function() {
+        var optionsStudentProgram =
+        {
+            oLanguage: { "sSearch": ""},
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetProgramsByStudentId")?studentId=@Model.Id',
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'StudentProgramId', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'ProgramName', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function(nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+                return nRow;
+            },
+            fnPreDrawCallback: function() {
+                ShowBlock($('#dataTableStudentProgram'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function() {
+                $('#dataTableStudentProgram').unblock();
+                $('.with-tip').tip();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTableStudentProgram_filter');
+                var elSearchInput = elSearchLabel.find('input');
+                elSearchInput.attr('style', 'padding-left: 32px !important; position: relative;');
+                $('#dataTableStudentProgram_filter').addClass('data-search');
+            }
+        };
+
+
+        $("#dataTableStudentProgram").data("options", optionsStudentProgram);
+        initializeDataTable($("#dataTableStudentProgram"));
+    });
+
+    function setIconVisibility(studentProgramId) {
+        var addIcon = '<i class="custom-icon fa-solid fa-circle-xmark icon-red"></i>';
+        return '<a href="javascript:void(0)" title="Remove student from program" studentProgramId="' + studentProgramId + '" class="with-tip studentProgram">' + addIcon + '</a>';
+    }
+
+    if ('@Model.SISID' == '') {
+        $('#dataTableStudentProgram').on('click', '.studentProgram', function() {
+            var studentProgramId = $(this).attr('studentProgramId');
+            confirmMessageV2(
+                {
+                    message: 'Are you sure you want to remove this student from this program?',
+                    cbYesBtnFuncName: 'yesRemoveStudentProgram(' + studentProgramId + ')',
+                    cbCancelBtnFuncName: 'closeRemoveStudentProgram()',
+                    cbCloseBtnFuncName: 'closeRemoveStudentProgram()',
+                },
+                {
+                    dialogAttr: {
+                        attr: {
+                            id: 'deleteClassConfirm'
+                        }
+                    }
+                }
+            )
+        });
+    }
+    function closeRemoveStudentProgram() {
+         $("#deleteClassConfirm").dialog("close");
+    }
+    function yesRemoveStudentProgram(studentProgramId) {
+        closeRemoveStudentProgram();
+
+        $.post('@Url.Action("RemoveProgramFromStudent")', { studentProgramId: studentProgramId }, function(response) {
+            if (response == true) {
+                ui.dataTableStudentProgram.fnDraw();
+                if (!$('#sideContainer').is(':empty')) {
+                    ui.dataTableProgram.fnDraw();
+                }
+            } else {
+                alert('An error has occured. Please try again.');
+            }
+        });
+    }
+</script>

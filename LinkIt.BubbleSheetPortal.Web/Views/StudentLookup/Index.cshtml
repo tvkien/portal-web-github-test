@@ -1,0 +1,202 @@
+@{
+    ViewBag.Title = "Student Management";
+}
+@*@MvcHtmlString.Create(
+    Bundle.Css()
+        .Add(@Url.Content("~/Content/css/custom.css"))
+            .Render("/Content/themes/Constellation/css/StudentLookupView_#.css")
+     )*@
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleCustomBundle()
+
+@*@MvcHtmlString.Create(
+    Bundle.JavaScript()
+        .Add("/Content/themes/TestMaker/ckeditor_utils.js")
+        .Render("/Content/themes/Constellation/js/StudentLookupView_combined_#.js")
+    )*@
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCKEditorUtilsBundle()
+
+<script src="@Url.Content("~/Scripts/date.js")" type="text/javascript"></script>
+
+<style type="text/css">
+    html {
+        overflow-x: auto;
+    }
+
+    .plButton {
+        text-align: center;
+        position: relative;
+        top: 47px;
+    }
+
+    #btnOk {
+        width: 79px;
+        margin-right: 10px;
+    }
+    #student-lookup-commands a.disabled,
+    #student-lookup-commands a.disabled:hover,
+    #student-lookup-commands a.disabled:focus {
+        color: white;
+        text-shadow: rgba(0, 0, 0, 0.6) 0 1px 2px;
+        box-shadow: rgba(0, 0, 0, 0.2) 0 1px 4px;
+        border-color: rgb(161, 167, 174) rgb(144, 148, 152) rgb(107, 112, 118);
+        background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(white), color-stop(0.05, rgb(197, 203, 206)), to(rgb(159, 167, 176)));
+        cursor: default;
+        pointer-events: none;
+    }
+</style>
+
+<script type="text/javascript">
+    _historyData = {};
+    _CURRENT_PAGE_NAME = "StudentLookup";
+    var isFirstLoad = false;
+
+    function storageSession() {
+        var selectRace = $("#selectRace").val() !== 'select' ? $("#selectRace").val() : '';
+        var data = {
+            rootPage: "StudentLookup",
+            subPages: ["AddStudent", "EditStudent"],
+            payload: {
+                stateID: $("#selectState").val(),
+                districtID: $("#selectDistrict").val(),
+                schoolID: $("#selectAdminSchool").val(),
+                gradeID: $("#selectGrade").val(),
+                selectStateId: $("#selectStateId").val(),
+                selectLocalId: $("#selectLocalId").val(),
+                selectFirstName: $("#selectFirstName").val(),
+                selectGender: $("#selectGender").val(),
+                selectRace: selectRace,
+                showInactive: _historyData && _historyData.showInactive ? _historyData.showInactive : showInactiveStudent,
+                searchText: $("#dataTable_filter input").val(),
+                pageSize: $('#divStudent #dataTable_length select').find(":selected").val()
+            }
+        };
+
+        sessionStorage.KEEP_SESSION = JSON.stringify(data);
+    }
+    $(function () {
+        ClearSessionsManageSchool();
+        if (performance.navigation.type === 1) {
+            sessionStorage.removeItem("KEEP_SESSION");
+        }
+
+        loadHistoryData();
+        $('#filterSheets').click(function () {
+            storageSession();
+            loadHistoryData(true);
+            isFirstLoad = true;
+            setupFilters();
+            cacheFilterData(); // cache filter for printing function
+        });
+
+        $('#clearFilter').click(function () {
+            $("#selectState").val(-1);
+            $('#selectDistrict').empty();
+            if ($("#selectState").length ==1) {
+                $('#selectState').trigger("change");
+            }
+
+            if ('@ViewBag.IsPubliser' == 'True' || '@ViewBag.IsNetworkAdmin' == 'True') {
+                $('#selectAdminSchool').empty();
+                $("#selectRace").empty();
+                $('#selectGrade').empty();
+                $("#filterSheets").disableBt();
+            } else {
+                $('#selectAdminSchool').val(-1);
+                $("#selectRace").val(-1);
+                $('#selectGrade').val(-1);
+            }
+            $('#hiddenSelectAdminSchool').val('');
+            $("#selectGender").val("");
+            $(".filter-input-text").val("");
+
+            sessionStorage.KEEP_SESSION = null;
+            ResetSessionStorage();
+        });
+
+        function setupFilters() {
+            var dataTable = $('#dataTable').dataTable();
+            var settings = dataTable.fnSettings();
+            dataTable.fnDraw();
+        }
+
+        function cacheFilterData() {
+            $('#hiddenSelectDistrict').val($('#selectDistrict').val());
+            $('#hiddenSelectFirstName').val($('#selectFirstName').val());
+            $('#hiddenSelectLocalId').val($('#selectLocalId').val());
+            $('#hiddenSelectStateId').val($('#selectStateId').val());
+            $('#hiddenSelectAdminSchool').val($('#selectAdminSchool').val());
+            $('#hiddenSelectGrade').val($('#selectGrade').val());
+            $('#hiddenSelectRace').val($('#selectRace').val());
+            $('#hiddenSelectGender').val($('#selectGender').val());
+        }
+
+        function loadHistoryData(isFilterBtn) {
+            if (sessionStorage.KEEP_SESSION) {
+                var data = JSON.parse(sessionStorage.KEEP_SESSION);
+                if (data && data.rootPage === _CURRENT_PAGE_NAME) {
+                    isFirstLoad = true;
+                    if (data.payload) {
+                        _historyData = data.payload;
+
+                        if (_historyData.showInactive === true && !isFilterBtn) {
+                            console.log('oinactive');
+                            $('#btnShowInactiveStudent').click();
+                            $("#showInactiveStudentText").html("on");
+                        }
+                        else {
+                            if (!isFilterBtn) {
+                                $("#showInactiveStudentText").html("off");
+                            }
+                        }
+                        $("#dataTable_filter input").val(_historyData.searchText);
+                        $("#selectStateId").val(_historyData.selectStateId);
+                        $("#selectLocalId").val(_historyData.selectLocalId);
+                        $("#selectFirstName").val(_historyData.selectFirstName);
+                        $("#selectGender").val(_historyData.selectGender);
+                    }
+                }
+            }
+        }
+
+        function ResetSessionStorage() {
+            if (_historyData) {
+                _historyData.stateID = 0;
+                _historyData.districtID = 0;
+                _historyData.schoolID = 0;
+            }
+        }
+    });
+
+</script>
+
+<article class="container_12" id="student-lookup">
+    <section class="grid_12">
+        <div class="block-border" id="selectFilters">
+            <div id="divFilterStudents" class="block-content form bubbleSheetSelector">
+                <h1>Filter Students</h1>
+                <ul style="display: none" id="error-messages" class="message error no-margin" v-show="errorMessageList && errorMessageList.length >0">
+                    <li v-for="error in errorMessageList">{{error}}</li>
+                </ul>
+                <ul style="display: none" id="success-message" class="message success" v-show="successMessageList && successMessageList.length >0">
+                    <li v-for="successMess in successMessageList">{{successMess}}</li>
+                </ul>
+                <input type="hidden" id="hiddenSelectDistrict" />
+                <input type="hidden" id="hiddenSelectFirstName" />
+                <input type="hidden" id="hiddenSelectLocalId" />
+                <input type="hidden" id="hiddenSelectStateId" />
+                <input type="hidden" id="hiddenSelectAdminSchool" />
+                <input type="hidden" id="hiddenSelectGrade" />
+                <input type="hidden" id="hiddenSelectRace" />
+                <input type="hidden" id="hiddenSelectGender" />
+                @Html.Partial("_FilterStudents")
+                <div class="u-text-right">
+                    <button id="clearFilter" class="grey" type="button">Clear Filter</button>
+                    <button id="filterSheets" class="u-m-l-10" type="button" disabled="disabled">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+        <br />
+        <br />
+        @Html.Partial("_ListStudent")
+    </section>
+</article>

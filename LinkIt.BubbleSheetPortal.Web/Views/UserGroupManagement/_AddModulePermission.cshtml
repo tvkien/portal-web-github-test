@@ -1,0 +1,124 @@
+@model LinkIt.BubbleSheetPortal.Models.AddModulePermissionRequest
+
+<section class="grid-12">
+    <div class="block-border">
+        <div class="block-content form">
+            <h1>User Group Access: @Model.DisplayHeader</h1>
+            <ul style="display: none" id="error-messages-add-module-permission" class="no-margin message error"></ul>
+            @using (Html.BeginForm("AddModulePermission", "UserGroupManagement", FormMethod.Post, new { id = "addModulePermissionForm", @class = "form" }))
+            {
+                <fieldset>
+                    @Html.HiddenFor(x => x.XLIAreaId)
+                    @Html.HiddenFor(x => x.XLIGroupId)
+                    @Html.HiddenFor(x => x.XLIModuleId)
+                    <p>
+                        @Html.CheckBoxFor(x => x.AllRoles) All Roles
+                    </p>
+                    <div class="d-flex justify-content-between">
+                        <div>@Html.CheckBoxFor(x => x.NetworkAdmin, new { @class = "role-options" }) Network Admin</div>
+                        <div>@Html.CheckBoxFor(x => x.DistrictAdmin, new { @class = "role-options" }) District Admin</div>
+
+                        <div>@Html.CheckBoxFor(x => x.SchoolAdmin, new { @class = "role-options" }) School Admin</div>
+                        <div>@Html.CheckBoxFor(x => x.Teacher, new { @class = "role-options" }) Classroom Teacher</div>
+                    </div>
+                </fieldset>
+
+                <div class="u-text-right">
+                    <button id="btnAddModulePermissionSubmit" type="submit" name="Save" disabled>Save</button>
+                    <button id="btnAddModulePermissionCancel" type="button" class="grey">Cancel</button>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    @if(Model.IsNotSupportSchoolAdminAndTeacher)
+    {
+        <text>
+        $("#AllRoles").attr("disabled", true);
+        $("#SchoolAdmin").attr("disabled", true);
+        $("#Teacher").attr("disabled", true);
+        </text>
+    };
+
+    $(document).ready(function () {
+        $('#AllRoles').click(function () {
+            var allRoles = $("#AllRoles").is(':checked');
+
+            $("#NetworkAdmin").prop("checked", allRoles).attr("disabled", allRoles);
+            $("#DistrictAdmin").prop("checked", allRoles).attr("disabled", allRoles);
+            $("#SchoolAdmin").prop("checked", allRoles).attr("disabled", allRoles);
+            $("#Teacher").prop("checked", allRoles).attr("disabled", allRoles);
+
+            checkSubmitDisable();
+        });
+
+        $('.role-options').click(function () {
+            checkSubmitDisable();
+        });
+
+        $("#btnAddModulePermissionCancel").click(function () {
+            $('.ui-widget-overlay').remove();
+            $('#addModulePermission').remove();
+        });
+
+        $('#addModulePermissionForm').submit(function (event) {
+            event.preventDefault();
+
+            $('#error-messages-add-module-permission').append('<li></li>');
+
+            $('#btnAddModulePermissionSubmit').disableBt();
+
+            var data = {
+                XLIAreaId: $("#XLIAreaId").val(),
+                XLIGroupId: $("#XLIGroupId").val(),
+                XLIModuleId: $("#XLIModuleId").val(),
+                AllRoles: $("#AllRoles").is(':checked'),
+                NetworkAdmin: $("#NetworkAdmin").is(':checked'),
+                DistrictAdmin: $("#DistrictAdmin").is(':checked'),
+                SchoolAdmin: $("#SchoolAdmin").is(':checked'),
+                Teacher: $("#Teacher").is(':checked')
+            };
+
+            $.ajax({
+                url: '@Url.Action("AddModulePermission", "UserGroupManagement")',
+                type: 'POST',
+                data: data,
+                success: function (response) {
+                    if (response.success) {
+                        $('.ui-widget-overlay').remove();
+                        $('#addModulePermission').remove();
+                        $('#tblModuleAccess').dataTable().fnDraw();
+                    }
+                    else {
+                        $('#error-messages-add-module-permission').empty();
+                        $('#btnAddModulePermissionSubmit').enableBt();
+
+                        if (response.message) {
+                            $('#error-messages-add-module-permission').append('<li>' + response.message + '</li>');
+                            $('#error-messages-add-module-permission').show();
+                        } else {
+                            $('#error-messages-add-module-permission').hide();
+                        }
+                    }
+                },
+                failure: function (response) {
+                    addErrorMessages(response);
+                }
+            });
+        });
+    });
+
+    function checkSubmitDisable() {
+        var allRoles = $("#AllRoles").is(':checked');
+        var networkAdmin = $("#NetworkAdmin").is(':checked');
+        var districtAdmin = $("#DistrictAdmin").is(':checked');
+        var schoolAdmin = $("#SchoolAdmin").is(':checked');
+        var teacher = $("#Teacher").is(':checked');
+
+        var enabled = allRoles || networkAdmin || districtAdmin || schoolAdmin || teacher;
+
+        $(':button[type="submit"]').prop('disabled', !enabled);
+    }
+</script>

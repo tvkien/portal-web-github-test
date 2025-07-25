@@ -1,0 +1,153 @@
+﻿@using LinkIt.BubbleSheetPortal.Web
+@using LinkIt.BubbleSheetPortal.Common
+
+@model string
+@{
+    var printModels = (List<PrintBubbleSheetDownloadModel>) ViewBag.PrintModels;
+    if (printModels != null)
+    {
+        printModels = printModels.OrderByDescending(x => x.GeneratedDateTime).ToList();
+    }
+}
+
+<style>
+    .col-test-name, .col-class-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+    }
+
+    .col-teacher-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+    }
+</style>
+
+@if (printModels != null && printModels.Any())
+{
+    <fieldset id="loadingFieldSet" class="grey-bg">
+        <legend id="statusLegend">Bubble Sheet Download</legend>
+        <ul class="message warning no-margin">
+            <li>PRIOR TO PRINTING AND SCANNING, PLEASE REVIEW THE <a target="_new" href="https://linkit.atlassian.net/wiki/display/LPUG02/Grading+-+Bubble+Sheet+Best+Practices">BUBBLE SHEET BEST PRACTICES</a></li>
+        </ul>
+
+        <div id="divTabBubbleSheetDownload" style="display: block;">
+            <table class="table" width="100%">
+                <thead>
+                    <tr>
+                        <th style="width: 130px;">Generated</th>
+                        <th style="width: 180px;">Test</th>
+                        <th style="width: 180px;">Class/Group</th>
+                        <th>Teacher</th>
+                        <th style="width: 110px;">Download</th>
+                    </tr>
+                </thead>
+                <tbody>                
+                    @if (printModels != null)
+                    {
+                        foreach (var item in printModels)
+                        {
+                            <tr>
+                                <td class="toLocalTime">
+                                    @item.GeneratedDateTime
+                                </td>
+                                <td>
+                                    <div class="col-test-name">
+                                        @item.TestName    
+                                    </div>                                    
+                                </td>
+                                <td>
+                                    <div class="col-class-name">
+                                        @item.GroupName
+                                        @item.ClassName
+                                    </div>                                                                        
+                                </td>
+                                <td>
+                                    <div class="col-teacher-name">
+                                        @item.TeacherName
+                                    </div>                                                                        
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(item.DownloadUrl))
+                                    {
+                                        <a target="_new" href="@item.DownloadUrl">Click to download</a>                                
+                                    }
+                                    else
+                                    {
+                                        <p class="float-left" id="url">Generating...</p>
+                                        <img id="loading" class="float-right" alt="loading" src="@Url.Content("/Content/images/loadinfo.net.gif")" style="width: 16px;"/>    
+                                    }                                                        
+                                </td>
+                            </tr>
+                        }
+                    }
+                
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
+
+<fieldset style="display: none;">
+    <legend>Options</legend>
+    <ul class="message no-margin info">
+        <li>You can wait for your sheet to finish (a link will appear) or select one of the options below
+        </li>
+    </ul>
+    <ul class="shortcuts-list">
+        <li>
+            <a href="@Url.Action("Generate", "GenerateBubbleSheet")">
+                <img src="@Url.Content("~/Content/themes/Constellation/images/icons/web-app/48/Modify.png")"/>
+                Generate Bubble Sheet
+            </a>
+        </li>
+        <li style="padding-left: 15px">
+            <a href="@Url.Action("Index", "BubbleSheetReview")">
+                <img src="@Url.Content("~/Content/themes/Constellation/images/icons/web-app/48/Modify.png")"/>
+                View Full List
+            </a>
+        </li>
+    </ul>
+</fieldset>
+}
+
+
+@if (!string.IsNullOrEmpty(Model))
+{
+    <!-- Do not call GetDownloadUrl when just refresh page -->
+    <script type="text/javascript">
+        $(function() {
+            var finished = false;
+            getDownloadUrl();
+            if (finished) {
+                return;
+            }
+            setInterval(function() {
+                if (!finished) {
+                    getDownloadUrl();
+                } else {
+                    return;
+                }
+            }, 5000);
+
+            function getDownloadUrl() {
+                $.get('@Url.Action("GetDownloadUrl")', { id: '@Model' }, function(response) {
+                    if (response.notValidTicket === true) {
+                        $('#url').html('Invalid ticket');
+                        $('#loadingFieldSet img:last-child').remove();
+                        finished = true;
+                        return;
+                    }
+                    if (response.downloadUrl != "" && response !== false) {
+                        $('#url').html('<a target="_new">Click to download</a>');
+                        $('#url a').attr('href', response.downloadUrl);
+                        $('#loadingFieldSet img:last-child').remove();
+                        finished = true;
+                    }
+                });
+            }
+        });
+    </script>
+}

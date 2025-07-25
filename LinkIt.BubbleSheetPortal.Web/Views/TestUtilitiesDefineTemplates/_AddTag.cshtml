@@ -1,0 +1,199 @@
+<style type="text/css">
+    .divAddTagPopup {
+        z-index: 1004;
+        padding: 24px !important;
+    }
+
+    .btn-wrapper {
+        background: var(--navyColor);
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        margin: -24px;
+        margin-top: 24px;
+    }
+
+    .block-content h1 {
+        padding: 0;
+        margin-bottom: 24px;
+    }
+</style>
+
+<section>
+    <div class='block-border' style='z-index: 2004'>
+        <div class='block-content divAddTagPopup' id="divAddTagPopupContent">
+            <div class="form">
+                <h1 class="title-large">Add Tag</h1>
+                <div class="form-body">
+                    @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                    {
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <label>State</label>
+                                <select id="selectState" onchange="onChangeState()"></select>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label>@LabelHelper.DistrictLabel</label>
+                                <select id="selectDistrict" onchange="onChangeDistrict()"></select>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="row">
+                        <div class="col-6">
+                            <label>Category</label>
+                            <select id="selectCategory" onchange="onChangeCategory()"></select>
+                        </div>
+                        <div class="col-6">
+                            <label>Tag</label>
+                            <select id="selectTag"></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-wrapper">
+                    <button class="btn-cancel" onclick="cancel()">Cancel</button>
+                    <button class="btn-red" onclick="save()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    var stateSelector = '#selectState',
+        districtSelector = '#selectDistrict',
+        categorySelector = '#selectCategory',
+        tagSelector = '#selectTag';
+
+    var selectedStateId = @Model.StateID,
+        selectedDistrictId = @Model.DistrictID,
+        selectedCategoryId = @Model.ItemTagCategoryID,
+        selectedTagId = @Model.ItemTagID,
+        isPublisher = @Model.IsPublisher.ToString().ToLower(),
+        isNetworkAdmin = @Model.IsNetworkAdmin.ToString().ToLower();
+
+    $(document).ready(loadTagFilters);
+
+    function loadTagFilters() {
+        isPublisher || isNetworkAdmin ? loadStatesDropdown() : loadCategoriesDropdown(selectedDistrictId);
+
+        if (selectedTagId > 0) {
+            ShowBlock($('#divAddTagPopupContent'), "Load Tag");
+        }
+    }
+
+    function addSelectListItems(selectList, results, defaultValue) {
+        if (!results.length) return;
+        selectList.append(new Option(defaultValue, "-1"));
+        results.forEach(({ Id, Name }) => selectList.append(new Option(Name, Id)));
+    }
+
+    function loadStatesDropdown() {
+        $.ajax({
+            url: '@Url.Action(@Model.IsPublisher ? "GetStates" : "GetStatesForNetworkAdmin", "PopulateStateDistrict")',
+            type: 'GET',
+            success: function(states) {
+                addSelectListItems($(stateSelector), states, 'Select State');
+                if (selectedStateId > 0) $(stateSelector).val(selectedStateId).trigger('change');
+                selectedStateId = 0;
+            }
+        });
+    }
+
+    function loadDistrictsDropdown(stateId) {
+        if (!(stateId > 0)) return;
+
+        $.ajax({
+            url: '@Url.Action(@Model.IsPublisher ? "GetDistricts" : "GetDistrictsForNetworkAdmin", "PopulateStateDistrict")',
+            type: 'GET',
+            data: { stateId: stateId },
+            success: function(districts) {
+                addSelectListItems($(districtSelector), districts, 'Select District');
+                if (selectedDistrictId > 0) $(districtSelector).val(selectedDistrictId).trigger('change');
+                selectedDistrictId = 0;
+            }
+        });
+    }
+
+    function loadCategoriesDropdown(districtId) {
+        if (!(districtId > 0)) return;
+
+        $.ajax({
+            url: '@Url.Action("GetAllDistrictCategory", "ItemTag")',
+            type: 'GET',
+            data: { districtId: districtId },
+            dataType: 'json',
+            success: function(data) {
+                addSelectListItems($(categorySelector), data, 'Category');
+                if (selectedCategoryId > 0) $(categorySelector).val(selectedCategoryId).trigger('change');
+                selectedCategoryId = 0;
+            }
+        });
+    }
+
+    function loadTagsDropdown(itemTagCategoryId) {
+        if (!(itemTagCategoryId > 0)) return;
+
+        $(tagSelector).empty();
+        $.ajax({
+            url: '@Url.Action("GetItemTags", "ItemTag")',
+            type: 'GET',
+            data: { itemTagCategoryId: itemTagCategoryId },
+            success: function(tags) {
+                addSelectListItems($(tagSelector), tags, 'Select Tag');
+                if (selectedTagId > 0) {
+                    $(tagSelector).val(selectedTagId).trigger('change');
+                    $('#divAddTagPopupContent').unblock();
+                };
+                selectedTagId = 0;
+            }
+        });
+    }
+
+    function onChangeState() {
+        $(tagSelector).empty();
+        $(categorySelector).empty();
+        $(districtSelector).empty();
+        loadDistrictsDropdown($(stateSelector).val());
+    }
+
+    function onChangeDistrict() {
+        $(tagSelector).empty();
+        $(categorySelector).empty();
+        loadCategoriesDropdown($(districtSelector).val());
+    }
+
+    function onChangeCategory() {
+        $(tagSelector).empty();
+        loadTagsDropdown($(categorySelector).val());
+    }
+
+    function save() {
+        var itemTagId = $(tagSelector).val();
+        if (!(itemTagId > 0)) return;
+
+        ShowBlock($('#divAddTagPopupContent'), "Add Tag");
+
+        $.ajax({
+            url: '@Url.Action("AddTagForSubScore")',
+            type: 'POST',
+            data: {
+                virtualTestCustomSubScoreId: @Model.VirtualTestCustomSubScoreId,
+                itemTagId: itemTagId
+            },
+            success: function(response) {
+                $(".dialog").dialog("close");
+                $('#divAddTagPopupContent').unblock();
+            },
+            error: function(xhr, status, error) {
+                console.error('Error adding tag:', error);
+            }
+        });
+    }
+
+    function cancel() {
+        $(".dialog").dialog("close");
+    }
+
+</script>

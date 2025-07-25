@@ -1,0 +1,219 @@
+@using LinkIt.BubbleSheetPortal.Models.AuthorizeItemLib
+@using LinkIt.BubbleSheetPortal.Common.DataFileUpload
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = "Import Items From Library";
+}
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleVirtualTestImportItemsBundle()
+
+<script type="text/javascript" src="https://s3-us-west-2.amazonaws.com/linkit-utility/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script>
+    // Optimize: data here for the first time load pop up Add Item from Library
+    var virtualTestUrl = {
+      qTI3PSubjectDataUrl: '@Url.Action("GetQTI3PSubject", "ItemBank")',
+      criteriaGradesDataUrl: '@Url.Action("GetCriteriaGrades", "ItemBank")',
+      criteriaQTI3PDOKDataUrl: '@Url.Action("GetCriteriaQTI3PDOK", "ItemBank")',
+      qTI3PDifficultyDataUrl: '@Url.Action("GetQTI3PDifficulty", "ItemBank")',
+      qTI3PBloomsDataUrl: '@Url.Action("GetQTI3PBlooms", "ItemBank")',
+      qTI3PPassageNumberDataUrl: '@Url.Action("GetQTI3PPassageNumber", "ItemBank")',
+      passageGradesDataUrl: '@Url.Action("GetPassageGrades", "ItemBank")',
+      assignedGradesForPassagesDataUrl: '@Url.Action("GetQTI3PPassageSubject", "ItemBank")',
+      qtiPassageSubjectsDataUrl: '@Url.Action("GetQtiPassageSubjects", "Passage")',
+      qTI3PWordCountDataUrl: '@Url.Action("GetQTI3PWordCount", "ItemBank")',
+      qTI3PTextTypeDataUrl: '@Url.Action("GetQTI3PTextType", "ItemBank")',
+      qTI3PTextSubTypeDataUrl: '@Url.Action("GetQTI3PTextSubType", "ItemBank")',
+      qTI3PFleschKincaidDataUrl: '@Url.Action("GetQTI3PFleschKincaid", "ItemBank")',
+      itemBanksPersonalDataUrl: '@Url.Action("GetItemBanksPersonal", "ItemBank")',
+      districtCategoryDataUrl: '@Url.Action("GetDistrictCategory", "ItemTag")',
+      personalStateStandardDataUrl: '@Url.Action("GetStateStandardWithCCForFilter", "PopulateStateDistrict")/?qti3p=false&personal=true',
+        getItemDistrict: '@Url.Action("GetItemDistrict", "ItemBank")',
+        getItemBanksPersonalAndDistrict: '@Url.Action("GetItemBanksPersonalAndDistrict", "ItemBank")',
+        loadListItemsFromLibraryUpload: '@Url.Action("LoadListItemsFromLibraryUpload", "VirtualTest")',
+        loadStandardFilter: '@Url.Action("LoadStandardFilter","ItemBank")',
+        checkQtiItemExists: '@Url.Action("CheckQtiItemExists", "ItemBank")',
+        showEditQtiItemItem: '@Url.Action("ShowEditQtiItemItem","ItemBank")',
+        loadListItemsFromLibrary: '@Url.Action("LoadListItemsFromLibrary", "VirtualTest")?virtualTestId=' + '@ViewBag.VirtualTestId'
+};
+</script>
+
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor.js"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_functions.js"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_utils.js"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_mk.js"></script>
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptVirtualTestImportItemsBundle()
+
+<style type="text/css">
+    #btnEditPassageDetail {
+        display: none !important;
+        cursor: default;
+        pointer-events: none;
+    }
+</style>
+
+<input type="hidden" id="isInitItemBankData" value="false" />
+<input type="hidden" id="isSearched" value="false" />
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="divItemFromLibrary">
+            <div class="block-content form">
+                <div id="ItemFromLibraryFilterID" class="bubbleSheetSelector m-t-15">
+                    <h1>Filter Item From Library</h1>
+                    <div class="itemLibraryFilter">
+                        <div class="itemLibraryFilter-result">
+                            <fieldset>
+                                <input id="radioPersonalItemLibrary" type="checkbox" name="ItemLibrarySelection" checked="checked" />
+                                <label for="radioPersonalItemLibrary">Personal Item Library</label>
+                                @{
+                                    var XliFunctionAccess = (XliFunctionAccess)ViewBag.XliFunctionAccess;
+                                }
+                                @if (XliFunctionAccess.DistrictLibraryAccessible)
+                                {
+                                    <input id="radioDistrictItemLibrary" type="checkbox" name="ItemLibrarySelection" />
+                                    <label for="radioDistrictItemLibrary">@LabelHelper.DistrictLabel Item Library</label>
+                                }
+                                @if (XliFunctionAccess.CerticaLibraryAccessible || XliFunctionAccess.ProgressLibraryAccessible)
+                                {
+                                    <input id="radioNWEAItemLibrary" type="checkbox" name="ItemLibrarySelection" />
+                                    <label for="radioNWEAItemLibrary" id='lblRadioNWEAItemLibrary'>Third-Party Libraries </label>
+                                    <select id="selectSource" style="min-width: 150px; display: none"></select>
+                                }
+                            </fieldset>
+                        </div>
+                    </div>
+                    <div class="itemLibraryTab">
+                        <ul class="itemLibraryTab-list">
+                            <li class="itemLibraryTab-list-item active" data-tab="data-item-criteria-new">
+                                <span>Standard/Item Criteria</span>
+                            </li>
+                            <li class="itemLibraryTab-list-item" data-tab="data-passage-criteria">
+                                <span>Passage Criteria</span>
+                            </li>
+                        </ul>
+                        <div class="itemLibraryTab-content">
+                            @Html.Partial("_ItemFromLibraryFilterNew")
+                            <div id="data-passage-criteria" class="itemLibraryTab-pane">
+                                <fieldset class="grey-bg coolfieldset qtiItemSelector">
+                                    <div class="columns" id="divPassageCriteria">
+                                        <div class="colx2-left">
+                                            <p>
+                                                <label id="lblPassageName">Name</label>
+                                                <input type="text" id="txtRefObjectTitle" style="width: 285px" />
+                                                <select id="selectPassageTitle">
+                                                    <option value="">All</option>
+                                                </select>
+                                            </p>
+                                            <p>
+                                                <label id="lblPassageNumberFilter">Passage Number</label>
+                                                <select id="selectPassageNumber">
+                                                    <option value="">All</option>
+                                                </select>
+                                            </p>
+                                            <p>
+                                                <label id="selectPassageGradeLabel">@LabelHelper.GradeLabel</label>
+                                                <select id="selectPassageGrade">
+                                                    <option value="">All</option>
+                                                </select>
+                                                <select id="selectPassageGradeNew">
+                                                    <option value="">All</option>
+                                                </select>
+                                            </p>
+                                            <p>
+                                                <label id="selectPassageSubjectLabel">Subject</label>
+                                                <select id="selectPassageSubject">
+                                                    <option value="">All</option>
+                                                </select>
+                                                <select id="selectPassageSubjectNew">
+                                                    <option value="">All</option>
+                                                </select>
+                                            </p>
+                                            <p>
+                                                <label id="lblWordCountFilter">Word Count</label>
+                                                <select id="selectWordCount">
+                                                    <option value="">All</option>
+                                                </select>
+                                            </p>
+                                        </div>
+                                        <div class="colx2-right">
+                                            <p>
+                                                <label id="selectTextTypeLabel">Text Type</label>
+                                                <select id="selectTextType">
+                                                    <option value="">All</option>
+                                                </select>
+                                            </p>
+                                            <p>
+                                                <label id="selectPassageTypeLabel">Passage Type</label>
+                                                <select id="selectPassageType"></select>
+                                            </p>
+                                            <p>
+                                                <label id="selectPassageGenreLabel">Genre </label>
+                                                <select id="selectPassageGenre"></select>
+                                            </p>
+                                            <p>
+                                                <label id="selectTextSubTypeLabel">Text Sub Type</label>
+                                                <select id="selectTextSubType">
+                                                    <option value="">All</option>
+                                                </select>
+                                            </p>
+                                            <p>
+                                                <label id="selectFleschKincaidIdsLabel">Flesch Kincaid</label>
+                                                <select id="selectFleschKincaidIds">
+                                                    <option value="">All</option>
+                                                </select>
+                                            </p>
+                                            <p>
+                                                <label id="selectQTI3pPassageLanguageLabel">Language</label>
+                                                <select id="selectQTI3pPassageLanguage">
+                                                    <option value="">All</option>
+                                                </select>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="clear"></div>
+                                    <div class="float-right">
+                                        <button id="clearFilterPassage" style="margin-right: 5px" type="button">Clear Passage Filters</button>
+                                        <button id="searchByPassage" type="submit">Search by Passage</button>
+                                    </div>
+                                    <div class="clear"></div>
+                                </fieldset>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="clear-25"></div>
+                <div style="float: left; width: 100%">
+                    <div id="qti3pItemResult" style="float: left; width: 48%; padding-right: 2px;">
+                        @Html.Partial("_ListItemsFromLibrary")
+                    </div>
+                    <div id="qti3pItemUploadResult" style="float: left; width: 48%;padding-right: 2px; display: none">
+                    </div>
+                    <div id="qtiItemResult" style="float: left; width: 48%;padding-right: 2px">
+                        @Html.Partial("_ListItemsFromLibraryNew")
+                    </div>
+                    <div id="divListItem" style="float: left;width: 50%;padding-left: 2px">
+                        @Html.Partial("_ListItem")
+                    </div>
+                    <div id="passageResult" style="float: left; display: none; width: 100%;padding-right: 2px">
+                        @Html.Partial("_ListItemsPassageNew")
+                    </div>
+                    <div id="passage3pResult" style="float: left; display: none; width: 100%;padding-right: 2px">
+                        @Html.Partial("_ListItemsPassage")
+                    </div>
+                </div>
+
+                <div style="clear: both"></div>
+                <div class="no-margin last-child" style="padding: 10px 0 10px 20px">
+                    <a class="big-button" href="@Url.Action("Index", "VirtualTest", new { virtualTestId = ViewBag.VirtualTestId, districtId = ViewBag.DistrictId })">Return to Tests</a>
+                </div>
+            </div>
+        </div>
+        <div id="divTempContent"></div>
+    </section>
+</article>
+<input type="hidden" id="hiddenVirtualTestId" value="@ViewBag.VirtualTestId" />
+@Html.Action("LoadImportItemFromLibraryScript", "ItemBank")

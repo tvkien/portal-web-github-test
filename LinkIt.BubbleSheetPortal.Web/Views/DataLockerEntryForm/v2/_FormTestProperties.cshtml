@@ -1,0 +1,354 @@
+@using LinkIt.BubbleSheetPortal.Common
+
+<style type="text/css">
+
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+        height: auto !important;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: var(--dark) !important;
+    }
+
+    .comboTreeInputBox {
+        color: var(--navyColor);
+    }
+</style>
+
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestPropertiesViewModel
+
+<div class="block-content form form-properties form-properties-v2 pb-3" id="divFormProperty">
+    <h2 class="header mt-2 mb-0">Form Properties</h2>
+    <ul style="display: none" id="update-error-messages" class="message error"></ul>
+    <div class="my-3">
+        @Html.TextBoxFor(x => x.TestName, new { @class = "full-width border-gray color-navy fw-bold p-065", tabindex = 1, rows = 2 })
+        @Html.ValidationMessageFor(x => x.TestName, " ")
+    </div>
+    <table class="datatable table no-margin" width="100%">
+        <tr>
+            <td>
+                Category:
+            </td>
+            <td>
+                <input type="text" id="categoryList" class="color-navy full-width" placeholder="Select Category" autocomplete="off" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Created Date:
+            </td>
+            <td>
+                @if (!Model.CreatedDate.Equals(DateTime.MinValue))
+                {
+                    <text>
+                        @Model.CreatedDate.DisplayDateWithFormat()
+                    </text>
+                }
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Updated Date:
+            </td>
+            <td>
+                @if (!Model.UpdatedDate.Equals(DateTime.MinValue))
+                {
+                    <text>
+                        @Model.UpdatedDate.DisplayDateWithFormat()
+                    </text>
+                }
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Created By:
+            </td>
+            <td>
+                @Model.CreatedBy
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Template:
+            </td>
+            <td>
+                @Model.TemplateName
+            </td>
+        </tr>
+        <tr>
+            <td>
+                # of Test Results:
+            </td>
+            <td>
+                @Model.TotalTestResult
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Earliest Result Date:
+            </td>
+            <td>
+                @if (!Model.EarliestResultDate.Equals(DateTime.MinValue))
+                {
+                    <text>
+                        @Model.EarliestResultDate.DisplayDateWithFormat()
+                    </text>
+                }
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Most Recent Result Date:
+            </td>
+            <td>
+                @if (!Model.MostRecentResultDate.Equals(DateTime.MinValue))
+                {
+                    <text>
+                        @Model.MostRecentResultDate.DisplayDateWithFormat()
+                    </text>
+                }
+            </td>
+        </tr>
+    </table>
+    <div class="d-flex flex-row flex-wrap mt-auto pt-3">
+        <button id="btnEditDescription" class="button-outline-blue mb-2 me-2">Rubric Description</button>
+        <button class="button-outline-blue mb-2 me-2" id="btnFormPreferences">Form Preferences</button>
+        <button class="button-outline-blue mb-2 me-2" id="btnDeleteVirtualTest" onclick="popUpConfirmDeleteVirtualTest('@Model.TestId');">Delete</button>
+        <button class="button-outline-blue mb-2 me-2" id="btnMoveCopyVirtualTest">Move/Copy</button>
+        <button id="btnSaveTestProperties" class="btn-red mb-2" onclick="SaveTestProperty('@Model.TestId');">Save</button>
+    </div>
+    @Html.TextArea("xmlContent", Model.Instruction, new { @style = "display:none" })
+    <input type="hidden" id="hdTestId" value="@Model.TestId" />
+    <input type="hidden" id="hdCategoryId" value="@Model.DataSetCategoryID" />
+</div>
+
+
+<div class="block-border dialog" id="dvDataLockerSettingPanel" style="display: none;">
+    <div class="block-content form p-4">
+        <h3 class="p-0 h3 modal-heading">Form Preferences</h3>
+        <div id="dvDataLockerPreSetting"></div>
+    </div>
+</div>
+<style>
+    .group1 {
+        display: inline-block;
+        width: 48%;
+        vertical-align: top;
+    }
+
+        .group1 button, .group2 button {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+    .group2 {
+        display: inline-block;
+        width: 48%;
+        vertical-align: top;
+    }
+</style>
+
+<script>
+    /////////////////////////////
+        $(function () {
+            xmlInstructionImport($('#xmlContent'));
+            refeshConfig();
+            handleShowFormProperties('divFormProperty');
+        });
+
+        $('#btnMoveCopyVirtualTest').click(function() {
+            var virtualTestId = '@Model.TestId';
+            var virtualTestName = '@Model.TestName';
+            var url = '@Url.Action("LoadMoveVirtualTest", "DataLockerEntryForm")?virtualTestId=' + virtualTestId + '&virtualTestName=' + virtualTestName;
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function(html) {
+                    $("#divOnTop").append('<div id="PopupMoveCopyVirtualTest" class="dialog"></div>');
+                    $("#PopupMoveCopyVirtualTest").append(html);
+                    $('#PopupMoveCopyVirtualTest').dialog({
+                        title: "",
+                        open: function() {
+                            //Create overlay for popup
+                            $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        },
+                        beforeclose: function() {
+                            //TODO if you want do anything after close popup.
+                            return true;
+                        },
+                        close: function() {
+                            $('#dataTableVirtualTest').dataTable().fnDraw(false);
+                            $('#PopupMoveCopyVirtualTest').remove();
+                            $("body .my-overlay").remove();
+                        },
+                        modal: false,
+                        width: 750,
+                        resizable: false
+                    });
+
+                });
+
+            $(".close").unbind("click");
+            $(".close").live("click", function(e) {
+                e.preventDefault();
+            });
+        });
+
+            $('#btnFormPreferences').click(function () {
+            var virtualTestId = '@Model.TestId';
+            var url = '@Url.Action("LoadDataLockerPreferenceByVirtualTest", "DataLockerPreferences")?virtualTestId=' + virtualTestId;
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function (html) {
+                    var content = '<div id="my-table-setting-' + virtualTestId + '">' + html+'</div>'
+                    $("#dvDataLockerPreSetting").html(content);
+                    $('#dvDataLockerSettingPanel').show();
+                    $('#dvDataLockerSettingPanel').dialog({
+                        title: "",
+                        open: function () {
+                            //If width of popup gt window width popup auto show on the left
+                            var currentPopup = $(this);
+                            if (currentPopup.width() > $(window).width()) {
+                                currentPopup.parent().css({ "left": "0" });
+                            }
+                            //Create overlay for popup
+                            $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        },
+                        beforeclose: function () {
+                            //TODO if you want do anything after close popup.
+                            return true;
+                        },
+                        close: function () {
+                            /* $('#dataTableVirtualTest').dataTable().fnDraw(false);*/
+                            $('#dvDataLockerSettingPanel').hide();
+                            $("#my-table-setting-" + virtualTestId).remove();
+                            $("body .my-overlay").remove();
+                        },
+                        modal: false,
+                        width: 990,
+                        resizable: false,
+                        hideOnClose: true
+                    });
+
+                });
+
+            $(".close").unbind("click");
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+
+            });
+
+        function alertMessageSetting(message) {
+            var oldzIndex = $('#divContentTestSettingTestProperty').parent('.ui-dialog').css('z-index');
+            $('#divContentTestSettingTestProperty').parent('.ui-dialog').css({ 'z-index': '1000' });
+            var overlayHeight = $('.my-overlayy').height();
+            //set the height for overlay
+            $('.my-overlay').height(2000);
+
+            var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+            var strHtml = '<section class="grid_5">' +
+                '<div class="block-border" style="width: ' + 400 + 'px;">' +
+                '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+                '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+            $("<div></div>")
+                .html(strHtml)
+                .addClass("dialog")
+                .attr("id", "alertDialog")
+                .appendTo("body")
+                .dialog({
+                    close: function() {
+                        $('.ui-widget-overlay:last').remove();
+                        $('#divContentTestSettingTestProperty').parent('.ui-dialog').css({ 'z-index': oldzIndex }); //recover the old value
+                        $('.my-overlay').height(overlayHeight);
+                        $(this).remove();
+                    },
+                    modal: false,
+                    width: 460,
+                    maxheight: 500,
+                    resizable: false,
+                });
+
+            showModalDialogBG();
+        }
+
+        function closeAlert() {
+            $('#divContentTestSettingTestProperty').unblock();
+            $('#alertDialog').dialog('close');
+        }
+
+        function showModalDialogBG() {
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+    var comboTreeX = null;
+    $(document).ready(function () {
+        var categoryId = $('#hdCategoryId').val();
+        var categoryElementId = '#categoryList';
+
+        $.get('@Url.Action("GetDataSetCategoriesToComboTree", "CategoriesAPI")' + '?categoryId=' + categoryId, function (categoryList) {
+            //defaul linkit category
+            comboTreeX = $(categoryElementId).comboTree({
+                source: categoryList,
+                isMultiple: false,
+                cascadeSelect: true,
+                collapse: false,
+                selected: [categoryId || 0]
+            });
+
+            $(categoryElementId).change(function(e) {
+                $(this).val(comboTreeX ? comboTreeX.getSelectedNames() : '');
+            });
+            if (comboTreeX && '@ViewBag.AllowChangeDataSetCategory' === 'False')
+            {
+
+                $(categoryElementId).parents('.comboTreeInputWrapper').addClass('disabled');
+            }
+
+        });
+    });
+</script>

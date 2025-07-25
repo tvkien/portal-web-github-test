@@ -1,0 +1,109 @@
+<article class="popup-fullpage-batchprinting">
+    <section class="popup-fullpage-content">
+        <div class="popup-fullpage-title">View Batch Printing</div>
+        <div class="block-border">
+            <div class="block-content form" id="diBatchPrinting">
+                <div class="no-margin last-child">
+                    <table id="dataTableBatchPrinting" class="datatable datatable-batchprinting table">
+                        <thead>
+                            <tr>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Student Name
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Date
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Status
+                                </th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script>
+    $(function () {
+        var options = {
+            bServerSide: true,
+            bStateSave: false,
+            bFilter: false,
+            sServerMethod: "POST",
+            bDestroy: true,
+            bProcessing: false,
+            sAjaxSource: '@Url.Action("GetBatchPrintingData", "PrintTest")?classTestAssignmentId=' + @ViewBag.QTITestClassAssignmentId,
+            fnServerParams: function(aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "dsc"]],
+            sScrollY: '296px',
+            bScrollCollapse: true,
+            aoColumns: [
+                { sType: 'string', sName: 'StudentName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'PrintDate', bSearchable: true, bSortable: true },
+                { sType: 'integer', sName: 'ProcessingStatus', bSearchable: true, bSortable: true },
+                { sType: 'integer', sName: 'DownloadPdfUrl', bSearchable: false, bSortable: false, sWidth: 0, bVisible: false }
+            ],
+            fnRowCallback: function(nRow, aData) {
+                var dateStr = displayDateWithFormat(aData[1], true);
+                if (dateStr == "") {
+                    dateStr = "Not Available";
+                }
+                $('td:eq(1)', nRow).html(dateStr);
+                if (aData[3] != '') {
+                    var html = '<a target="_blank" href="' + aData[3] + '">' + aData[2] + '</a>';
+                    $('td:eq(2)', nRow).html(html);
+                }
+                return nRow;
+            },
+            fnPreDrawCallback: function() {                
+                return true;
+            },
+            fnDrawCallback: function() {                
+                $('.with-tip').tip();
+            }
+        };
+
+        $('#dataTableBatchPrinting').data('options', options);
+        initializeDataTable($('#dataTableBatchPrinting'));
+
+        window.intervalBatchPrinting = setInterval(function () {
+            ui.dataTableBatchPrinting.fnDraw();
+        }, 5000);
+    });
+</script>

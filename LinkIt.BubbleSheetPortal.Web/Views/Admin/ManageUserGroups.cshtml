@@ -1,0 +1,400 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.UserGroup.ManageUserGroupViewModel
+
+@{
+    ViewBag.Title = "Manage User Groups";
+}
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCustomBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCKEditorUtilsBundle()
+
+<link rel="stylesheet" href="/Scripts/Qtip/jquery.qtip.css">
+<script src="@Url.Content("~/Scripts/tipped/tipped.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Qtip/jquery.qtip.js")"></script>
+
+<style>
+    .ui-widget-content {
+        background: transparent;
+        border: none;
+    }
+
+        .ui-widget-content .ui-dialog-titlebar-close {
+            right: 5px;
+            top: 5px;
+            z-index: 10;
+        }
+
+    #manageUserGroups .add-user-group {
+        cursor: pointer;
+    }
+
+    #manageUserGroups .disabled {
+        pointer-events: none;
+    }
+</style>
+<link href="/Content/css/dialog.css" rel="stylesheet" type="text/css">
+@if (Model.IsPublisher || Model.IsNetworkAdmin)
+{
+    <text>
+        <article class="container_12">
+            <section class="grid_12" style="margin-bottom:0">
+                <div id="selectFilters">
+                    <div class="block-border" id="selectFilters">
+                        <div class="block-content form">
+                            @Html.Partial("_FilterManageUserGroup")
+                            <div class="u-text-right">
+                                <button id="clearFilter" class="grey" type="button">Clear Filter</button>
+                                <button id="filterSheets" class="u-m-l-10" type="button" disabled>Apply Filters</button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </article>
+    </text>
+}
+
+
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="manageUserGroups">
+            <div class="block-content form">
+                <ul style="display: none" id="error-messages-classList" class="message error"></ul>
+                <h1>
+                    User Groups
+                    <a id="addUserGroupBtn" href="javascript:void(0)" class="disabled">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        CREATE USER GROUP
+                    </a>
+                    <a href="javascript:void(0)" id="viewModuleAccessSumaryBtn" style="margin-left: 188px;" class="disabled">
+                        MODULE ACCESS SUMMARY VIEW
+                    </a>
+                </h1>
+
+                <div class="clearfix u-m-t-35">
+                    <div class="no-margin last-child">
+                        <table id="tblUserGroup" class="datatable table no-margin" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width: 7%"></th>
+                                    <th scope="col" style="width: 35%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Name
+                                    </th>
+                                    <th scope="col" style="width: 17%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Users in the Group
+                                    </th>
+                                    <th scope="col" style="width: 17%">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Module Access
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Keep Default Access
+                                    </th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    @if (Model.IsPublisher || Model.IsNetworkAdmin)
+    {
+        <text>
+        selectedDistrictID = getDefaultDistrictID(-1);
+        if (selectedDistrictID > 0) {
+            $('#addUserGroupBtn').removeClass('disabled')
+            $('#viewModuleAccessSumaryBtn').removeClass('disabled')
+        }
+        </text>
+    }
+    else
+    {
+        <text>
+        selectedDistrictID = getDefaultDistrictID(@Model.DistrictID);
+        $('#addUserGroupBtn').removeClass('disabled')
+        $('#viewModuleAccessSumaryBtn').removeClass('disabled')
+        </text>
+    }
+    $(document).ready(function () {
+        setTimeout(function () {
+            $(".dataadmin").trigger("click");
+            $('#manageUserGroupsTab').addClass('current');
+        }, 100);
+
+        bindDataToUserGroupsTable();
+
+        $('#filterSheets').click(function () {
+            saveFilterInLocalStorage();
+
+            selectedDistrictID = $('#selectDistrict').val();
+            $('#addUserGroupBtn').removeClass('disabled')
+            $('#viewModuleAccessSumaryBtn').removeClass('disabled')
+            $('#tblUserGroup').dataTable().fnDraw();
+        });
+
+        $('.editUserInGroup').live('click', function () {
+            var xliGroupId = $(this).attr('XLIGroupID');
+            var url = '@Url.Action("GetUserInGroupView", "UserGroupManagement")?xliGroupId=' + xliGroupId + "&districtId=" + selectedDistrictID;
+            window.location.href = url;
+        });
+
+        $("#clearFilter").on("click", function () {
+            removeFilterInLocalStorage();
+
+            $("#selectState").val(-1);
+            $('#selectDistrict').empty();
+
+            disableButtons();
+        });
+
+        $("#viewModuleAccessSumaryBtn").on("click", function () {
+            var url = '@Url.Action("GetModuleAccessSummaryView", "UserGroupManagement")?districtId=' + selectedDistrictID;
+            window.location.href = url;
+        });
+
+        $('.editModuleAccess').live('click', function () {
+            var xliGroupId = $(this).attr('XLIGroupID');
+            var url = '@Url.Action("GetModuleAccessView", "UserGroupManagement")?xliGroupId=' + xliGroupId + "&districtId=" + selectedDistrictID;
+            window.location.href = url;
+        });
+
+        $('.removeUserGroup').live('click', function () {
+            var xliGroupId = $(this).attr('XLIGroupID');
+            var xliGroupName = $(this).attr('XLIGroupName');
+
+            CustomConfirm({
+                message: `Are you sure you want to DELETE ${xliGroupName}?`,
+                yes: function () {
+                    ShowBlock($('#manageUserGroups'), "Waiting");
+                    $.post('@Url.Action("DeleteXLIGroup", "UserGroupManagement")', { xliGroupId: xliGroupId, districtId: selectedDistrictID }, function (response) {
+                        if (response && response.success == true) {
+                            $(this).dialog("close");
+                            $('#tblUserGroup').dataTable().fnDraw();
+                            $('#manageUserGroups').unblock();
+                        }
+                        else if (response && response.success == false) {
+                            addErrorMessages(response.message);
+                            $('#manageUserGroups').unblock();
+                        }
+                    });
+                },
+                no: function () {
+                    $(this).dialog("close");
+                },
+                yesMessage: "OK",
+                noMessage: "Cancel",
+                noWidth: 77
+            });
+        });
+
+        $('#addUserGroupBtn').on('click', function () {
+            var worker = $('<div"></div>');
+            var url = '@Url.Action("GetCreateUserGroupView", "UserGroupManagement")';
+            worker
+                .addClass("dialog custom-dialog")
+                .attr("id", "createUserGroup")
+                .appendTo("body")
+                .load(url, function () {
+                    worker.dialog({
+                        title: $(this).attr("Create User Group"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                            $('#tblUserGroup').dataTable().fnDraw();
+                        },
+                        modal: false,
+                        width: 500,
+                        resizable: false
+                    });
+                });
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+        });
+
+        $('.editUserGroup').live('click', function () {
+            var xliGroupId = $(this).attr('XLIGroupID');
+            var worker = $('<div"></div>');
+            var url = '@Url.Action("GetEditUserGroupView", "UserGroupManagement")?xliGroupId=' + xliGroupId + "&districtId=" + selectedDistrictID;
+            worker
+                .addClass("dialog custom-dialog")
+                .attr("id", "editUserGroup")
+                .appendTo("body")
+                .load(url, function () {
+                    worker.dialog({
+                        title: $(this).attr("Edit User Group"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                            $('#tblUserGroup').dataTable().fnDraw();
+                        },
+                        modal: false,
+                        width: 500,
+                        resizable: false
+                    });
+                });
+            var win = $('body');
+            $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+        });
+    });
+
+    function bindDataToUserGroupsTable() {
+        var options = {
+            bServerSide: true,
+            sServerMethod: "GET",
+            bDestroy: true,
+            sAjaxSource: '@Url.Action("GetXLIGroupUsers", "UserGroupManagement")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "DistrictID", value: selectedDistrictID }
+                );
+            },
+            iDisplayLength: 10,
+            aoColumns: [
+                { mData: 'XLIGroupID', sName: 'XLIGroupID', bSearchable: false, bSortable: false },
+                { mData: 'Name', sName: 'Name', bSearchable: true, bSortable: true },
+                { mData: 'XLIGroupID', sName: 'Users in the group', bSearchable: false, bSortable: false },
+                { mData: 'XLIGroupID', sName: 'Module Access', bSearchable: false, bSortable: false },
+                { mData: 'InheritRoleFunctionality', sName: 'Inherit Role Functionality', bSearchable: false, bSortable: true },
+            ],
+            aaSorting: [[1, "asc"]],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#tblUserGroup'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#tblUserGroup').unblock();
+                getNumberOfUserQtip('.js-tooltip-students');
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData["XLIGroupID"], aData["Name"]));
+
+                var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+                var editUserInGroupIconStr = '<a href="javascript:void(0)" class="editUserInGroup" XLIGroupID="' + aData["XLIGroupID"] + '"><img src ="' + editIcon + '" width="14" height="14" style="margin-right: 4px"></a>';
+                var numberOfUserIcon = '<span class="js-tooltip-students" XLIGroupID="' + aData["XLIGroupID"] + '"><span class="icon icon-24 icon-students"></span></span>';
+                $('td:eq(2)', nRow).html(editUserInGroupIconStr + numberOfUserIcon);
+
+                var editModuleAccessStr = '<a href="javascript:void(0)" class="editModuleAccess" XLIGroupID="' + aData["XLIGroupID"] + '"><img src ="' + editIcon + '" width="14" height="14" style="margin-right: 4px"></a>';
+                $('td:eq(3)', nRow).html(editModuleAccessStr);
+
+                $('td:eq(4)', nRow).html(setInheritText(aData["InheritRoleFunctionality"]));
+            }
+        };
+
+        $('#tblUserGroup').data('options', options);
+    }
+
+    function disableButtons() {
+        $('#filterSheets').attr('disabled', true);
+    }
+
+    function setIconVisibility(xliGroupId, xliGroupName) {
+        var iconString = "";
+        var detailsIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var detailsString = '<a href="javascript:void(0)" title="Edit" class="editUserGroup" XLIGroupID="' + xliGroupId + '"><img src ="' + detailsIcon + '" width="14" height="14" style="margin-right: 4px"></a>';
+        var actionIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+        var actionString = '<a href="javascript:void(0)" title="Remove" XLIGroupID="' + xliGroupId + '" XLIGroupName="' + xliGroupName + '" class="with-tip actionIcon removeUserGroup"><img src ="' + actionIcon + '" width="14" height="14" title="Remove" style="margin-right: 4px;"></a>';
+        iconString += detailsString + actionString;
+
+        return iconString;
+    }
+
+    function setInheritText(isInherit) {
+        if (isInherit)
+            return "Yes";
+        else
+            return "No";
+    }
+
+    function saveFilterInLocalStorage() {
+        var selectedStateId = $('#selectState').val();
+        var selectedDistrictId = $('#selectDistrict').val();
+
+        var filter = {
+            stateID: selectedStateId,
+            districtID: selectedDistrictId
+        };
+
+        localStorage.setItem("UserGroupFilter", JSON.stringify(filter));
+    }
+
+    function getDefaultDistrictID(defValue) {
+        if (defValue > 0) return defValue;
+
+        var districtID = defValue;
+        var filter = localStorage.getItem("UserGroupFilter");
+        if (filter) {
+            districtID = JSON.parse(filter).districtID ?? defValue;
+        }
+
+        return districtID;
+    }
+
+    function getNumberOfUserQtip(el) {
+        var $el = $(el);
+        $el.qtip({
+            content: {
+                text: function (event, api) {
+                    var html = '';
+                    var xliGroupId = $(this).attr('XLIGroupID');
+                    $.ajax({
+                        url: '@Url.Action("GetAllUsersInGroup", "UserGroupManagement")?xliGroupId=' + xliGroupId + "&districtId=" + selectedDistrictID,
+                        type: 'GET',
+                        success: function (response) {
+                            if (response.Data != null) {
+                                html += response.TotalRecord + ' Users <br/>';
+                                $.each(response.Data, function (index, value) {
+                                    var renderCharacter = ', ';
+                                    if (value.LastName == '' || value.FirstName == '') {
+                                        renderCharacter = '';
+                                    }
+                                    html += "<span class='icon icon-16 icon-student icon-student-offset'></span> " + value.LastName + renderCharacter + value.FirstName + ' (' + value.UserStatusName + ')' + '<br/>';
+                                });
+                                api.set('content.text', html);
+                            }
+                            else
+                                api.set('content.text', '0 Users');
+                        },
+                        failure: function (response) {
+                            api.set('content.text', response.message);
+                        }
+                    });
+
+                    return 'Loading...';
+                }
+            },
+            hide: {
+                fixed: true,
+                delay: 300
+            },
+            style: {
+                classes: 'qtip-students qtip-bootstrap qtip-shadow'
+            },
+            position: {
+                at: 'center right',
+                my: 'left center',
+                adjust: {
+                    method: 'none shift'
+                }
+            }
+        });
+    }
+
+</script>

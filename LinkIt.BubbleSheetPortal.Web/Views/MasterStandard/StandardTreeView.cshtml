@@ -1,0 +1,105 @@
+@model IEnumerable<LinkIt.BubbleSheetPortal.Web.ViewModels.MasterStandardViewModel>
+<link rel="stylesheet" href="/Content/themes/TestDesign/TreeView.css" />
+@if (Model != null && Model.Any())
+{
+    <div class="treeview m-t-15" id="treeview">
+        <ul class="treeview-list" id="ulChild-0">
+            @Html.Partial("StandardNodeView", Model)
+        </ul>
+    </div>
+}
+else
+{
+    <span>There are no available questions that are aligned to the selected standards at this time. Please select another standard or try again later as the items are periodically aligned to standards.</span>
+}
+
+<script type="text/javascript">
+    (function ($) {
+        'use strict';
+
+        $('#treeview').on('click', '.treeview-list-item-icon', function () {
+            var $self = $(this);
+            var $treeviewListItem = $self.parent();
+
+            if ($treeviewListItem.hasClass('is-child')) {
+                $treeviewListItem.toggleClass('is-expanded');
+            }
+
+            if ($self.attr('data-isLoaded') == '0') {
+                ShowBlock($('#dvStandardTreeViewContainer'), "Loading");
+                $self.attr('data-isLoaded', '1');
+                var masterStandardId = $self.attr('data-id');
+                var stateId = $('#selectStateStandard').val();
+                var subject = $("#selectSubjectStandard option:selected").text();
+                var grade = $("#selectGradeStandard option:selected").text();
+                var qti3p = false;
+                if ($('#radioNWEAItemLibrary').is(':checked')) {
+                    qti3p = true;
+                }
+                var personal = $('#radioPersonalItemLibrary').is(':checked');
+                var districtSearch = $('#radioDistrictItemLibrary').is(':checked');
+                var qti3pSourceId = $('#selectSource').val();
+                if (qti3pSourceId == 'select' || qti3pSourceId == 0 || qti3pSourceId == '') {
+                    qti3pSourceId = -1;
+                }
+
+                var url = '@Url.Action("GetStateStandardsNextLevelForItemLibraryFilter", "MasterStandard")/?parentId=' + masterStandardId + '&stateId=' + stateId + '&subject=' + encodeURI(subject) + '&grade=' + encodeURI(grade) + '&qti3p=' + qti3p + '&personal=' + personal + '&qti3pSourceId=' + qti3pSourceId + '&districtSearch=' + encodeURI(districtSearch);
+                $.ajax({
+                    url: url,
+                    cache: false,
+                    success: function(html) {
+                        $('#ulChild-' + masterStandardId).html(html);
+                        $('#dvStandardTreeViewContainer').unblock();
+                        //set check or uncheck for all childs of the selected node
+                        var standardId = $self.attr('data-id');
+                        setAllChildeNodeCheck(standardId); //setAllChildeNodeCheck is defined in StandardNodeView.cshtml
+                    }
+                });
+            } else {
+                var standardId = $self.attr('data-id');
+                setAllChildeNodeCheck(standardId); //setAllChildeNodeCheck is defined in StandardNodeView.cshtml
+            }
+
+
+        });
+
+        $('#treeview').on('click', 'input[type="checkbox"]', function () {
+            var $this = $(this);
+            var id = $this.val();
+            var checked = $this.is(':checked')
+            $('#ulChild-' + id).find('input').each(function () {
+                if (checked) {
+                    $(this).attr('checked', 'checked');
+                } else {
+                    $(this).removeAttr('checked');
+                }
+            });
+
+             function updateParentState(child) {
+                var parentId = child.attr('parentid');
+                if (!parentId || parseInt(parentId) <= 0) return;
+
+                var parentCheckbox = $('input[type="checkbox"][value="' + parentId + '"]');
+                var allSiblings = $('#ulChild-' + parentId).find('input[type="checkbox"]');
+                var allChecked = allSiblings.length === allSiblings.filter(':checked').length;
+
+                parentCheckbox.prop('checked', allChecked);
+
+                updateParentState(parentCheckbox);
+             }
+             updateParentState($this);
+        });
+
+        $('#treeview-checked-all').on('click', function (e) {
+            e.preventDefault();
+            $('#treeview').find('input[type="checkbox"]').prop('checked', true);
+            $('#treeview .treeview-list-item input[type="checkbox"]').trigger('change');
+        });
+
+        $('#treeview-unchecked-all').on('click', function (e) {
+            e.preventDefault();
+            $('#treeview').find('input[type="checkbox"]').prop('checked', false);
+            $('#treeview .treeview-list-item input[type="checkbox"]').trigger('change');
+        });
+    })(jQuery);
+</script>

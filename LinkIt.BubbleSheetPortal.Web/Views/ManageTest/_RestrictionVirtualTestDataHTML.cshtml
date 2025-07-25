@@ -1,0 +1,167 @@
+@using LinkIt.BubbleSheetPortal.Models;
+@using System.Collections.Generic;
+@model  List<TestRestrictionModuleDTO>
+                @if (Model.Count > 0)
+                {
+                    <table id="retricttable">
+                        <tr>
+                            <th class="clfirst" style="background-color:#B7B7B7">
+                                Module/Role
+                            </th>
+                            @for (int i = 0; i < Model[0].ListRoles.Count; i++)
+                            {
+                                <th>
+                                    @Model[0].ListRoles[i].RoleDisplayName
+                                </th>
+                            }
+                        </tr>
+                        @for (int i = 0; i < Model.Count; i++)
+                        {
+                            <tr>
+                                <td  style="width:25%">
+                                    @Model[i].ModuleDisplayName
+                                </td>
+                                @for (int j = 0; j < Model[i].ListRoles.Count; j++)
+                                {
+                                    <td>
+                                        @if (Model[i].ListRoles[j].IsShown)
+                                        {
+                                            if (j == 0)
+                                            {
+                                                @Html.Raw(string.Format("<input class='{0}' moduleid='{1}' {2} module-code='{3}' {4} type='checkbox'/> ", "ckrolemoduleall ckrolemoduleall" +
+                                                     Model[i].ModuleId, Model[i].ModuleId, Model[i].ListRoles[j].IsChecked ? "checked" : "", Model[i].ModuleName,
+                                                     Model[i].ListRoles[j].IsDisable ? "disabled" : ""));
+                                            }
+                                            else
+                                            {
+                                                @Html.Raw(string.Format("<input class='{0}' moduleid='{1}' {2} roleid='{3}' {4} module-code='{5}' type='checkbox'/> ", "ckrolemodule",
+                                                     Model[i].ModuleId, Model[i].ListRoles[j].IsChecked ? "checked" : "",
+                                                     Model[i].ListRoles[j].RoleID, Model[i].ListRoles[j].IsDisable ? "disabled" : "", Model[i].ModuleName));
+                                            }
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+
+                    </table>
+                            <button id="btnfrsave" style="width:125px;margin-top:5px">Save</button>
+                            <button id="btnfrcancel" style="width:125px; margin-top:5px; padding-right: 0px">Cancel</button>
+                            <span style="color:green;font-size:15px;font-weight:bold" id="statusmessage">Save Success</span>
+                }
+    <script type="text/javascript">
+        $("#ManageerAccessVirtualTestForm").parent().width(900);
+        $(".container_12RF").width(850);
+        $(".grid_9RF").width(850);
+        $(".block-borderRF").width(820);
+        $(".block-contentRF").width(780);
+
+       var issaving = false;
+       var frbankid = "@ViewBag.bankId";
+       var frtestid = "@ViewBag.testId";
+        var frdistrictid = "@ViewBag.districtId";
+        $("#statusmessage").hide();
+        $(".ckrolemodule").change(function () {
+            var moduleid = $(this).attr("moduleid");
+            var isallcheck = true;
+            $(".ckrolemodule").each(function (index1, object1) {
+                if ($(object1).is(':checked')==false && $(object1).attr("moduleid") == moduleid) {
+                    isallcheck = false;
+
+                }
+            });
+            $(".ckrolemoduleall" + moduleid).attr("checked", false);
+            if (isallcheck)
+                $(".ckrolemoduleall" + moduleid).attr("checked", true);
+
+            var moduleCode = $(this).attr("module-code");
+            if (moduleCode === 'review') {
+                var ischeck = $(this).is(':checked');
+                var roleid = $(this).attr("roleid");
+                if (ischeck) {
+                    $("input[module-code='view_grade'][roleid='" + roleid + "']").attr("checked", !ischeck);
+                }
+                
+                $("input[module-code='view_grade'][roleid='" + roleid + "']").attr("disabled", ischeck);
+            }
+           
+         });
+        $(".ckrolemoduleall").change(function () {
+            var moduleid = $(this).attr("moduleid");
+            var isallcheck = $(this).is(':checked');
+            $(".ckrolemodule").each(function (index1, object1) {
+                if ($(object1).attr("moduleid") == moduleid && !$(object1).is(':disabled')) {
+                    $(object1).attr("checked", isallcheck);
+                }
+            });
+
+            var modulecode = $(this).attr("module-code");
+
+            if (modulecode === 'review') {
+                $("input[module-code='view_grade']").each(function (index1, object1) {
+                    if (isallcheck) {
+                        $(object1).attr("checked", !isallcheck);
+                    }
+                    $(object1).attr("disabled", isallcheck);
+                });
+            }
+        });
+        $("#btnfrcancel").click(function () {
+            $(".dialog").dialog("close");
+        });
+        $("#btnfrsave").click(function () {
+            $("#statusmessage").hide();
+           if (issaving)
+               return;
+           issaving = true;
+           var listmoduleroles = [];
+           $(".ckrolemodule").each(function (index, object) {
+               var roleid = $(this).attr("roleid");
+               var moduleid = $(this).attr("moduleid");
+               if ($(this).is(':checked') && roleid != "0" && moduleid != "0") {
+                   listmoduleroles.push({
+                       ModuleId: parseInt(moduleid),
+                       RoleId: parseInt(roleid)
+                   });
+               }
+           });
+
+           $.ajax({
+               type: "POST",
+               url: '@Url.Action("SaveVirtualTestRestrictionForm", "ManageTest")',
+               data: JSON.stringify({ testId: frtestid, districtId: frdistrictid, listmoduleroles: listmoduleroles }),
+               contentType: "application/json; charset=utf-8",
+               dataType: "json",
+               success: function (arg) { //call successfull
+                   issaving = false;
+                 //  $("#statusmessage").show();
+                   $(".dialog").dialog("close");
+               },
+               error: function (xhr) {
+                   //error occurred
+               }
+           });
+
+       });
+        BindingReviewAndViewGrade();
+
+        function BindingReviewAndViewGrade() {
+            $("input[module-code='review']").each(function (index, item) {
+                const isCheck = $(this).is(':checked');
+
+                if (isCheck) {
+                    const roleId = $(this).attr('roleid');
+                    $("input[roleid='" + roleId + "'][module-code='view_grade']").attr('checked', false);
+                    $("input[roleid='" + roleId + "'][module-code='view_grade']").attr('disabled', true);
+                }
+            });
+
+            const isCheckAll = $(".ckrolemoduleall[module-code='review']").is(':checked');
+
+            if (isCheckAll) {
+                $(".ckrolemoduleall[module-code='view_grade']").attr('checked', false);
+                $(".ckrolemoduleall[module-code='view_grade']").attr('disabled', true);
+            }
+        }
+
+    </script>

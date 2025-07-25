@@ -1,0 +1,1379 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Web.ViewModels
+@using LinkIt.BubbleSheetPortal.Models
+@model StudentPopulationViewModel
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.ReportItemSGOManager, "Student Population",true);
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@*@MvcHtmlString.Create(
+    Bundle.Css()
+        .Add(@Url.Content("~/Content/css/custom.css"))
+        .Add(@Url.Content("~/Content/css/sgohome.css"))
+        .Render("/Content/themes/Constellation/css/SGOStudentPopulate_combined_#.css")
+     )*@
+
+@*@MvcHtmlString.Create(
+    Bundle.JavaScript()
+        .Add("/Scripts/knockout-3.0.0.js")
+        .Add("/Scripts/jquery.listSplitter.js")
+        .Add("/FeLibs/jquery-coolfieldset/js/jquery.coolfieldset.js")
+        .Add("/Content/themes/TestMaker/ckeditor_utils.js")
+        .Render("/Content/themes/Constellation/js/SGOStudentPopulate_combined_#.js")
+    )*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleSGOManageStudentPopulationBundleV2()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptSGOManageStudentPopulationBundle()
+
+<style>
+    .ui-dialog[aria-labelledby="ui-dialog-title-CustomAlertDialog"] {
+        width: auto !important;
+        padding: 0 !important;
+    }
+
+        .ui-dialog[aria-labelledby="ui-dialog-title-CustomAlertDialog"] .ui-dialog-titlebar {
+            display: none;
+        }
+
+        .ui-dialog[aria-labelledby="ui-dialog-title-CustomAlertDialog"] section {
+            width: 450px !important;
+        }
+
+    #CustomAlertDialog {
+        padding: 0 !important;
+    }
+
+        #CustomAlertDialog section {
+            margin-bottom: 0 !important;
+        }
+
+        #CustomAlertDialog .block-border {
+            width: 100% !important;
+        }
+
+        #CustomAlertDialog .block-content {
+            padding: 24px !important;
+        }
+</style>
+
+<article class="container_12" id="idTopNavigation">
+    @Html.Action("LoadNavigation", "SGOManage", new { sgoId = @Model.SGOID })
+    <section class="grid_12">
+        <div id="generateContent" class="block-border form">
+            <div class="block-content form">
+                <p class="title-large mb-4">Select Student Population</p>
+                <div class="box-warning">
+                    <img src="/Content/images/icons/icon-info.svg" class="ico-info">
+                    @Html.Raw(Model.SGOIntruction)
+                    <div class="mt-2">
+                        <a id="idShowStudentInter" href="javascript:void(0)" class="ShowStudentIntervalInstruction">
+                            Student Population Guidance
+                        </a>
+                    </div>
+                </div>
+                <div class="divider"></div>
+                @if (Model.IsPublisher || Model.IsNetworkAdmin)
+                {
+                    <div class="block-content form no-padding" style="margin-bottom:24px">
+                        <div class="row g-3">
+                            <div class="col-3">
+                                <label>State</label>
+                                <div class="block-text-name">
+                                    <select id="selectState"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <label>@LabelHelper.DistrictLabel</label>
+                                <div class="block-text-name">
+                                    <select id="selectDistrict"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <input id="idhdfDistrictId" type="hidden" value="@Model.CurrentDistrictId" />
+                }
+
+                <div class="mt-3">
+                    <div id="accordion-assignment-setting" class="accordion">
+                        <div class="accordion-title active">
+                            <h3>Filter by Program, Race Or Gender<i class="fa-solid fa-chevron-down"></i></h3>
+                        </div>
+                        <div class="accordion-content active">
+                            <div class="columns" style="width: max-content;">
+                                <table class="programTable">
+                                    <thead>
+                                        <tr>
+                                            @if (Model.ListGender.Count > 0)
+                                            {
+                                                <th scope="col">
+                                                    Gender
+                                                </th>
+                                            }
+                                            @if (Model.ListRace.Count > 0)
+                                            {
+                                                <th scope="col">
+                                                    Race
+                                                </th>
+                                            }
+                                            @if (Model.ListProgram.Count > 0)
+                                            {
+                                                <th scope="col">
+                                                    Program
+                                                </th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="vertical-top" style="width: 130px;">
+                                                <div id="idPopulateGender">
+                                                    <ul>
+                                                        @if (Model.ListGender.Count > 0)
+                                                        {
+                                                            if (Model.GenderIdsSeleted.Count == 0)
+                                                            {
+                                                                foreach (ListItemsViewModel item in Model.ListGender)
+                                                                {
+                                                                    <li>
+                                                                        <input type="checkbox" id="Gender-@item.Id" value="@item.Name" checked="checked" key='@item.Id' class="m-r-5" />
+                                                                        <label for="Gender-@item.Id">@item.Name</label>
+                                                                    </li>
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                foreach (ListItemsViewModel item in Model.ListGender)
+                                                                {
+                                                                    <li>
+                                                                        <input type="checkbox" id="Gender-@item.Id" value="@item.Name" key='@item.Id' @( Model.GenderIdsSeleted.Contains(item.Id) ? "checked='checked'" : "") class="m-r-5" />
+                                                                        <label for="Gender-@item.Id">@item.Name</label>
+                                                                    </li>
+                                                                }
+                                                            }
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                            <td class="vertical-top">
+                                                <div id="idPopulateRace">
+                                                    @if (Model.ListRace.Count > 0)
+                                                    {
+                                                        if (Model.RaceIdsSelected.Count == 0)
+                                                        {
+                                                            int i = 0;
+                                                            double result = (double)Model.ListRace.Count / 10;
+                                                            int columns = (int)Math.Ceiling(result);
+                                                            for (var col = 1; col <= columns; col++)
+                                                            {
+                                                                int take = 10;
+                                                                if (col == columns)
+                                                                {
+                                                                    take = Model.ListRace.Count - ((col - 1) * 10);
+                                                                }
+                                                                <ul class="listCol'@col' colx3-left">
+                                                                    @for (var t = 1; t <= take; t++)
+                                                                    {
+                                                                        <li>
+                                                                            <input type="checkbox" id="Race-@Model.ListRace[i].Id" value="@Model.ListRace[i].Name" checked="checked" key='@Model.ListRace[i].Id' class="m-r-5" />
+                                                                            <label for="Race-@Model.ListRace[i].Id">@Model.ListRace[i].Name</label>
+                                                                        </li>
+                                                                        i++;
+                                                                    }
+                                                                </ul>
+                                                            }
+
+                                                        }
+                                                        else
+                                                        {
+                                                            int i = 0;
+                                                            double result = (double)Model.ListRace.Count / 10;
+                                                            int columns = (int)Math.Ceiling(result);
+                                                            for (var col = 1; col <= columns; col++)
+                                                            {
+                                                                int take = 10;
+                                                                if (col == columns)
+                                                                {
+                                                                    take = Model.ListRace.Count - ((col - 1) * 10);
+                                                                }
+                                                                <ul class="listCol'@col' colx3-left">
+                                                                    @for (var t = 1; t <= take; t++)
+                                                                    {
+                                                                        <li>
+                                                                            <input type="checkbox" id="Race-@Model.ListRace[i].Id" value="@Model.ListRace[i].Name" key='@Model.ListRace[i].Id' @(Model.RaceIdsSelected.Contains(Model.ListRace[i].Id) ? "checked='checked'" : "") class="m-r-5" />
+                                                                            <label for="Race-@Model.ListRace[i].Id">@Model.ListRace[i].Name</label>
+                                                                        </li>
+                                                                        i++;
+                                                                    }
+                                                                </ul>
+                                                            }
+                                                        }
+                                                    }
+                                                </div>
+                                            </td>
+                                            <td class="vertical-top">
+                                                <div id="idPopulateProgram">
+                                                    @if (Model.ListProgram.Count > 0)
+                                                    {
+                                                        if (Model.ProgramIdsSelected.Count == 0)
+                                                        {
+                                                            int i = 0;
+                                                            double result = (double)Model.ListProgram.Count / 10;
+                                                            int columns = (int)Math.Ceiling(result);
+                                                            for (var col = 1; col <= columns; col++)
+                                                            {
+                                                                int take = 10;
+                                                                if (col == columns)
+                                                                {
+                                                                    take = Model.ListProgram.Count - ((col - 1) * 10);
+                                                                }
+                                                                <ul class="listCol'@col' colx3-left">
+                                                                    @for (var t = 1; t <= take; t++)
+                                                                    {
+                                                                        <li>
+                                                                            <input type="checkbox" id="Program-@Model.ListProgram[i].Id" value="@Model.ListProgram[i].Name" name="populateProgram" checked="checked" key='@Model.ListProgram[i].Id' class="m-r-5" />
+                                                                            <label for="Program-@Model.ListProgram[i].Id">@Model.ListProgram[i].Name</label>
+                                                                        </li>
+                                                                        i++;
+                                                                    }
+                                                                </ul>
+                                                            }
+
+                                                        }
+                                                        else
+                                                        {
+                                                            int i = 0;
+                                                            double result = (double)Model.ListProgram.Count / 10;
+                                                            int columns = (int)Math.Ceiling(result);
+                                                            for (var col = 1; col <= columns; col++)
+                                                            {
+                                                                int take = 10;
+                                                                if (col == columns)
+                                                                {
+                                                                    take = Model.ListProgram.Count - ((col - 1) * 10);
+                                                                }
+                                                                <ul class="listCol'@col' colx3-left">
+                                                                    @for (var t = 1; t <= take; t++)
+                                                                    {
+                                                                        <li>
+                                                                            <input type="checkbox" id="Program-@Model.ListProgram[i].Id" name="populateProgram" value="@Model.ListProgram[i].Name" key='@Model.ListProgram[i].Id' @(Model.ProgramIdsSelected.Contains(Model.ListProgram[i].Id) ? "checked='checked'" : "") class="m-r-5" />
+                                                                            <label for="Program-@Model.ListProgram[i].Id">@Model.ListProgram[i].Name</label>
+                                                                        </li>
+                                                                        i++;
+                                                                    }
+                                                                </ul>
+                                                            }
+                                                        }
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="divider"></div>
+                <fieldset class="no-padding">
+                    <p class="title-medium" style="margin-bottom:24px">Select Classes</p>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="label-lg" style="margin-bottom: 16px;">Select your term(s) and click "Show Classes"</label>
+                            <div style="overflow-y: auto; width: auto; max-height: 328px">
+                                <table id="tbTerms" class="datatable table table table-sgo no-margin" style="width: 100%; overflow-x: hidden;">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">
+                                                Terms
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody style="cursor: pointer"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="label-lg" style="margin-bottom: 16px;">Select your class(es) and click "Show Students"</label>
+                            <div style="overflow-y: auto; width: auto; max-height: 328px">
+                                <table id="tbClasses" class="datatable table table-sgo no-margin" style="width: 100%; overflow-x: hidden;">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">
+                                                Classes
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody style="cursor: pointer"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="columns">
+                    <input type="hidden" id="lastSelectedClassIds" />
+                    <button class="float-right btn-blue custom-btn" id="idbtnApplyFiters" type="button">Show Students</button>
+                    <div class="clear"></div>
+                </div>
+                <div class="divider"></div>
+                <fieldset id="difsStudentContent" class="no-padding" style="display: none;">
+                    <div class="row">
+                        <div class="col-8">
+                            <p class="title-medium" style="margin-bottom:24px">Select Students</p>
+                        </div>
+                        <div class="col-4">
+                            <div class="float-right" style="width:max-content">
+                                <button type="button" name="select-all" class="btn-select" style="margin-right:12px" onclick="selectAllStudents()">Select All</button>
+                                <button type="button" name="select-none" class="btn-select" style="margin-right:12px" onclick="selectNoStudents()">Select None</button>
+                                <button type="button" name="invert-select" class="btn-select" onclick="invertSelectedStudents()">Invert Selection</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="studentContent" style="display: none">
+                        <div class="columns" id="studentsList">
+                            <ul id="students" class="generate-student-list generate-student-list-custom with-icon icon-user student-col"></ul>
+                        </div>
+                    </div>
+                </fieldset>
+                @Html.Action("LoadSGONote", "SGOManage", new { sgoId = Model.SGOID, pageName = LinkIt.BubbleSheetPortal.Models.SGO.SGOPageNameConstant.StudentPopulation })
+                <div class="clear"></div>
+                <div class="float-right">
+                    <a id="idContinueWithoutSave" class="btn btn-secondary-link" style="margin-right: 22px" onclick="StudentPopulateContinueWithoutSave(@Model.SGOID)">Cancel</a>
+                    <button id="idSaveStudentPopulation" class="btn-blue custom-btn" style="margin-right: 22px">Save and Continue</button>
+                    <button id="idSaveStudentPopulationAndWait" class="btn-red custom-btn">Save</button>
+                </div>
+                <div class="clear"></div>
+            </div>
+        </div>
+    </section>
+</article>
+<input id="idhfSGOID" value="@Model.SGOID" type="hidden" />
+<input id="idhdfPermissionAccessValue" type="hidden" value="1" />
+<script>
+    var vTheFirstLoadFlag = 1;
+    var GenderRaceProgramFinish = 0;
+    var vInitTerm = 0;
+    var vInitClass = 0;
+    var vInitStudent = 0;
+    $('#idFilterProgramRaceGender').coolfieldset();
+    $(function () {
+
+        $('#selectState').marquee();
+        $('#selectDistrict').marquee();
+
+        $('#accordion-assignment-setting .accordion-title').on('click', function () {
+            var $self = $(this);
+            var $accordionContent = $self.next();
+
+            if ($self.hasClass('active')) {
+                $self.removeClass('active');
+                $accordionContent.slideUp();
+            } else {
+                $self.addClass('active');
+                $accordionContent.slideDown();
+            }
+        });
+
+        breadcrumbDetailPage('.stats', '#rpSGOManager');
+
+        ShowBlock($("#idTopNavigation"), "Loading");
+
+        $('#idFilterProgramRaceGender').coolfieldset({ collapsed: true });
+        @if (Model.IsPublisher || Model.IsNetworkAdmin)
+        {
+             if(Model.IsPublisher)
+            {
+                <text>
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            populateStates(states);
+        });
+        </text>
+            }
+             else if (Model.IsNetworkAdmin)
+             {
+                <text>
+        $.get('@Url.Action("GetStatesByDictricIds", "PopulateStateDistrict")', { dictricIds: '@Model.StrIds' }, function (states) {
+            populateStates(states);
+        });
+
+        </text>
+            }
+
+            <text>
+        $('#selectState').change(function () {
+            $('#selectDistrict').empty();
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+        });
+
+        $('#selectDistrict').change(function () {
+            $('#idPopulateGender table').html('');
+            $('#idPopulateRace table').html('');
+            $('#idPopulateProgram table').html('');
+
+            var vDistrictId = $('#selectDistrict').val();
+            if (vDistrictId != 'select' && vDistrictId > 0) {
+                InitFilter();
+            }
+        });
+
+        </text>
+        }
+        else {
+            <text>
+        InitFilter();
+        </text>
+        }
+    });
+
+
+
+    $('#idbtnApplyFiters').click(function () {
+        ClearInitDefault();
+        SGOPopulateStudent(true);
+    });
+
+    $('#idSaveStudentPopulationAndWait').click(function () {
+        SaveStudentPopulation(0,'');
+        // Initialize data when save page
+        // GetJSONDataStudentPopulation() from _NavigationTabs.cshtml
+        window.oldJSONData = GetJSONDataStudentPopulation();
+    });
+
+    $('#idSaveStudentPopulation').click(function () {
+        var url = "/SGOSelectDataPoint/Index?sgoId=" + $('#idhfSGOID').val();
+        SaveStudentPopulation(1,url);
+    });
+
+    $('.ShowStudentIntervalInstruction').live('click', function () {
+        var url = '@Url.Action("LoadStudentIntervalIntruction", "SGOManage")?districtId=' + GetDistrictId();
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#generateContent").append('<div id="PopupSGONumberStudentInterval" class="dialog"></div>');
+                $("#PopupSGONumberStudentInterval").append(html);
+                $('#PopupSGONumberStudentInterval').dialog({
+                    title: "",
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupSGONumberStudentInterval').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 650,
+                    resizable: false
+                });
+            }).always(function () {
+                var elHeight = $('.ui-dialog[aria-labelledby="ui-dialog-title-PopupSGONumberStudentInterval"] .dialog').height();
+                var windowHeight = $(window).height();
+                if (elHeight > windowHeight) {
+                    $(window).scrollTop(0);
+                }
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    });
+
+    function populateStudentBylist(students) {
+        $('#difsStudentContent').show();
+        $('#studentContent').show();
+        $('#students').html('');
+        addStudentsToList($('#students'), students);
+        if (vInitStudent === 0) {
+            vInitStudent = 1;
+            SGOInitStudentSelected();
+            if (@Model.PermissionAccess !== 3) //Full Update
+            {
+                LockAllUI();
+            }
+        } else {
+            selectAllStudents();
+        }
+    }
+
+    function SaveStudentPopulation(next, param) {
+        if(ValidateBeforeSaveStudentPopulation(next,param)){
+            SaveStudentPopulationAfterValidate(next, param);
+        }
+    }
+
+    function ValidateBeforeSaveStudentPopulation(next, param){
+        var arrDistrictTermSelectedIds = [];
+        var arrClassSelectedIds = [];
+        var arrStudentSelectedIds = [];
+
+        ///////////////////////////////////////////////////////
+        if ($('#tbClasses tr[choose=1]').length > 0) {
+            $('#tbClasses tr[choose=1]').each(function () {
+                arrClassSelectedIds.push($(this).attr("keyvalue"));
+            });
+        }
+
+        //////////////////////////////////////////////////////
+        if ($('#tbTerms tr[choose=1]').length > 0) {
+
+            $('#tbTerms tr[choose=1]').each(function () {
+                arrDistrictTermSelectedIds.push($(this).attr("keyvalue"));
+            });
+        }
+
+        ///////////////////////////////////////////////////////
+        $(".student-item[isSelected=yes]").each(function () {
+            var vClassId = $(this).attr('classId');
+            arrStudentSelectedIds.push($(this).attr('studentId') + '-' + vClassId);
+        });
+
+        if(arrDistrictTermSelectedIds.length == 0){
+            var alertMessage = '<div class="text-left">No term selected. Please select @LabelHelper.Term.</div>';
+            CustomAlert(alertMessage);
+            return false;
+        }
+
+        if(arrClassSelectedIds.length == 0){
+            var alertMessage = '<div class="text-left">No class selected. Please select class.</div>';
+            CustomAlert(alertMessage);
+            return false;
+        }
+
+        var vClassIds = arrClassSelectedIds.join(",");
+        if(vClassIds != $('#lastSelectedClassIds').val()){
+            var alertMessage = '<div class="text-left">The students population are not in selected classes. Please click Show Students and re-select before saving.</div>';
+            showConfirmMess(alertMessage);
+            return false;
+        }
+
+        if(arrStudentSelectedIds.length == 0){
+            var alertMessage = 'No student selected. Do you want to save with empty student data?';
+            yesNoDialog(alertMessage, "SaveStudentPopulationAfterValidate("+ next + "," + param + ")");
+            return false;
+        }
+
+        return true;
+    }
+
+    function SaveStudentPopulationAfterValidate(next, param) {
+        cancelYesNoDialog();
+        ShowBlock($('#idTopNavigation'), "Saving");
+
+        var arrGenderIdsSelected = [];
+        var arrRaceIdsSelected = [];
+        var arrProgramIdsSelected = [];
+        var arrDistrictTermSelectedIds = [];
+        var arrClassSelectedIds = [];
+        var arrStudentSelectedIds = [];
+
+        $('#idPopulateGender input:checked').each(function () {
+            arrGenderIdsSelected.push($(this).attr('key'));
+        });
+        var vGenderIds = arrGenderIdsSelected.join(",");
+        ////////////////////////////////////////////////////////
+        $('#idPopulateRace input:checked').each(function () {
+            arrRaceIdsSelected.push($(this).attr('key'));
+        });
+        var vRaceIds = arrRaceIdsSelected.join(",");
+        ///////////////////////////////////////////////////////
+        $('#idPopulateProgram input:checked').each(function () {
+            arrProgramIdsSelected.push($(this).attr('key'));
+        });
+        var vProgramIds = arrProgramIdsSelected.join(",");
+        ///////////////////////////////////////////////////////
+        if ($('#tbClasses tr[choose=1]').length > 0) {
+            $('#tbClasses tr[choose=1]').each(function () {
+                arrClassSelectedIds.push($(this).attr("keyvalue"));
+            });
+        }
+        var vClassIds = arrClassSelectedIds.join(",");
+        //////////////////////////////////////////////////////
+        if ($('#tbTerms tr[choose=1]').length > 0) {
+
+            $('#tbTerms tr[choose=1]').each(function () {
+                arrDistrictTermSelectedIds.push($(this).attr("keyvalue"));
+            });
+        }
+        var vDistrictTermIds = arrDistrictTermSelectedIds.join(",");
+        ///////////////////////////////////////////////////////
+        $(".student-item[isSelected=yes]").each(function () {
+            var vClassId = $(this).attr('classId');
+            arrStudentSelectedIds.push($(this).attr('studentId') + '-' + vClassId);
+        });
+        var vStudentIds = arrStudentSelectedIds.join(",");
+
+        var vSGOID = $('#idhfSGOID').val();
+        var vDistrictId = GetDistrictId();
+        var vStateId = GetStateId();
+        var data = { DistrictIdSelected: vDistrictId, StateIdSelected: vStateId, SGOID: vSGOID, StrGenderIds: vGenderIds, StrRaceIds: vRaceIds, StrProgramIds: vProgramIds, StrDistrictTermIds: vDistrictTermIds, StrClassIds: vClassIds, StrStudentIds: vStudentIds };
+        var url = '@Url.Action("SaveStudentPopulate", "SGOManage")';
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data,
+            success: function (response) {
+                $('#divOnTop').unblock();
+                $('#idTopNavigation').unblock();
+
+                if (response == true && next == 1) {
+                    if(next == 1){
+                        window.location.href = param;
+                    }
+                }else if(response == false){
+                    var alertMessage = '<div class="text-left">Have the error when Save Student Populate, Please try again.</div>';
+                    CustomAlert(alertMessage);
+                    if(next == 1){
+                        setTimeout(function(){ window.location.reload();; }, 3000);
+                    }
+                }
+            },
+            failure: function () {
+                $('#idTopNavigation').unblock();
+                var alertMessage = '<div class="text-left">Have the error when Save Student Populate, Please try again.</div>';
+                CustomAlert(alertMessage);
+            }
+        });
+    }
+
+    function populateGenderByDistrict(vDistrictId) {
+        $('#idPopulateGender table').html('');
+        if (vDistrictId > 0) {
+            $.get('@Url.Action("GetGenderByDistrictID", "SGOManage")', { sgoId: $('#idhfSGOID').val(), districtId: vDistrictId, userId: @Model.OwnerUserID, userRoleId: @Model.LimitDisplayRoleID }, function (response) {
+                if (response.Sucess == true) {
+                    //alert("Gender: " + response.lstIds.length);
+                    $.each(response.data, function (i, value) {
+
+                        if (response.lstIds.length == 0) {
+                            var v = '<tr><td><input checked="checked" type="checkbox" id="Gender-' + value.Id + '" value="' + value.Name + '" key="' + value.Id + '" class="m-r-5"/>'
+                                + '<label for="Gender-' + value.Id + '">' + value.Name + '</label></td></tr>';
+                            $('#idPopulateGender table').append(v);
+                        } else {
+                            var vchecked = '';
+                            $.each(response.lstIds, function (j, vl) {
+                                if (value.Id == vl) {
+                                    vchecked = 'checked="checked"';
+                                }
+                            });
+                            var v2 = '<tr><td><input ' + vchecked + ' type="checkbox" id="Gender-' + value.Id + '" value="' + value.Name + '" key="' + value.Id + '" class="m-r-5"/>'
+                                + '<label for="Gender-' + value.Id + '">' + value.Name + '</label></td></tr>';
+                            $('#idPopulateGender table').append(v2);
+                        }
+                    });
+                    GenderRaceProgramFinish += 1;
+                    CheckFilterLoadFinish();
+                }
+            });
+        }
+    }
+
+    function populateRaceByDistrict(vDistrictId) {
+        $('#idPopulateRace table').html('');
+        if (vDistrictId > 0) {
+            $.get('@Url.Action("GetRaceByDistrictID", "SGOManage")', {
+                sgoId: $('#idhfSGOID').val(), districtId: vDistrictId, userId: @Model.OwnerUserID, userRoleId: @Model.LimitDisplayRoleID}, function (response) {
+                if (response.Sucess == true) {
+                    //alert("Race: " + response.lstIds.length);
+                    $.each(response.data, function (i, value) {
+                        if (response.lstIds.length == 0) {
+                            var v = '<tr><td><input checked="checked" type="checkbox" id="Race-' + value.Id + '" value="' + value.Name + '" key="' + value.Id + '"  class="m-r-5"/>'
+                                + '<label for="Race-' + value.Id + '">' + value.Name + '</label></td></tr>';
+                            $('#idPopulateRace table').append(v);
+                        } else {
+                            var vchecked = '';
+                            $.each(response.lstIds, function (j, vl) {
+                                if (value.Id == vl) {
+                                    vchecked = 'checked="checked"';
+                                }
+                            });
+                            var v2 = '<tr><td><input ' + vchecked + ' type="checkbox" id="Race-' + value.Id + '" value="' + value.Name + '" key="' + value.Id + '"  class="m-r-5"/>'
+                                + '<label for="Race-' + value.Id + '">' + value.Name + '</label></td></tr>';
+                            $('#idPopulateRace table').append(v2);
+                        }
+                    });
+
+                    GenderRaceProgramFinish += 1;
+                    CheckFilterLoadFinish();
+                }
+            });
+        }
+    }
+
+    function populateProgramByDistrict(vDistrictId) {
+        $('#idPopulateProgram table').html('');
+        if (vDistrictId > 0) {
+            $.get('@Url.Action("GetProgramByDistrictID", "SGOManage")', { sgoId: $('#idhfSGOID').val(), districtId: vDistrictId, userId: @Model.OwnerUserID, userRoleId: @Model.LimitDisplayRoleID }, function(response) {
+                if (response.Sucess == true) {
+                    //alert("Program: " + response.lstIds.length);
+                    $.each(response.data, function(i, value) {
+                        if (response.lstIds.length == 0) {
+                            var v = '<tr><td><input checked="checked" type="checkbox" name="populateProgram" id="Program-' + value.Id + '" value="' + value.Name + '" key="' + value.Id + '"  class="m-r-5"/>'
+                                + '<label for="Program-' + value.Id + '">' + value.Name + '</label></td></tr>';
+                            $('#idPopulateProgram table').append(v);
+                        } else {
+                            var vchecked = '';
+                            $.each(response.lstIds, function(j, vl) {
+                                if (value.Id == vl) {
+                                    vchecked = 'checked="checked"';
+                                }
+                            });
+
+                            var v2 = '<tr><td><input ' + vchecked + ' type="checkbox" name="populateProgram" id="Program-' + value.Id + '" value="' + value.Name + '" key="' + value.Id + '"  class="m-r-5"/>'
+                                + '<label for="Program-' + value.Id + '">' + value.Name + '</label></td></tr>';
+                            $('#idPopulateProgram table').append(v2);
+                        }
+
+                    });
+
+                    GenderRaceProgramFinish += 1;
+                    CheckFilterLoadFinish();
+                }
+            });
+        }
+    }
+
+    function populateStates(states) {
+        addDefaultOption($('#selectState'), "State");
+        addSelectListItems($('#selectState'), states);
+
+        if (@Model.StateIdSelected > 0) {
+            $("#selectState").val(@Model.StateIdSelected);
+            populateDistricts();
+        } else if(vTheFirstLoadFlag === 1) {
+            FinishTheFirstLoad();
+        }
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            if ('@Model.IsPublisher' === 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+
+                    //console.log('DistrictID: ' + '@Model.DistrictIdSelected');
+                    if (@Model.DistrictIdSelected > 0) {
+                        $("#selectDistrict").val(@Model.DistrictIdSelected);
+                        InitFilter();
+                    } else if(vTheFirstLoadFlag === 1) {
+                        FinishTheFirstLoad();
+                    }
+                });
+            }
+            if ('@Model.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+                    if (@Model.DistrictIdSelected > 0) {
+                        $("#selectDistrict").val(@Model.DistrictIdSelected);
+                        InitFilter();
+                    }
+                    else if(vTheFirstLoadFlag === 1) {
+                        FinishTheFirstLoad();
+                    }
+                });
+            }
+        }
+    }
+
+    function PopulateDistrictTerm() {
+        if (vTheFirstLoadFlag !== 1) {
+            ShowBlock($('#idTopNavigation'), "Loading");
+        }
+
+        $.get('@Url.Action("GetTerms", "SGOManage")',
+            { DistrictId: GetDistrictId(), UserId: @Model.OwnerUserID, UserRoleId: @Model.LimitDisplayRoleID },
+            function (terms) {
+                if (terms.length > 0) {
+                    FillDataToTable(terms, "tbTerms", "term");
+                    if (vInitTerm == 0) {
+                        vInitTerm = 1;
+                        SGOInitTermSelected();
+                    }
+
+                } else  {
+                    if (vTheFirstLoadFlag === 1) {
+                        FinishTheFirstLoad();
+                    }
+                    if (vInitTerm == 0) {
+                        vInitClass = 1;
+                        CheckFilterLoadFinish();
+                    }
+                }
+                if (vTheFirstLoadFlag !== 1) {
+                    $('#idTopNavigation').unblock();
+                }
+            });
+    }
+
+    function FillDataToTable(items, tableId, type) {
+        var table = $('#' + tableId + ' tbody');
+        table.empty();
+        if (items.length > 0) {
+            $.each(items, function (i, item) {
+                var vValue = item.Name;
+                var trId = tableId + item.Id;
+                switch (type) {
+                case "term":
+                    {
+                        table.append('<tr id="' + trId + '" keyName=' + trId + ' keyvalue="' + item.Id + '" onclick="TermsSelected (this.id)"><td style="" >' + vValue + ' </td> </tr>');
+                    }
+                    break;
+                case "class":
+                    {
+                        table.append('<tr id="' + trId + '" keyName=' + trId + ' keyvalue="' + item.Id + '" onclick="ClassesSelected (this.id)" ><td style="" >' + vValue + ' </td> </tr>');
+                    }
+                    break;
+                }
+            });
+        }
+    }
+
+    function GetDistrictId() {
+        if ($('#idhdfDistrictId').length > 0 && $('#idhdfDistrictId').val() > 0) {
+            return $('#idhdfDistrictId').val();
+        } else {
+            if ($('#selectDistrict').val() > 0)
+                return $('#selectDistrict').val();
+            else
+                return 0;
+        }
+    }
+
+    function GetSGOID() {
+        return $('#idhfSGOID').val();
+    }
+
+    function GetStateId() {
+        if ($('#selectState').length > 0 && $('#selectState').val() > 0)
+            return $('#selectState').val();
+        else
+            return 0;
+    }
+
+    function TermsSelected(itemselectedId) {
+        var $itemselectedId = $('#' + itemselectedId);
+        if ($itemselectedId.attr('choose') == '1') {
+            $itemselectedId.removeAttr('choose');
+        } else {
+            $itemselectedId.attr('choose', '1');
+        }
+        //TODO: Load Class
+        ClearInitDefault();
+        SGOPopulateClass();
+    }
+
+    function ClassesSelected(itemselectedId) {
+        var $itemselectedId = $('#' + itemselectedId);
+        if ($itemselectedId.attr('choose') == '1') {
+            $itemselectedId.removeAttr('choose');
+        } else {
+            $itemselectedId.attr('choose', '1');
+        }
+    }
+
+    function addStudentsToList(el, students) {
+        var $el = $(el);
+        var studentHtml = [];
+
+        for (var i = 0, len = students.length; i < len; i++) {
+            var student = students[i];
+            studentHtml.push('<li id="idliStudent' + student.Id + '" classId="' + student.ExtracId + '" studentId="' + student.Id + '" class="student-item"><a href="javascript:void(0)">' + student.Name + '</a></li>');
+        }
+
+        $el.html(studentHtml.join(''));
+    }
+
+    function selectAllStudents() {
+        $('.student-col').children().attr('isselected', "yes");
+        $('.student-col').children().css('background-color', "#82CAFA");
+    }
+
+    function selectNoStudents() {
+        $('.student-col').children().attr('isselected', "no");
+        $('.student-col').children().css('background-color', "#f2f2f2");
+    }
+
+    function invertSelectedStudents() {
+        $('.generate-student-list li').each(function () {
+            if ($(this).attr('isselected') == "yes") {
+                $(this).attr('isselected', "no");
+                $(this).css('background-color', "#f2f2f2");
+            } else {
+                $(this).attr('isselected', "yes");
+                $(this).css('background-color', "#82CAFA");
+            }
+        });
+    }
+
+    $('.generate-student-list li').live({
+        mouseenter: function () {
+            if ($(this).attr('isselected') == "yes") {
+                $(this).css('background-color', "#75B6E1");
+            } else {
+                $(this).css('background-color', "#e0e0e0");
+            }
+        },
+        mouseleave: function () {
+            if ($(this).attr('isselected') == "yes") {
+                $(this).css('background-color', "#82CAFA");
+            } else {
+                $(this).css('background-color', "#f2f2f2");
+            }
+        },
+        click: function () {
+            if ($('#idhdfPermissionAccessValue').val() == 0)
+                return;
+            if ($(this).attr('isselected') == "yes") {
+                $(this).attr('isSelected', "no");
+                $(this).css('background-color', "#e0e0e0");
+            } else {
+                $(this).attr('isSelected', "yes");
+                $(this).css('background-color', "#75B6E1");
+            }
+        }
+    });
+
+
+
+    function closeNumberStudentInterval() {
+        $("#PopupSGONumberStudentInterval").dialog("close");
+    }
+
+    function CheckFilterLoadFinish() {
+        if (GenderRaceProgramFinish == 3 && vInitClass ==1) {
+            SGOPopulateStudent(true);
+
+            if (@Model.PermissionAccess != 3) //Full Update
+            {
+                LockAllUI();
+            }
+        }
+        window.oldJSONData = GetJSONDataStudentPopulation();
+    }
+
+    function StudentPopulateContinueWithoutSave(id) {
+        location.reload();
+        //var url = "/SGOSelectDataPoint/Index?sgoId=" + id;
+        //window.location.href = url;
+    }
+
+    function InitFilter() {
+        GenderRaceProgramFinish = 0;
+        populateGenderByDistrict(GetDistrictId());
+        populateRaceByDistrict(GetDistrictId());
+        populateProgramByDistrict(GetDistrictId());
+
+        //TODO: populate Term
+        $('#tbTerms tbody').empty();
+        $('#tbClasses tbody').empty();
+        PopulateDistrictTerm();
+    }
+
+    function SGOPopulateClass() {
+        var vGender = [];
+        var vRace = [];
+        var vProgram = [];
+        $('#idPopulateGender input:checked').each(function() {
+            vGender.push($(this).attr('key'));
+        });
+        $('#idPopulateRace input:checked').each(function() {
+            vRace.push($(this).attr('key'));
+        });
+        $('#idPopulateProgram input:checked').each(function() {
+            vProgram.push($(this).attr('key'));
+        });
+
+        var vgenderIds = vGender.join(",");
+        var vraceIds = vRace.join(",");
+        var vprogramIds = vProgram.join(",");
+
+        var vTermValue = [];
+        if ($('#tbTerms tr[choose=1]').length > 0) {
+
+            $('#tbTerms tr[choose=1]').each(function() {
+                vTermValue.push($(this).attr("keyvalue"));
+            });
+        } else {
+            if (vInitClass != 0) {
+                $('#tbClasses tbody').empty();
+                var alertMessageSelectTerm = '<div class="text-left">Please select a @LabelHelper.Term to show class.</div>';
+                CustomAlert(alertMessageSelectTerm);
+            }
+            if (vTheFirstLoadFlag === 1) {
+                FinishTheFirstLoad();
+            }
+            return;
+        }
+        var vdistrictTermIds = vTermValue.join(",");
+        if (vTheFirstLoadFlag !== 1) {
+            ShowBlock($('#idTopNavigation'), "Loading");
+        }
+        $.get('@Url.Action("GetClassesByTermId", "SGOManage")', { DistrictId: GetDistrictId(), TermIds: vdistrictTermIds, GenderIds: vgenderIds, RaceIds: vraceIds, ProgramIds: vprogramIds, UserId:@Model.OwnerUserID, UserRoleId:@Model.LimitDisplayRoleID }, function(classes) {
+            if (classes.length > 0) {
+                FillDataToTable(classes, "tbClasses", "class");
+            } else {
+                if (vTheFirstLoadFlag === 1) {
+                    FinishTheFirstLoad();
+                }
+            }
+
+            if (vInitClass === 0) {
+                SGOInitClassSelected();
+            }
+
+            if (vTheFirstLoadFlag !== 1) {
+                $('#idTopNavigation').unblock();
+            }
+        });
+    }
+
+    function SGOPopulateStudent(includeAddedStudents) {
+        var arrGenderIdsSelected = [];
+        var arrRaceIdsSelected = [];
+        var arrProgramIdsSelected = [];
+        var arrDistrictTermSelectedIds = [];
+        var arrClassSelectedIds = [];
+
+        if ($('#tbClasses tr[choose=1]').length > 0)
+        {
+            $('#tbClasses tr[choose=1]').each(function () {
+                arrClassSelectedIds.push($(this).attr("keyvalue"));
+            });
+        }
+        var vClassIds = arrClassSelectedIds.join(",");
+        //---------------------------------------------------
+        if ($('#tbTerms tr[choose=1]').length > 0) {
+
+            $('#tbTerms tr[choose=1]').each(function () {
+                arrDistrictTermSelectedIds.push($(this).attr("keyvalue"));
+            });
+        }
+        var vDistrictTermIds = arrDistrictTermSelectedIds.join(",");
+        //------------------------------------------------------------
+        $('#idPopulateGender input:checked').each(function () {
+            arrGenderIdsSelected.push($(this).attr('key'));
+        });
+        var vgenderIds = arrGenderIdsSelected.join(",");
+        //-----------------------------------------------------------
+
+        $('#idPopulateRace input:checked').each(function () {
+            arrRaceIdsSelected.push($(this).attr('key'));
+        });
+        var vraceIds = arrRaceIdsSelected.join(",");
+        //--------------------------------------------------------------
+
+        $('#idPopulateProgram input:checked').each(function () {
+            arrProgramIdsSelected.push($(this).attr('key'));
+        });
+        var vprogramIds = arrProgramIdsSelected.join(",");
+        //----------------------------------------------------------------
+        if (vTheFirstLoadFlag !== 1) {
+            ShowBlock($('#idTopNavigation'), "Loading");
+        }
+        $('#lastSelectedClassIds').val(vClassIds);
+        $.get('@Url.Action("GetStudentsbyClassIds", "SGOManage")',
+            { SGOId: GetSGOID(), DistrictId: GetDistrictId(), ClassIds: vClassIds, TermIds: vDistrictTermIds, GenderIds: vgenderIds, RaceIds: vraceIds, ProgramIds: vprogramIds, IncludeAddedStudents: includeAddedStudents },
+            function(students)
+            {
+                if (students.length === 0) {
+                    $('#students').html('');
+                    $('#studentContent').hide();
+                    $('#difsStudentContent').hide();
+                    if (vTheFirstLoadFlag === 1) {
+                        FinishTheFirstLoad();
+                    }
+                    if (vInitStudent !== 0) {
+                        var alertMessageNoStudent = '<div class="text-left">No students meet the filters you have applied. Please adjust your filters and try again.</div>';
+                        showConfirmMess(alertMessageNoStudent);
+                    }
+                } else {
+                    populateStudentBylist(students);
+                }
+                if (vTheFirstLoadFlag !== 1) {
+                    $('#idTopNavigation').unblock();
+                }
+            });
+    }
+
+    function SGOInitTermSelected() {
+        if ($('#tbTerms tr').length > 0) {
+            $.get('@Url.Action("GetTermsSelected", "SGOManage")',{ sgoId: GetSGOID() },function(termIds) {
+                $('#tbTerms tr').each(function() {
+                    var vtrTerms = $(this).attr("keyvalue");
+                    //console.log(vtrTerms);
+                    $.each(termIds, function(i, item)
+                    {
+                        if (item.Id == vtrTerms)
+                        {
+                            $('#tbTerms' + item.Id).attr('choose','1');
+                        }
+                    });
+                });
+                SGOPopulateClass();
+            });
+        }
+    }
+
+    function SGOInitClassSelected() {
+        $.get('@Url.Action("GetClassSelected", "SGOManage")', { sgoId: GetSGOID() }, function(classIds)
+        {
+            var selectedClassNo = 0;
+
+            $('#tbClasses tr').each(function() {
+                var vtrClass = $(this).attr("keyvalue");
+                $.each(classIds, function(i, item) {
+                    if (item.Id == vtrClass) {
+                        $('#tbClasses' + item.Id).attr('choose', '1');
+                        selectedClassNo++;
+                    }
+                });
+            });
+
+            vInitClass = 1;
+            CheckFilterLoadFinish();
+
+            if(classIds.length > selectedClassNo){
+                if('@Model.OwnerUserID' == '@Model.CurrentUserID'){
+                    if (@Model.PermissionAccess == 3) //Full Update
+                    {
+                        var alertMessage = '<div class="text-left">Note: You no longer have access to the class previously selected but the students selected are still associated with this SGO. You have the ability to deselect these students and/or add additional students from your other classes.</div>';
+                        showConfirmMess(alertMessage);
+                    }else{
+                        var alertMessage = '<div class="text-left">Note: You no longer have access to the class(es) previously selected but those students are still included in this SGO. To deselect or add students, contact the reviewer to authorize a revision. Alternatively, you may add students without authorization using the "Add New Student" button in step 4.</div>';
+                        showConfirmMess(alertMessage);
+                    }
+
+                }else{
+                    var alertMessage = '<div class="text-left">Note: This teacher no longer has access to the class(es) previously selected but those students are still included in this SGO. In order for the teacher to deselect or add students, you will need to authorize a revision. Alternatively, the teacher may add students without your authorization using the "Add New Student" button in step 4.</div>';
+                    showConfirmMess(alertMessage);
+                }
+            }
+        });
+    }
+
+    function LoadCandidateClassForReplacement(sgoId) {
+        ShowBlock($("#idTopNavigation"), "Loading");
+        var url = '@Url.Action("LoadCandidateClassForReplacement", "SGOManage")?sgoId=' + sgoId;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $('#idTopNavigation').unblock();
+
+                $("#generateContent").append('<div id="PopupLoadCandidateClassForReplacement" class="dialog"></div>');
+                $("#PopupLoadCandidateClassForReplacement").append(html);
+                $('#PopupLoadCandidateClassForReplacement').dialog({
+                    title: "",
+                    open: function () {
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupLoadCandidateClassForReplacement').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+            });
+    }
+
+    function SGOInitStudentSelected() {
+        $.get('@Url.Action("LoadStudentBySGOID", "SGOManage")', { sgoId: $('#idhfSGOID').val() }, function(students)
+        {
+            if (students.length > 0) {
+                $.each(students, function(i, item) {
+                    var $liStudent = $('#idliStudent' + item.Id);
+                    $liStudent.attr("isselected", "yes");
+                    $liStudent.attr("style", "background-color: rgb(130, 202, 250)");
+                });
+            }
+            window.oldJSONData = GetJSONDataStudentPopulation();
+            FinishTheFirstLoad();
+        });
+    }
+
+    function ClearInitDefault() {
+        vInitTerm = 2;
+        vInitClass = 2;
+        vInitStudent = 2;
+    }
+
+    $(function() {
+        if (@Model.PermissionAccess != 3) //Full Update
+        {
+            LockAllUI();
+            $('#idhdfPermissionAccessValue').val(0);
+        }
+        initNavigationTabs(2, $('#idhfSGOID').val());
+
+        // Initialize data when page load done
+        // GetJSONDataStudentPopulation() from _NavigationTabs.cshtml
+        window.oldJSONData = GetJSONDataStudentPopulation();
+    });
+
+    function LockAllUI() {
+        //console.log("LockAllUI ^_^");
+        //Block All selecte.
+        if ($('#selectState').length > 0) {
+            $('#selectState').prop('disabled', 'disabled');
+        }
+        if ($('#selectDistrict').length > 0) {
+            $('#selectDistrict').prop('disabled', 'disabled');
+        }
+        $('#idPopulateGender input').each(function() {
+            $(this).prop('disabled', 'disabled');
+        });
+        $('#idPopulateRace input').each(function() {
+            $(this).prop('disabled', 'disabled');
+        });
+        $('#idPopulateProgram input').each(function() {
+            $(this).prop('disabled', 'disabled');
+        });
+
+        $('#dataTableSelectTermClasses :input').attr('disabled', true);
+        $('#generateContent :button').attr('disabled', true);
+
+        //tbTerms
+        $('#tbTerms tr').each(function() {
+            $(this).removeAttr('onclick');
+        });
+        //tbClasses
+        $('#tbClasses tr').each(function() {
+            $(this).removeAttr('onclick');
+        });
+
+        $('#idContinueWithoutSave').removeAttr('disabled');
+        $('#btnSaveNote').prop('disabled', false);
+    }
+
+    function supportNavigationSaveAndRedirect(param) {
+        SaveStudentPopulation(1, param);
+    }
+
+    function FinishTheFirstLoad() {
+        vTheFirstLoadFlag = 0;
+        $('#idTopNavigation').unblock();
+        }
+
+    $(document).on('change', "input[name='populateProgram']", function () {
+        var key = $(this).attr('key')
+        var allProgramId = "#Program--1";
+        if (key == -1) {
+            var allProgramChecked = $(allProgramId).is(":checked");
+            $('#idPopulateProgram input').each(function () {
+                var id = "Program-";
+                var childrenKey = $(this).attr('key');
+                if (childrenKey) {
+                    var input = id + childrenKey;
+                    if (allProgramChecked) {
+                        $("#" + input).prop('checked', allProgramChecked);
+                    }
+                    else {
+                        $("#" + input).removeAttr('checked').removeClass('input-checked-v2');
+                    }
+                }
+            });
+        } else {
+            var total = $('#idPopulateProgram input').length;
+            var checked = $('#idPopulateProgram input:checked').length;
+            if (checked && total && ((total - checked) == 1) && $(allProgramId).is(":checked") == false) {
+                $(allProgramId).prop('checked', true);
+            } else {
+                $(allProgramId).removeAttr('checked').removeClass('input-checked-v2');
+            }
+        }
+    });
+
+    function showConfirmMess(msg) {
+        confirmMessageV2(
+            {
+                message: msg,
+                cbYesBtnFuncName: 'confirmYes()',
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'confirmMessDialogStudentPopulation'
+                    }
+                }
+            }
+        )
+    }
+
+    function confirmYes() {
+        $('#confirmMessDialogStudentPopulation').dialog("close")
+    }
+
+    function yesNoDialog(message, yesFn, closeFn) {
+        var params = { message };
+
+        if (yesFn) {
+            params.cbYesBtnFuncName = yesFn;
+        } else {
+            params.cbYesBtnFuncName = 'cancelYesNoDialog()';
+        }
+
+        if (!closeFn) {
+            params.cbCancelBtnFuncName = 'cancelYesNoDialog()'
+        }
+        confirmMessageV2(
+            params,
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'yesNoDialogStudentPopulation'
+                    }
+                }
+            }
+        )
+    }
+
+    function cancelYesNoDialog() {
+        $("#yesNoDialogStudentPopulation").dialog("close");
+    }
+
+</script>

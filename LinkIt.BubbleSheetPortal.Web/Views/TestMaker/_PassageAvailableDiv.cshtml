@@ -1,0 +1,711 @@
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog-draggable.css")" rel="stylesheet" type="text/css" />
+<style type="text/css">
+    #dataTablePassage_filter {
+        display: none;
+    }
+    /*Hidden search field as default*/
+    .qtiItemSelector p {
+        height: 65px;
+    }
+
+    #divPassageFilter h1 {
+        line-height: 18px;
+    }
+
+    #divPassageFilter label {
+        font-size: 12px !important;
+    }
+
+    #divPassageFilterHeader select {
+        font-size: 13px !important;
+        max-width: 300px;
+        min-width: 300px;
+    }
+
+    .form-control {
+        width: 288px;
+        color: #333333;
+        font-size: 1em;
+        padding: 0.417em;
+        border: 1px solid #89bad3;
+        -moz-border-radius: 0.417em;
+        -webkit-border-radius: 0.417em;
+        -webkit-background-clip: padding-box;
+        border-radius: 0.417em;
+    }
+    /*.ui-widget-header {
+        top: 72px !important;
+    }*/
+</style>
+
+<div id="divPassageFilter">
+    <input type="hidden" id="assignedObjectIdList" value="@ViewBag.AssignedObjectIdList" />
+    <h1>
+        Filter
+        <a href="javascript:void(0);" onclick="showPassageCreatePopup()">
+            <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+            Add New
+        </a>
+    </h1>
+    <p style="height: 5px">
+        <div id="passageNotifications"></div>
+    </p>
+    <div class="block-content form" id="divPassageFilterHeader">
+        <fieldset class="qtiItemSelector">
+            <div class="columns">
+                <div class="colx2-left">
+                    @if (ViewBag.IsPublisher != null && ViewBag.IsPublisher)
+                    {
+                        <p>
+                            <label>State</label>
+                            <select id="selectState" data-bind='options: PassageStates, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select State", value: PassageStateId' style="width: 100%"></select>
+                        </p>
+                    }
+                    <p>
+                        <label>Name</label>
+                        <input id="txtName" class="form-control" />
+                    </p>
+                    <p>
+                        <label>@LabelHelper.TestGrade</label>
+                        <select id="selectPassageGrade" data-bind='options: PassageGrades, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select @LabelHelper.TestGrade", value: PassageGradeId' style="width: 100%"></select>
+                    </p>
+                    <p>
+                        <label>@LabelHelper.Subject</label>
+                        <select id="selectPassageSubject" data-bind='options: PassageSubjects, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Passage Subject", value: PassageSubjectText' style="width: 100%"></select>
+                    </p>
+                    <p>
+                    </p>
+                </div>
+                <div class="colx2-right">
+                    @if (ViewBag.IsPublisher != null && ViewBag.IsPublisher)
+                    {
+                        <p>
+                            <label>@LabelHelper.DistrictLabel</label>
+                            <select id="selectDistrict" data-bind='options: PassageDistricts, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select District", value: PassageDistrictId' style="width: 100%"></select>
+                        </p>
+                    }
+                    <p>
+                        <label>Passage Number</label>
+                        <select id="selectPassageNumber" data-bind='options: PassageNumbers, optionsText: "Text", optionsValue: "Text", optionsCaption: "Select Passage Number", value: PassageNumberId' style="width: 100%"></select>
+                        <input type="hidden" id="txtPassageNumber" />
+                    </p>
+                    <p>
+                        <label>Text Type</label>
+                        <select id="selectTextType" data-bind='options: TextTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Type", value: TextTypeId' style="width: 100%"></select>
+                    </p>
+                    <p>
+                        <label>Text Sub Type</label>
+                        <select id="selectTextSubType" data-bind='options: TextSubTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Sub Type", value: TextSubTypeId' style="width: 100%"></select>
+                    </p>
+                    <p>
+                        <label>Flesch Kincaid</label>
+                        <select id="selectFleschKincaidIds" data-bind='options: FleschKincaidIds, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Flesch Kincaid", value: FleschKincaidId' style="width: 100%"></select>
+                    </p>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+
+    <br />
+    <button data-bind="enable: ('@ViewBag.IsPublisher' === 'False' || ('@ViewBag.IsPublisher' === 'True' && PassageDistrictId))" id="setFilterPassage" class="float-right" type="submit">Apply Filters</button>
+    <button id="clearFilterPassage" class="float-right grey" style="margin-right: 5px" type="button">Clear Filters</button>
+    <div class="clear-25"></div>
+
+    <div style="clear: both; height: 20px"></div>
+
+    <div class="block-content form">
+        <h1>Passage/Reference List</h1>
+        <br />
+        <br />
+        <div class="no-margin last-child">
+            <table id="passageListDataTable" class="datatable table no-margin" width="100%">
+                <thead>
+                    <tr>
+                        <th scope="col" class="black-cell"><span class="loading"></span></th>
+                        <th scope="col">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Name
+                        </th>
+                        <th scope="col">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Passage Number
+                        </th>
+                        <th scope="col">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            @LabelHelper.TestGrade
+                        </th>
+                        <th scope="col">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            @LabelHelper.Subject
+                        </th>
+                        <th scope="col">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Text Type
+                        </th>
+                        <th scope="col">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Text Sub Type
+                        </th>
+                        <th scope="col">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Flesch Kincaid
+                        </th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="clear-10" style="height: 20px !important;"></div>
+    </div>
+    <div style="clear: both"></div>
+    <div class="no-margin last-child" style="padding-left: 17px">
+        <button id="btnCloseUserClick" type="button" class="grey classProgramButton" data-dialog="close">Close</button>
+    </div>
+</div>
+
+<input type="hidden" id="QtiItemAssignedQTIRefObjectIDString" />
+
+<script type="text/javascript">
+    function KeyValuePair(data) {
+        var self = this;
+        self.Text = ko.observable(data.Name);
+        self.Value = ko.observable(data.Id);
+    }
+    var passageAvailableAddViewRefClick = false;
+    var vmPassage;
+    var viewModelPassage = function () {
+        var self = this;
+
+        //Grade
+        self.PassageGradeId = ko.observable('');
+        self.PassageGrades = ko.observableArray([]);
+
+        //Subject
+        self.PassageSubjectText = ko.observable('');
+        self.PassageSubjects = ko.observableArray([]);
+
+        //TextType
+        self.TextTypeId = ko.observable('');
+        self.TextTypes = ko.observableArray([]);
+
+        //TextSubType
+        self.TextSubTypeId = ko.observable('');
+        self.TextSubTypes = ko.observableArray([]);
+
+        //FleschKincaid
+        self.FleschKincaidId = ko.observable('');
+        self.FleschKincaidIds = ko.observableArray([]);
+
+        // Passage
+        self.PassageNumberId = ko.observable('');
+        self.PassageNumbers = ko.observableArray([]);
+
+        // District
+        self.PassageDistrictId = ko.observable('');
+        self.PassageDistricts = ko.observableArray([]);
+
+        self.DisplayFilter = ko.computed(function () {
+            self.PassageGrades([]);
+            self.PassageSubjects([]);
+            self.PassageNumbers([]);
+            self.TextTypes([]);
+            self.TextSubTypes([]);
+            self.FleschKincaidIds([]);
+            var url = '@Url.Action("GetFilterByCurrentUser", "PassageEditor")';
+            var districtId = '';
+            if ('@ViewBag.IsPublisher' === 'True') {
+                districtId = self.PassageDistrictId();
+            } else {
+                districtId = getDistrictIdFromURL();
+            }
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {
+                    districtId
+                }
+            }).done(function (data) {
+                var grades = $.map(data.Grades, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageGrades(grades);
+
+                var subjects = $.map(data.Subjects, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageSubjects(subjects);
+
+                var textTypes = $.map(data.TextTypes, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.TextTypes(textTypes);
+
+                var textSubTypes = $.map(data.TextSubTypes, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.TextSubTypes(textSubTypes);
+
+                var fleschKincaids = $.map(data.FleschKincaids, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.FleschKincaidIds(fleschKincaids);
+
+                var passageNumbers = $.map(data.PassageNumbers, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageNumbers(passageNumbers);
+            });
+        });
+
+         //State
+        if ('@ViewBag.IsPublisher' === 'True') {
+            self.PassageStateId = ko.observable('');
+            self.PassageStates = ko.observableArray([]);
+            self.DisplayPassageState = ko.computed(function() {
+                var url = '@Url.Action("GetStates", "PopulateStateDistrict")';
+                $.ajax({
+                    url: url,
+                    type: 'get',
+                    cache: false,
+                    data: {}
+                }).done(function(data) {
+                    var mappedObjects = $.map(data, function(item) {
+                        return new KeyValuePair(item);
+                    });
+                    self.PassageStates(mappedObjects);
+                });
+            });
+
+            // District
+            self.DisplayPassageDistrict = ko.computed(function() {
+                self.PassageDistricts([]);
+                if (self.PassageStateId() != undefined && self.PassageStateId() != '') {
+                    var url = '@Url.Action("GetDistricts", "PopulateStateDistrict")';
+                    $.ajax({
+                        url: url,
+                        type: 'get',
+                        cache: false,
+                        data: { stateId: self.PassageStateId() },
+                    }).done(function (data) {
+                        var mappedObjects = $.map(data, function (item) {
+                            return new KeyValuePair(item);
+                        });
+                        self.PassageDistricts(mappedObjects);
+                        if(self.PassageDistricts().length == 1){
+                            self.PassageDistrictId(self.PassageDistricts()[0].Value());
+                        }
+                    });
+                }
+            });
+        }
+    };
+
+    var oTablePassage;
+    $(function () {
+        vmPassage = new viewModelPassage();
+        ko.cleanNode(document.getElementById("divPassageFilter"));
+        ko.applyBindings(vmPassage, document.getElementById("divPassageFilter"));
+        bindEvents();
+
+        LoadPassageDataTable();
+        initializeDataTable($("#passageListDataTable"));
+    });
+
+    $("#setFilterPassage").click(function () {
+        ReloadPassage();//declaredd in _ListPassageAvailable.cshtml
+    });
+
+    function addReference(control) {
+        passageAvailableAddViewRefClick = true;
+        var qtiRefObjectId = $(control).attr('qtiRefObjectId');
+        var qtiRefObjectName = $(control).attr('qtiRefObjectName');
+        $("#referenceObject ul").append('<li type="objectId" data="' + qtiRefObjectId + '"><input type="button" value="" class="delReference" />Reference# ' + qtiRefObjectId + ': ' + qtiRefObjectName + '<input type="button" value="" class="viewReference" /></li>');
+
+        // Refresh assigned object list
+        var assignedObjectIdList = $("#assignedObjectIdList").val();
+        if (assignedObjectIdList == '') {
+            assignedObjectIdList = qtiRefObjectId;
+        } else {
+            assignedObjectIdList += ';' + qtiRefObjectId;
+        }
+        $("#assignedObjectIdList").val(assignedObjectIdList);
+
+        //Create event click for delete button
+        $(".delReference").click(function () {
+            $(this).parent().remove();
+        });
+
+        $(".viewReference").unbind("click").click(function () {
+            viewRefObjectContent(this);
+        });
+
+        ReloadPassage();
+    }
+    function addReferenceAfterEditFormClose(qtiRefObjectId, qtiRefObjectName ) {
+        passageAvailableAddViewRefClick = true;
+
+        // Refresh assigned object list
+        var assignedObjectIdList = $("#assignedObjectIdList").val();
+        var assignedObjectIds = [];
+        if (assignedObjectIdList == '') {
+            assignedObjectIdList = qtiRefObjectId;
+        } else {
+            assignedObjectIdList += ';' + qtiRefObjectId;
+            assignedObjectIds = assignedObjectIdList.split(";");
+        }
+        $("#assignedObjectIdList").val(assignedObjectIdList);
+
+        if (jQuery.inArray(qtiRefObjectId.toString(), assignedObjectIds) !== -1) {
+            $('li[data="' + qtiRefObjectId + '"]').remove();
+        }
+        $("#referenceObject ul").append('<li type="objectId" data="' + qtiRefObjectId + '"><input type="button" value="" class="delReference" />Reference# ' + qtiRefObjectId + ': ' + qtiRefObjectName + '<input type="button" value="" class="viewReference" /></li>');
+
+        //Create event click for delete button
+        $(".delReference").click(function () {
+            $(this).parent().remove();
+        });
+
+        $(".viewReference").unbind("click").click(function () {
+            viewRefObjectContent(this);
+        });
+    }
+
+    $("#clearFilterPassage").click(function () {
+        $('#txtName').val('');
+        $("select").prop('selectedIndex', 0);
+        $(oTablePassage.fnSettings().aoData).each(function () {
+            $(this.nTr).removeClass('row_selected');
+        });
+    });
+
+    function bindEvents() {
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function (e) {
+
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+
+        });
+    }
+
+    function LoadPassageDataTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            //bStateSave: false,
+            sAjaxSource: getAjaxSourceForPassage(),
+            cache: false,
+            sServerMethod: "POST",
+            fnServerParams: function (aoData) {
+            },
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'PassageId', bSearchable: true, bSortable: false, sWidth: '100px' },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: '185px' },
+                { sType: 'int', sName: 'QTIRefObjectFileRef', bSearchable: true, bSortable: true, sWidth: '100px' },
+                { sType: 'integer', sName: 'GradeOrder', bSearchable: false, bSortable: true, sWidth: '80px' },
+                { sType: 'string', sName: 'Subject', bSearchable: true, bSortable: true, sWidth: '110px' },
+                { sType: 'string', sName: 'TextType', bSearchable: true, bSortable: true, sWidth: '115px' },
+                { sType: 'string', sName: 'TextSubType', bSearchable: true, bSortable: true, sWidth: '120px' },
+                { sType: 'string', sName: 'FleschKinkaidName', bSearchable: true, bSortable: true, sWidth: '110px' },
+                { sType: 'string', sName: 'Grade', bSearchable: true, bSortable: false, bVisible: false, sWidth: '0px' }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#passageListDataTable'), "Loading");
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                if (aData[1] == null || aData[1] == '') {
+                    $('td:eq(1)', nRow).html('[unnamed]');
+                }
+                var assignedObjectIdList = $("#assignedObjectIdList").val();
+                var assignedObjectIds = [];
+                if (assignedObjectIdList && assignedObjectIdList !== '') {
+                    assignedObjectIds = assignedObjectIdList.split(";");
+                }
+                $('td:eq(0)', nRow).html(setIconVisibilityPassage(aData[0], aData[1], assignedObjectIds));
+                $('td:eq(3)', nRow).html(aData[8]);//display @LabelHelper.GradeLabel name on grade column, gradeorder used for sorting
+                $('td:eq(1)', nRow).addClass('cursor-pointer');
+                $('td:eq(1)', nRow).die('click');
+                $('td:eq(1)', nRow).click(function () {
+                    showPassageDetailPopupOnPassageList(aData[0], '');
+                });
+                return nRow;
+            },
+            fnDrawCallback: function () {
+                $('#passageListDataTable').unblock();
+                $('.with-tip').tip();
+                $('.column-sort .sort-up').css('height', '20px');
+                $('.column-sort .sort-down').css('height', '20px');
+
+            }
+        };
+        $("#passageListDataTable").data("options", options);
+    }
+
+    function getAjaxSourceForPassage() {
+        var nameSearch = $("#txtName").val();
+        var passageNumber = $("#selectPassageNumber").val();
+        var qtiRefObjectId = $("#txtPassageNumber").val();
+        var gradeId = $("#selectPassageGrade").val();
+        var subject = '';
+        if ($("#selectPassageSubject").val() && $("#selectPassageSubject").val() != '') {
+            subject = $("#selectPassageSubject option:selected").text();
+        }
+        var textTypeId = $("#selectTextType").val();;
+        var textSubTypeId = $("#selectTextSubType").val();
+        var fleschKincaidId = $("#selectFleschKincaidIds").val();
+
+        if (nameSearch && qtiRefObjectId) {
+            addReferenceAfterEditFormClose(qtiRefObjectId, nameSearch);
+            $("#txtName").val('');
+            $("#txtPassageNumber").val('');
+            nameSearch = '';
+            passageNumber = '';
+        }
+
+        var url = '@Url.Action("GetPassageList", "PassageEditor")/?nameSearch=' + encodeURIComponent(nameSearch) + '&gradeId=' + gradeId + '&subject=' + encodeURIComponent(subject) + '&textTypeId=' + textTypeId + '&textSubTypeId=' + textSubTypeId + '&fleschKincaidId=' + fleschKincaidId + '&passageNumber=' + passageNumber;
+        if ('@ViewBag.IsPublisher' === '@true') {
+            url += '&districtId=' + ($('#selectDistrict').val() || 0);
+        } else {
+            url += generateDistrictIdParamsFromURL();
+        }
+
+        return url;
+    }
+
+    function ReloadPassage() {
+        $("#passageListDataTable").dataTable().fnReloadAjax(getAjaxSourceForPassage());
+    }
+
+    function setIconVisibilityPassage(qtiRefObjectID, qtiRefObjectName, assignedObjectIds) {
+        var addIcon = "";
+        var addString = "";
+        if (jQuery.inArray(qtiRefObjectID.toString(), assignedObjectIds) === -1) {
+            addIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")';
+            addString = '<a id="iconAdd_' + qtiRefObjectID + '" href="javascript:void(0)" onclick="addReference(this);" title="Add Reference" qtiRefObjectID="' + qtiRefObjectID + '" qtiRefObjectName="' + qtiRefObjectName + '" class="with-tip assignMasterStandard" ><img src="' + addIcon + '" width="16" height="16"></a>';
+        }
+
+        var viewDetailIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/view-item.png")';
+        var viewDetailString = '<a id="iconViewDetail_' + qtiRefObjectID + '" href="javascript:void(0)" onclick="ViewPassage(' + qtiRefObjectID + ');" title="View Passage" qtiRefObjectID="' + qtiRefObjectID + '" class="with-tip "><img src="' + viewDetailIcon + '" width="16" height="16"></a>';
+        var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+        var editString = '<a href="javascript:void(0);" onclick="showPassageEditForm(' + qtiRefObjectID + ')" title="Edit Passage" passageId="' + qtiRefObjectID + '" class="with-tip"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 0px"></a>';
+
+        return addString + viewDetailString + editString;
+    }
+
+    function showPassageDetailPopup(id, data, dataTable) {
+        ShowBlock(dataTable, "Opening Passage");
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassageDetailPopUpDialogCSS")
+            .attr("id", "PassageDetailDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowPassageDetail", "QTIItem")\?refObjectID=' + id + '&data=' + data, function () {
+                worker.dialog({
+                    title: $(this).attr("PassageDetail"),
+                    open: function () {
+                        //a new overlay will be generated when opening an dialog
+                        //set zindex of new overlay to make it cover Add Passage Popup
+                        var z_index = $("#addPassageDialog").parent().css('z-index');
+                        $('.ui-widget-overlay:last').css('z-index', parseInt(z_index) + 1);
+                        $("#PassageDetailDialog").parent().css('z-index', parseInt(z_index) + 2);
+                        $("#PassageDetailDialog").prev().css('top', '30px');
+                        $('.ui-widget-overlay:last').height(2000);
+                        dataTable.unblock();
+
+                        $('#divPassageDetail').find('video').trigger('play');
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').empty();
+
+                        if (window.playsound != null) {
+                            window.playsound.pause();
+                        }
+                    },
+                    modal: false,
+                    width: 780,
+                    resizable: false
+                });
+            });
+    }
+
+    function viewRefObjectContent1(control) {
+        passageAvailableAddViewRefClick = true;
+        // Get refObjectId from Add Passage Popup
+        var refObjectId = $(control).attr('data');
+
+        // Get refObjectId from view passage control from Create or Edit page
+        if (refObjectId == null)
+            refObjectId = $(control).parent().attr('data');
+
+        var worker = $('<div />');
+
+        var url = '@Url.Action("ShowPassageDetail", "QTIItem")/?refObjectID=' + refObjectId;
+
+        worker
+            .addClass("dialog")
+            .attr("id", "ShowRefObjectContent")
+            .appendTo("body")
+            .load(url, function () {
+                worker.dialog({
+                    title: $(this).attr("Show Ref Object Content"),
+                    open: function () { $('#divPassageDetail').find('video').trigger('play'); },
+                    close: function () {
+                        $('.ui-widget-overlay').remove();
+                        $(this).remove();
+                        if (window.playsound != null) {
+                            window.playsound.pause();
+                        }
+                    },
+                    modal: false,
+                    width: 750,
+                    resizable: false,
+                });
+            });
+
+        showModalDialogBG();
+    }
+
+    var isShowPassageDetailPopupOnPassageList = false;
+    function showPassageDetailPopupOnPassageList(id, data) {
+        if (isShowPassageDetailPopupOnPassageList)
+            return;
+        isShowPassageDetailPopupOnPassageList = true;
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassageDetailPopupOnQtiItemDetailCSS")
+            .attr("id", "PassageDetailDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowPassageDetail", "QTIItem")\?refObjectID=' + id + '&data=' + encodeURI(data), function () {
+                worker.dialog({
+                    title: $(this).attr("PassageDetail"),
+                    open: function () {
+                        $('#divPassageDetail').find('video').trigger('play');
+
+                        //get the index of the main (filter) popup
+                        var filterZindex = parseInt($('#PopupAddReference').parent().css('z-index'));
+                        //set z-index for the second overlay
+                        $('.ui-widget-overlay').last().css('z-index', filterZindex + 1);
+                        $('.ui-widget-overlay').last().css('height', '2000px');
+                        //then set the z-index for the second popup
+                        $('#PassageDetailDialog').parent().css('z-index', filterZindex + 2);
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+                        isShowPassageDetailPopupOnPassageList = false;
+
+                        if (window.playsound != null) {
+                            window.playsound.pause();
+                        }
+                    },
+                    modal: false,
+                    width: 780,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+</script>
+<script type="text/javascript">
+    function EditPassagePopup(passageId) {
+        var qtiItemGroupId = $('#hdQTIItemGroupID').val();
+        var editUrl = '@Url.Action("Edit","PassageEditor")?id=' + passageId;
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassagePopUpDialogCSS")
+            .attr("id", "editPassageDialog")
+            .appendTo("body")
+            .load('@Url.Action("LoadEditPassageForm","PassageEditor")?id=' + passageId + '&firstTime=true&from=fromItemEditor' + '&qtiItemGroupId=' + qtiItemGroupId, function () {
+                worker.dialog({
+                    open: function () {
+                        //get the index of the main (filter) popup
+                        var filterZindex = parseInt($('#PopupAddReference').parent().css('z-index'));
+                        //set z-index for the second overlay
+                        $('.ui-widget-overlay').last().css('z-index', filterZindex + 1);
+                        $('.ui-widget-overlay').last().css('height', '2000px');
+                        //then set the z-index for the second popup
+                        $('#PassageDetailDialog').parent().css('z-index', filterZindex + 2);
+
+                        $('#tips').html('');
+                        $('#editPassageDialog').prev('.ui-widget-header').css('top', '70px');
+                        $('h1').css('line-height', '19.8px');
+                        $('.cke_editor_passageContent_dialog').remove();//clear dialog of image upload ,video upload
+                    },
+                    title: $(this).attr("Standard"),
+                    close: function () {
+
+                        $('.ui-widget-overlay').last().remove();//will be remove when table display completelly
+                        $(this).remove();
+                        $('#tips').html('');
+
+                        if (window.playsound != null) {
+                            window.playsound.pause();
+                        }
+                    },
+                    modal: false,
+                    width: 984,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+
+    function numberTextBox_Keydown(e) {
+        // Allow: backspace, delete, tab, escape, enter and .
+        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+            // Allow: Ctrl+A
+            (e.keyCode == 65 && e.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (e.keyCode >= 35 && e.keyCode <= 39)) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+    }
+
+    $("#txtPassageNumber").keydown(function (e) {
+        numberTextBox_Keydown(e);
+    });
+    function ViewPassage(qtiRefObjectID) {
+        showPassageDetailPopupOnPassageList(qtiRefObjectID, '');
+    }
+</script>

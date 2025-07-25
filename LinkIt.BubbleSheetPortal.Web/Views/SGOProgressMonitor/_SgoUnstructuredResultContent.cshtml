@@ -1,0 +1,142 @@
+@using LinkIt.BubbleSheetPortal.Models.SGO
+@using LinkIt.BubbleSheetPortal.Web.Helpers.SGO
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGO.SGOProgressMonitorViewModel
+<fieldset class="grey-bg qtiItemSelector" id="fieldsetSgoResult">
+    <legend>SGO Results</legend>
+    <fieldset class="grey-bg qtiItemSelector" style="padding-top: 0;">
+        <div class="columns">
+            <input type="hidden" id="isHavePosstAssessment" value="@(Model.IsHavePosstAssessment.ToString())"/>
+            <input type="hidden" id="idhdfGeneratedDate" value="@Model.GeneratedDate"/>
+            <table id="dataTableEstablishStudentGroups" class="datatable table table-sgo table-sgo-student table-sgo-student-modified no-margin" style="width: 833px;">
+                <thead>
+                    <tr>
+                        <th scope="col">Goal
+                        </th>
+                        <th scope="col">Teacher SGO Score
+                        </th>
+                        <th scope="col">Total Teacher SGO Score
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var sgoGroup in Model.SgoGroups)
+                    {
+                        <tr>
+                            <td>
+                                @Html.Raw(sgoGroup.TargetScoreCustom)
+                            </td>
+                            <td>
+                                @sgoGroup.TeacherSGOScoreCustom
+                            </td>
+
+                            @if (Model.SgoGroups.IndexOf(sgoGroup) == 0)
+                            {
+                                <td rowspan="@Model.SgoGroups.Count" style="text-align: center; vertical-align: middle;">
+                                    @if (!string.IsNullOrEmpty(Model.TotalTeacherSGOScoreCustom))
+                                    {
+                                        <span>@Model.TotalTeacherSGOScoreCustom</span>
+                                        @*<br />
+                                        @Model.DescriptiveLabel
+                                        *@
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
+    <br />
+    
+    <div id="divIdGeneratedDate" class="float-right" style="font-style: italic; display: none;">
+        @Model.GeneratedDate
+    </div>
+</fieldset>
+<br />
+<div class="clear"></div>
+<div class="float-right">
+    <button id="btnScoreSgoResult" type="button">Score SGO Results</button>
+</div>
+<br />
+<br />
+
+<script>
+    $(function () {
+        if (@Model.PermissionAccess != 3) //Full Update
+        {
+            LockAllUI();
+        }
+
+        var startTimeISOString = $('#idhdfGeneratedDate').val();
+        if (startTimeISOString !== '') {
+            //console.log('start: ' + startTimeISOString);
+            var startTime = new Date(startTimeISOString + ' UTC');
+            //console.log('new: ' + startTime);
+
+            //var m_names = new Array("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
+            //var curr_date = startTime.getDate();
+            //var curr_month = startTime.getMonth();
+            //var curr_year = startTime.getFullYear();
+            //var vResult = 'Generated on ' + m_names[curr_month] + ' ' + curr_date + ', ' + curr_year;
+            var vResult = 'Generated on ' + displayDateWithFormat(startTime.getTime());
+            //console.log('Caculate: ' + vResult);
+            $('#idhdfGeneratedDate').val(vResult);
+            $('#divIdGeneratedDate').html(vResult);
+            $('#divIdGeneratedDate').show();
+        }
+    });
+
+    
+
+    $('#btnScoreSgoResult').click(function () {
+        $('#btnScoreSgoResult').attr('disabled', 'disabled');    
+        var url = '@Url.Action("LoadSetUnstructuredTargetScore", "SGOProgressMonitor")?sgoId=' + $('#sgoId').val();
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divPopup").append('<div id="popupSetTargetScore" class="dialog"></div>');
+                $("#popupSetTargetScore").append(html);
+                $('#popupSetTargetScore').dialog({
+                    title: "",
+                    open: function () {
+                        var $doc = $(document);
+                        var $overlay = $('<div/>');
+                        $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                        //Create overlay for popup
+                        $overlay
+                            .addClass('my-overlay')
+                            .css({
+                                'background-color': 'black',
+                                'z-index': $('.ui-dialog').css('z-index') - 1,
+                                'width': $doc.width() + 'px',
+                                'height': $doc.height() + 'px',
+                                'opacity': '0.3',
+                                'position': 'absolute',
+                                'top': '0',
+                                'left': '0'
+                            });
+
+                        $overlay.appendTo($('body'));
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#btnScoreSgoResult').removeAttr('disabled', 'disabled');    
+                        $('#popupSetTargetScore').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 'auto',
+                    minWidth: '300px',
+                    maxWidth: '900px',
+                    resizable: false
+                });
+            });
+    });
+</script>

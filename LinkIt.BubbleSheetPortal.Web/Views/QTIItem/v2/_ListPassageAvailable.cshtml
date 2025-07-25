@@ -1,0 +1,324 @@
+<style type="text/css">
+    tr.even.row_selected td {
+        background-color: var(--blue7) !important;
+    }
+    tr.odd.row_selected td {
+        background-color: var(--blue7) !important;
+    }
+ </style>
+<style>
+    #dataTablePassage tbody tr {
+        height: 100% !important;/* Fix for IE9*/
+     }
+    #dataTablePassage .dataTables_empty div {
+         width: 416px !important;
+     }
+    .scrollItemDataTablePassage thead,
+    .scrollItemDataTablePassage tbody{display: block;}
+    .scrollItemDataTablePassage tbody {
+        height: 299px;
+        overflow: auto;
+    }
+    .scrollItemDataTablePassage{
+        width: 416px !important;
+    }
+    .scrollItemDataTablePassage tbody td {
+        word-wrap: break-word;
+    }
+    .scrollItemDataTablePassage tbody td:nth-of-type(1) div
+    {
+        width: 34px;
+    }
+    .scrollItemDataTablePassage tbody td:nth-of-type(2) div
+    {
+        width: 326px;
+    }
+    .noscrollItemDataTablePassage tbody td:nth-of-type(1) div
+    {
+        width: 34px;
+    }
+     .noscrollItemDataTablePassage tbody td:nth-of-type(2) div
+    {
+        width: 347px;
+    }
+     /*IE9*/
+    .scrollItemDataTablePassageIE9 tbody td:nth-of-type(1) div
+    {
+        width: 32px;
+    }
+    #divdataTablePassage {
+        height: 299px !important;
+    }
+    .scrollItemDataTablePassage td img {
+        padding-left: 0px;
+        padding-right: 0px;
+    }
+</style>
+<div class="block-content form" id="divQtiPassageAvailable" style="height:425px;">
+    <div class="toggle" style="padding-top: 0px; height: 30px; margin-top: -55px">
+        <h1 style="margin-top: -5px">Filtered Passages</h1>
+    </div>
+    <div class="no-margin last-child" style="height:435px;overflow: hidden;padding-top: 37px">
+        <table id="dataTablePassage" class="datatable table no-margin scrollItemDataTablePassage" width="100%">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 100px">
+                        <span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        
+                    </th>
+                    <th scope="col">Passage</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script type="text/javascript">
+    var oTablePassage;
+
+    function LoadPassageTable() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceForPassage(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox 
+                var item = null;
+                
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        //not allow user to see searchbox 
+                        if (item.name == 'sSearch') {
+                            item.value = $("#txtName").val();
+                        }
+                        
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                    
+                }
+
+            },
+            //bFilter: false,
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTIRefObjectID', bSearchable: false, bSortable: false, sWidth: '40px' },
+                { sType: 'string', sName: 'Name', bSearchable: false, bSortable: false, sWidth: '400px' }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityPassage(aData[0]));
+                if (aData[1] == '') {
+                    $('td:eq(1)', nRow).html('[unnamed]');
+                }
+                $("#dataTablePassage_filter").hide();
+                $('td:eq(1)', nRow).attr('id', aData[0]);
+                $('td:eq(1)', nRow).attr('data', encodeURIComponent(aData[1]));
+                addWordBreakToTableCell($('td:eq(1)', nRow), 35, aData[1]);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTablePassage'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTablePassage').unblock();
+                $('.with-tip').tip();
+                $("#dataTablePassage_filter").hide();
+                
+                formatTableForAddingVertialScrollBar('dataTablePassage', 'scrollItemDataTablePassage', 'noscrollItemDataTablePassage', 'scrollItemDataTablePassageIE9', 'noscrollItemDataTablePassageIE9');
+              
+            }
+        };
+
+        $("#dataTablePassage").data("options", options);
+        initializeDataTable($("#dataTablePassage"));
+        oTablePassage = $('#dataTablePassage').dataTable();
+        
+        $('#dataTablePassage tbody').click(function (event) {
+            $(oTablePassage.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+            if (event.target.tagName.toUpperCase() == "TD") {
+                if (event.target.id != null && event.target.id.length > 0) {
+                    $(event.target.parentNode).addClass('row_selected');
+                    //alert(event.target.id);
+                    //alert($(event.target).attr("data"));
+                    showPassageDetailPopup(event.target.id, $(event.target).attr("data"), $("#dataTablePassage"));
+                }
+            }
+            if (event.target.parentNode.tagName.toUpperCase() == "TD") {
+                if (event.target.parentNode.id != null && event.target.parentNode.id.length > 0) {
+                    $(event.target.parentNode.parentNode).addClass('row_selected');
+                    //alert(event.target.id);
+                    //alert($(event.target).attr("data"));
+                    showPassageDetailPopup(event.target.parentNode.id, $(event.target).attr("data"), $("#dataTablePassage"));
+                }
+            }
+        });
+    }
+
+    function getAjaxSourceForPassage() {
+        var nameSearch = $("#txtName").val();
+        //var gradeId = vmPassage.PassageGradeId(); //vmPassage is in parent _Passage.cshtml
+        //var subject = $("#selectPassageSubject:selected").text();
+        //var textTypeId = vmPassage.TextTypeId();
+        //var textSubTypeId = vmPassage.TextSubTypeId();
+        //var fleschKincaidId = vmPassage.FleschKincaidId();
+        var gradeId = $("#selectPassageGrade").val();
+        var subject = '';
+        if($("#selectPassageSubject").val() && $("#selectPassageSubject").val() != '')
+        {
+            subject = $("#selectPassageSubject option:selected").text();
+        }
+        var textTypeId = $("#selectTextType").val();;
+        var textSubTypeId = $("#selectTextSubType").val();
+        var fleschKincaidId = $("#selectFleschKincaidIds").val();
+        return '@Url.Action("GetPassage", "Passage")/?nameSearch=' + encodeURIComponent(nameSearch) + '&gradeId=' + gradeId + '&subject=' + encodeURIComponent(subject) + '&textTypeId=' + textTypeId + '&textSubTypeId=' + textSubTypeId + '&fleschKincaidId=' + fleschKincaidId;
+    }
+
+    function ReloadPassage() {
+        $("#dataTablePassage").dataTable().fnReloadAjax(getAjaxSourceForPassage());
+    }
+
+    function setIconVisibilityPassage(qtiRefObjectID) {
+        var addDisplayed = 'none';
+        var deleteDisplayed = 'none';
+        var qTIRefObjectIdList = $("#QtiItemAssignedQTIRefObjectIDString").val();
+        if (qTIRefObjectIdList == null) {
+            qTIRefObjectIdList = '';
+        }
+        if (qTIRefObjectIdList.indexOf(',-' + qtiRefObjectID + '-') >= 0) {
+            deleteDisplayed = 'inline';
+        } else {
+            addDisplayed = 'inline';//if standard has not been assigned, display green icon,else display the red icon
+        }
+
+        var addIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")';
+        var addString = '<a id="iconAdd_' + qtiRefObjectID + '" href="javascript:void(0)" onclick="AssignPassage(this);" title="Assign Passage" qtiRefObjectID="' + qtiRefObjectID + '" class="with-tip assignMasterStandard" style="display:' + addDisplayed + '"><img src="' + addIcon + '" width="16" height="16"></a>';
+
+        var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/icon-red.png")';
+        var deleteString = '<a id="iconDelete_' + qtiRefObjectID + '" href="javascript:void(0)" onclick="RemovePassage(this);" title="Remove Passage" operation="1" qtiRefObjectID="' + qtiRefObjectID + '" class="with-tip actionIcon removeAssignedMasterStandard" style="display:' + deleteDisplayed + '"><img src="' + deleteIcon + '" width="16" height="16"></a>';
+
+        var result = '';
+        result = addString + deleteString;
+        return result;
+
+    }
+    
+    function AssignPassage(control) {
+        $('#tips').empty();
+        var self = $(control);
+        var qtiRefObjectID = self.attr('qtiRefObjectID');
+
+        $.post('@Url.Action("AssignPassageForManyQtiItems", "Passage")', { qtiItemIdString: '@ViewBag.QtiItemIdString', qtiRefObjectID: qtiRefObjectID }, function (response) {
+            if (response.Success == 'Success') {
+
+                LinkIt.success('#passageNotifications', 'Passage Assigned');
+                var assignedIddList = $("#QtiItemAssignedQTIRefObjectIDString").val();
+                if (assignedIddList == null) {
+                    assignedIddList = '';
+                }
+                assignedIddList = assignedIddList + ",-" + qtiRefObjectID + "-";
+                $("#QtiItemAssignedQTIRefObjectIDString").val(assignedIddList);
+                $("#iconAdd_" + qtiRefObjectID).hide();
+                $("#iconDelete_" + qtiRefObjectID).show();
+                ui.dataTableAssignedPassage.fnReloadAjax(getAjaxSourceForAssignedPassage());//declared in _ListPassageAssigned
+            } else {
+                alert(response.errorMessage);
+                //alertMessageStandardPopUp(response.errorMessage);
+            }
+
+        });
+    }
+
+    function RemovePassage(control) {
+        $('#tips').empty();
+        if (confirm("Do you want to remove this passage?")) {
+            var self = $(control);
+            var qtiRefObjectID = self.attr('qtiRefObjectID');
+
+            $.post('@Url.Action("RemovePassageForManyQtiItems", "Passage")', { qtiItemIdString: '@ViewBag.QtiItemIdString', qtiRefObjectID: qtiRefObjectID }, function (response) {
+                if (response.Success == 'Success') {
+
+                    LinkIt.success('#passageNotifications', 'Passage Removed');
+
+                    var assignedIddList = $("#QtiItemAssignedQTIRefObjectIDString").val();
+                    if (assignedIddList == null) {
+                        assignedIddList = '';
+                    }
+                    assignedIddList = assignedIddList.replace(',-' + qtiRefObjectID + '-', '');
+                    $("#QtiItemAssignedQTIRefObjectIDString").val(assignedIddList);
+
+                    $("#iconAdd_" + qtiRefObjectID).show();
+                    $("#iconDelete_" + qtiRefObjectID).hide();
+                    ui.dataTableAssignedPassage.fnReloadAjax(getAjaxSourceForAssignedPassage());//declared in _ListPassageAssigned
+                    
+                } else {
+                    alert(response.errorMessage);
+                    //alertMessageStandardPopUp(response.errorMessage);
+                }
+
+            });
+        }
+    }
+    function showPassageDetailPopup(id, data, dataTable) {
+        //Show popup
+        //ShowBlock($('#dataTablePassage'), "Openning Passage");
+        ShowBlock(dataTable, "Opening Passage");
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassageDetailPopUpDialogCSS")
+            .attr("id", "PassageDetailDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowPassageDetail")\?refObjectID=' + id + '&data=' + data, function () {
+                worker.dialog({
+                    title: $(this).attr("PassageDetail"),
+                    open: function () {
+                        //a new overlay will be generated when opening an dialog
+                        //set zindex of new overlay to make it cover Add Passage Popup
+                        var z_index = $("#addPassageDialog").parent().css('z-index');
+                        $('.ui-widget-overlay:last').css('z-index', parseInt(z_index) + 1);
+                        $("#PassageDetailDialog").parent().css('z-index', parseInt(z_index) + 2);
+                        $("#PassageDetailDialog").prev().css('top', '30px');
+                        $('.ui-widget-overlay:last').height(2000);
+                        dataTable.unblock();
+
+                        $('#divPassageDetail').find("video[autoplay]").trigger("play");
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:last').remove();
+                        $(this).remove();
+                        $('#tips').empty();
+
+                        if (window.playsound != null) {
+                            window.playsound.pause();
+                        }
+                    },
+                    modal: false,
+                    width: 780,
+                    resizable: false
+                });
+            });
+        showModalDialogBG();
+    }
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+</script>

@@ -1,0 +1,245 @@
+@model int
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog-draggable.css")" rel="stylesheet" type="text/css" />
+
+<style>
+    .center {
+        text-align: center !important;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-AssignParentForm"] .ui-dialog-titlebar {
+        display: none !important;
+    }
+
+    #dataTablePublishedDistrict_wrapper .block-footer {
+        display: none;
+    }
+
+    .title-heading-popup {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+    }
+
+    #closeBtn {
+        top: 0 !important;
+        right: 0 !important;
+    }
+
+    #closeBtn::after {
+        right: 0!important;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-confirmDeletePublishedDistrictDialog"] {
+        height: auto !important;
+        width: auto !important;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-confirmDeletePublishedDistrictDialog"] .ui-dialog-titlebar {
+        display: none
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-confirmDeletePublishedDistrictDialog"] section {
+        margin: 0
+    }
+
+    #confirmDeletePublishedDistrictDialog {
+        padding: 0 !important;
+    }
+
+    #confirmDeletePublishedDistrictDialog .red-btn:hover {
+        background-color: var(--red2) !important;
+    }
+
+    #shareMyDistrict {
+        display: flex;
+        justify-content: flex-end;
+    }
+</style>
+
+<article class="container_12">
+    <section class="grid_9 m-0">
+        <div class="block-border">
+            <div class="block-content form">
+                <div class="title-heading-popup mb-4">
+                    <p class="title-large m-0">
+                        Published @LabelHelper.DistrictLabels
+                    </p>
+                    <a id="closeBtn" href="#closeBtn" class="ui-dialog-titlebar-close ui-corner-all" role="button"><span class="ui-icon ui-icon-closethick">close</span></a>
+                </div>
+                <div id="notificationDeleteDistrict"></div>
+
+                @if (ViewBag.IsPublisher == true)
+                {
+                    <a id="shareNewDistrict" href="#shareNewDistrict" onclick="displayShareNewDistrictView(event)" class="btn btn-link pe-0 mb-4 d-flex justify-content-end">
+                        Share to new @LabelHelper.DistrictLabel
+                        <i class="fa-solid fa-plus ms-2"></i>
+                    </a>
+                }
+                @if (ViewBag.IsDistrictAdmin)
+                {
+                    <a id="shareMyDistrict" href="#shareMyDistrict" onclick="shareToMyDistrict(event)" class="btn btn-link pe-0 mb-4">
+                        Share to my @LabelHelper.DistrictLabel
+                        <i class="fa-solid fa-plus ms-2"></i>
+                    </a>
+                }
+                <div class="no-margin last-child">
+                    <table id="dataTablePublishedDistrict" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="black-cell">Actions</th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    @LabelHelper.DistrictLabel Name
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            bFilter: true,
+            bPaginate: true,
+            sAjaxSource: '@Url.Action("GetPublishedDistrict")?qTIBankId=@Model',
+            bAutoWidth: false,
+            aLengthMenu: [10, 25, 50],
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'int', sName: 'QtiBankDistrictId', bSearchable: false, bSortable: false, sWidth: '40px', sClass: 'alignRight' },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true }
+            ],
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTablePublishedDistrict'), "Loading");
+                return true;
+            },
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).addClass('center');
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0]));
+            },
+            fnDrawCallback: function () {
+                $('#dataTablePublishedDistrict').unblock();
+                $('.with-tip').tip();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTablePublishedDistrict_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTablePublishedDistrict_filter').addClass('data-search');
+            }
+        };
+
+        function setIconVisibility(qtiBankDistrictId) {
+            var deleteIcon = '<span class="icon fa-solid fa-circle-xmark icon-red"></span>';
+            var editString = '<a href="#qtiBankDistrictId" id="bnt_' + qtiBankDistrictId + '" title="Remove" class="with-tip" onclick="depublishDistrict(event,' + qtiBankDistrictId + ')" style="display: inline-block">' + deleteIcon + '</a>';
+
+            return editString;
+        }
+
+        $("#dataTablePublishedDistrict").data("options", options);
+        initializeDataTable($("#dataTablePublishedDistrict"));
+        if('@ViewBag.IsDistrictAdmin'=='True') {
+            if ('@ViewBag.ShareToDistrict' == 'True') {
+                $('#shareMyDistrict').hide();
+            }
+        }
+
+    });
+
+    function depublishDistrict(event, qtiBankDistrictId) {
+        event.preventDefault();
+        deleteDialogPopup("Do you want to remove this @LabelHelper.DistrictLabel?", qtiBankDistrictId)
+    }
+
+    function deleteDialogPopup(message, qtiBankDistrictId) {
+        confirmMessageV2(
+            {
+                message: message,
+                cbYesBtnFuncName: 'HandleOKClickPopup(' + qtiBankDistrictId + ')',
+                cbCancelBtnFuncName: 'HandleCancelClickPopup()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'confirmDeletePublishedDistrictDialog'
+                    }
+                }
+            }
+        )
+    }
+    function HandleOKClickPopup(qtiBankDistrictId) {
+        $("#bnt_" + qtiBankDistrictId).hide();
+        $.post('@Url.Action("DepublishDistrict")', { qTIBankdistrictId: qtiBankDistrictId }, function (response) {
+            if (response == true) {
+                LinkIt.success('#notificationDeleteDistrict', '@LabelHelper.DistrictLabel is removed');
+                ui.dataTablePublishedDistrict.fnDraw();
+                $("#confirmDeletePublishedDistrictDialog").dialog("close");
+                if('@ViewBag.IsDistrictAdmin'=='True') {
+                    $('#shareMyDistrict').show();
+                    }
+            } else {
+                CustomAlert('An error has occured. Please try again.');
+            }
+        });
+    }
+
+    function HandleCancelClickPopup() {
+        $("#confirmDeletePublishedDistrictDialog").dialog("close");
+    }
+
+    function displayShareNewDistrictView(event) {
+            event.preventDefault();
+            $('#listDistrictDiv').hide();
+            $('#shareDistrictDiv').show();
+            $('#shareDistrictDiv').empty();
+            $('#shareDistrictDiv').load('@Url.Action("LoadPublishToDistrict")', function () {
+            });
+        }
+    function shareToMyDistrict(event) {
+        var data = {
+            qtiBankId: @ViewBag.QtiBankId
+        };
+        $.ajax({
+            url: '@Url.Action("ShareToMyDistrict")',
+            dataType: 'json',
+            type: 'POST',
+            data: data,
+            success: function (data) {
+                if(data.Success==true) {
+                    LinkIt.success('#notificationDeleteDistrict', 'The bank has been published to the @LabelHelper.DistrictLabel.');
+                    ui.dataTablePublishedDistrict.fnDraw();
+                    $("#shareMyDistrict").hide();
+                } else {
+                    CustomAlert('An error has occured. Please try again.');
+                }
+
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+
+            }
+        });
+    }
+
+    $('#closeBtn').live('click', function () {
+        $('.ui-widget-overlay').remove();
+        $('#AssignParentForm').remove();
+        ui.dataTable.fnSettings().sAjaxSource = getAjaxSource();
+        ui.dataTable.fnDraw();
+    });
+</script>

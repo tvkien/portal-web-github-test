@@ -1,0 +1,285 @@
+@using LinkIt.BubbleSheetPortal.Web.ViewModels
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+
+<style type="text/css">
+    @Html.Raw(ViewBag.Css)
+</style>
+
+<link href="@BundleHelper.Version("~/Content/css/v2/QTIItemDetail-v2.css")" rel="stylesheet" />
+
+<div>
+    <div class="modal-component-content">
+        <div class="modal-component-body pt-5">
+            <div id="divQtiItem3pDetail">
+                @Html.Raw(ViewBag.HtmlContent)
+                <div>
+                </div>
+                <div style="clear: both"></div>
+                <div id="divQti3pItemDetailPassage">
+                    @* <ul id="listReference">
+                        @for(int i = 0;i < ViewBag.PassageList.Count;i++)
+                        {
+                            var passage = (PassageViewModel) ViewBag.PassageList[i];
+                            if(passage.RefObjectID > 0)
+                            {
+                                <li onclick="showPassageDetailPopupOnQti3pItemDetail(@passage.RefObjectID,'')"><input type="button" class="delReference" value="" >Reference: @passage.RefObjectID<input type="button" class="viewReference" value=""></li>
+                            }
+                            else
+                            {
+                                <li onclick="showPassageDetailPopupOnQti3pItemDetail(0,'@passage.Data')"><input type="button" class="delReference" value="" >Reference: @passage.Data.Substring(0,10) ...<input type="button" class="viewReference" value=""></li>
+                            }
+                        }
+                    </ul>*@
+
+                    @for (int i = 0; i < ViewBag.PassageList.Count; i++)
+                    {
+                        var passage = (PassageViewModel)ViewBag.PassageList[i];
+                        if (passage.Qti3pSourceID > 1)
+                        {
+                            if (passage.RefNumber > 0)
+                            {
+                                <div style="float: left; margin-left: 0px">
+                                    <button onclick="showPassageDetailPopupOnQti3pItemDetail(0, '@passage.Data','@passage.Qti3pPassageID','@passage.Qti3pSourceID')" type="button" class="btn-blue me-1 mb-1 ms-0">@passage.Qti3pSource Reference Number: @passage.RefNumber</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div style="float: left; margin-left: 0px">
+                                    <button onclick="showPassageDetailPopupOnQti3pItemDetail(0, '@passage.Data','@passage.Qti3pPassageID','@passage.Qti3pSourceID')" type="button" class="btn-blue me-1 mb-1 ms-0 with-tip">@passage.Qti3pSource Reference: @passage.Data.Substring(0, 10) ...</button>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            if (passage.RefNumber > 0)
+                            {
+                                <div style="float: left; margin-left: 0px">
+                                    <button onclick="showPassageDetailPopupOnQti3pItemDetail(0, '@passage.Data','@passage.Qti3pPassageID','@passage.Qti3pSourceID')" type="button" class="btn-blue me-1 mb-1 ms-0">Navigate Reference Number: @passage.RefNumber</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div style="float: left; margin-left: 0px">
+                                    <button onclick="showPassageDetailPopupOnQti3pItemDetail(0, '@passage.Data','@passage.Qti3pPassageID','@passage.Qti3pSourceID')" type="button" class="btn-blue me-1 mb-1 ms-0 with-tip">Reference: @passage.Data.Substring(0, 10) ...</button>
+                                </div>
+                            }
+                        }
+
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="modal-component-footer mt-4">
+            <div slot="footer" class="full-width">
+                <button id="btnCloseUserClick" type="button" class="grey classProgramButton" data-dialog="close">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="hdDivXmlContnet" style="display: none">
+    @Html.Raw(ViewBag.XmlContent)
+</div>
+<script type="text/javascript">
+    function ReplaceSimplechoice(selector) { //do for LNKT-12583
+
+        $(selector + ' .simpleChoice').replaceWith(function () {
+
+            var newSimplechoice = $('<li/>');
+            CopyAttributes($(this), newSimplechoice);
+            //get the html inside
+            var content = $(this).html();
+            var answer = $('<div styleName="answer" class="answer">');
+            answer.html(content);
+            newSimplechoice.prepend(answer);
+            //newSimplechoice.addClass('simpleChoiceMainBody');
+            return newSimplechoice;
+        });
+    }
+
+    function CopyAttributes(from, to) {
+        var attrs = from.prop("attributes");
+        $.each(attrs, function (index, attribute) {
+            to.attr(attribute.name, attribute.value);
+        });
+    }
+</script>
+<script type="text/javascript">
+    (function () {
+        loadContent();
+        ReplaceSimplechoice('.choiceInteraction');
+        MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+        $("#divQtiItem3pDetail").find('span[class="math-tex"]').each(function (index, value) {
+            var span = $(value);
+            //add display:inline-block
+            span.css('display', 'inline-block');
+        });
+
+        // Remove title attribute of HtmlContent
+        $('.assessmentItem').attr('title', '');
+    })();
+    var correctAnswer = '';
+    function loadContent() {
+
+        $("#hdDivXmlContnet").find('responseDeclaration correctresponse value').each(function () {
+            correctAnswer += '-' + $(this).text() + '-,';
+
+        });
+        $("#hdDivXmlContnet").find('responseDeclaration correctResponse value').each(function () {
+            correctAnswer += '-' + $(this).text() + '-,';
+
+        });
+        $(".simpleChoice").each(function (index, value) {
+            var divSimpleChoice = value;
+
+            if (divSimpleChoice != null) {
+                if (divSimpleChoice.attributes["identifier"] != null) {
+                    var identifier = divSimpleChoice.attributes["identifier"];
+                    if (isNumber(identifier))//not a number
+                    {
+                        $(divSimpleChoice).addClass("simpleChoice2");
+                    } else {
+                        $(divSimpleChoice).addClass("simpleChoice");
+                    }
+                    var span = $(divSimpleChoice).find('span').first();
+                    if (span != null) {
+                        var iconCheck = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/square-check-16.svg")';
+                        var iconUnCheck = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/square-uncheck-16.svg")';
+                        var idx = correctAnswer.indexOf('-' + identifier.nodeValue + '-,');
+                        var img = '';
+                        if (idx >= 0) {
+                            //correct answer
+                            /*<div class="simpleChoice" identifier="A">
+                                <div class="answer" stylename="answer">
+                                    <p>
+                                        <span>Answer A</span>
+                                    </p>
+                                </div>
+                            </div>
+                            */
+                            img = '<img src="' + iconCheck + '" width="18" height="22" style="margin-right: 8px !important">';
+                        } else {
+                            img = '<img src="' + iconUnCheck + '" width="18" height="22" style="margin-right: 8px !important">';
+                        }
+
+                        var html = $(span).parent().html();
+                        //html += img;
+                        html = img + html;//LNKT-5818 check icon is moved
+                        $(span).parent().html(html);
+
+                    }
+                }
+            }
+        });
+
+    }
+
+
+    function isNumber(n) {
+        return !isNaN(parseFloat(n)) && isFinite(n);
+    }
+
+</script>
+<script type="text/javascript">
+
+    function showPassageDetailPopupOnQti3pItemDetail(id, data,qti3pPassageId, qti3pSourceId) {
+        var worker = $('<div />');
+        worker
+            .addClass("dialog PassageDetailPopupOnQtiItemDetailCSS")
+            .attr("id", "PassageDetailDialog")
+            .appendTo("body")
+            .load('@Url.Action("ShowPassageDetail", "QTIItem")\?refObjectID=' + id + '&data=' + encodeURI(data) + '&qti3pPassageId='+ qti3pPassageId + '&qti3pSourceId=' + qti3pSourceId, function () {
+                worker.dialog({
+                    title: $(this).attr("PassageDetail"),
+                    open: function () {
+                        //a new overlay will be generated when opening an dialog
+                        //set zindex of new overlay to make it cover Filter Item From Library
+                        var z_index = $("#PassageDetailDialog").parent().css('z-index');
+                        $('.ui-widget-overlay:first').css('z-index', parseInt(z_index) + 1);
+                        $("#PassageDetailDialog").parent().css('z-index', parseInt(z_index) + 2);
+                        $("#PassageDetailDialog").prev().css('top', '30px');
+                        $('.ui-widget-overlay:first').height(2000);
+
+                        $('#divPassageDetail').find('video').trigger('play');
+                    },
+                    close: function () {
+                        $('.ui-widget-overlay:first').remove();
+                        $(this).remove();
+                        $('#tips').html('');
+
+                        if (window.playsound != null) {
+                            window.playsound.pause();
+                        }
+                    },
+                    modal: false,
+                    width: 780,
+                    resizable: false,
+                    position: {
+                        my: "center",
+                        at: "center",
+                        of: window
+                    }
+                });
+            });
+        showModalDialogBG();
+    }
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+    function AdjustQti3pItemDetail() {
+
+        $("#divQtiItem3pDetail .answerText").each(function (index, value) {
+            //sometime the answer has special xmlcontent structure //LNKT-6197
+            AdjustQti3pItemAnswers(value);
+        });
+
+        $(".itemBody div[identifier]").each(function (index, value) {
+            AdjustQti3pItemAnswers(value);
+        });
+        $(".itembody div[identifier]").each(function (index, value) {
+            AdjustQti3pItemAnswers(value);
+        });
+
+    }
+    function AdjustQti3pItemAnswers( item) {
+        var divAnswerText = item;
+        //add the image checkbox for each answer
+        var identifier = divAnswerText.attributes["identifier"];
+        var src = '';
+        if (identifier != null) {
+            var iconCheck = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/square-check-16.png")';
+            var iconUnCheck = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/square-uncheck-16.png")';
+            var idx = correctAnswer.indexOf('-' + identifier.nodeValue + '-,');
+            var img = '';
+            if (idx >= 0) {
+                img = '<img src="' + iconCheck + '" width="14" height="14" style="margin-right: 6px;margin-right:0px">';
+                src = iconCheck;
+            } else {
+                img = '<img src="' + iconUnCheck + '" width="14" height="14" style="margin-right: 6px;margin-right:0px">';
+                src = iconUnCheck;
+            }
+
+            var divAnswer = $(divAnswerText).children().first();
+            if (divAnswer != null) {
+                //check if the checkbox is existing or not
+                var html = divAnswer.html();
+                src = src.trim();
+                if (src.length > 1) {
+                    src = src.substring(1, src.length); //remove the firt character '/'
+                }
+                var imgCheckbox = $(html).filter('img[src="' + src + '"]').first();
+                if (imgCheckbox.length == 0) {
+                    //sometime src starts with '/', check again to make sure
+                    imgCheckbox = $(html).filter('img[src="/' + src + '"]').first();
+                    if (imgCheckbox.length == 0) {
+                        //sometime filter does not work when html is wrapped by tag p
+                        if (html.indexOf(src) < 0) {
+                            html = img + html;
+                            divAnswer.html(html);
+                        }
+                    }
+                }
+            }
+        }
+    }
+</script>

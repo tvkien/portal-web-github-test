@@ -1,0 +1,833 @@
+<style>
+    #divLinkitDefaultTag .block-controls,
+    #divLinkitDefaultTag .block-pagination,
+    #divLinkitDefaultTag .block-footer {
+        display: none !important;
+    }
+
+    .dataTables_empty {
+        text-align: center !important;
+    }
+
+    .divButtonAdd {
+        margin-top: 16px;
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .divButtonAdd input {
+        width: 100%;
+    }
+
+    #btnCancel {
+        display: flex;
+        align-items: center;
+        padding: 11px 32px;
+        font-weight: 900;
+        cursor: pointer;
+        width: fit-content;
+        height: 48px;
+        box-sizing: border-box;
+        border: 0;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        text-decoration: none;
+        color: var(--white) !important;
+    }
+
+    .plButton {
+        background: var(--navyColor);
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+    }
+
+    #ConfirmTopicDeleteDialog,
+    #ConfirmSkillDeleteDialog,
+    #ConfirmOtherDeleteDialog {
+        padding: 0 !important;
+    }
+
+    .ui-autocomplete {
+        z-index: 2000 !important;
+        max-height: 200px !important;
+        overflow-x: hidden;
+        overflow-y: visible;
+    }
+
+    #dataTableTopic,
+    #dataTableSkill,
+    #dataTableOther {
+        display: block;
+        max-height: 250px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    #dataTableTopic tbody,
+    #dataTableSkill tbody,
+    #dataTableOther tbody {
+        border-collapse: collapse;
+        width: 100%;
+        display: table;
+    }
+
+    #dataTableTopic thead,
+    #dataTableSkill thead,
+    #dataTableOther thead {
+        width: 100%;
+        position: sticky;
+        top: 0;
+        z-index: 12;
+        border-collapse: collapse;
+        display: table;
+    }
+
+    #dataTableTopic tbody tr td:first-child,
+    #dataTableSkill tbody tr td:first-child,
+    #dataTableOther tbody tr td:first-child {
+        text-align: center !important;
+        width: 92px;
+    }
+
+    #dataTableTopic thead tr th,
+    #dataTableSkill thead tr th,
+    #dataTableOther thead tr th {
+        border-bottom: none;
+    }
+</style>
+
+<section class="mb-0">
+    <div class="form LinkitDefaultTagForm">
+        <p class="title-large" style="font-size: 1.125rem !important">
+            @if (ViewBag.HasManyQtiItem)
+            {
+                <text>
+                    Shared Tags
+                </text>
+            }
+            else
+            {
+                <text>
+                    Associated Tags
+                </text>
+            }
+        </p>
+        <div class="d-flex" style="gap: 16px">
+            <div id="divTopic" style="flex: 1">
+                <table id="dataTableTopic" class="datatable table no-margin noPadding dataTableDefaultTagStyle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Actions</th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Topics
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <div class="divButtonAdd">
+                    <input type="text" id="Topic" maxlength="200" />
+                    <button id="btnAddTopic" type="button" class="btn-red m-0" tabindex="3" onclick="AddTopic()">Add</button>
+                </div>
+            </div>
+            <div id="divSkill" style="flex: 1">
+                <table id="dataTableSkill" class="datatable table dataTableDefaultTagStyle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Actions</th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Skills
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <div class="divButtonAdd">
+                    <input type="text" id="Skill" maxlength="400" />
+                    <button id="btnAddSkill" type="button" class="btn-red m-0" tabindex="3" onclick="AddSkill()">Add</button>
+                </div>
+            </div>
+            <div id="divOther" style="flex: 1">
+                <table id="dataTableOther" class="datatable table dataTableDefaultTagStyle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Actions</th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Other
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <div class="divButtonAdd">
+                    <input type="text" id="Other" maxlength="400" />
+                    <button id="btnAddOther" type="button" class="btn-red m-0" tabindex="3" onclick="AddOther()">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<script type="text/javascript">
+
+    $(function() {
+        PopulateTopic();
+        PopulateSkill();
+        PopulateOther();
+        $("#dataTableTopic_wrapper").css("margin","0");
+        $("#dataTableSkill_wrapper").css("margin","0");
+        $("#dataTableOther_wrapper").css("margin","0");
+        bindEvents();
+
+        var firstTimeTopic = true;
+        $("#Topic").keyup(function () {
+            if ($.trim($("#Topic").val()).length > 0) {
+                $("#btnAddTopic").addClass('resource-green-button');
+                $("#btnAddTopic").removeClass('grey');
+            } else {
+                $("#btnAddTopic").removeClass('resource-green-button');
+                $("#btnAddTopic").addClass('grey');
+            }
+        });
+        var firstTimeSkill = true;
+        $("#Skill").keyup(function () {
+            if ($.trim($("#Skill").val()).length > 0) {
+                $("#btnAddSkill").addClass('resource-green-button');
+                $("#btnAddSkill").removeClass('grey');
+            } else {
+                $("#btnAddSkill").removeClass('resource-green-button');
+                $("#btnAddSkill").addClass('grey');
+            }
+        });
+        var firstTimeOther = true;
+        $("#Other").keyup(function () {
+            if ($.trim($("#Other").val()).length > 0) {
+                $("#btnAddOther").addClass('resource-green-button');
+                $("#btnAddOther").removeClass('grey');
+            } else {
+                $("#btnAddOther").removeClass('resource-green-button');
+                $("#btnAddOther").addClass('grey');
+            }
+        });
+
+        $("#Other").autocomplete({
+            source: function (request, response) {
+                $.ajax({
+                    url: '@Url.Action("GetSearchAllOthersTags", "VirtualTest")',
+                    type: "get",
+                    dataType: "json",
+                    data: {
+                        tagSearch: encodeURIComponent(htmlEncode(request.term)),
+                        virtualQuestionIdString: '@ViewBag.VirtualQuestionIdString'
+                    },
+                    success: function (data) {
+                        response(data);
+                    }
+                });
+            },
+            minLength: 2
+        });
+
+        $("#Topic").autocomplete({
+            source: function (request, response) {
+                $.ajax({
+                    url: '@Url.Action("GetSearchAllTopicTags", "VirtualTest")',
+                    type: "get",
+                    dataType: "json",
+                    data: {
+                        tagSearch: encodeURIComponent(htmlEncode(request.term)),
+                        virtualQuestionIdString: '@ViewBag.VirtualQuestionIdString'
+                    },
+                    success: function (data) {
+                        response(data);
+                    }
+                });
+            },
+            minLength: 2
+        });
+
+        $("#Skill").autocomplete({
+            source: function (request, response) {
+                $.ajax({
+                    url: '@Url.Action("GetSearchAllSkillTags", "VirtualTest")',
+                    type: "get",
+                    dataType: "json",
+                    data: {
+                        tagSearch: encodeURIComponent(htmlEncode(request.term)),
+                        virtualQuestionIdString: '@ViewBag.VirtualQuestionIdString'
+                    },
+                    success: function (data) {
+                        response(data);
+                    }
+                });
+            },
+            minLength: 2
+        });
+    });
+
+    function PopulateTopic() {
+
+        var optionsTopic = {
+            bServerSide: true,
+            bFilter:false, // not allow search filter
+            sAjaxSource: '@Url.Action("GetMutualTopicsOfVirtualQuestions")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "virtualQuestionIdString", value: '@ViewBag.VirtualQuestionIdString' },
+                    { name: "rubricCategoryId", value: Number.isInteger(vm.selectedCategoryId()) ? vm.selectedCategoryId() : 0 }
+                );
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        //when passing parameter to searchbox then click on allpy filter, tabase does not recognize parameter, need to assign parameter to searchbox manually
+                        if (item.value.length == 0 && $("input[aria-controls|='dataTableTopic']").val().length > 0) {
+                            item.value = $("input[aria-controls|='dataTableTopic']").val();
+                        }
+
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''");
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;//only process searchbox
+                    }
+                    if(item.name =='iDisplayLength') {
+                        item.value = 10000;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            "oLanguage": {
+                "sEmptyTable": "No Tag"
+            },
+            bPaginate: false,
+            iDisplayLength: 1000,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'TopicID', bSearchable: false, bSortable: false, sWidth: "92px"},
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true},
+                { sType: 'integer', sName: 'RubricQuestionCategoryID', bSearchable: false, bSortable: false, bVisible: false}
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(DisplayIconTopic(aData[0], aData[2]));
+                $('td:eq(1)', nRow).html($('<div />').text(aData[1]).html());
+                addWordBreakToTableCell($('td:eq(1)', nRow), 25, aData[1]);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableTopic'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableTopic').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        $("#dataTableTopic").data("options", optionsTopic);
+        initializeDataTable($("#dataTableTopic"));
+    }
+
+    function DisplayIconTopic(topicId, rubricQuestionCategoryId) {
+        var removeIcon = '<span class="icon fa-solid fa-circle-minus icon-red"></span>';
+        var removeIconLink = '<a href="javascript:void(0);" title="Remove" class="with-tip" style="display:inline-block"'
+            + 'onclick="RemoveTopicTag('+ topicId + ',' + rubricQuestionCategoryId + ')"'
+            + '>' + removeIcon + '</a>';
+        return removeIconLink;
+    }
+    function RemoveTopicTag(topicId, rubricQuestionCategoryId) {
+        ConfirmTopicDelete("Do you want to remove this tag?", topicId, rubricQuestionCategoryId);
+
+    }
+    function AddTopic() {
+        if (!vm.isReadyToAssign()) {
+            vm.isInvalidCategory(true);
+            return;
+        } else {
+            vm.isInvalidCategory(false);
+        }
+
+        var name = $("#Topic").val();
+        name = $.trim(name);
+        if(name.length == 0) {
+            return;
+        }
+        if(name.length > 200) {
+            CustomAlert("Name of Topic Tag is not over 200 characters.",true);
+            return;
+        }
+        $("#btnAddTopic").attr('disabled', 'disabled');
+
+        $.ajax({
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            url: '@Url.Action("AssignTopicTagForVirtualQuestions")',
+            data: JSON.stringify({
+                virtualQuestionIdString: '@ViewBag.VirtualQuestionIdString',
+                name: encodeURIComponent(name),
+                questionCategoryTags: vm.questionCategoryTags()
+            }),
+            traditional: true,
+            success: function (response) {
+                if (response.Success == 'Success') {
+                    ui.dataTableTopic.fnDraw();
+                    $("#btnAddTopic").removeAttr('disabled');
+                } else {
+                    CustomAlert(response.errorMessage);
+                    $("#btnAddTopic").removeAttr('disabled');
+                }
+            },
+            error: function (xhr, status, error) {
+                CustomAlert(error);
+                $("#btnAddTopic").removeAttr('disabled');
+            }
+        });
+    }
+
+    function PopulateSkill() {
+
+        var optionsSkill = {
+            bServerSide: true,
+            bFilter:false, // not allow search filter
+            sAjaxSource: '@Url.Action("GetMutualSkillsVirtualQuestions")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "virtualQuestionIdString", value: '@ViewBag.VirtualQuestionIdString' },
+                    { name: "rubricCategoryId", value: Number.isInteger(vm.selectedCategoryId()) ? vm.selectedCategoryId() : 0 }
+                );
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        //when passing parameter to searchbox then click on allpy filter, tabase does not recognize parameter, need to assign parameter to searchbox manually
+                        if (item.value.length == 0 && $("input[aria-controls|='dataTableSkill']").val().length > 0) {
+                            item.value = $("input[aria-controls|='dataTableSkill']").val();
+                        }
+
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''");
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;//only process searchbox
+                    }
+                    if(item.name =='iDisplayLength') {
+                        item.value = 10000;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            "oLanguage": {
+                "sEmptyTable": "No Tag"
+            },
+            bPaginate: false,
+            iDisplayLength: 1000,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'LessonOneID', bSearchable: false, bSortable: false, sWidth: "92px"},
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true},
+                { sType: 'integer', sName: 'RubricQuestionCategoryID', bSearchable: false, bSortable: false, bVisible: false}
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(DisplayIconSkill(aData[0], aData[2]));
+                $('td:eq(1)', nRow).html($('<div />').text(aData[1]).html());
+                addWordBreakToTableCell($('td:eq(1)', nRow), 25, aData[1]);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableSkill'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableSkill').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        $("#dataTableSkill").data("options", optionsSkill);
+        initializeDataTable($("#dataTableSkill"));
+    }
+    function DisplayIconSkill(lessonOneId, rubricQuestionCategoryId) {
+        var removeIcon = '<span class="icon fa-solid fa-circle-minus icon-red"></span>';
+        var removeIconLink = '<a href="javascript:void(0);" title="Remove" class="with-tip" style="display:inline-block"'
+            + 'onclick="RemoveSkillTag(' + lessonOneId + ',' + rubricQuestionCategoryId + ')"'
+            + '>' + removeIcon + '</a>';
+        return removeIconLink;
+    }
+    function RemoveSkillTag(lessonOneId, rubricQuestionCategoryId) {
+        ConfirmSkillDelete("Do you want to remove this tag?",lessonOneId, rubricQuestionCategoryId);
+
+    }
+    function AddSkill() {
+        if (!vm.isReadyToAssign()) {
+            vm.isInvalidCategory(true);
+            return;
+        } else {
+            vm.isInvalidCategory(false);
+        }
+
+        var name = $("#Skill").val();
+        name = $.trim(name);
+        if(name.length == 0) {
+            return;
+        }
+        if(name.length > 400) {
+            CustomAlert("Name of Skill Tag is not over 400 characters.");
+            return;
+        }
+        $("#btnAddSkill").attr('disabled', 'disabled');
+
+        $.ajax({
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            url: '@Url.Action("AssignSkillTagForVirtualQuestions")',
+            data: JSON.stringify({
+                virtualQuestionIdString: '@ViewBag.VirtualQuestionIdString',
+                name: encodeURIComponent(name),
+                questionCategoryTags: vm.questionCategoryTags()
+            }),
+            traditional: true,
+            success: function (response) {
+                if (response.Success == 'Success') {
+                    ui.dataTableSkill.fnDraw();
+                    $("#btnAddSkill").removeAttr('disabled');
+                } else {
+                    CustomAlert(response.errorMessage);
+                    $("#btnAddSkill").removeAttr('disabled');
+                }
+            },
+            error: function (xhr, status, error) {
+                CustomAlert(error);
+                $("#btnAddSkill").removeAttr('disabled');
+            }
+        });
+    }
+
+    function PopulateOther() {
+
+        var optionsOther = {
+            bServerSide: true,
+            bFilter:false, // not allow search filter
+            sAjaxSource: '@Url.Action("GetMutualOthersOfVirtualQuestions")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "virtualQuestionIdString", value: '@ViewBag.VirtualQuestionIdString' },
+                    { name: "rubricCategoryId", value: Number.isInteger(vm.selectedCategoryId()) ? vm.selectedCategoryId() : 0 }
+                );
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        //when passing parameter to searchbox then click on allpy filter, tabase does not recognize parameter, need to assign parameter to searchbox manually
+                        if (item.value.length == 0 && $("input[aria-controls|='dataTableOther']").val().length > 0) {
+                            item.value = $("input[aria-controls|='dataTableOther']").val();
+                        }
+
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''");
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;//only process searchbox
+                    }
+                    if(item.name =='iDisplayLength') {
+                        item.value = 10000;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            "oLanguage": {
+                "sEmptyTable": "No Tag"
+            },
+            bPaginate: false,
+            iDisplayLength: 1000,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'LessonTwoID', bSearchable: false, bSortable: false,sWidth:"92px"},
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true },
+                { sType: 'integer', sName: 'RubricQuestionCategoryID', bSearchable: false, bSortable: false, bVisible: false}
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(DisplayIconOther(aData[0], aData[2]));
+                $('td:eq(1)', nRow).html($('<div />').text(aData[1]).html());
+                addWordBreakToTableCell($('td:eq(1)', nRow), 25, aData[1]);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableOther'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableOther').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        $("#dataTableOther").data("options", optionsOther);
+        initializeDataTable($("#dataTableOther"));
+    }
+    function DisplayIconOther(lessonTwoId, rubricQuestionCategoryId) {
+        var removeIcon = '<span class="icon fa-solid fa-circle-minus icon-red"></span>';
+        var removeIconLink = '<a href="javascript:void(0);" title="Remove" class="with-tip" style="display:inline-block"'
+            + 'onclick="RemoveOtherTag(' + lessonTwoId + ',' + rubricQuestionCategoryId + ')"'
+            + '>' + removeIcon + '</a>';
+        return removeIconLink;
+    }
+    function RemoveOtherTag(lessonTwoId, rubricQuestionCategoryId) {
+        ConfirmOtherDelete("Do you want to remove this tag?", lessonTwoId, rubricQuestionCategoryId);
+
+    }
+    function AddOther() {
+        if (!vm.isReadyToAssign()) {
+            vm.isInvalidCategory(true);
+            return;
+        } else {
+            vm.isInvalidCategory(false);
+        }
+
+        var name = $("#Other").val();
+        name = $.trim(name);
+        if(name.length == 0) {
+            return;
+        }
+        if(name.length > 400) {
+            CustomAlert("Name of Other Tag is not over 400 characters.");
+            return;
+        }
+        $("#btnAddOther").attr('disabled', 'disabled');
+
+        $.ajax({
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            url: '@Url.Action("AssignOtherTagForVirtualQuestions")',
+            data: JSON.stringify({
+                virtualQuestionIdString: '@ViewBag.VirtualQuestionIdString',
+                name: encodeURIComponent(name),
+                questionCategoryTags: vm.questionCategoryTags()
+            }),
+            traditional: true,
+            success: function (response) {
+                if (response.Success == 'Success') {
+                    ui.dataTableOther.fnDraw();
+                    $("#btnAddOther").removeAttr('disabled');
+                } else {
+                    //alert(response.errorMessage);
+                    CustomAlert(response.errorMessage);
+                    $("#btnAddOther").removeAttr('disabled');
+                }
+            },
+            error: function (xhr, status, error) {
+                CustomAlert(error);
+                $("#btnAddOther").removeAttr('disabled');
+            }
+        });
+    }
+    function bindEvents() {
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function (e) {
+
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+
+        });
+
+    }
+</script>
+<!-- Custom confirm popup window -->
+<script type="text/javascript">
+    function ConfirmTopicDelete(message, id, rubricQuestionCategoryId) {
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section class="mb-0">' +
+            '<div class="block-border" style="background-color: var(--white)">' +
+            '<div class="form">' +
+            '<div style="text-align: center; font-weight: bold; padding: 24px;">' + message +
+            '</div>' +
+            '<div class="plButton">' +
+            '<button id="btnCancel" type="button" name="cancel" onclick="ConfirmTopicDeleteCancelClick()">Cancel</button>' +
+            '<button id="btnOk" class="btn-red" type="button" name="ok" onclick="ConfirmTopicDeleteOkClick(' + id + ')">OK</button>' +
+            '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "ConfirmTopicDeleteDialog")
+            .appendTo("body")
+            .dialog({
+                open: function () {
+                    $('#ConfirmTopicDeleteDialog').prev().css('top', '34px');
+                },
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 420,
+                maxheight: 100,
+                resizable: false
+            });
+
+        $(".ui-dialog").css("height", hbody);
+
+    }
+
+    function ConfirmTopicDeleteOkClick(topicId, rubricQuestionCategoryId) {
+        $.post('@Url.Action("RemoveTopicTagForVirtualQuestions")', {
+            virtualQuestionIdString: '@ViewBag.VirtualQuestionIdString',
+            topicId: topicId,
+            rubricQuestionCategoryId: vm.selectedCategoryId()
+        }, function (response) {
+            if (response.Success == 'Success') {
+                $("#ConfirmTopicDeleteDialog").dialog("close");
+                ui.dataTableTopic.fnDraw();
+            } else {
+                //alert(response.errorMessage);
+                CustomAlert(response.errorMessage);
+            }
+
+        });
+
+    }
+
+    function ConfirmTopicDeleteCancelClick() {
+        $("#ConfirmTopicDeleteDialog").dialog("close");
+    }
+
+    function ConfirmSkillDelete(message, id, rubricQuestionCategoryId) {
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section class="mb-0">' +
+            '<div class="block-border" style="background-color: var(--white)">' +
+            '<div class="form">' +
+            '<div style="text-align: center; font-weight: bold; padding: 24px;">' + message +
+            '</div>' +
+            '<div class="plButton">' +
+            '<button id="btnCancel" type="button" name="cancel" onclick="ConfirmSkillDeleteCancelClick()">Cancel</button>' +
+            '<button id="btnOk" class="btn-red" type="button" name="ok" onclick="ConfirmSkillDeleteOkClick(' + id + ')">OK</button>' +
+            '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "ConfirmSkillDeleteDialog")
+            .appendTo("body")
+            .dialog({
+                open: function () {
+                    $('#ConfirmSkillDeleteDialog').prev().css('top', '34px');
+                },
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 420,
+                maxheight: 100,
+                resizable: false
+            });
+
+        $(".ui-dialog").css("height", hbody);
+
+    }
+
+    function ConfirmSkillDeleteOkClick(lessonOneId, rubricQuestionCategoryId) {
+        $.post('@Url.Action("RemoveSkillTagForVirtualQuestions")', {
+            virtualQuestionIdString: '@ViewBag.VirtualQuestionIdString',
+            lessonOneId: lessonOneId,
+            rubricQuestionCategoryId: vm.selectedCategoryId()
+        }, function (response) {
+            if (response.Success == 'Success') {
+                $("#ConfirmSkillDeleteDialog").dialog("close");
+                ui.dataTableSkill.fnDraw();
+            } else {
+                //alert(response.errorMessage);
+                CustomAlert(response.errorMessage);
+            }
+
+        });
+
+    }
+
+    function ConfirmSkillDeleteCancelClick() {
+        $("#ConfirmSkillDeleteDialog").dialog("close");
+    }
+
+    function ConfirmOtherDelete(message, id, rubricQuestionCategoryId) {
+        var hbody = $("body").height() - 109;
+        var strHtml = '<section class="mb-0">' +
+            '<div class="block-border" style="background-color: var(--white)">' +
+            '<div class="form">' +
+            '<div style="text-align: center; font-weight: bold; padding: 24px;">' + message +
+            '</div>' +
+            '<div class="plButton">' +
+            '<button id="btnCancel" type="button" name="cancel" onclick="ConfirmOtherDeleteCancelClick()">Cancel</button>' +
+            '<button id="btnOk" class="btn-red" type="button" name="ok" onclick="ConfirmOtherDeleteOkClick(' + id + ')">OK</button>' +
+            '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "ConfirmOtherDeleteDialog")
+            .appendTo("body")
+            .dialog({
+                open: function () {
+                    $('#ConfirmOtherDeleteDialog').prev().css('top', '34px');
+                },
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 420,
+                maxheight: 100,
+                resizable: false
+            });
+
+        $(".ui-dialog").css("height", hbody);
+
+    }
+
+    function ConfirmOtherDeleteOkClick(lessonTwoId, rubricQuestionCategoryId) {
+        $.post('@Url.Action("RemoveOtherTagForVirtualQuestions")', {
+            virtualQuestionIdString: '@ViewBag.VirtualQuestionIdString',
+            lessonTwoId: lessonTwoId,
+            rubricQuestionCategoryId: vm.selectedCategoryId()
+        }, function (response) {
+            if (response.Success == 'Success') {
+                $("#ConfirmOtherDeleteDialog").dialog("close");
+                ui.dataTableOther.fnDraw();
+            } else {
+                //alert(response.errorMessage);
+                CustomAlert(response.errorMessage);
+            }
+
+        });
+
+    }
+
+    function ConfirmOtherDeleteCancelClick() {
+        $("#ConfirmOtherDeleteDialog").dialog("close");
+    }
+</script>

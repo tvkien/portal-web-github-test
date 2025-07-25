@@ -1,0 +1,382 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.PassageCreateViewModel
+@{
+    ViewBag.Title = "Create Passage";
+}
+
+<style>
+    #questionType {
+        display: inline-block;
+        float: right;
+        margin-top: -41px;
+        background: none;
+        border: none;
+        margin-right: 167px;
+    }
+
+    #audioQuestion {
+        border: none;
+        box-shadow: 0 0 0;
+    }
+
+    .addAudio {
+        height: 30px;
+        width: 70px;
+        line-height: 30px;
+    }
+
+    .bntCreate {
+        margin-right: 10px;
+    }
+
+    .form-control {
+        width: 288px;
+        color: var(--dark);
+        font-size: 1em;
+        padding: 0.417em;
+        border: 1px solid #89bad3;
+        -moz-border-radius: 0.417em;
+        -webkit-border-radius: 0.417em;
+        -webkit-background-clip: padding-box;
+        border-radius: 0.417em;
+    }
+    /*.my-overlay-custom {
+        z-index: 1020 !important;
+    }
+
+    .PopupAlertPassageName {
+        z-index: 1025 !important;
+    }*/
+</style>
+
+<div id="divPassageCreate" style="margin-top: 0px">
+    <h2 class="header">Add New Passage</h2>
+    <ul style="display: none" id="error-messages-create" class="message error"></ul>
+    <ul style="display: none" id="success-message-create" class="message success">
+        <li>Passage successfully created.</li>
+    </ul>
+    @using (Html.BeginForm("Create", "PassageEditor", FormMethod.Post, new { id = "createPassageForm", @class = "form" }))
+     {
+        <div id="notification"></div>
+        <div class="mb-4">
+            <div class="row g-3">
+                <div class="col-3">
+                    <label>Name</label>
+                    <input type="text" id="txtNameCreate" name="Name" class="full-width" />
+                </div>
+                <div class="col-3">
+                    <label>@LabelHelper.TestGrade</label>
+                    <select id="selectPassageGradeCreate" name="GradeId" data-bind='options: PassageGrades, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select @LabelHelper.TestGrade", value: PassageGradeId' ></select>
+                </div>
+                <div class="col-3">
+                    <label>@LabelHelper.Subject</label>
+                    <div class="block-text-name" style="width: 100%">
+                        <select id="selectPassageSubjectCreate" name="Subject" data-bind='options: PassageSubjects, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Passage @LabelHelper.Subject", value: PassageSubjectText'></select>
+                        <div class="box-select" style="width: 100%">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-3 mt-1">
+                <div class="col-3">
+                    <label>Text Type</label>
+                    <select id="selectTextTypeCreate" name="TextTypeId" data-bind='options: TextTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Type", value: TextTypeId' ></select>
+                </div>
+                <div class="col-3">
+                    <label>Text Sub Type</label>
+                    <div class="block-text-name" style="width: 100%">
+                        <select id="selectTextSubTypeCreate" name="TextSubTypeId" data-bind='options: TextSubTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Sub Type", value: TextSubTypeId'></select>
+                        <div class="box-select" style="width: 100%">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <label>Flesch Kincaid</label>
+                    <select id="selectFleschKincaidIdsCreate" name="FleschKincaidId" data-bind='options: FleschKincaidIds, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Flesch Kincaid", value: FleschKincaidId' ></select>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-component-footer" id="custom-footer" style="margin: 0 -24px -24px -24px">
+            <div slot="footer">
+                <button id="btnCancel" type="button" class="" onclick="backToPassageListCreate()">Cancel</button>
+                <button id="btnSubmit" type="button" class="btn-red" onclick="submitCreatePassage()">Create</button>
+            </div>
+        </div>
+        <input type="hidden" id="SubjectText" name="SubjectText" />
+     }
+</div>
+
+<script type="text/javascript">
+    function CreatePassage() {
+        $('#btnSubmit').disableBt();
+        $('#success-message-create').hide();
+        $('#SubjectText').val($("#selectPassageSubjectCreate option:selected").text());
+        if ($('#SubjectText').val() === 'Select Passage @LabelHelper.Subject') {
+            $('#SubjectText').val('');
+        }
+        $.ajax({
+            url: '@Url.Action("Create", "PassageEditor")',
+            type: 'POST',
+            data: $('#createPassageForm').serialize(),
+            success: function(response) {
+                if (response.Success == true) {
+                    if ('@Model.FromItemSetEditor' == 'True') {
+                            passageCreatedCallbackFromItemSet(response.qtiRefObjectId);//defined in QTIItem/_PassageAssignForm.cshtml
+                    }
+                    if ('@Model.FromItemEditor' == 'True') {
+                        passageCreatedCallbackFromItemEditor(response.qtiRefObjectId);//defined in TestMaker/_PassageAssignForm.cshtml
+                    }
+                }
+                else {
+                    addErrorMessages(response);
+                    $('#error-messages-create').addClass('no-margin');
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+
+    }
+
+    function KeyValuePair(data) {
+        var self = this;
+        self.Text = ko.observable(data.Name);
+        self.Value = ko.observable(data.Id);
+    }
+
+    var vmPassageCreate;
+    var viewModelPassageCreate = function () {
+        var self = this;
+
+        //Grade
+        self.PassageGradeId = ko.observable('');
+        self.PassageGrades = ko.observableArray([]);
+        self.DisplayPassageGradesCreate = ko.computed(function () {
+            var url = '@Url.Action("GetAvailableGrades","PassageEditor")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageGrades(mappedObjects);
+            });
+        });
+
+        //Subject
+        self.PassageSubjectText = ko.observable('');
+        self.PassageSubjects = ko.observableArray([]);
+
+        self.DisplayPassageSubjects = ko.computed(function () {
+            var url = '@Url.Action("GetQtiPassageSubjects", "Passage")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageSubjects(mappedObjects);
+            });
+        });
+
+        //TextType
+        self.TextTypeId = ko.observable('');
+        self.TextTypes = ko.observableArray([]);
+
+        self.DisplayTextType = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PTextType", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.TextTypes(mappedObjects);
+            });
+        });
+
+        //TextSubType
+        self.TextSubTypeId = ko.observable('');
+        self.TextSubTypes = ko.observableArray([]);
+
+        self.DisplayTextSubType = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PTextSubType", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.TextSubTypes(mappedObjects);
+            });
+        });
+
+        //FleschKincaid
+        self.FleschKincaidId = ko.observable('');
+        self.FleschKincaidIds = ko.observableArray([]);
+
+        self.DisplayFleschKincaid = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PFleschKincaid", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function(data) {
+                var mappedObjects = $.map(data, function(item) {
+                    return new KeyValuePair(item);
+                });
+                self.FleschKincaidIds(mappedObjects);
+            });
+        });
+
+    };
+
+    $(function() {
+        vmPassageCreate = new viewModelPassageCreate();
+        ko.cleanNode(document.getElementById("divPassageCreate"));
+        ko.applyBindings(vmPassageCreate, document.getElementById("divPassageCreate"));
+
+        bindEventsCreate();
+
+        $("#selectTextSubTypeCreate").marquee();
+        $("#selectPassageSubjectCreate").marquee();
+    });
+
+    function bindEventsCreate() {
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function(e) {
+
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+
+        });
+    }
+
+    function backToPassageListCreate() {
+        if ('@Model.FromPassageEditor' == 'True') {
+            var url = '@Url.Action("Index", "PassageEditor")';
+            window.location.replace(url);
+        }
+        else if ('@Model.FromItemSetEditor' == 'True') {
+            showPassageFilterFromItemSet(null,null,null,null,null,null);//defined in QtiItem/_PassageAssignForm.cshtml
+        }
+        else if ('@Model.FromItemEditor' == 'True') {
+            showPassageFilterFromItemSet(null, null, null, null, null, null);//defined in TestMaker/_PassageAssignForm.cshtml
+        }
+        else {
+            //close this dialog and display the already created passage in the filter
+            //$('.ui-widget-overlay').last().remove();
+            //$('#createPassageDialog').parent().dialog("close");
+            //$('#createPassageDialog').remove();
+
+        }
+
+    }
+
+    $(function () {
+        $("#createPassageForm").submit(function (e) {
+            e.preventDefault();
+            return;
+        });
+    });
+
+    function submitCreatePassage() {
+        var vName = $('#txtNameCreate').val();
+        if (vName.length > 50) {
+            loadAlertMessage();
+        } else {
+            CreatePassage();
+        }
+    }
+
+    function loadAlertMessage() {
+        var url = '@Url.Action("LoadAlertPassageName", "PassageEditor")';
+        $.ajax(
+            {
+                url: url, cache: false
+            })
+            .done(function (html) {
+                $("#divPassageCreate").append('<div id="PopupAlertPassageName" class="dialog"></div>');
+                $("#PopupAlertPassageName").append(html);
+                $('#PopupAlertPassageName').dialog({
+                    //dialogClass: 'PopupAlertPassageName',
+                    title: "",
+                    open: function () {
+                        var $doc = $(document);
+                        var $body = $('body');
+                        var $overlay = $('<div />');
+                        var $uidialog = $('.ui-dialog');
+                        var zIndexArr = [];
+                        var maxIndex = 0;
+
+                        // Push all zIndex to array
+                        $uidialog.each(function() {
+                            var $self = $(this);
+                            var zIndex = $self.css('z-index').replace('px', '');
+
+                            zIndexArr.push(zIndex);
+                        });
+
+                        // Get max value in array
+                        maxIndex = Math.max.apply(Math, zIndexArr);
+
+                        // Overlay
+                        $overlay
+                            .attr({
+                                'class': 'my-overlay'
+                            })
+                            .css({
+                                'width': $doc.width(),
+                                'height': $doc.height(),
+                                'background-color': '#000',
+                                'opacity': '0.3',
+                                'position': 'absolute',
+                                'top': '0',
+                                'left': '0',
+                                'z-index': maxIndex - 1
+                            });
+
+                        $overlay.appendTo($body);
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupAlertPassageName').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+            ('#PopupAlertPassageName').dialog('close');
+        });
+    }
+
+    function cancelAlertPassage() {
+        $("#PopupAlertPassageName").dialog("close");
+    }
+</script>

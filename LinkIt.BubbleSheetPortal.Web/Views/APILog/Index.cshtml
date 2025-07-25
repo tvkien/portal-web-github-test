@@ -1,0 +1,255 @@
+﻿@{
+    ViewBag.Title = "API Log";
+}
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border" id="selectFilters">
+            <div id="divFilterAPILogs" class="block-content form bubbleSheetSelector">
+                <h1>Filter API Log</h1>
+                <fieldset>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <div class="mb-3">
+                                <label>API</label>
+                                <select id="selectAPI">
+                                    <option value="">ALL</option>
+                                    <option value="districtterms">@LabelHelper.DistrictLabel Term</option>
+                                    <option value="schools">School</option>
+                                    <option value="staffs">Staff</option>
+                                    <option value="students">Student</option>
+                                    <option value="classes">Class</option>
+                                    <option value="programs">Program</option>
+                                    <option value="tests">Test</option>
+                                    <option value="testassignments">Test Assignment</option>
+                                    <option value="testresults">Test Result</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label>From Date</label>
+                                <input type="text" id="selectFromDate" style="width: 235px;" />
+                            </div>
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>@LabelHelper.DistrictLabel</label>
+                                <div class="block-text-name relative">
+                                    <select id="selectDistrict" style="width: 250px;" ></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="colx2-right">
+                            <div class="mb-3">
+                                <label>Status</label>
+                                <select id="selectStatus">
+                                    <option value="">ALL</option>
+                                    <option value="ERROR">ERROR</option>
+                                    <option value="SUCCESS">SUCCESS</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label>To Date</label>
+                                <input type="text" id="selectToDate" style="width: 235px;" />
+                            </p>
+                        </div>
+                    </div>
+                </fieldset>
+                <button id="filterSheets" class="float-right" type="button">Apply Filters</button>
+                <button id="clearFilter" class="float-right grey" type="button" style="margin-right: 5px;">Clear Filters</button>
+                <button id="deleteAllCurrentFilter" class="float-left" type="button" style="margin-right: 2px;">Delete All Per Filters</button>
+                <button id="deleteSelected" class="float-left" disabled="disabled" type="button" style="margin-left: 5px;">Delete Selected</button>
+                <div class="clear"></div>
+            </div>
+        </div>
+        @Html.Partial("_LogResult")
+    </section>
+</article>
+
+
+<script type="text/javascript">
+
+    $(function () {
+        populateDistricts();
+        LoadAPILogs();
+        $('#selectDistrict').marquee();
+        //$("#selectFromDate").datepicker();
+        //$("#selectToDate").datepicker();
+        displayDateWithFormatDatePicker('selectFromDate', '');
+        displayDateWithFormatDatePicker('selectToDate', '');
+    });
+
+    $('#filterSheets').click(function () {
+        $('#filterSheets').attr('disabled', 'disabled');
+        SetupFilters();
+    });
+
+    $('#clearFilter').click(function () {
+        $('#selectFromDate').val('');
+        $('#selectToDate').val('');
+        $('#selectAPI').val('');
+        $('#selectStatus').val('');
+        SetupFilters();
+    });
+
+    function SetupFilters() {
+        //ShowBlock($('#divAPILogResults'), 'Loading');
+        var dataTable = $('#dataTable').dataTable();
+        var settings = dataTable.fnSettings();
+        fnResetAllFilters(settings);
+        dataTable.fnDraw();
+    }
+
+    function FilterColumn(searchTerm, columnIndex, settings) {
+        settings.aoPreSearchCols[columnIndex].sSearch = searchTerm;
+        settings.aoPreSearchCols[columnIndex].bRegex = false;
+        settings.aoPreSearchCols[columnIndex].bSmart = true;
+    }
+
+    function fnResetAllFilters(oSettings) {
+        for (var iCol = 0; iCol < oSettings.aoPreSearchCols.length; iCol++) {
+            oSettings.aoPreSearchCols[iCol].sSearch = '';
+        }
+    }
+
+    $('#deleteAllCurrentFilter').click(function () {
+        $("<section style='z-index: 1002;'><div class='block-border' style='z-index: 1002;'><div class='block-content' style='z-index: 1002;'>" +
+            "<p>Are you sure to delete all logs matching the current filters?</p>" +
+             '<p style="z-index: 1002; text-align:center;"><button id="btnOk" type="button" name="ok" onclick="DeleteAllCurrentFilter();">OK</button>' +
+             '<button id="btnCancel" type="button" name="cancel" onclick="ClosePopupConfirm();">Cancel</button></p>' +
+            "</div></div></section>")
+            .appendTo("section")
+            .addClass("dialog")
+            .dialog({
+                title: $(this).attr("data-dialog-title"),
+                open: function() {                         // open event handler
+                    $(this)                                // the element being dialogged
+                        .parent()                          // get the dialog widget element
+                        .find(".ui-dialog-titlebar-close") // find the close button for this dialog
+                        .hide();                           // hide it
+                },
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 500,
+                resizable: false
+            })
+            .load(this.href, function () {
+            });
+    });
+
+    $('#deleteSelected').click(function () {
+        $('#deleteSelected').attr('disabled', 'disabled');
+        //TODO: Call Store Delete APILog Selected
+        var vListApiLogIds = GetAPILogIdSelected();
+        $.get('@Url.Action("DeleteAPILogByListIDs", "APILog")', { strListIDs: vListApiLogIds }, function (response) {
+            if (response.Success == true) {
+                SetupFilters();
+            }
+            //$('#deleteSelected').removeAttr('disabled');
+        });
+    });
+
+    function DeleteAllCurrentFilter() {
+        $('#deleteAllCurrentFilter').attr('disabled', 'disabled');
+        $.get('@Url.Action("DeleteApiLogByFilter", "APILog")', { APIName: $('#selectAPI').val(), APIStatus: $('#selectStatus').val(), FromDate: $('#selectFromDate').val(), ToDate: $('#selectToDate').val(), DistrictId: $('#selectDistrict').val() }, function (response) {
+            if (response.Success == true) {
+                SetupFilters();
+                $(".dialog").dialog("close");
+            }
+            $('#deleteAllCurrentFilter').removeAttr('disabled');
+        });
+    }
+
+    function ClosePopupConfirm() {
+        $(".dialog").dialog("close");
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', function (districts) {
+            $('#selectDistrict').append($("<option></option>")
+                               .attr("value", -1)
+                               .text("Select @LabelHelper.DistrictLabel"));
+            $('#selectDistrict').append($("<option></option>")
+                               .attr("value", 0)
+                               .text("UNDETERMINED"));
+            addSelectListItems($('#selectDistrict'), districts);
+        });
+    }
+</script>
+
+<style type="text/css">
+    #dataTable_wrapper {
+        margin-bottom: -19px !important;
+    }
+
+    .plButton {
+        text-align: center;
+        position: relative;
+        top: 47px;
+    }
+
+    #btnOk {
+        width: 79px;
+        margin-right: 10px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    .ui-datepicker .ui-datepicker-header {
+        top: 0px;
+    }
+
+    .ui-datepicker .ui-datepicker-prev span,
+    .ui-datepicker .ui-datepicker-next span {
+        background-image: url("/Content/themes/base/images/ui-icons_222222_256x240.png");
+    }
+
+    .ui-datepicker .ui-icon {
+        width: 16px;
+        height: 16px;
+    }
+</style>
+

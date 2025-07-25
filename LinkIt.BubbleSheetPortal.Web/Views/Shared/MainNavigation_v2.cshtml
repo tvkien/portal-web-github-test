@@ -1,0 +1,158 @@
+@using System.Configuration
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using Permissions = LinkIt.BubbleSheetPortal.Models.Permissions
+@using LinkIt.BubbleSheetPortal.Models
+@using LinkIt.BubbleSheetPortal.Web.Security
+
+@{
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    var menuAccess = HelperExtensions.Clone<MenuAccessItems>(HelperExtensions.GetMenuForDistrict(currentUser));
+
+    string strSSOURL = HelperExtensions.BuildUserGuide(currentUser);
+    var openAllApplicationInSameTab = HelperExtensions.OpenAllApplicationInSameTab;
+
+    var strWhiteLable = string.Empty;
+    var vS3URL = HelperExtensions.GetS3CSSURL();
+    var districtId = 0;
+    if (Request.IsAuthenticated)
+    {
+        districtId = HelperExtensions.GetDistrictIdBySubdomain();
+    }
+    if (!string.IsNullOrEmpty(vS3URL))
+    {
+        strWhiteLable = string.Format("{0}{1}.css", vS3URL, HelperExtensions.LoginDistrict);
+    }
+
+    var isShowIconInfo = HelperExtensions.IsShowIconHelpTextInfo(districtId);
+    var isDisableNotificationFeature = HelperExtensions.HasDisableNotificationFeature(currentUser);
+}
+
+<link href="@BundleHelper.Version("~/Content/css/v2/menu.css")" rel="stylesheet" type="text/css" />
+
+<nav class="main-nav" id="main-nav-header">
+    <ol id="breadcrumbHeader" class="breadcrumb breadcrumb-light breadcrumb-header me-auto mb-0">
+    </ol>
+
+    <div class="user-info">
+        <ul id="status-infos">
+            @if (Request.IsAuthenticated)
+            {
+                if (!isDisableNotificationFeature)
+                {
+                    <li class="user-info-bell">
+                        <div id="notification" class="notification">
+                            <a href="#" class="notification-action" v-bind:class="{ 'open': isShowDropdown }" v-on:click.prevent="toggleDropdown">
+                                <span class="menu-icon bell-icon"></span>
+                                <span class="notification-unread" v-bind:class="{ 'open': countUnread > 0 }" v-text="countUnread"></span>
+                            </a>
+                            <div class="notification-dropdown" v-bind:class="{ 'open': isShowDropdown }">
+                                <div class="notification-title">
+                                    <h3 class="h3 modal-heading mb-0">Notifications</h3>
+                                </div>
+                                <div class="notification-content" v-infinite-scroll="loadMoreListNotification()" infinite-scroll-disabled="isBusy" infinite-scroll-distance="15">
+                                    <div class="notification-item" v-for="item in listNotification" v-bind:class="{ 'is-unread': item.IsUnread }" v-on:mouseover="mouseoverNotification(item)">
+                                        <div class="notification-item-icon">
+                                            <span class="icon icon-notification-large"></span>
+                                        </div>
+                                        <div class="notification-item-content" v-html="item.HtmlContent"></div>
+                                    </div>
+                                </div>
+                                <div class="notification-loading" v-show="isShowLoading">
+                                    <span class="notification-spinner">
+                                        <span class="notification-spinner"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                }
+
+                <li class="spaced">
+                    @if (menuAccess.IsDisplaySettingItem)
+                    {
+                        if (!string.IsNullOrEmpty(((UserPrincipal)User).RoleAndGroupName.GroupName))
+
+                        {
+                            <text>
+                                <a href="@Url.Action("Settings", "Account")"><strong>@(((UserPrincipal)User).Name), @(((UserPrincipal)User).RoleAndGroupName.RoleName)</strong> <br /><strong>@(((UserPrincipal)User).RoleAndGroupName.GroupName)</strong> </a>
+                            </text>
+                        }
+                        else
+                        {
+                            <text>
+                                <a href="@Url.Action("Settings", "Account")"><strong>@(((UserPrincipal)User).Name)</strong> <br /><strong>@(((UserPrincipal)User).RoleAndGroupName.RoleAndGroupName)</strong></a>
+                            </text>
+                        }
+                    }
+                    else
+                    {
+                        <text>
+                            <strong>@(((UserPrincipal)User).WelcomeMessage)</strong>
+                        </text>
+                    }
+
+                    <span class="user-submenu uparrow"></span>
+                    <ul id="user-submenu-info" class="dropdown-menu user-dropdown" style="display:none">
+                        @if (((UserPrincipal)User).OriginalID > 0 && (((UserPrincipal)User).OriginalRoleId == 5 || ((UserPrincipal)User).OriginalRoleId == 27))
+                        {
+                            <li>
+                                <a href="javascript:void(0)" onclick="goBackToOriginalUser()">
+                                    Go back to @(((UserPrincipal)User).OriginalUsername)
+                                </a>
+                            </li>
+                        }
+                        else
+                        {
+                            //Allow network admin to move between the district (when he's not in impersonation mode)
+                            if (((UserPrincipal)User).IsNetworkAdmin)
+                            {
+                                if (((UserPrincipal)User).GetMemberListDistrictId().Count >= 2)
+                                {
+                                    <li>
+                                        <a href="javascript:void(0)" id="imgNetworkAdminSelect" onclick="showNetworkAdminSelect()">@ContaintUtil.SELECT_ANOTHER_DISTRICT</a>
+                                        <div id="divNetworkAdminSelectLayout" style="width: 420px; height: 0px">
+                                        </div>
+                                    </li>
+                                }
+                            }
+                        }
+                        <li>
+                            <a href="@Url.Action("LogOff", "Account")" title="Logout">Logout</a>
+                        </li>
+                    </ul>
+                </li>
+            }
+            else
+            {
+                <li>
+                    <a href="@Url.Action("LogOn", "Account")" title="LogOn">Login</a>
+                </li>
+            }
+        </ul>
+    </div>
+</nav>
+
+<script type="text/javascript">
+
+    $(document).ready(function () {
+        handleUserClick();
+    });
+
+    function handleUserClick() {
+        var actionEl = $(".user-submenu");
+        if (!actionEl) return;
+
+        actionEl.on("click", function () {
+            var subMenuInfo = $("#user-submenu-info");
+            if (!subMenuInfo) return;
+
+            if (subMenuInfo.css("display") == 'none') {
+                subMenuInfo.show();
+            }
+            else {
+                subMenuInfo.hide();
+            }
+        });
+    };
+
+</script>

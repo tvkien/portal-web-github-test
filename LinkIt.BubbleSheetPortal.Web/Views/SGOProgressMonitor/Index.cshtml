@@ -1,0 +1,1890 @@
+@{
+    ViewBag.Title = "SGO Progress Monitor & Score";
+}
+
+@using DevExpress.XtraScheduler.Commands.Internal
+@using LinkIt.BubbleSheetPortal.Models.SGO
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGO.SGOMonitorScoreViewModel
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleSGOProgressBundle()
+
+<script src="@Url.Content("~/Scripts/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Lib/handsontable/pro/handsontable.full.min.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Scripts/Lib/handsontable/pro/handsontable.full.min.css")" rel="stylesheet" type="text/css">
+<script src="@Url.Content("~/Scripts/jquery.numeric.min.js")" type="text/javascript"></script>
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptSGOProgressBundle()
+
+<style>
+    .dataTableDefaultTagStyle tbody {
+        height: 158px;
+        overflow: auto;
+        overflow-x: hidden;
+    }
+
+    .dataTableDefaultTagStyle thead,
+    .dataTableDefaultTagStyle tbody {
+        display: block;
+    }
+
+    .dataTables_empty .divContainerStyle {
+        width: 230px !important;
+    }
+
+    .dataTableDefaultTagStyle tbody td:nth-of-type(2) div {
+        width: 192px;
+    }
+
+    .dataTableDefaultTagStyle tbody td:nth-of-type(1) div {
+        width: 20px;
+    }
+
+    .attachment-item {
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+        .attachment-item:hover,
+        .attachment-item:focus {
+            color: #52a6d1;
+            cursor: pointer;
+        }
+
+        .attachment-item > img {
+            width: 22px;
+            position: relative;
+            top: -1px;
+        }
+
+    select[name="selectTestPreAssessmentCustom"] {
+        border-color: transparent;
+    }
+</style>
+
+<article class="container_12" id="idTopNavigation">
+    @Html.Action("LoadNavigation", "SGOManage", new { sgoId = Model.SgoId })
+    <section class="grid_12">
+        <div class="block-border" id="selectFilters">
+            <div class="block-content form">
+                <input type="hidden" id="sgoId" name="sgoId" value="@Model.SgoId" />
+                <input type="hidden" id="monitorProgressDataPointType" />
+                <h1>SGO Results
+                </h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>Passage successfully deleted.</li>
+                </ul>
+                <fieldset class="grey-bg sgo-fieldset">
+                    <div class="columns sgo-columns">
+                        @Html.Raw(Model.DirectionConfigurationValue)
+                    </div>
+                </fieldset>
+
+                <div id="divSgoResult">
+                </div>
+
+                @if (Model.SgoType == ((int) SGOTypeEnum.UnstructuredData))
+                {
+                    <div id="divAttachmentInfo" style="position: relative; top:-22px; width: 40%">
+                        <button id="btnAttach" type="button">Attachment</button>
+                        <input type="hidden" id="txtHiddenAttachUrl" value="@Model.AttachUnstructuredUrl"/>
+                        <div id="divAttachResultInfo"
+                            @if (string.IsNullOrEmpty(Model.AttachUnstructuredUrl))
+                            {
+                                <text>
+                                    style="display: none; visibility: hidden;"
+                                </text>
+                            }
+                            else
+                            {
+                                <text>
+                                    style="display: inline-block;"
+                                </text>
+                            }>
+                            <span class="attachment-item" id="spanAttachFileName" downloadUrl="@Model.AttachUnstructuredDownloadUrl">
+                                @if (Model != null && !string.IsNullOrEmpty(Model.AttachUnstructuredUrl))
+                                {
+                                    @Model.AttachUnstructuredUrl.Substring(@Model.AttachUnstructuredUrl.IndexOf('_') + 1)
+                                }
+                            </span>
+                            <span class="attachment-item with-tip" onclick="removeAttach() " title="Remove Attachment">
+                                <img src="/Content/themes/Constellation/images/icons/fugue/icon-red.png"></span>
+                        </div>
+                        <br />
+                    </div>
+                }
+
+                <div class="clear"></div>
+
+                @if (!Model.IsReviewer)
+                {
+
+                <fieldset>
+                    <legend>Educator Comments (Optional)</legend>
+                    <div class="columns">
+                        <textarea id="idareaEducatorComments" spellcheck="true" rows="10" style="width: 100%" onchange=" DisableMessage(); ">@Html.Raw(Html.Encode(Model.EducatorComments))</textarea>
+                    </div>
+                </fieldset>
+                }
+
+
+                @Html.Action("LoadSGONote", "SGOManage", new { sgoId = Model.SgoId, pageName = LinkIt.BubbleSheetPortal.Models.SGO.SGOPageNameConstant.ProgressMonitor })
+
+                @if (!Model.IsReviewer)
+                {
+                    <br />
+                    <div class="float-right">
+                        <button id="btnSubmitForApprove" type="button" @((Model.IsPostAssessmentLinkitHasTestResult || Model.SgoType == (int)SGOTypeEnum.UnstructuredData) && Model.IsSaveResultScore ? "" : "disabled='disabled'")>Submit For Approval</button>
+                    </div>
+                    <div class="clear"></div>
+                }
+            </div>
+        </div>
+    </section>
+</article>
+<div id="divPopup"></div>
+
+<script>
+    $(function() {
+        $('.stats').addClass('current');
+        $('#rpSGOManager').addClass('current');
+
+        initNavigationTabs(7, @Model.SgoId);
+
+        loadSgoResultContent();
+        registerUploadAttachment();
+
+        if (@Model.PermissionAccess != 3) //Full Update
+        {
+            LockAllUI();
+        }
+    });
+
+    function loadSgoResultContent() {
+        var url = '@Url.Action("LoadSgoResultContent", "SGOProgressMonitor")';
+        if ('@Model.SgoType' == '@((int)SGOTypeEnum.UnstructuredData)') {
+            url = '@Url.Action("LoadUnstructuredSgoResultContent", "SGOProgressMonitor")';
+        }
+
+        ShowBlock($('#idTopNavigation'), "Loading");
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: { sgoId: $('#sgoId').val() }
+        })
+            .done(function (response) {
+                $('#divSgoResult').html(response);
+                $('#idTopNavigation').unblock();
+            });
+    }
+
+    function closePopup(id) {
+        $('#' + id).dialog('close');
+    }
+
+    function htmlEncode(value) {
+        //create a in-memory div, set it's inner text(which jQuery automatically encodes)
+        //then grab the encoded contents back out.  The div never exists on the page.
+        return $('<div/>').text(value).html();
+    }
+
+    function htmlDecode(value) {
+        return $('<div/>').html(value).text();
+    }
+
+    $('#btnSubmitForApprove').click(function () {
+        ShowBlock($('#idTopNavigation'), "Process");
+        DisableMessage();
+        var sgoId = '@Model.SgoId';
+        var attachUnstructuredProgressUrl = '';
+
+        if ($('#txtHiddenAttachUrl')) {
+            attachUnstructuredProgressUrl = $('#txtHiddenAttachUrl').val();
+        }
+
+        var strEducatorComments = $('#idareaEducatorComments').val();
+        $.post('@Url.Action("SaveMonitorAndScore", "SGOProgressMonitor")', { sgoId: sgoId, strComments: strEducatorComments, attachUnstructuredProgressUrl: attachUnstructuredProgressUrl }, function(response) {
+            if (!response) {
+                $('#error-messages').html('<li>Have a error, Please try again.</li>');
+                $('#error-messages').show();
+            } else {
+                var url = "/SGOManage/Index";
+                window.location.href = url;
+            }
+            $('#idTopNavigation').unblock();
+        }).always(function() {
+            $('#idTopNavigation').unblock();
+        });
+    });
+    function DisableMessage() {
+        $('#error-messages').hide();
+        $('#success-message').hide();
+    }
+
+    function LockAllUI() {
+        $('#selectFilters :input').not('#btnScoringDetail').attr('disabled', true);
+        $('#selectFilters :button').not('#btnScoringDetail').attr('disabled', true);
+        $('#idareaEducatorComments').attr('disabled', true);
+
+        $('#txtSGONote').prop('disabled', false);
+        $('#btnSaveNote').prop('disabled', false);
+    }
+
+    function registerUploadAttachment() {
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+        if (window.FormData !== undefined) {
+            $('#btnAttach').uploadifive({
+                'uploadScript': '@Url.Action("UploadAttachment")',
+                'overrideEvents': ['onDialogClose'],
+                'formData': { AUTHID: auth },
+                'buttonText': 'Attachment',
+                'fileObjName': 'postedFile',
+                'buttonClass': 'btn-sgo-upload btn-sgo-upload-inline',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 120,
+                'height': 26,
+                'auto': true,
+                'onUpload': function (file) {
+                    ShowBlock($('#idTopNavigation'), 'Upload Attachment');
+                },
+                'onUploadComplete': function (file, response) {
+                    var result = $.parseJSON(response);
+
+                    if (!result.Success == true) {
+                        var msg = '<div class="text-left">' + result.ErrorMessage + '</div>';
+                        popupAlertMessage('alert', msg, 310, 500);
+                    } else {
+                        $('#spanAttachFileName').text(result.FileName.substring(result.FileName.indexOf('_') + 1));
+                        $('#spanAttachFileName').attr('downloadUrl', result.downloadUrl);
+
+                        $('#txtHiddenAttachUrl').val(result.FileName);
+                        $('#divAttachResultInfo').show();
+                        $('#divAttachResultInfo').css('visibility', 'visible');
+                        $('#divAttachResultInfo').css('display', 'inline-block');
+                    }
+                    $('#idTopNavigation').unblock();
+                },
+                'onError': function (errorType, file) {
+                    alert('The error was: ' + errorType);
+                }
+            });
+        }
+
+        var downloadElement = $('#spanAttachFileName');
+        downloadElement.unbind('click');
+        downloadElement.click(function () {
+            var element = $(this);
+            var url = element.attr('downloadUrl');
+            window.open(url, 'Download');
+        });
+    }
+
+    function removeAttach() {
+        if ('@Model.PermissionAccess' == '3') {
+            $('#divAttachResultInfo').hide();
+            $('#divAttachResultInfo').css('visibility', 'hidden'); // Use visibility to ignore coolfieldset effect when show/hide datapoint tab
+            $('#txtHiddenAttachUrl').val('');
+        }
+    }
+</script>
+
+
+
+<!-- ################################################### PARTIAL:SELECT DATA POINT PUBLIC ##############################################-->
+<script>
+    function populateTestType(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        $.get('@Url.Action("GetTestType", "SGOProgressMonitor")', { sgoId: sgoId }, function (data) {
+            addDefaultOption($('select[name="selectTestType"][datapoint="' + dataPoint + '"]'), "Test Type");
+            addSelectListItems($('select[name="selectTestType"][datapoint="' + dataPoint + '"]'), data);
+        });
+    }
+
+    $('select[name="selectTestType"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+
+        loadDataPoint(dataPoint, $(this).val());
+    });
+
+    function loadDataPoint(dataPoint, testType, sgoDataPointId) {
+        var url = '';
+        if (testType == 'PreAssessment') {
+            url = '@Url.Action("LoadPreAssessmentTest")';
+        } else if (testType.indexOf('PreAssessmentHistorical_') >= 0) {
+            url = '@Url.Action("LoadPreAssessmentHistoricalTest")';
+        } else if (testType == 'PreAssessmentExternal') {
+            url = '@Url.Action("LoadPreAssessmentExternal")';
+        } else if (testType.indexOf('PreAssessmentCustom_') >= 0) {
+            url = '@Url.Action("LoadPreAssessmentCustom")';
+        }else {
+            $('div[name="divDataPointContent"][datapoint="' + dataPoint + '"]').html(''); // Clear data of this data point
+            return;
+        }
+
+        var data = {
+            DataPointIndex: dataPoint,
+            SGODataPointId: sgoDataPointId
+        };
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data
+        })
+            .done(function(response) {
+                $('div[name="divDataPointContent"][datapoint="' + dataPoint + '"]').html(response);
+            });
+    }
+
+    function GetVirtualTestIdBasedOnTestType(dataPoint) {
+        var virtualTestId = 0;
+        if ($('select[name="selectTestPostAssessment"][datapoint="' + dataPoint + '"]').length > 0) {
+            virtualTestId = $('select[name="selectTestPostAssessment"][datapoint="' + dataPoint + '"]').val();
+        } else if ($('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"]').length > 0) {
+            virtualTestId = $('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"]').val();
+        } else if ($('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').length > 0) {
+            virtualTestId = $('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').val();
+        } else if ($('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').length > 0) {
+            virtualTestId = $('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val();
+        }
+
+        return virtualTestId;
+    }
+
+    function isUnSelected(value, defaultValue) {
+        if (value && value != 'select')
+            return value;
+        return defaultValue;
+    }
+
+    function getSelectedValues(checkBoxName, dataPoint) {
+        return $('input[name="' + checkBoxName + '"][dataPoint="' + dataPoint + '"]:checked').map(function() {
+            return this.value;
+        }).get().join(";");
+    }
+
+    var dataPointDataLog = {};
+    $('#btnShowScore').live("click", function() {
+        var dataPoint = $(this).attr("datapoint");
+        var testType = $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val();
+
+        if (testType == 'PreAssessment') {
+            if (validateSavePreAssessment(dataPoint)) {
+                savePreAssessment(dataPoint);
+            }
+        } else if (testType.indexOf('PreAssessmentHistorical_') >= 0) {
+            if (validateSavePreAssessmentHistorical(dataPoint)) {
+                savePreAssessmentHistorical(dataPoint);
+            }
+        } else if (testType == 'PreAssessmentExternal') {
+            if (validateSavePreAssessmentExternal(dataPoint)) {
+                savePreAssessmentExternal(dataPoint);
+            }
+        }else if(testType.indexOf('PreAssessmentCustom_') >= 0) {
+            if (validateSavePreAssessmentCustom(dataPoint)) {
+                savePreAssessmentCustom(dataPoint);
+            }
+        }
+    });
+
+
+    function ValidateAssessmentTestResult(sgoDataPointId, dataPoint) {
+        var msg = `<div id="contentWarningScore">
+                        <p>
+                            There are students in your SGO who are missing either a pre-assessment or post-assessment data point, which will negatively impact your SGO score.
+                        </p>
+                        <p>
+                            To see which students are missing scores, click the "Scoring Details" button.
+                        </p>
+                        <p>
+                            You may exclude students that should no longer be associated to your SGO in step 4. If the students missing scores will be testing at a later time, you must
+                            re-score your SGO in Step 7 after the scores have been added to LinkIt!
+                        </p>
+                    </div>`;
+        $.ajax({
+            cache: false,
+            url: '@Url.Action("IsPreOrPostAssessmentHasStudentNoScore", "SGOProgressMonitor")',
+            data: { sgoID: $('#sgoId').val(), sgoDataPointId: sgoDataPointId },
+            success: function (response) {
+                if (response.Result == true) {
+                    //var html = $('#contentWarningScore').html();
+                    CustomConfirmPopup({
+                        message: msg,
+                        yes: function () {
+                            continueProcessSaveDataPointResponse(dataPoint, sgoDataPointId);
+                            $(this).dialog("close");
+                        },
+                        no: function () {
+                            $(this).dialog("close");
+                            closePopup('popupMonitorProgress');
+                            //delelte temp post datapoint
+                            $.ajax({
+                                cache: false,
+                                url: '@Url.Action("RemoveTempDataPoint", "SGOProgressMonitor")',
+                                data: { sgoDataPointId: sgoDataPointId },
+                                success: function () { }
+                            });
+                        }
+                    }, "Proceed with Scoring", "Cancel");
+                    return false;
+                } else {
+                    $(this).dialog("close");
+                    continueProcessSaveDataPointResponse(dataPoint, sgoDataPointId);
+                }
+            }
+        });
+
+        return true;
+    }
+
+    function processSaveDataPointResponse(dataPoint, response) {
+    if (response.Success == true) {
+        ValidateAssessmentTestResult(response.SgoDataPointId, dataPoint);
+        }
+    }
+
+    function continueProcessSaveDataPointResponse(dataPoint, sgoDataPointId) {
+
+        var testType = $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val();
+        if (testType == 'PreAssessment') {
+            $('#monitorProgressDataPointType').val('PreAssessment');
+        } else if (testType.indexOf('PreAssessmentHistorical_') >= 0) {
+            $('#monitorProgressDataPointType').val('PreAssessmentHistorical');
+        } else if (testType == 'PreAssessmentExternal') {
+            $('#monitorProgressDataPointType').val('PreAssessmentExternal');
+        }else if (testType.indexOf('PreAssessmentCustom_') >= 0) {
+            $('#monitorProgressDataPointType').val('PreAssessmentCustom');
+        }
+
+        closePopup('popupMonitorProgress');
+        ShowBlock($('#idTopNavigation'), "Loading");
+        $.ajax({
+            type: "POST",
+            url: '@Url.Action("CalculateSgoResult", "SGOProgressMonitor")',
+            data: { sgoId: $('#sgoId').val(), sgoDataPointId: sgoDataPointId }
+            })
+            .done(function (resp) {
+                $('#divSgoResult').html(resp);
+                $('#idTopNavigation').unblock();
+                if($('#monitorProgressDataPointType').val() != ''){
+                    $('#btnScoringDetail').removeAttr('disabled');
+                }
+            });
+    }
+</script>
+<!-- ################################################### PARTIAL:SELECT DATA POINT PUBLIC ##############################################-->
+<!-- ################################################### PARTIAL:STATESTANDARD DATATABLES ##############################################-->
+<script type="text/javascript">
+    $('select[name="selectStateStandard"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        $('select[name="selectSubjectStandard"][datapoint="' + dataPoint + '"]').empty();
+        $('select[name="selectGradeStandard"][datapoint="' + dataPoint + '"]').empty();
+
+        if ($(this).val() == 'select' || $(this).val() == '-1') {
+            $('table[name="dataTableMasterStandard"][datapoint="' + dataPoint + '"]').dataTable().fnReloadAjax(getAjaxSourceForMasterStandard(dataPoint));
+            return;
+        } else {
+            populateSubjectStandards(dataPoint);
+        }
+    });
+
+    $('select[name="selectSubjectStandard"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        $('select[name="selectGradeStandard"][datapoint="' + dataPoint + '"]').empty();
+
+        if ($(this).val() == 'select' || $(this).val() == '-1') {
+            $('table[name="dataTableMasterStandard"][datapoint="' + dataPoint + '"]').dataTable().fnReloadAjax(getAjaxSourceForMasterStandard(dataPoint));
+            return;
+        } else {
+            populateGradeStandards(dataPoint);
+        }
+    });
+
+    $('select[name="selectGradeStandard"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        $('table[name="dataTableMasterStandard"][datapoint="' + dataPoint + '"]').dataTable().fnReloadAjax(getAjaxSourceForMasterStandard(dataPoint));
+    });
+
+    function populateStateStandards(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        var virtualTestId = GetVirtualTestIdBasedOnTestType(dataPoint);
+
+        $.get('@Url.Action("GetMasterStandardState", "SGOSelectDataPoint")', { sgoId: sgoId, virtualTestId: virtualTestId }, function (data) {
+            addDefaultOption($('select[name="selectStateStandard"][datapoint="' + dataPoint + '"]'), "State");
+            addSelectListItems($('select[name="selectStateStandard"][datapoint="' + dataPoint + '"]'), data);
+
+            if (data.length != 1) {
+                $('select[name="selectStateStandard"][datapoint="' + dataPoint + '"]').change(); // Call change event to force refresh StateStandard datatable
+            }
+        });
+    }
+
+    function populateSubjectStandards(dataPoint) {
+        var virtualTestId = GetVirtualTestIdBasedOnTestType(dataPoint);
+        var stateId = $('select[name="selectStateStandard"][datapoint="' + dataPoint + '"]').val();
+
+        $.get('@Url.Action("GetMasterStandardSubject", "SGOSelectDataPoint")', { stateId: stateId, virtualTestId: virtualTestId }, function (data) {
+            addDefaultOption($('select[name="selectSubjectStandard"][datapoint="' + dataPoint + '"]'), "Subject");
+            addSelectListItems($('select[name="selectSubjectStandard"][datapoint="' + dataPoint + '"]'), data);
+
+            if (data.length != 1) {
+                $('select[name="selectSubjectStandard"][datapoint="' + dataPoint + '"]').change(); // Call change event to force refresh StateStandard datatable
+            }
+        });
+    }
+
+    function populateGradeStandards(dataPoint) {
+        var virtualTestId = GetVirtualTestIdBasedOnTestType(dataPoint);
+        var stateId = $('select[name="selectStateStandard"][datapoint="' + dataPoint + '"]').val();
+        var subjectName = $('select[name="selectSubjectStandard"][datapoint="' + dataPoint + '"] option:selected').text();
+
+        $.get('@Url.Action("GetMasterStandardGrade", "SGOSelectDataPoint")', { stateId: stateId, subjectName: subjectName, virtualTestId: virtualTestId }, function (data) {
+            addDefaultOption($('select[name="selectGradeStandard"][datapoint="' + dataPoint + '"]'), "@LabelHelper.GradeLabel");
+            addSelectListItems($('select[name="selectGradeStandard"][datapoint="' + dataPoint + '"]'), data);
+
+            if (data.length != 1) {
+                $('select[name="selectGradeStandard"][datapoint="' + dataPoint + '"]').change(); // Call change event to force refresh StateStandard datatable
+            }
+        });
+    }
+
+    function LoadStandardTable(dataPoint) {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: getAjaxSourceForMasterStandard(dataPoint),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                    if (item.name == 'iDisplayLength') {
+                        item.value = '1000000000';
+                        break;
+                    }
+                }
+
+            },
+            bFilter: false,
+            bPaginate: false,
+            bStateSave: false,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'string', sName: 'GUID', bSearchable: false, bSortable: false, sWidth: '10px' },
+                { sType: 'integer', sName: 'MasterStandardID', bSearchable: false, bSortable: false, bVisible: true, sWidth: '20px' },
+                { sType: 'string', sName: 'Number', bSearchable: true, bSortable: true, sWidth: '80px' },
+                { sType: 'string', sName: 'Description', bSearchable: true, bSortable: true },
+                { sType: 'integer', sName: 'Level', bSearchable: false, bSortable: false, sWidth: '20px' },
+                { sType: 'integer', sName: 'Children', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'string', sName: 'ParentGUID', bSearchable: false, bSortable: false, bVisible: false },
+                { sType: 'integer', sName: 'DescendantItemCount', bSearchable: false, bSortable: false, bVisible: false }
+
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBoxStandard(dataPoint, aData[1]));
+                $('td:eq(1)', nRow).html(setIconViewParentStandards(dataPoint, aData[1], aData[4]));
+                $('td:eq(3)', nRow).attr('id', aData[1]);//Add attribute Id for column Description as MasterStandardID
+                $('td:eq(4)', nRow).html(setIconViewChildStandards(dataPoint, aData[1], aData[7]));
+                $('td:eq(0)', nRow).parent().attr('id', aData[1]);//set id for tr
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('table[name="dataTableMasterStandard"][datapoint="' + dataPoint + '"]'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('table[name="dataTableMasterStandard"][datapoint="' + dataPoint + '"]').unblock();
+                $('.with-tip').tip();
+                bindInitValueForCheckBox("chkStandard", "txtHiddenStateStandardFilters", dataPoint);
+            }
+        };
+
+        $('table[name="dataTableMasterStandard"]').data("options", options);
+        initializeDataTable($('table[name="dataTableMasterStandard"][datapoint="' + dataPoint + '"]'));
+    }
+
+    function bindInitValueForCheckBox(checkboxObjectName, containerObjectName, dataPoint) {
+        $('input[name="chkAllStandard"][datapoint="' + dataPoint + '"]').removeAttr('checked');
+
+        var filterString = $('input[name="' + containerObjectName + '"][dataPoint="' + dataPoint + '"]').val();
+        if (filterString) {
+            var filterIds = filterString.split(';');
+            $.each(filterIds, function (index, value) {
+                $('input[name="' + checkboxObjectName + '"][dataPoint="' + dataPoint + '"][value="' + value + '"]').attr('checked', true);
+            });
+
+            if (checkboxObjectName == 'chkStandard') {
+                updateStandardCheckAllCheckbox(dataPoint);
+            }
+        }
+    }
+
+    $('input[name="chkStandard"]').live("click", function (e) {
+        var dataPoint = $(this).attr('dataPoint');
+
+        updateHiddenStateStandardFilters(this, dataPoint);
+        updateStandardCheckAllCheckbox(dataPoint);
+    });
+
+    function updateStandardCheckAllCheckbox(dataPoint) {
+        var checkall = $('input[name="chkStandard"][dataPoint="' + dataPoint + '"]:checked').length == $('INPUT[name="chkStandard"][dataPoint="' + dataPoint + '"]').length;
+        if (checkall) {
+            $('input[name="chkAllStandard"][dataPoint="' + dataPoint + '"]').attr('checked', 'checked');
+        } else {
+            $('input[name="chkAllStandard"][dataPoint="' + dataPoint + '"]').removeAttr('checked');
+        }
+    }
+
+    function updateHiddenStateStandardFilters(checkbox, dataPoint) {
+        var currentId = [];
+        if ($('input[name="txtHiddenStateStandardFilters"][dataPoint="' + dataPoint + '"]').val() != '') {
+            currentId = $('input[name="txtHiddenStateStandardFilters"][dataPoint="' + dataPoint + '"]').val().split(';');
+        }
+
+        var index = currentId.indexOf($(checkbox).val());
+        if ($(checkbox).is(':checked')) {
+            if (index < 0) {
+                currentId.push($(checkbox).val());
+            }
+        } else {
+            if (index >= 0) {
+                currentId.splice(index, 1);
+            }
+        }
+
+        $('input[name="txtHiddenStateStandardFilters"][dataPoint="' + dataPoint + '"]').val(currentId.join(';'));
+    }
+
+    function getAjaxSourceForMasterStandard(dataPoint) {
+        var virtualTestId = GetVirtualTestIdBasedOnTestType(dataPoint);
+        var stateId = $('select[name="selectStateStandard"][datapoint="' + dataPoint + '"]').val();
+        var subjectName = $('select[name="selectSubjectStandard"][datapoint="' + dataPoint + '"]').val();
+        var gradeName = $('select[name="selectGradeStandard"][datapoint="' + dataPoint + '"] option:selected').text();
+
+        if (virtualTestId == null || virtualTestId == '' || virtualTestId == 'select') {
+            virtualTestId = 0;
+        }
+
+        var url = '@Url.Action("GetStateStandards", "SGOSelectDataPoint")/?virtualTestId=' + virtualTestId;
+
+        if (stateId != 'select' && stateId != '-1') {
+            url += '&stateId=' + stateId;
+        }
+
+        if (subjectName != 'select' && subjectName != '-1') {
+            url += '&subjectName=' + subjectName;
+        }
+
+        if (gradeName != 'Select @LabelHelper.GradeLabel' && gradeName != 'No Results Found') {
+            url += '&gradeName=' + gradeName;
+        }
+
+        return url;
+    }
+
+    function setCheckBoxStandard(dataPoint, masterStandardId) {
+        var checkboxString = '<input type="checkbox" name="chkStandard" dataPoint="' + dataPoint + '" value="' + masterStandardId + '"  />';
+
+        return checkboxString;
+    }
+    function setIconViewParentStandards(dataPoint, masterStandardId, level) {
+        if (level > 1) {
+            var backIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/viewparentstandard.png")';
+            var backString = '<a dataPoint="' + dataPoint + '" masterStandardId="' + masterStandardId + '" href="javascript:void(0);" onclick="GetStandardPreviousLevel(this);" title="back" class="with-tip"><img src="' + backIcon + '" width="22" height="22" style="margin-right: 4px"></a>';
+            return backString;
+        } else {
+            return '';
+        }
+    }
+    function setIconViewChildStandards(dataPoint, masterStandardId, countChildren) {
+
+        if (countChildren > 0) {
+            var nextIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/viewchildstandard.png")';
+            var nextString = '<a dataPoint="' + dataPoint + '" masterStandardId="' + masterStandardId + '" href="javascript:void(0);" onclick="GetStandardNextLevel(this);" title="next" class="with-tip"><img src="' + nextIcon + '" width="22" height="22" style="margin-right: 4px"></a>';
+            return nextString;
+        } else {
+            return '';
+        }
+
+    }
+
+    function GetStandardNextLevel(control) {
+        $('#tips').html('');
+        var self = $(control);
+        var masterStandardId = self.attr('masterStandardId');
+        var dataPoint = self.attr('dataPoint');
+
+        var url = getAjaxSourceForMasterStandard(dataPoint);
+        url += '&parentMasterStandardId=' + masterStandardId;
+
+        $('table[name="dataTableMasterStandard"][datapoint="' + dataPoint + '"]').dataTable().fnReloadAjax(url);
+    }
+
+    function GetStandardPreviousLevel(control) {
+        $('#tips').html('');
+
+        var self = $(control);
+        var masterStandardId = self.attr('masterStandardId');
+        var dataPoint = self.attr('dataPoint');
+
+        var url = getAjaxSourceForMasterStandard(dataPoint);
+        url += '&childMasterStandardId=' + masterStandardId;
+
+        $('table[name="dataTableMasterStandard"][datapoint="' + dataPoint + '"]').dataTable().fnReloadAjax(url);
+    }
+
+    function clearStandardTable(dataPoint) {
+        $('table[name="dataTableMasterStandard"][datapoint="' + dataPoint + '"]').dataTable().fnReloadAjax(getAjaxSourceForMasterStandard(dataPoint));
+    }
+
+    function clearStandardFilter(dataPoint) {
+        $('select[name="selectStateStandard"][dataPoint="' + dataPoint + '"]').empty();
+        $('select[name="selectSubjectStandard"][dataPoint="' + dataPoint + '"]').empty();
+        $('select[name="selectGradeStandard"][dataPoint="' + dataPoint + '"]').empty();
+        clearStandardTable(dataPoint);
+    }
+
+    $('input[name="chkAllStandard"]').live("click", function () {
+        var dataPoint = $(this).attr('dataPoint');
+
+        if (this.checked) {
+            $('input[name="chkStandard"][dataPoint="' + dataPoint + '"]').attr('checked', 'checked');
+        }
+        else {
+            $('input[name="chkStandard"][dataPoint="' + dataPoint + '"]').removeAttr('checked');
+        }
+
+        $.each($('input[name="chkStandard"][dataPoint="' + dataPoint + '"]'), function(i, item) {
+            updateHiddenStateStandardFilters(item, dataPoint);
+        });
+    });
+
+    $('input[name="chkStandard"]').live("click", function () {
+        var dataPoint = $(this).attr('dataPoint');
+
+        var checkall = $('input[name="chkStandard"][dataPoint="' + dataPoint + '"]:checked').length == $('INPUT[name="chkStandard"][dataPoint="' + dataPoint + '"]').length;
+        if (checkall) {
+            $('input[name="chkAllStandard"][dataPoint="' + dataPoint + '"]').attr('checked', 'checked');
+        } else {
+            $('input[name="chkAllStandard"][dataPoint="' + dataPoint + '"]').removeAttr('checked');
+        }
+    });
+
+    function getSelectedStandardIds(dataPoint) {
+        var standardIds = '';
+        $('input[name="chkStandard"][dataPoint="' + dataPoint + '"]:checked').each(function (i, e) {
+            standardIds += $(e).val() + ',';
+        });
+        return standardIds.substr(0, standardIds.length - 1);
+    }
+
+    function getSelectedStandardNames(dataPoint) {
+        var standardNames = '';
+        $('input[name="chkStandard"][dataPoint="' + dataPoint + '"]:checked').each(function (i, e) {
+            var number = $(e).parent().next().next().html();
+            var description = $(e).parent().next().next().next().html();
+            if (description == null) {
+                description = '';
+            }
+            var name = '';
+            if (number != null) {
+                if (number.length > 0) {
+                    name = number;
+                }
+            }
+            if (name.length > 0) {
+                standardNames = standardNames + name + ', ';
+            }
+        });
+        return standardNames.substr(0, standardNames.length - 2);//remove the last ','
+    }
+</script>
+<!-- ################################################### End of PARTIAL:STATESTANDARD DATATABLES ################################-->
+<!-- ################################################### PARTIAL:TAGS DATATABLES #################################################-->
+<script type="text/javascript">
+    function LoadTopicTable(dataPoint) {
+
+        var optionsTopic = {
+            bServerSide: true,
+            bFilter: false, // not allow search filter
+            sAjaxSource: '@Url.Action("GetTopicsOfVirtualTest", "SGOSelectDataPoint")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "virtualTestId", value: isUnSelected(GetVirtualTestIdBasedOnTestType(dataPoint), 0) }
+                );
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'iDisplayLength') {
+                        item.value = '1000000000';
+                        break;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            "oLanguage": {
+                "sEmptyTable": "No Tag"
+            },
+            bPaginate: false,
+            iDisplayLength: 1000,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'TopicID', bSearchable: false, bSortable: false, sWidth: "30px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: '300px' }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(DisplayCheckboxTopic(dataPoint, aData[0]));
+                $('td:eq(1)', nRow).html($('<div/>').text(aData[1]).html());
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('table[name="dataTableTopic"][dataPoint="' + dataPoint + '"]'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('table[name="dataTableTopic"][dataPoint="' + dataPoint + '"]').unblock();
+                $('.with-tip').tip();
+
+                formatTableForAddingVertialScrollBar('dataTableTopic' + dataPoint, 'scrolldataTableDefaultTagStyle', 'noscrolldataTableDefaultTagStyle', 'scrolldataTableDefaultTagStyleIE9', 'noscrolldataTableDefaultTagStyleIE9');
+                if (jQuery.browser.msie && jQuery.browser.version == '9.0') {
+                    //Fix for IE9
+                    $('#dataTableTopic' + dataPoint).addClass('dataTableDefaultTagStyleIE9');
+                    $('#divdataTableTopic' + dataPoint).addClass('divdataTableDefaultTagStyleIE9');//generated in formatTableForAddingVertialScrollBar
+                    $('#dataTableTopicHeader' + dataPoint).addClass('divdataTableHeaderDefaultTagStyleIE9'); //generated in formatTableForAddingVertialScrollBar
+                }
+            }
+        };
+
+        $('table[name="dataTableTopic"][dataPoint="' + dataPoint + '"]').data("options", optionsTopic);
+        initializeDataTable($('table[name="dataTableTopic"][dataPoint="' + dataPoint + '"]'));
+    }
+
+    function LoadSkillTable(dataPoint) {
+        var optionsSkill = {
+            bServerSide: true,
+            bFilter: false, // not allow search filter
+            sAjaxSource: '@Url.Action("GetSkillsOfVirtualTest", "SGOSelectDataPoint")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "virtualTestId", value: isUnSelected(GetVirtualTestIdBasedOnTestType(dataPoint), 0) }
+                );
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'iDisplayLength') {
+                        item.value = '1000000000';
+                        break;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            "oLanguage": {
+                "sEmptyTable": "No Tag"
+            },
+            bPaginate: false,
+            iDisplayLength: 1000,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'LessonOneID', bSearchable: false, bSortable: false, sWidth: "30px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: '300px' }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(DisplayCheckboxSkill(dataPoint, aData[0]));
+                $('td:eq(1)', nRow).html($('<div/>').text(aData[1]).html());
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('table[name="dataTableSkill"][dataPoint="' + dataPoint + '"]'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('table[name="dataTableSkill"][dataPoint="' + dataPoint + '"]').unblock();
+                $('.with-tip').tip();
+
+                formatTableForAddingVertialScrollBar('dataTableSkill' + dataPoint, 'scrolldataTableDefaultTagStyle', 'noscrolldataTableDefaultTagStyle', 'scrolldataTableDefaultTagStyleIE9', 'noscrolldataTableDefaultTagStyleIE9');
+                if (jQuery.browser.msie && jQuery.browser.version == '9.0') {
+                    //Fix for IE9
+                    $('#dataTableSkill' + dataPoint).addClass('dataTableDefaultTagStyleIE9');
+                    $('#divdataTableSkill' + dataPoint).addClass('divdataTableDefaultTagStyleIE9');//generated in formatTableForAddingVertialScrollBar
+                    $('#dataTableSkillHeader' + dataPoint).addClass('divdataTableHeaderDefaultTagStyleIE9'); //generated in formatTableForAddingVertialScrollBar
+                }
+            }
+        };
+
+        $('table[name="dataTableSkill"][dataPoint="' + dataPoint + '"]').data("options", optionsSkill);
+        initializeDataTable($('table[name="dataTableSkill"][dataPoint="' + dataPoint + '"]'));
+    }
+
+    function LoadOtherTable(dataPoint) {
+
+        var optionsOther = {
+            bServerSide: true,
+            bFilter: false, // not allow search filter
+            sAjaxSource: '@Url.Action("GetOthersOfVirtualTest", "SGOSelectDataPoint")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "virtualTestId", value: isUnSelected(GetVirtualTestIdBasedOnTestType(dataPoint), 0) }
+                );
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'iDisplayLength') {
+                        item.value = '1000000000';
+                        break;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            "oLanguage": {
+                "sEmptyTable": "No Tag"
+            },
+            bPaginate: false,
+            iDisplayLength: 1000,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'LessonTwoID', bSearchable: false, bSortable: false, sWidth: "30px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: '300px' }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(DisplayCheckboxOther(dataPoint, aData[0]));
+                $('td:eq(1)', nRow).html($('<div/>').text(aData[1]).html());
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('table[name="dataTableOther"][dataPoint="' + dataPoint + '"]'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('table[name="dataTableOther"][dataPoint="' + dataPoint + '"]').unblock();
+                $('.with-tip').tip();
+
+                formatTableForAddingVertialScrollBar('dataTableOther' + dataPoint, 'scrolldataTableDefaultTagStyle', 'noscrolldataTableDefaultTagStyle', 'scrolldataTableDefaultTagStyleIE9', 'noscrolldataTableDefaultTagStyleIE9');
+                if (jQuery.browser.msie && jQuery.browser.version == '9.0') {
+                    //Fix for IE9
+                    $('#dataTableOther' + dataPoint).addClass('dataTableDefaultTagStyleIE9');
+                    $('#divdataTableOther' + dataPoint).addClass('divdataTableDefaultTagStyleIE9');//generated in formatTableForAddingVertialScrollBar
+                    $('#dataTableOtherHeader' + dataPoint).addClass('divdataTableHeaderDefaultTagStyleIE9'); //generated in formatTableForAddingVertialScrollBar
+                }
+            }
+        };
+
+        $('table[name="dataTableOther"][dataPoint="' + dataPoint + '"]').data("options", optionsOther);
+        initializeDataTable($('table[name="dataTableOther"][dataPoint="' + dataPoint + '"]'));
+    }
+
+    function DisplayCheckboxTopic(dataPoint, id) {
+        return '<input dataPoint="' + dataPoint + '" type="checkbox" name="chkTopic" id="chkTopic_' + id + '" value="' + id + '">';
+    }
+
+    function DisplayCheckboxSkill(dataPoint, id) {
+        return '<input dataPoint="' + dataPoint + '"type="checkbox" name="chkSkill" id="chkSkill_' + id + '" value="' + id + '">';
+    }
+
+    function DisplayCheckboxOther(dataPoint, id) {
+        return '<input dataPoint="' + dataPoint + '"type="checkbox" name="chkOther" id="chkOther_' + id + '" value="' + id + '">';
+    }
+
+    function ReloadTags(dataPoint) {
+        $('table[name="dataTableTopic"][datapoint="' + dataPoint + '"]').dataTable().fnReloadAjax();
+        $('table[name="dataTableSkill"][datapoint="' + dataPoint + '"]').dataTable().fnReloadAjax();
+        $('table[name="dataTableOther"][datapoint="' + dataPoint + '"]').dataTable().fnReloadAjax();
+    }
+</script>
+<!-- ################################################### End of TAGS DATATABLES ################################################-->
+
+<!-- ################################################### PARTIAL:PREASSESSMENT ######################################################-->
+<script type="text/javascript">
+    $('select[name="selectSubjectPreAssessment"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        $('select[name="selectGradePreAssessment"][datapoint="' + dataPoint + '"]').empty();
+        $('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"]').empty();
+
+        if ($(this).val() != 'select') {
+            populateGradesPreAssessment(dataPoint);
+        } else {
+            clearStandardFilter(dataPoint);
+            ReloadTags(dataPoint);
+        }
+    });
+
+    $('select[name="selectGradePreAssessment"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        $('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"]').empty();
+
+        if ($(this).val() != 'select') {
+            populateTestsPreAssessment(dataPoint);
+        } else {
+            clearStandardFilter(dataPoint);
+            ReloadTags(dataPoint);
+        }
+    });
+
+    $('select[name="selectTestPreAssessment"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+
+        if ($(this).val() != 'select') {
+            populateStateStandards(dataPoint);
+            populateScoreTypesPreAssessment(dataPoint);
+        } else {
+            clearStandardFilter(dataPoint);
+        }
+
+        ReloadTags(dataPoint);
+    });
+
+    function populateSubjectsPreAssessment(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        $.get('@Url.Action("GetSubjectPreAssessment", "SGOSelectDataPoint")', { sgoId: sgoId }, function (data) {
+            addDefaultOption($('select[name="selectSubjectPreAssessment"][datapoint="' + dataPoint + '"]'), "Subject");
+            addSelectListItems($('select[name="selectSubjectPreAssessment"][datapoint="' + dataPoint + '"]'), data);
+        });
+    }
+
+    function populateGradesPreAssessment(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        var subjectName = $('select[name="selectSubjectPreAssessment"][datapoint="' + dataPoint + '"]').val();
+
+        $.get('@Url.Action("GetGradePreAssessment", "SGOSelectDataPoint")', { sgoId: sgoId, subjectName: subjectName }, function (data) {
+            addDefaultOption($('select[name="selectGradePreAssessment"][datapoint="' + dataPoint + '"]'), "@LabelHelper.GradeLabel");
+            addSelectListItems($('select[name="selectGradePreAssessment"][datapoint="' + dataPoint + '"]'), data);
+        });
+    }
+
+    function populateTestsPreAssessment(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        var subjectName = $('select[name="selectSubjectPreAssessment"][datapoint="' + dataPoint + '"]').val();
+        var gradeId = $('select[name="selectGradePreAssessment"][datapoint="' + dataPoint + '"]').val();
+
+        $.get('@Url.Action("GetTestPreAssessment", "SGOSelectDataPoint")', { sgoId: sgoId, subjectName: subjectName, gradeId: gradeId }, function (data) {
+            addDefaultOption($('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"]'), "Test");
+            addSelectListItems($('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"]'), data);
+        });
+    }
+
+    function populateScoreTypesPreAssessment(dataPoint) {
+        var virtualTestId = $('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"]').val();
+
+        if (virtualTestId && virtualTestId != 'select') {
+            $.get('@Url.Action("GetAssessmentScoreType", "SGOSelectDataPoint")', {
+                virtualTestId: virtualTestId,
+                sgoId: $('input[name="sgoId"]').val(),
+                isPostAssignment: false,
+                scoreType: $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val()
+            }, function (data) {
+                addDefaultOption($('select[name="selectScoreTypePreAssessment"][datapoint="' + dataPoint + '"]'), "Score Type");
+                addSelectListItems($('select[name="selectScoreTypePreAssessment"][datapoint="' + dataPoint + '"]'), data);
+            });
+        }
+    }
+
+    function validateSavePreAssessment(dataPoint) {
+        if (!$('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"]').val()
+            || $('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"]').val() == 'select') {
+            CustomAlert('Please select a Test!');
+            return false;
+        }
+
+        if (!$('select[name="selectScoreTypePreAssessment"][datapoint="' + dataPoint + '"]').val()
+            || $('select[name="selectScoreTypePreAssessment"][datapoint="' + dataPoint + '"]').val() == 'select') {
+            var msg = '<div class="text-left">Please select Score Type!</div>';
+            popupAlertMessage('alert', msg, 310, 500);
+            return false;
+        }
+
+        return true;
+    }
+
+    function savePreAssessment(dataPoint) {
+        var data = {
+            sgoId: $('input[name="sgoId"]').val(),
+            sgoDataPointId: $('input[name="sgoDataPointId"][datapoint="' + dataPoint + '"]').val(),
+            testType: $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val(),
+            subjectName: $('select[name="selectSubjectPreAssessment"][datapoint="' + dataPoint + '"]').val(),
+            gradeId: $('select[name="selectGradePreAssessment"][datapoint="' + dataPoint + '"]').val(),
+            name: $('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"] option:selected').text(),
+            virtualTestId: $('select[name="selectTestPreAssessment"][datapoint="' + dataPoint + '"]').val(),
+            scoreType: $('select[name="selectScoreTypePreAssessment"][datapoint="' + dataPoint + '"]').val(),
+            stateStandardFilters: $('input[name="txtHiddenStateStandardFilters"][dataPoint="' + dataPoint + '"]').val(),
+            topicFilters: getSelectedValues('chkTopic', dataPoint),
+            skillFilters: getSelectedValues('chkSkill', dataPoint),
+            otherFilters: getSelectedValues('chkOther', dataPoint),
+            bypassDataPointNumberRestriction: 1,
+            createTemporaryExternalVirtualTest: true
+        };
+
+        var url = '@Url.Action("ValidateImprovementScoringPlanDataPointTypeAndScoreType", "SGOProgressMonitor")';
+        ShowBlock($('div[name="dataPoint"][dataPoint="' + dataPoint + '"]'), "Loading");
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data
+        })
+            .done(function(verifyResponse) {
+
+                $('div[name="dataPoint"][dataPoint="' + dataPoint + '"]').unblock();
+                if (verifyResponse.Success == true) {
+                    dataPointDataLog = data;
+                    url = '@Url.Action("SavePreAssessment", "SGOSelectDataPoint")';
+
+                    ShowBlock($('div[name="dataPoint"][dataPoint="' + dataPoint + '"]'), "Loading");
+
+                    $.ajax({
+                        type: "POST",
+                        url: url,
+                        data: data
+                    })
+                        .done(function (response) {
+                            processSaveDataPointResponse(dataPoint, response);
+                        });
+
+                } else {
+                    CustomAlert('Datapoint Type or Score type is not the same with the score type of Pre-assessment datapoint selected at Establish Target Scores step. Please select other datapoint Type or Score type.', true);
+                }
+            });
+    }
+</script>
+<!-- ################################################### End of PRE ASSESSMENT ##########################################################-->
+
+<!-- ################################################### PARTIAL:HISTORICAL (PRE ASSESSMENT HISTORICAL) ######################################################-->
+<script type="text/javascript">
+    $('select[name="selectSubjectPreAssessmentHistorical"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        $('select[name="selectGradePreAssessmentHistorical"][datapoint="' + dataPoint + '"]').empty();
+        $('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').empty();
+        $('select[name="selectScoreTypePreAssessmentHistorical"][datapoint="' + dataPoint + '"]').empty();
+
+        if ($(this).val() != 'select') {
+            populateGradesPreAssessmentHistorical(dataPoint);
+        } else {
+            ReloadTestResultSubScore(dataPoint);
+
+        }
+    });
+
+    $('select[name="selectGradePreAssessmentHistorical"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        $('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').empty();
+        $('select[name="selectScoreTypePreAssessmentHistorical"][datapoint="' + dataPoint + '"]').empty();
+
+        if ($(this).val() != 'select') {
+            populateTestsPreAssessmentHistorical(dataPoint);
+        } else {
+            ReloadTestResultSubScore(dataPoint);
+        }
+    });
+
+    $('select[name="selectTestPreAssessmentHistorical"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+
+        populateScoreTypesPreAssessmentHistorical(dataPoint);
+        ReloadTestResultSubScore(dataPoint);
+    });
+
+    function populateSubjectsPreAssessmentHistorical(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        var dataSetCategoryID = $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val().split('_')[1];
+
+        $.get('@Url.Action("GetSubjectPreAssessmentHistorical", "SGOSelectDataPoint")', { sgoId: sgoId, dataSetCategoryID: dataSetCategoryID }, function (data) {
+            addDefaultOption($('select[name="selectSubjectPreAssessmentHistorical"][datapoint="' + dataPoint + '"]'), "Subject");
+            addSelectListItems($('select[name="selectSubjectPreAssessmentHistorical"][datapoint="' + dataPoint + '"]'), data);
+        });
+    }
+
+    function populateGradesPreAssessmentHistorical(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        var dataSetCategoryID = $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val().split('_')[1];
+        var subjectName = $('select[name="selectSubjectPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').val();
+
+        $.get('@Url.Action("GetGradePreAssessmentHistorical", "SGOSelectDataPoint")', { sgoId: sgoId, dataSetCategoryID: dataSetCategoryID, subjectName: subjectName }, function (data) {
+            addDefaultOption($('select[name="selectGradePreAssessmentHistorical"][datapoint="' + dataPoint + '"]'), "@LabelHelper.GradeLabel");
+            addSelectListItems($('select[name="selectGradePreAssessmentHistorical"][datapoint="' + dataPoint + '"]'), data);
+        });
+    }
+
+    function populateTestsPreAssessmentHistorical(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        var dataSetCategoryID = $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val().split('_')[1];
+        var subjectName = $('select[name="selectSubjectPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').val();
+        var gradeId = $('select[name="selectGradePreAssessmentHistorical"][datapoint="' + dataPoint + '"]').val();
+
+        $.get('@Url.Action("GetTestPreAssessmentHistorical", "SGOSelectDataPoint")', { sgoId: sgoId, dataSetCategoryID: dataSetCategoryID, subjectName: subjectName, gradeId: gradeId }, function (data) {
+            addDefaultOption($('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"]'), "Test");
+            addSelectListItems($('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"]'), data);
+        });
+    }
+
+    function populateScoreTypesPreAssessmentHistorical(dataPoint) {
+        var virtualTestId = $('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').val();
+
+        if (virtualTestId && virtualTestId != 'select') {
+            $.get('@Url.Action("GetAssessmentHistoricalScoreType", "SGOSelectDataPoint")', {
+                virtualTestId: virtualTestId,
+                sgoId: $('input[name="sgoId"]').val(),
+                isPostAssignment: false,
+                scoreType: $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val()
+            }, function (data) {
+                addDefaultOption($('select[name="selectScoreTypePreAssessmentHistorical"][datapoint="' + dataPoint + '"]'), "Score Type");
+                addSelectListItems($('select[name="selectScoreTypePreAssessmentHistorical"][datapoint="' + dataPoint + '"]'), data);
+            });
+        }
+    }
+
+    function LoaddataTestResultSubScoreTable(dataPoint) {
+
+        var optionsTestResultSubScore = {
+            bServerSide: true,
+            bFilter: false, // not allow search filter
+            sAjaxSource: '@Url.Action("GetTestResultSubScoreNameOfVirtualTest", "SGOSelectDataPoint")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "virtualTestId", value: isUnSelected(GetVirtualTestIdBasedOnTestType(dataPoint), 0) }
+                );
+
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'iDisplayLength') {
+                        item.value = '1000000000';
+                        break;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            "oLanguage": {
+                "sEmptyTable": "No Cluster/Strands"
+            },
+            bPaginate: false,
+            iDisplayLength: 1000,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'TestResultSubScoreId', bSearchable: false, bSortable: false, sWidth: "30px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: '300px' }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(DisplayCheckboxTestResultSubScore(dataPoint, aData[0], aData[1]));
+                $('td:eq(1)', nRow).html($('<div/>').text(aData[1]).html());
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('table[name="dataTableClusterScore"][dataPoint="' + dataPoint + '"]'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('table[name="dataTableClusterScore"][dataPoint="' + dataPoint + '"]').unblock();
+                $('.with-tip').tip();
+
+                formatTableForAddingVertialScrollBar('dataTableClusterScore' + dataPoint, 'scrolldataTableDefaultTagStyle', 'noscrolldataTableDefaultTagStyle', 'scrolldataTableDefaultTagStyleIE9', 'noscrolldataTableDefaultTagStyleIE9');
+                if (jQuery.browser.msie && jQuery.browser.version == '9.0') {
+                    //Fix for IE9
+                    $('#dataTableClusterScore' + dataPoint).addClass('dataTableDefaultTagStyleIE9');
+                    $('#divdataTableClusterScore' + dataPoint).addClass('divdataTableDefaultTagStyleIE9');//generated in formatTableForAddingVertialScrollBar
+                    $('#dataTableClusterScoreHeader' + dataPoint).addClass('divdataTableHeaderDefaultTagStyleIE9'); //generated in formatTableForAddingVertialScrollBar
+                }
+            }
+        };
+
+        $('table[name="dataTableClusterScore"][dataPoint="' + dataPoint + '"]').data("options", optionsTestResultSubScore);
+        initializeDataTable($('table[name="dataTableClusterScore"][dataPoint="' + dataPoint + '"]'));
+    }
+
+    function DisplayCheckboxTestResultSubScore(dataPoint, id, name) {
+        return '<input dataPoint="' + dataPoint + '" type="checkbox" name="chkClusterScore" id="chkClusterScore_' + id + '" value="' + name + '">';
+    }
+
+    function ReloadTestResultSubScore(dataPoint) {
+        $('table[name="dataTableClusterScore"][datapoint="' + dataPoint + '"]').dataTable().fnReloadAjax();
+    }
+
+    function validateSavePreAssessmentHistorical(dataPoint) {
+        if (!$('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').val()
+            || $('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').val() == 'select') {
+            CustomAlert('Please select a Test!');
+            return false;
+        }
+
+        return true;
+    }
+
+    function savePreAssessmentHistorical(dataPoint) {
+        var data = {
+            sgoId: $('input[name="sgoId"]').val(),
+            sgoDataPointId: $('input[name="sgoDataPointId"][datapoint="' + dataPoint + '"]').val(),
+            testType: $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val(),
+            subjectName: $('select[name="selectSubjectPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').val(),
+            gradeId: $('select[name="selectGradePreAssessmentHistorical"][datapoint="' + dataPoint + '"]').val(),
+            name: $('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"] option:selected').text(),
+            virtualTestId: $('select[name="selectTestPreAssessmentHistorical"][datapoint="' + dataPoint + '"]').val(),
+            clusterScoreFilters: getSelectedValues('chkClusterScore', dataPoint),
+            scoreType: $('select[name="selectScoreTypePreAssessmentHistorical"][datapoint="' + dataPoint + '"] option:selected').val(),
+            bypassDataPointNumberRestriction: 1,
+            createTemporaryExternalVirtualTest: true,
+            dataSetCategoryID : $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val().split('_')[1]
+        };
+
+        var url = '@Url.Action("ValidateImprovementScoringPlanDataPointTypeAndScoreType", "SGOProgressMonitor")';
+        ShowBlock($('div[name="dataPoint"][dataPoint="' + dataPoint + '"]'), "Loading");
+
+        $.ajax({
+                type: "POST",
+                url: url,
+                data: data
+            })
+            .done(function(verifyResponse) {
+
+                $('div[name="dataPoint"][dataPoint="' + dataPoint + '"]').unblock();
+                if (verifyResponse.Success == true) {
+                    dataPointDataLog = data;
+                    url = '@Url.Action("SavePreAssessmentHistorical", "SGOSelectDataPoint")';
+
+                    ShowBlock($('div[name="dataPoint"][dataPoint="' + dataPoint + '"]'), "Loading");
+
+                    $.ajax({
+                            type: "POST",
+                            url: url,
+                            data: data
+                        })
+                        .done(function(response) {
+                            processSaveDataPointResponse(dataPoint, response);
+                        });
+
+
+                } else {
+                    CustomAlert('Datapoint Type or Score type is not the same with the score type of Pre-assessment datapoint selected at Establish Target Scores step. Please select other datapoint Type or Score type.', true);
+                }
+            });
+    }
+</script>
+<!-- ################################################### End of PRE ASSESSMENT HISTORICAL ##############################################-->
+
+
+<!-- ################################################### PARTIAL:EXTERNAL (PRE ASSESSMENT EXTERNAL) #######################################################-->
+<script type="text/javascript">
+    $('select[name="selectSubjectPreAssessmentExternal"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        $('select[name="selectGradePreAssessmentExternal"][datapoint="' + dataPoint + '"]').empty();
+
+        if ($(this).val() != 'select') {
+            populateGradesPreAssessmentExternal(dataPoint);
+        }
+    });
+
+    $('select[name="selectGradePreAssessmentExternal"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+
+        $('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val('');
+        $('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').hide();
+        $('img[name="NewTestCloseButton"][datapoint="' + dataPoint + '"]').hide();
+
+        $('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').show();
+        $('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').empty();
+
+        if ($(this).val() != 'select') {
+            populateTestsPostAssessmentExternal(dataPoint);
+        }
+    });
+
+    $('select[name="selectTestPreAssessmentExternal"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+
+        if ($('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val() == 'addNew') {
+            $('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val('');
+            $('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').show();
+            $('img[name="NewTestCloseButton"][datapoint="' + dataPoint + '"]').show();
+            $('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').hide();
+            $('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').focus();
+            loadStudentsPreAssessmentExternal(dataPoint, 0); // Clear student score
+        }else if ($('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val() == 'select') {
+            loadStudentsPreAssessmentExternal(dataPoint, 0); // Clear student score
+        } else {
+            loadStudentsPreAssessmentExternal(dataPoint, $(this).val()); // Load score of this virtualtest
+        }
+    });
+
+    $('img[name="NewTestCloseButton"]').live("click", function (event) {
+        event.preventDefault();
+        var dataPoint = $(this).attr("datapoint");
+
+        $('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').hide();
+        $('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val('');
+        $('img[name="NewTestCloseButton"][datapoint="' + dataPoint + '"]').hide();
+
+        $('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val(0);
+        $('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').show();
+    });
+
+    $('input[name="txtTestNamePreAssessmentExternal"]').live("input", function () {
+        var dataPoint = $(this).attr("datapoint");
+    });
+
+    $('button[name="btnClearStudentScore"]').live("click", function () {
+        var dataPoint = $(this).attr("datapoint");
+        loadStudentsPreAssessmentExternal(dataPoint,'');
+    });
+
+    function populateSubjectsPreAssessmentExternal(dataPoint) {
+        var sgoid = $('input[name="sgoId"]').val();
+        var sgoDataPointId = $('input[name="sgoDataPointId"][dataPoint="' + dataPoint + '"]').val();
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '@Url.Action("GetSubjectsPreAssessmentExternal", "SGOSelectDataPoint")',
+            data: { sgoID: sgoid, sgoDataPointId: sgoDataPointId },
+            success: function(data) {
+                addDefaultOption($('select[name="selectSubjectPreAssessmentExternal"][datapoint="' + dataPoint + '"]'), "Subject");
+                addSelectListItems($('select[name="selectSubjectPreAssessmentExternal"][datapoint="' + dataPoint + '"]'), data);
+            }
+        });
+    }
+
+    function populateGradesPreAssessmentExternal(dataPoint) {
+        var sgoid = $('input[name="sgoId"]').val();
+        var sgoDataPointId = $('input[name="sgoDataPointId"][dataPoint="' + dataPoint + '"]').val();
+        var subjectName = $('select[name="selectSubjectPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val();
+
+        $.ajax({
+            type:'GET',
+            cache: false,
+            url: '@Url.Action("GetGradesPreAssessmentExternal", "SGOSelectDataPoint")',
+            data: {sgoID: sgoid, sgoDataPointId: sgoDataPointId,  subjectName: subjectName},
+            success: function(data) {
+                addDefaultOption($('select[name="selectGradePreAssessmentExternal"][datapoint="' + dataPoint + '"]'), "Grade");
+                addSelectListItems($('select[name="selectGradePreAssessmentExternal"][datapoint="' + dataPoint + '"]'), data);
+            }
+        });
+    }
+
+    function populateTestsPostAssessmentExternal(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        var subjectName = $('select[name="selectSubjectPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val();
+        var gradeId = $('select[name="selectGradePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val();
+
+        $.get('@Url.Action("GetTestsPostAssessmentExternalForProgressMonitoring", "SGOSelectDataPoint")', { sgoId: sgoId, subjectName: subjectName, gradeId: gradeId }, function(data) {
+
+            addDefaultOption($('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]'), "Test or Add New");
+            addAddNewItem($('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]'), "Test");
+            if (data.length > 0) {
+                addSelectListItems($('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]'), data);
+            }
+
+        });
+    }
+
+    function addAddNewItem(selectList, objectText) {
+        selectList
+            .append($("<option></option>")
+                .attr("value", "addNew")
+                .text("<< Add New " + objectText + " >>"));
+    }
+
+
+    function validateSavePreAssessmentExternal(dataPoint) {
+        if (!$('select[name="selectSubjectPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val()
+                || $('select[name="selectSubjectPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val() == 'select'
+        ) {
+            var msg6 = '<div class="text-left">Please select @LabelHelper.Subject!</div>';
+            popupAlertMessage('alert', msg6, 310, 500);
+            return false;
+        }
+
+        if (!$('select[name="selectGradePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val()
+                || $('select[name="selectGradePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val() == 'select'
+        ) {
+            var msg5 = '<div class="text-left">Please select @LabelHelper.TestGrade!</div>';
+            popupAlertMessage('alert', msg5, 310, 500);
+            return false;
+        }
+
+        if ($('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + 1 + '"]').is(":visible") &&
+            !$('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val()) {
+            var msg4 = '<div class="text-left">Please input Test Name!</div>';
+            popupAlertMessage('alert', msg4, 310, 500);
+            $('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').focus();
+            return false;
+        }
+
+        if ($('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + 1 + '"]').is(":visible") &&
+            !$('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val()) {
+            var msg3 = '<div class="text-left">Please input Test Name!</div>';
+            popupAlertMessage('alert', msg3, 310, 500);
+            $('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').focus();
+            return false;
+        }
+
+        if ($('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').is(":visible")
+            && (!$('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val()
+                || $('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val() == 'select')) {
+            var msg2 = '<div class="text-left">Please select a Test!</div>';
+            popupAlertMessage('alert', msg2, 310, 500);
+            return false;
+        }
+
+        if (!$('input[name="txtResultDatePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val()) {
+            var msg1 = '<div class="text-left">Please input Date of Results.</div>';
+            popupAlertMessage('alert', msg1, 310, 500);
+            $('input[name="txtResultDatePreAssessmentExternal"][datapoint="' + dataPoint + '"]').focus();
+            return false;
+        }
+
+        var isNumericValid = true;
+        var isTotalPointsPossibleValid = true;
+        var firstInvalidNumericValue = '';
+        $.each($('div[name="studentsList"][datapoint="' + dataPoint + '"]').handsontable('getSourceData'), function(i, item) {
+            if (item[5] != null && item[5] != '' && !$.isNumeric(item[5])) {
+                isNumericValid = false;
+                if (firstInvalidNumericValue == '') {
+                    firstInvalidNumericValue = item[5];
+                }
+            } else if (parseFloat(item[5]) > parseFloat($('input[name="txtPointPossiblePreAssessmentExternal"][dataPoint="' + dataPoint + '"]').val())) {
+                isTotalPointsPossibleValid = false;
+                var cellMeta = $('div[name="studentsList"][datapoint="' + dataPoint + '"]').handsontable('getCellMeta', i, 2);
+                cellMeta.valid = false;
+            }
+            return true;
+        });
+
+        $('div[name="studentsList"][datapoint="' + dataPoint + '"]').handsontable('render');
+
+        if (!isNumericValid) {
+            var msg22 = '<div class="text-left">[' + firstInvalidNumericValue + '] is not a number. Please only input number into score column!</div>';
+            popupAlertMessage('alert', msg22, 310, 500);
+        } else if (!isTotalPointsPossibleValid) {
+            var msg11 = '<div class="text-left">Student Score cannot be greater than Total Points Possible.</div>';
+            popupAlertMessage('alert', msg11, 310, 500);
+        }
+        var isStudentScoreValid = isNumericValid && isTotalPointsPossibleValid;
+        return isStudentScoreValid;
+    }
+
+    function savePreAssessmentExternal(dataPoint) {
+
+        var studentDataPoints = [];
+        $.each($('div[name="studentsList"][datapoint="' + dataPoint + '"]').handsontable('getSourceData'), function(i, item) {
+            studentDataPoints.push({
+                SgoStudentId: item[0],
+                StudentId: item[1],
+                ClassId: item[2],
+                StudentName: item[3],
+                Code: item[4],
+                ScoreRaw: item[5]
+            });
+        });
+
+        var data = {
+            sgoId: $('input[name="sgoId"]').val(),
+            sgoDataPointId: $('input[name="sgoDataPointId"][datapoint="' + dataPoint + '"]').val(),
+            testType: $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val(),
+            subjectName: $('select[name="selectSubjectPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val(),
+            gradeId: $('select[name="selectGradePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val(),
+            virtualTestId: $('select[name="selectTestPreAssessmentExternal"][datapoint="' + dataPoint + '"]').val(),
+            name: $('input[name="txtTestNamePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val(),
+            totalPoints: $('input[name="txtPointPossiblePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val(),
+            resultDate: $('input[name="txtResultDatePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val(),
+            AttactScoreUrl: $('input[name="txtHiddenAttachScoreUrl"][datapoint="' + dataPoint + '"]').val(),
+            studentDataPointData: JSON.stringify(studentDataPoints),
+            bypassDataPointNumberRestriction: 1,
+            createTemporaryExternalVirtualTest: true
+        };
+
+        var url = '@Url.Action("ValidateImprovementScoringPlanDataPointTypeAndScoreType", "SGOProgressMonitor")';
+        ShowBlock($('div[name="dataPoint"][dataPoint="' + dataPoint + '"]'), "Loading");
+
+        $.ajax({
+                type: "POST",
+                url: url,
+                data: data
+            })
+            .done(function(verifyResponse) {
+
+                $('div[name="dataPoint"][dataPoint="' + dataPoint + '"]').unblock();
+                if (verifyResponse.Success == true) {
+                    dataPointDataLog = data;
+                    url = '@Url.Action("SavePreAssessmentExternal", "SGOSelectDataPoint")';
+
+                    ShowBlock($('div[name="dataPoint"][dataPoint="' + dataPoint + '"]'), "Loading");
+
+                    $.ajax({
+                            type: "POST",
+                            url: url,
+                            data: data
+                        })
+                        .done(function(response) {
+                            processSaveDataPointResponse(dataPoint, response);
+                        });
+
+                } else {
+                    CustomAlert('Datapoint Type or Score type is not the same with the score type of Pre-assessment datapoint selected at Establish Target Scores step. Please select other datapoint Type or Score type.', true);
+                }
+            });
+    }
+
+    function removeAttachResult(dataPoint) {
+        $('div[name="divAttachResultInfo"][dataPoint="' + dataPoint + '"]').hide();
+        $('div[name="divAttachResultInfo"][dataPoint="' + dataPoint + '"]').css('visibility', 'hidden'); // Use visibility to ignore coolfieldset effect when show/hide datapoint tab
+        $('input[name="txtHiddenAttachScoreUrl"][dataPoint="' + dataPoint + '"]').val('');
+    }
+</script>
+
+<script type="text/javascript">
+    function firstRowRenderer(instance, td, row, col, prop, value, cellProperties) {
+        Handsontable.renderers.TextRenderer.apply(this, arguments);
+        td.style.fontWeight = 'bold';
+        td.style.color = 'green';
+        td.style.background = '#CEC';
+    }
+
+    function loadStudentsPreAssessmentExternal(dataPoint, virtualTestId) {
+        var studentListContainer = $('div[name="studentsList"][datapoint="' + dataPoint + '"]');
+
+        studentListContainer.handsontable({
+            data: [],
+            minSpareRows: 1,
+            colHeaders: ["Student Name", "Student Code", "Score"],
+            contextMenu: false,
+            cells: function (row, col, prop) {
+                var cellProperties = {};
+                return cellProperties;
+            },
+            licenseKey: 'a70f6-b55ab-a3862-0471e-e915a'
+        });
+
+        ShowBlock(studentListContainer, "Loading");
+        $.ajax({
+            type: 'POST',
+            url: '@Url.Action("GetStudentDataPoint", "SGOSelectDataPoint")',
+            data: { sgoId: $('input[name="sgoId"]').val()
+                , sgoDataPointId: $('input[name="sgoDataPointId"][datapoint="' + dataPoint + '"]').val()
+                , virtualtestId: virtualTestId },
+            success: function (response) {
+
+                var data = [];
+                $.each(response.studentDataPoints, function(i, item) {
+                    data.push([
+                        item["SgoStudentId"],
+                        item["StudentId"],
+                        item["ClassId"],
+                        item["StudentName"],
+                        item["Code"],
+                        item["ScoreRaw"]
+                    ]);
+                });
+
+                studentListContainer.handsontable({
+                    data: data,
+                    minSpareRows: 0,
+                    colHeaders: ["Student Name", "Student Code", "Score"],
+                    columns: [
+                          { data: 3 },
+                          { data: 4 },
+                          { data: 5, type: 'numeric', format: '0' }
+                    ],
+                    contextMenu: false,
+                    cells: function (row, col, prop) {
+                        var cellProperties = {};
+
+                        if (studentListContainer.handsontable('getSourceData')[row] != null) {
+                            if (col === 0 || col === 1) {
+                                cellProperties.readOnly = true; //make cell read-only if it is first row or 1st and 2nd columns
+                            } else {
+                                cellProperties.readOnly = false;
+                            }
+                        }
+
+                        return cellProperties;
+                    },
+                    licenseKey: 'a70f6-b55ab-a3862-0471e-e915a'
+                });
+
+
+                $('input[name="txtPointPossiblePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val(response.pointsPossible);
+                $('input[name="txtResultDatePreAssessmentExternal"][datapoint="' + dataPoint + '"]').val(response.resultDate);
+
+                studentListContainer.unblock();
+            }
+        });
+    }
+</script>
+<!-- ################################################### End of PRE ASSESSMENT EXTERNAL ##############################################-->
+
+<!--#################################################### PRE ASSESSMENT CUSTOM #################################################-->
+<script>
+    $('select[name="selectSubjectPreAssessmentCustom"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        $('select[name="selectGradePreAssessmentCustom"][datapoint="' + dataPoint + '"]').empty();
+        $('select[name="selectTestPreAssessmentCustom"][datapoint="' + dataPoint + '"]').empty();
+        if ($(this).val() != 'select') {
+            populateGradesPreAssessmentCustom(dataPoint);
+        }
+    });
+
+    $('select[name="selectGradePreAssessmentCustom"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        $('select[name="selectTestPreAssessmentCustom"][datapoint="' + dataPoint + '"]').empty();
+        if ($(this).val() != 'select') {
+            populateTestsPreAssessmentCustom(dataPoint);
+        }
+    });
+    $('select[name="selectTestPreAssessmentCustom"]').live("change", function () {
+        var dataPoint = $(this).attr("datapoint");
+        //AssignDataPointLegentName(dataPoint, $('select[name="selectTestPreAssessmentCustom"][datapoint="' + dataPoint + '"] option:selected').text());
+        //RefreshJSONDataSelectDataPoint(dataPoint, false);
+       // checkPermissionAccess(dataPoint);
+       // validateDuplicateVirtualTest();
+    });
+
+    function populateSubjectsPreAssessmentCustom(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        var sgoDataPointId = $('input[name="sgoDataPointId"][dataPoint="' + dataPoint + '"]').val();
+        var virtualTestCustomScoreId = $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val().split('_')[1];
+
+        if (virtualTestCustomScoreId) {
+            $.get('@Url.Action("GetSubjectPreAssessmentCustom", "SGOSelectDataPoint")', { sgoId: sgoId, sgoDataPointId: sgoDataPointId, virtualTestCustomScoreId: virtualTestCustomScoreId }, function(data) {
+                addDefaultOption($('select[name="selectSubjectPreAssessmentCustom"][datapoint="' + dataPoint + '"]'), "Subject");
+                addSelectListItems($('select[name="selectSubjectPreAssessmentCustom"][datapoint="' + dataPoint + '"]'), data);
+            });
+        }
+    }
+
+    function populateScoreTypesPreAssessmentCustom(dataPoint) {
+        var virtualTestCustomScoreId = $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val().split('_')[1];
+
+        if (virtualTestCustomScoreId) {
+            $.get('@Url.Action("GetCustomScoreType", "SGOSelectDataPoint")', {
+                virtualTestCustomScoreId: virtualTestCustomScoreId,
+                sgoId: $('input[name="sgoId"]').val(),
+                isPostAssignment: false,
+                scoreType: $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val()
+            }, function (data) {
+                addDefaultOption($('select[name="selectScoreTypePreAssessmentCustom"][datapoint="' + dataPoint + '"]'), "Score Type");
+                addSelectListItems($('select[name="selectScoreTypePreAssessmentCustom"][datapoint="' + dataPoint + '"]'), data);
+
+                //bindInitValueForDropDownList("selectScoreTypePreAssessmentCustom", "txtHiddenScoreType", dataPoint);
+            });
+        }
+    }
+
+    function populateGradesPreAssessmentCustom(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        var sgoDataPointId = $('input[name="sgoDataPointId"][dataPoint="' + dataPoint + '"]').val();
+        var virtualTestCustomScoreId = $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val().split('_')[1];
+        var subjectName = $('select[name="selectSubjectPreAssessmentCustom"][datapoint="' + dataPoint + '"]').val();
+
+        if (virtualTestCustomScoreId) {
+            $.get('@Url.Action("GetGradePreAssessmentCustom", "SGOSelectDataPoint")', { sgoId: sgoId, sgoDataPointId: sgoDataPointId, virtualTestCustomScoreId: virtualTestCustomScoreId, subjectName: subjectName }, function(data) {
+                addDefaultOption($('select[name="selectGradePreAssessmentCustom"][datapoint="' + dataPoint + '"]'), "@LabelHelper.GradeLabel");
+                addSelectListItems($('select[name="selectGradePreAssessmentCustom"][datapoint="' + dataPoint + '"]'), data);
+
+                //bindInitValueForDropDownList("selectGradePreAssessmentCustom", "txtHiddenGradeId", dataPoint);
+            });
+        }
+    }
+
+    function populateTestsPreAssessmentCustom(dataPoint) {
+        var sgoId = $('input[name="sgoId"]').val();
+        var sgoDataPointId = $('input[name="sgoDataPointId"][dataPoint="' + dataPoint + '"]').val();
+        var virtualTestCustomScoreId = $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val().split('_')[1];
+        var subjectName = $('select[name="selectSubjectPreAssessmentCustom"][datapoint="' + dataPoint + '"]').val();
+        var gradeId = $('select[name="selectGradePreAssessmentCustom"][datapoint="' + dataPoint + '"]').val();
+
+        if (virtualTestCustomScoreId) {
+            $.get('@Url.Action("GetTestPreAssessmentCustom", "SGOSelectDataPoint")', { sgoId: sgoId, sgoDataPointId: sgoDataPointId, virtualTestCustomScoreId: virtualTestCustomScoreId, subjectName: subjectName, gradeId: gradeId }, function(data) {
+                addDefaultOption($('select[name="selectTestPreAssessmentCustom"][datapoint="' + dataPoint + '"]'), "Test");
+                addSelectListItems($('select[name="selectTestPreAssessmentCustom"][datapoint="' + dataPoint + '"]'), data);
+
+                //bindInitValueForDropDownList("selectTestPreAssessmentCustom", "txtHiddenVirtualTestId", dataPoint);
+            });
+        }
+    }
+
+    function validateSavePreAssessmentCustom(dataPoint) {
+        if (!$('select[name="selectTestPreAssessmentCustom"][datapoint="' + dataPoint + '"]').val()
+            || $('select[name="selectTestPreAssessmentCustom"][datapoint="' + dataPoint + '"]').val() == 'select') {
+            CustomAlert('Please select a Test!');
+            return false;
+        }
+
+        if (!$('select[name="selectScoreTypePreAssessmentCustom"][datapoint="' + dataPoint + '"]').val()
+            || $('select[name="selectScoreTypePreAssessmentCustom"][datapoint="' + dataPoint + '"]').val() == 'select') {
+            var msg = '<div class="text-left">Please select Score Type!</div>';
+            popupAlertMessage('alert', msg, 310, 500);
+            return false;
+        }
+
+        return true;
+    }
+
+    function savePreAssessmentCustom(dataPoint) {
+        var subScoreId = 0;
+        var scoreType = $('select[name="selectScoreTypePreAssessmentCustom"][datapoint="' + dataPoint + '"] option:selected').val();
+        var scoreTypeArr = scoreType.split('_');
+        if (scoreTypeArr.length > 1) {
+            scoreType = scoreTypeArr[0];
+            subScoreId = scoreTypeArr[1];
+        }
+
+        var data = {
+            sgoId: $('input[name="sgoId"]').val(),
+            sgoDataPointId: $('input[name="sgoDataPointId"][datapoint="' + dataPoint + '"]').val(),
+            testType: $('select[name="selectTestType"][datapoint="' + dataPoint + '"]').val(),
+            subjectName: $('select[name="selectSubjectPreAssessmentCustom"][datapoint="' + dataPoint + '"]').val(),
+            gradeId: $('select[name="selectGradePreAssessmentCustom"][datapoint="' + dataPoint + '"]').val(),
+            name: $('select[name="selectTestPreAssessmentCustom"][datapoint="' + dataPoint + '"] option:selected').text(),
+            virtualTestId: $('select[name="selectTestPreAssessmentCustom"][datapoint="' + dataPoint + '"]').val(),
+            scoreType: scoreType,
+            bypassDataPointNumberRestriction: 1,
+            createTemporaryExternalVirtualTest: true,
+            virtualTestCustomSubScoreId: subScoreId
+        };
+
+        var url = '@Url.Action("ValidateImprovementScoringPlanDataPointTypeAndScoreType", "SGOProgressMonitor")';
+        ShowBlock($('div[name="dataPoint"][dataPoint="' + dataPoint + '"]'), "Loading");
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data
+        })
+        .done(function(verifyResponse) {
+
+            $('div[name="dataPoint"][dataPoint="' + dataPoint + '"]').unblock();
+            if (verifyResponse.Success == true) {
+                dataPointDataLog = data;
+                url = '@Url.Action("SavePreAssessmentCustom", "SGOSelectDataPoint")';
+
+                ShowBlock($('div[name="dataPoint"][dataPoint="' + dataPoint + '"]'), "Loading");
+
+                $.ajax({
+                    type: "POST",
+                    url: url,
+                    data: data
+                })
+                    .done(function (response) {
+                        processSaveDataPointResponse(dataPoint, response);
+                    });
+
+            } else {
+                CustomAlert('Datapoint Type or Score type is not the same with the score type of Pre-assessment datapoint selected at Establish Target Scores step. Please select other datapoint Type or Score type.', true);
+            }
+        });
+    }
+</script>

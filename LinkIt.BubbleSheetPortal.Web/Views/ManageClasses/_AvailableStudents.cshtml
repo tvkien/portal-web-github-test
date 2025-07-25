@@ -1,0 +1,169 @@
+@model LinkIt.BubbleSheetPortal.Models.Class
+           
+<section id="studentNotInClassDialog">
+    <div class="block-border">
+        <div class="block-content form">
+            <h1>Students
+                <a href="javascript:void(0)" id="showInactiveStudents">
+                    Show Inactive:
+                    <span id="inactiveText">Off</span>
+                </a>
+            </h1>
+            @if (ViewBag.IsShowAddNewStudent != null && ViewBag.IsShowAddNewStudent == "true")
+            {
+                <a id="btnAddNewUserToSchool" href="javascript:void(0);" class="button studentOperation">
+                    <img alt="#" src="/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png">
+                    Add New Student
+                </a>
+            }
+            <div id="studentNotInClassNotifications"></div>
+            <p style="height: 5px"></p>
+            <div class="no-margin last-child">
+                <table id="dataTableStudents" class="datatable table no-margin" width="100%">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 15px"></th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                First Name
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Last Name
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Local ID
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                Gender
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                @LabelHelper.GradeLabel
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <button id="btnCloseUserClick" type="button" class="grey classProgramButton" data-dialog="close">Close</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    $(function () {
+        var showInactiveStudents = false;
+        var classId = '@Model.Id';
+        var defaultAjaxSource = getAjaxSource(showInactiveStudents);
+        
+        var optionsStudentNotInClass = {
+                bServerSide: true,
+                sAjaxSource: defaultAjaxSource,
+                bAutoWidth: false,
+                iDisplayLength: 10,
+                aaSorting: [[1, "asc"]],
+                aoColumns: [
+                    { sType: 'integer', sName: 'StudentId', bSearchable: false, bSortable: false },
+                    { sType: 'string', sName: 'FirstName', bSearchable: true, bSortable: true },
+                    { sType: 'string', sName: 'LastName', bSearchable: true, bSortable: true },
+                    { sType: 'string', sName: 'Code', bSearchable: true, bSortable: true },
+                    { sType: 'string', sName: 'Gender', bSearchable: true, bSortable: true },
+                    { sType: 'string', sName: 'Grade', bSearchable: true, bSortable: true }
+
+                ],
+                fnRowCallback: function (nRow, aData) {
+                    $('td:eq(0)', nRow).html(setIconVisibilityNotMatch(aData[0]));
+                    return nRow;
+                },
+                fnPreDrawCallback: function () {
+                    ShowBlock($('#dataTableStudents'), "Loading");
+                    return true;
+                },
+                fnDrawCallback: function () {
+                    $('#dataTableStudents').unblock();
+                    $('.with-tip').tip();
+                }
+        };
+        
+        $("#dataTableStudents").data("options", optionsStudentNotInClass);
+        initializeDataTable($("#dataTableStudents"));
+        
+        $('.control-next').css('margin-right', '0px');
+        
+        function getAjaxSource(inactive) {
+            return '@Url.Action("GetStudentsInDistrict")/?classid='+ classId +'&showInactive=' + inactive;
+        }
+
+        $('#showInactiveStudents').click(function() {
+            showInactiveStudents = !showInactiveStudents;
+            $("#inactiveText").html(showInactiveStudents ? "on" : "off");
+            ui.dataTableStudents.fnSettings().sAjaxSource = getAjaxSource(showInactiveStudents);
+            ui.dataTableStudents.fnDraw();
+        });
+        
+        function bindEvents() {
+            $(document).on('click', 'button[data-dialog="close"]', function (e) {
+                var self = $(e.target);
+                self.closest('.dialog').dialog('close');
+            });
+
+            $('#btnAddNewUserToSchool').click(function () {
+                $.ajax({
+                    url: '@Url.Action("AddNewStudentToClass")',
+                    type: 'POST',
+                    data: { classId: classId },
+                    success: function (response) {
+                        location.href = '@Url.Action("AddNewStudent")';
+                    }
+                });
+            });
+        }
+        
+        function setIconVisibilityNotMatch(studentId) {
+            var addIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")';
+            return '<a href="javascript:void(0)" title="Add Student To Class" studentId="' + studentId + '" classId="' + classId + '" class="with-tip addStudent"><img src="' + addIcon + '" width="16" height="16"></a>';
+        }
+        
+        $('#dataTableStudents').on('click', '.addStudent', function () {
+            if (confirm("Do you want to add this student to this class?")) {
+                var self = $(this);
+
+                var studentId = self.attr('studentId');
+                var data = self.closest('.dialog');
+
+                self.hide();
+
+                $.post('@Url.Action("AddStudentToClass")', { studentId: studentId, classId: classId }, function (response) {
+                        if (response == true) {
+                            ui.dataTableStudents.fnDraw();
+                            $.publish('manageClass/studentAssigned', data);
+                            LinkIt.success('#studentNotInClassNotifications', 'Student Assigned');
+                        } else {
+                            alert('Error. User does not exist.');
+                        }
+                    });
+                }
+        });
+
+        bindEvents();
+    });
+</script>

@@ -1,0 +1,806 @@
+@using LinkIt.BubbleSheetPortal.Models
+@using LinkIt.BubbleSheetPortal.Models.Extensions
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.BubbleSheetStudentDetailsViewModel
+<style type="text/css">
+    /* demo CSS (inline - bad form.) */
+
+    body {
+        font: normal 75% verdana,tahoma,arial;
+    }
+
+    h2 {
+        padding: 0.5em;
+        background: #eee;
+        border: 1px solid #ccc;
+    }
+
+    h1 {
+        font-size: 1.25em;
+    }
+
+    h2 {
+        font-size: 1.1em;
+    }
+
+    pre {
+        color: #000099;
+        font-size: 1.2em;
+        *font-size: 1em;
+    }
+
+    #soundmanager-debug {
+        position: fixed;
+        _position: absolute; /* IE <7 */
+        bottom: 1em;
+        right: 1em;
+        width: 40em;
+        height: 30em;
+        overflow: auto;
+        border: 1px solid #ccc;
+        padding: 1em;
+        margin: 1em;
+        font-family: monaco,"VT-100",terminal,"lucida console",courier,system;
+        font-size: x-small;
+        background: #f6f6f6;
+        opacity: 0.9;
+    }
+
+        #soundmanager-debug code {
+            font-size: 1.1em;
+            *font-size: 1em;
+        }
+
+        #soundmanager-debug div {
+            margin-top: 0.5em;
+        }
+
+    .URLbutton {
+        font: bold 11px Arial;
+        color: White;
+        text-decoration: none;
+        background-color: Blue;
+        padding: 2px 6px 2px 6px;
+        border-top: 1px solid #CCCCCC;
+        border-right: 1px solid #333333;
+        border-bottom: 1px solid #333333;
+        border-left: 1px solid #CCCCCC;
+    }
+
+    #manEntryGuide {
+        line-height: 20px;
+        border: solid 1px blue;
+        background-color: white;
+        padding: 5px 20px;
+        margin: 10px 0px 0px 0px;
+    }
+
+    .clear {
+        clear: both;
+    }
+
+    .egLeft {
+        float: left;
+        width: 70px;
+        padding-left: 50px;
+        color: blue;
+    }
+
+    .egRight {
+        float: left;
+        width: 200px;
+        color: #880015;
+    }
+
+    input:focus {
+        background: red;
+    }
+
+    .blockUI h2 {
+        background: #000;
+        padding: 0;
+        border: 0;
+    }
+</style>
+
+<section class="grid_7">
+    <div id="reviewDetailsContent" class="block-border">
+        <div class="block-content form">
+            <h1>Bubble Sheet Details</h1>
+            <fieldset class="grey-bg">
+                <legend>Details</legend>
+                <div class="columns">
+                    <div class="colx3-left">
+                        @if (string.IsNullOrEmpty(Model.ImageUrl) || Model.IsManualEntry)
+                        {
+                            <img src="@Url.Content("~/Content/images/noimage.png")" width="128px" height="170px" />
+                        }
+                        else if(Model.OnlyOnePage)
+                        {
+                            <a href="#" data-href="@Model.ImageUrl" onclick="DisplayBubbleSheetFileByBubbleSheetID(0, 0, 'single');">
+                                <img src="@Model.ImageUrl" width="128px" height="170px" />
+                            </a>
+                        }
+                        else
+                        {
+                            <div onclick="DisplayBubbleSheetFileByBubbleSheetID(@Model.BubbleSheetId, @Model.StudentId);">
+                                <img src="@Model.ImageUrl" width="128px" height="170px" />
+                            </div>
+                        }
+                    </div>
+                    <div class="colx3-right-double studentDetails">
+                        <p><b>Student:</b> @Model.StudentName</p>
+                        <p><b>Teacher:</b> @Model.TeacherName</p>
+                        <p><b>Class:</b> @Model.ClassName</p>
+                        <p><b>School:</b> @Model.SchoolName</p>
+                        @if (Model.HasBubbleSheetFile)
+                        {
+                            if (Model.UploadedDate == null)
+                            {
+                                <p><b>Uploaded: </b><span>Not Available</span></p>
+                            }
+                            else
+                            {
+                                <p data-ticks="@Model.UploadedDate.GetValueOrDefault().ToUnixTime()"><b>Uploaded: </b><span class="localTime">@Model.UploadedDate</span></p>
+                            }
+                            <p><b>Uploaded By:</b> @Model.UploadedBy</p>
+                            if (!string.IsNullOrEmpty(Model.FileName))
+                            {
+                                <p><b>File Name:</b> @Model.FileName</p>
+                            }
+                        }
+
+                        @if (!string.IsNullOrEmpty(Model.VirtualTestFileKey))
+                        {
+                            <p>
+                                <b>Rubric file:</b> <a href="/notification/downloadRubricFile?key=@Model.VirtualTestFileKey" target="_blank">@Model.VirtualTestFileName</a>
+                            </p>
+                        }
+
+                        @if (!Model.HasBubbleSheetFile)
+                        {
+                            <button type="button" id="btnMarkAsAbsent">Mark as Absent</button>
+                        }
+
+                    </div>
+                </div>
+            </fieldset>
+            @if (Model.UnansweredQuestions.Count > 0 && Model.AnsweredQuestions.Count == 0)
+            {
+                <fieldset class="grey-bg coolfieldset fieldset-collapse">
+                    <legend id="advancedOptionTog" name="AdvancedOption" class="legent-collapse">Advanced Options</legend>
+                    <div class="columns" id="advancedOptionDiv">
+                        @if (!Model.IsMultipleChoice)
+                        {
+                            <button id="manualEntryButton" class="URLbutton">Keyboard Entry</button>
+                        }
+                        <button id="aSelection" class="URLbutton">Select All As</button>  
+                        <button id="btnDisplayInstructions" class="URLbutton">Show Instructions</button>                                           
+                        <div id="manEntryGuide" style="visibility: hidden">
+                            <div><b>Please use the following keys for manual entry:</b></div>
+                            <div>
+                                <div class="egLeft">a or m</div>
+                                <div class="egRight">to select choice A</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">b or ,</div>
+                                <div class="egRight">to select choice B</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">c or .</div>
+                                <div class="egRight">to select choice C</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">d or /</div>
+                                <div class="egRight">to select choice D</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">e</div>
+                                <div class="egRight">to select choice E</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">f</div>
+                                <div class="egRight">to select choice F</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">g</div>
+                                <div class="egRight">to select choice G</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">h</div>
+                                <div class="egRight">to select choice H</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">i</div>
+                                <div class="egRight">to select choice I</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">j</div>
+                                <div class="egRight">to select choice J</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">k</div>
+                                <div class="egRight">to select choice K</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">0</div>
+                                <div class="egRight">to select choice 0</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">1</div>
+                                <div class="egRight">to select choice 1</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">2</div>
+                                <div class="egRight">to select choice 2</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">3</div>
+                                <div class="egRight">to select choice 3</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">4</div>
+                                <div class="egRight">to select choice 4</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">5</div>
+                                <div class="egRight">to select choice 5</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">6</div>
+                                <div class="egRight">to select choice 6</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">7</div>
+                                <div class="egRight">to select choice 7</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">8</div>
+                                <div class="egRight">to select choice 8</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">9</div>
+                                <div class="egRight">to select choice 9</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">n</div>
+                                <div class="egRight">to delete the previous entry</div>
+                            </div>
+                            <div class="clear"></div>
+                            <div>
+                                <div class="egLeft">s</div>
+                                <div class="egRight">to skip a question</div>
+                            </div>
+                            <div class="clear"></div>
+                        </div>
+                    </div>
+                </fieldset>
+            }
+            
+            @if (Model.UnansweredQuestions.Count > 0)
+            {
+                <fieldset class="grey-bg coolfieldset fieldset-collapse">
+                    <legend id="gradingShortcutTog" name="GradingShortcut" class="legent-collapse">Grading Shortcuts</legend>
+                    <div class="columns" id="gradingShortcutDiv">
+                        <table style="border:0px;">
+                            <tr>
+                                <td style="width: 160px;">
+                                    Apply points for all ungraded open-ended questions:
+                                    <br /><br />
+                                </td>
+                                <td style="width: 143px;">
+                                    <label for="rdApplyZeroCreditAnswer">
+                                        <input type="radio" name="rdOpenEnded" id="rdApplyZeroCreditAnswer" value="zeroPoint" />
+                                        Apply Zero Points
+                                    </label>
+                                </td>
+                                <td>
+                                    <label for="rdApplyFullCreditAnswer">
+                                        <input type="radio" name="rdOpenEnded" id="rdApplyFullCreditAnswer" value="mxPoint" />
+                                        Apply Max Points
+                                    </label>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Apply correct answers for all unanswered multiple choice questions:
+                                </td>
+                                <td>
+                                    <label for="cbApplyAllCorrectAnswer">
+                                        <input type="checkbox" name="cbApplyAllCorrectAnswer" id="cbApplyAllCorrectAnswer" />
+                                        Yes
+                                    </label>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </table>
+                        <div>
+                            <br />
+                            <b>Caution:</b> Points and/or Answers will be pre-populated for the currently selected student. These responses will not be saved until you review the responses below and click the <b>Submit</b> button at the bottom of this page.
+                            <br /><br /> Do you want to proceed?
+                        </div>
+                        <button id="btnApplyGradingShortcut" class="float-right u-m-l-10" type="button" disabled="disabled">Yes</button>
+                        <button id="btnCancelGradingShortcut" class="float-right" type="button">Cancel</button>
+                    </div>
+                </fieldset>
+            }
+
+            @if (Model.UnansweredQuestions.Any())
+            {
+                @Html.Partial("_UnAnswerQuestion", Model)
+            }
+            @if (Model.AnsweredQuestions.Any())
+            {
+                @Html.Partial("_AnswerQuestion", Model)
+            }
+
+            <fieldset>
+                <legend>Submissions</legend>
+                <table class="table" width="100%">
+                    <thead>
+                        <tr>
+                            <th>Actions</th>
+                            <th>File Name</th>
+                            <th>Submitted By</th>
+                            <th style="width: 90px">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.PreviousBubbleSheets.Any())
+                        {
+                            <tr>
+                                <td colspan="4">No data available</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var previousBubbleSheet in Model.PreviousBubbleSheets)
+                            {
+                            <tr>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(previousBubbleSheet.ImageUrl) && !Model.IsManualEntry)
+                                    {
+                                        if (previousBubbleSheet.OnlyOnePage)
+                                        {
+                                            <a href="@previousBubbleSheet.ImageUrl" target="_new">
+                                                <ul class="keywords">
+                                                    <li class="blue">Open Image</li>
+                                                </ul>
+                                                </a>
+                                        }
+                                        else
+                                        {
+                                            <div onclick="DisplayBubbleSheetFileSubByID(@previousBubbleSheet.BubbleSheetFileId);">
+                                                <ul class="keywords">
+                                                    <li class="blue">Open Image</li>
+                                                </ul>
+                                            </div>
+                                        }
+                                     }
+                                </td>
+                                <td style="width: 100px; word-break: break-all;">
+                                    @(string.IsNullOrEmpty(previousBubbleSheet.FileName) ? "Manual Submission" : @previousBubbleSheet.FileName)
+                                </td>
+                                <td style="width: 105px">@previousBubbleSheet.UploadedBy</td>
+                                @if (previousBubbleSheet.UploadedDate == null)
+                                    {
+                                    <td style="width: 95px"><span>Not Available</span></td>
+                                    }
+                                    else
+                                    {
+                                    <td style="width:95px" data-ticks="@previousBubbleSheet.UploadedDate.GetValueOrDefault().ToUnixTime()"><span class="localTime">@previousBubbleSheet.UploadedDate</span></td>
+                                    }
+                            </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </fieldset>
+        </div>
+    </div>
+</section>
+
+<div id="divListBubbleSheetFileSub" style="display: none;"></div>
+
+<script type="text/javascript">
+    $(function () {
+        $('.localTime').each(function (i, e) {
+            $(this).html(displayDateWithFormat($(this).parent().data('ticks'), true));
+        });
+
+        setGradingShortcutData();
+
+        var bubbleSheetId = '@Model.BubbleSheetId';
+        var studentId = '@Model.StudentId';
+        var bubbleSheetFileId = '@Model.BubbleSheetFileId';
+        var rosterPosition = '@Model.RosterPosition';
+        var classId = '@Model.ClassId';
+
+        $('#submitUnansweredQuestions').click(function (event) {
+            event.preventDefault();
+            //stopTimer();
+            ShowBlock($('#reviewDetailsContent'), "Submitting Bubble Sheet");
+            var answers = GetAnswerData();
+
+            $.ajax({
+                url: '@Url.Action("SubmitTestQuestions")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ StudentId: studentId, BubbleSheetFileId: bubbleSheetFileId, BubbleSheetId: bubbleSheetId, RosterPosition: rosterPosition, Answers: answers, ClassId: classId }),
+                success: function (response) {
+                    if (response == true) {
+                        $("ul.keywords[studentId='" + studentId + "'] li").html('Pending').removeClass().addClass("blue-keyword");
+                        $("#bubbleSheetDetails").hide();
+                        
+                        if ($('#submitUnansweredQuestions').text() == 'Press Enter to Submit and Go to Next Student') {
+                            moveToNextStudent(); // in Index.cshtml    
+                        }
+                        //restartTimer();
+                    } else {
+                        alert('Server error. Please try again.');
+                        $('#reviewDetailsContent').unblock();
+                    }
+                }
+            });
+        });
+
+        $('#submitAnsweredQuestionChanges').click(function (event) {
+            event.preventDefault();
+            //stopTimer();
+            ShowBlock($('#reviewDetailsContent'), "Submitting Bubble Sheet");
+
+            var answers = GetAnswerData();
+
+            $.ajax({
+                url: '@Url.Action("SubmitTestQuestions")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ StudentId: studentId, BubbleSheetFileId: bubbleSheetFileId, BubbleSheetId: bubbleSheetId, Answers: answers, ClassId: classId }),
+                success: function (response) {
+                    if (response == true) {
+                        $("ul.keywords[studentId='" + studentId + "'] li").html('Pending').removeClass().addClass("blue-keyword");
+                        $("#bubbleSheetDetails").hide();
+                        //restartTimer();
+                    } else {
+                        alert('Server error. Please try again.');
+                        $('#reviewDetailsContent').unblock();
+                    }
+                }
+            });
+        });
+
+        $('#btnMarkAsAbsent').click(function () {
+            ShowBlock($('#reviewDetailsContent'), "Submitting Absent Student");
+            $.ajax({
+                url: '@Url.Action("MarkStudentAsAbsent")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ StudentId: studentId, BubbleSheetFileId: bubbleSheetFileId, BubbleSheetId: bubbleSheetId, RosterPosition: rosterPosition, ClassId: classId }),
+                success: function (response) {
+                    if (response == true) {
+                        $("ul.keywords[studentId='" + studentId + "'] li").html('Pending').removeClass().addClass("blue-keyword");
+                        $("#bubbleSheetDetails").hide();
+                        //restartTimer();
+                    }
+                }
+            });
+        });
+    });
+
+    function GetAnswerData() {
+        var answers = new Array();
+
+        $('.unAnswerRow').each(function () {
+            var QuestionId = 0;
+            var QuestionOrder = 0;
+            var answerChoice = '';
+            if ($('input:checkbox[id^=' + $(this).attr('QuestionID') + '].checkboxAnswer:checked').length > 0) {
+                $('input:checkbox[id^=' + $(this).attr('QuestionID') + '].checkboxAnswer:checked').each(function () {
+                    QuestionId = $(this).attr('name');
+                    QuestionOrder = $(this).attr('questionOrder');
+                    if ($(this).is(':checked'))
+                        answerChoice += ',' + $(this).val();
+                });
+                if (answerChoice.length > 0)
+                    answerChoice = answerChoice.substr(1, answerChoice.length);
+                answers.push({ 'QuestionId': QuestionId, 'SelectedAnswer': answerChoice, 'QuestionOrder': QuestionOrder });
+            }
+        });
+
+        $('.answeredRow').each(function () {
+            var QuestionId = $(this).attr('QuestionID');;
+            var QuestionOrder = $(this).attr('QuestionOrder');
+            var answerChoice = '';
+            if ($('input:checkbox[id^=' + $(this).attr('QuestionID') + '].checkboxAnswer:checked').length > 0) {
+                $('input:checkbox[id^=' + $(this).attr('QuestionID') + '].checkboxAnswer:checked').each(function () {
+                    QuestionId = $(this).attr('name');
+                    QuestionOrder = $(this).attr('questionOrder');
+                    if ($(this).is(':checked'))
+                        answerChoice += ',' + $(this).val();
+                });
+                if (answerChoice.length > 0)
+                    answerChoice = answerChoice.substr(1, answerChoice.length);
+                answers.push({ 'QuestionId': QuestionId, 'SelectedAnswer': answerChoice, 'QuestionOrder': QuestionOrder });
+            }
+            if ($('input:checkbox[id^=' + $(this).attr('QuestionID') + '].checkboxAnswer:checked').length == 0) {
+                answers.push({ 'QuestionId': QuestionId, 'SelectedAnswer': answerChoice, 'QuestionOrder': QuestionOrder });
+            }
+        });
+
+        $('.radioButtonAnswer:checked').each(function () {
+            answers.push({ 'QuestionId': $(this).attr('name'), 'SelectedAnswer': $(this).val(), 'QuestionOrder': $(this).attr('questionOrder') });
+        });
+
+        $('.openEndedQuestionAnswerTextbox').each(function () {
+            var jsonObject = { 'QuestionId': $(this).attr('questionId'), 'SelectedAnswer': $(this).val(), 'QuestionOrder': $(this).attr('questionOrder') };
+            answers.push(jsonObject);
+        });
+
+        return answers;
+    }
+
+    function BubbleSheetViewCheckMaxchoice(maxChoice, Id)
+    {
+        //TODO: check maxchoice
+        // if select > maxchoice -> show notification or no select more.
+        var total = $("input[id^='" + Id + "-M-']:checked").length;
+        if (total >= maxChoice && maxChoice != 0)
+        {
+            $("input[id^='" + Id + "-M-']:not(':checked')").attr("disabled", true);
+        }
+        if (total < maxChoice)
+        {
+            $("input[id^='" + Id + "-M-']:not(':checked')").removeAttr("disabled");
+        }
+    }
+
+    $(':radio').mousedown(function (e) {
+        var $self = $(this);
+        if ($self.is(':checked')) {
+            var uncheck = function () {
+                setTimeout(function () { $self.removeAttr('checked'); }, 0);
+            };
+            var unbind = function () {
+                $self.unbind('mouseup', up);
+            };
+            var up = function () {
+                uncheck();
+                unbind();
+            };
+            $self.bind('mouseup', up);
+            $self.one('mouseout', unbind);
+        }
+    });
+    
+    function DisplayBubbleSheetFileByBubbleSheetID (id, studentId, type) {
+        var $reviewDetailsContent = $('#reviewDetailsContent');
+        var $divListBubbleSheetFileSub = $('#divListBubbleSheetFileSub');
+
+        ShowBlock($reviewDetailsContent, 'SubFiles');
+        $divListBubbleSheetFileSub.html('');
+
+        if (type === 'single') {
+            var imageContainer = BubbleSheetReviewDetails.getBubbleSheetReviewImage(this.event.target.src);
+
+            $reviewDetailsContent.unblock();
+            BubbleSheetReviewDetails.isShowBubbleSheetImage = true;
+            BubbleSheetReviewDetails.bubbleSheetImageHtml = imageContainer.outerHTML;
+
+            Vue.nextTick(function () {
+                BubbleSheetReviewDetails.$els.bubbleSheetImage.setAttribute('style', '');
+            });
+        } else {
+            var getBubbleSheetFileUrl = '/BubbleSheetReviewDetails/GetBubbleSheetFileSubNormalByBubbleSheetID/?Id=' + id + '&studentID=' + studentId;
+            $divListBubbleSheetFileSub.load(getBubbleSheetFileUrl, function () {
+                $reviewDetailsContent.unblock();
+                BubbleSheetReviewDetails.isShowBubbleSheetImage = true;
+                BubbleSheetReviewDetails.bubbleSheetImageHtml = $divListBubbleSheetFileSub.html();
+
+                Vue.nextTick(function () {
+                    BubbleSheetReviewDetails.$els.bubbleSheetImage.setAttribute('style', '');
+                });
+            });
+        }
+    }
+    
+    //for List file post
+    function DisplayBubbleSheetFileSubByID(id) {
+        //
+        ShowBlock($('#reviewDetailsContent'), "SubFiles");
+        //var hbody = $("body").height() - 109;
+        $("#divListBubbleSheetFileSub").html('');
+        $("#divListBubbleSheetFileSub").load("/BubbleSheetReviewDetails/GetBubbleSheetFileSubById/" + id, function () {
+            $('#reviewDetailsContent').unblock();
+            $("<div></div>")
+                .html($("#divListBubbleSheetFileSub").html())
+                .addClass("dialog")
+                .attr("id", "messageDialog")
+                .appendTo("body")
+                .dialog({
+                    close: function () { $(this).remove(); },
+                    modal: true,
+                    width: 500,
+                    maxheight: 400,
+                    resizable: false
+                });
+        });
+
+        //.load("/BubbleSheetReviewDetails/GetBubbleSheetFileSub/" + id);
+        //$(".ui-dialog").css("height", hbody);
+    }
+
+    function setGradingShortcutData() {
+        if ($('#hiddenApplyFullCreditAnswer').val() == 1) {
+            $("#rdApplyFullCreditAnswer").prop('checked', 'checked');
+        }
+
+        if ($('#hiddenApplyZeroCreditAnswer').val() == 1) {
+            $("#rdApplyZeroCreditAnswer").prop('checked', 'checked');
+        }
+
+        if ($('#hiddenApplyAllCorrectAnswer').val() == 1) {
+            $("#cbApplyAllCorrectAnswer").prop('checked', 'checked');
+        }
+
+        updateApplyGradingShortcutButtonStatus();
+
+        // Clear this information after loading
+        $('#hiddenApplyAllCorrectAnswer').val('0');
+        $('#hiddenApplyFullCreditAnswer').val('0');
+        $('#hiddenApplyZeroCreditAnswer').val('0');
+    }
+
+    $('#rdApplyZeroCreditAnswer').click(function () {
+        updateApplyGradingShortcutButtonStatus();
+    });
+
+    $('#rdApplyFullCreditAnswer').click(function () {
+        updateApplyGradingShortcutButtonStatus();
+    });
+
+    $('#cbApplyAllCorrectAnswer').click(function () {
+        updateApplyGradingShortcutButtonStatus();
+    });
+
+    function updateApplyGradingShortcutButtonStatus() {
+        var isActive = $('#rdApplyZeroCreditAnswer').is(':checked') || $('#rdApplyFullCreditAnswer').is(':checked') || $('#cbApplyAllCorrectAnswer').is(':checked');
+
+        if (isActive) {
+            $('#btnApplyGradingShortcut').removeAttr('disabled');
+        } else {
+            $('#btnApplyGradingShortcut').attr('disabled', 'disabled');
+        }
+    }
+
+</script>
+
+<script type="text/javascript" src="../../Scripts/manualentry.js"></script>
+
+<script>
+    $(function () {
+        var applyAllCorrectAnswer = $('#hiddenApplyAllCorrectAnswer').val();
+        var applyFullCreditAnswer = $('#hiddenApplyFullCreditAnswer').val();
+        var applyZeroCreditAnswer = $('#hiddenApplyZeroCreditAnswer').val();
+
+        // Do not enable manual entry mode when 1 of these options is active
+        if (applyAllCorrectAnswer == '0' && applyFullCreditAnswer == '0' && applyZeroCreditAnswer == '0') {
+            $("#manualEntryButton").trigger("click");
+        }
+    });
+
+    $('#btnApplyGradingShortcut').off('click').on('click', function () {
+        $('#hiddenApplyFullCreditAnswer').val($("#rdApplyFullCreditAnswer").prop("checked") ? '1' : '0');
+        $('#hiddenApplyZeroCreditAnswer').val($("#rdApplyZeroCreditAnswer").prop("checked") ? '1' : '0');
+        $('#hiddenApplyAllCorrectAnswer').val($("#cbApplyAllCorrectAnswer").prop("checked") ? '1' : '0');
+
+        var answers = GetAnswerData();
+        viewBubbleSheetDetail(true, answers);
+    });
+
+    $('#btnCancelGradingShortcut').off('click').on('click', function () {
+        viewBubbleSheetDetail();
+    });
+</script>
+
+<style>
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+</style>
+<script>
+    (function ($) {
+        $('.legend-collapse').on('click', function () {
+            $('.fieldset-collapse').toggleClass('collapsed');
+        });
+
+        // keyup
+        $(".openEndedQuestionAnswerTextbox").on("keypress blur", function (event) {
+
+            var openEndedQuestionAnswerTextboxvalue = $.trim( $(this).val()) ;            
+            if (openEndedQuestionAnswerTextboxvalue === '') {                
+                return;
+            }// prevent tab with default = 0. and bug remove one charator
+
+            $(this).val(openEndedQuestionAnswerTextboxvalue.replace(/[^\d].+/, ""));
+            //$(this).val($(this).val().replace(/[^\d].+/, ""));
+            if ((event.which < 48 || event.which > 57)) {
+                event.preventDefault();
+            }
+        });
+
+        $(".openEndedQuestionAnswerTextbox").on("keyup", function (event) {
+            
+            if ($.trim($(this).val()) === '') {                
+                return;
+            }
+            var el = $(this),
+                val = Math.max((0, el.val())),
+                max = parseInt(el.attr('pointsPossible'));
+            if (el.val() !== '') {
+                el.val(isNaN(max) ? val : Math.min(max, val));
+            }
+        });
+
+    })(jQuery);
+</script>

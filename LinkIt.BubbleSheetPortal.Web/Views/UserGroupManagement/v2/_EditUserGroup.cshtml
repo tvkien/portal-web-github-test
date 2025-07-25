@@ -1,0 +1,102 @@
+@model LinkIt.BubbleSheetPortal.Web.Models.UserGroup.EditUserGroupDto
+
+<style>
+    #portal-v2-containter .ui-dialog .ui-dialog-titlebar-close {
+        display: none;
+    }
+</style>
+
+<section class="grid-12">
+    <div class="block-border">
+        <div class="block-content block-24 form">
+            <h2 class="header">Edit User Group</h2>
+            <ul style="display: none" id="error-messages-edit-group" class="no-margin message error"></ul>
+            @using (Html.BeginForm("UpdateXLIGroup", "UserGroupManagement", FormMethod.Post, new { id = "editUserGroupFrom", @class = "form" }))
+            {
+                <fieldset class="p-0 mb-4">
+                    @Html.HiddenFor(x => x.XLIGroupID)
+                    @Html.HiddenFor(x => x.DistrictID, new { id = "hdfDistrictId" })
+                    <p class="mb-4">
+                        <label>Name</label>
+                        <span class="relative">
+                            @Html.TextBoxFor(m => m.Name, new { @class = "full-width", maxlength = "50" })
+                        </span>
+                    </p>
+                    <div style="float:left">
+                        @Html.CheckBoxFor(x => x.InheritRoleFunctionality, new { @class = "mb-0" })
+                        <label style="display: contents"> Keep Default Access</label>
+                        <div style="float:right; margin-left:5px">
+                            <a href="javascript:void(0)" class="with-tip-edit-user" title="When checked, users in this group will maintain their standard module access plus the access they are given in the group.&#10When unchecked, users in this group will only have access to the modules they are given in the group.">
+                                <img src="/Content/images/icons/icon-info.svg" width="16" height="16">
+                            </a>
+                        </div>
+                    </div>
+
+                </fieldset>
+
+                <div class="modal-component-footer" style="margin: 0 -24px -24px -24px">
+                    <div slot="footer">
+                        <button id="btnEditUserGroupCancel" type="button">Cancel</button>
+                        <button id="btnEditUserGroupSubmit" class="btn-red" type="submit" name="Save">Submit</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#btnEditUserGroupCancel").click(function () {
+            $('.ui-widget-overlay').remove();
+            $('#editUserGroup').remove();
+        });
+
+        $('#editUserGroupFrom').submit(function (event) {
+            event.preventDefault();
+            $('#btnEditUserGroupSubmit').disableBt();
+
+            var data = {
+                XLIGroupID: $("#XLIGroupID").val(),
+                Name: $("#Name").val(),
+                DistrictID: $("#hdfDistrictId").val(),
+                InheritRoleFunctionality: $("#InheritRoleFunctionality").is(':checked'),
+            };
+
+            $.ajax({
+                url: '@Url.Action("UpdateXLIGroup", "UserGroupManagement")',
+                type: 'POST',
+                data: data,
+                success: function (response) {
+                    if (response) {
+                        if(response.success){
+                            $('.ui-widget-overlay').remove();
+                            $('#editUserGroup').remove();
+                            $('#tblUserGroup').dataTable().fnDraw();
+                        }
+                        else {
+                            $('#btnEditUserGroupSubmit').enableBt();
+                            $('#error-messages-edit-group').empty();
+                            
+                            if (response.message) {
+                                $('#error-messages-edit-group').append('<li>' + response.message + '</li>');
+                                $('#error-messages-edit-group').show();
+                            } else {
+                                $('#error-messages-edit-group').hide();
+                            }
+                        }
+                        btnEditUserGroupCancel()
+                    }
+                },
+                failure: function (response) {
+                    addErrorMessages(response);
+                }
+            });
+        });
+        $(function () {
+            setTimeout(function () {
+                $(".with-tip-edit-user").tip({ position: "bottom" })
+            }, 1000)
+        })
+    });
+</script>

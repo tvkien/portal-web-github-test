@@ -1,0 +1,210 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.SendResultViewModel
+
+@if(Model==null)
+{
+    return;
+    
+}
+@if(!Model.ComposeModel.IsCompose)
+{
+    return;
+}
+@if (Model.CountMessageReceiver > 0)
+{
+    <div class="message success">A message has been sent to @Model.CountMessageReceiver.ToString() parent(s).</div>
+}
+else
+{
+    <div class="message error">No message has been sent </div>
+}
+@*@if (Model.CountMessageReceiver > 0)
+{
+    
+    if(Model.CountEmail> 0 && Model.CountSms > 0)
+    {
+        <div class="message success">The message has been sent to @Model.CountMessageReceiver.ToString() parent(s). Including @Model.CountSms.ToString() sms and @Model.CountEmail.ToString() email(s).</div>
+    }
+    else
+    {
+        if (Model.CountEmail > 0)
+        {
+            <div class="message success">The message has been sent to @Model.CountMessageReceiver.ToString() parent(s). Including @Model.CountEmail.ToString() email(s).</div>
+        }
+        if (Model.CountSms > 0)
+        {
+            <div class="message success">The message has been sent to @Model.CountMessageReceiver.ToString() parent(s). Including @Model.CountSms.ToString() sms.</div>
+        }
+        if(Model.CountEmail==0 && Model.CountSms==0)
+        {
+             <div class="message success">The message has been sent to @Model.CountMessageReceiver.ToString() parent(s).</div>
+        }
+    }
+}
+else
+{
+    <div class="message error">No message had been sent </div>
+}*@
+
+<div id="composeNotification" style="visibility: hidden"></div>
+<script>
+    $(function () {
+        
+       
+        
+        var data = {
+            IsCompose: '@Model.ComposeModel.IsCompose',
+            Sendby: '@Model.ComposeModel.Sendby',
+            SelectedStudentGroupId: '@Model.ComposeModel.SelectedStudentGroupId',
+            SelectedStudentId: '@Model.ComposeModel.SelectedStudentId',
+            ClassId: '@Model.ComposeModel.ClassId',
+            From: '@Model.ComposeModel.From',
+            Subject: '@Model.ComposeModel.Subject',
+            // HtmlContent: '@Model.ComposeModel.HtmlContent', // no need to send content anymore,it's been saved already
+            UseEmail: '@Model.ComposeModel.UseEmail',
+            UseSms: '@Model.ComposeModel.UseSms'
+
+        };
+
+        $.ajax({
+             url: '@Url.Action("NotifyEmailSms")',
+             data: data,
+             cache: false,
+        }).done(function (html) {
+            //setTimeout(loadPartialPage(html), 5000);
+            loadPartialPage(html);
+         });
+      
+     });
+    function loadPartialPage(html) {
+        $('#composeNotification').html(html);//must load html of partial view because partial view contains ajax script that call the action method to send email,sms
+    }
+    
+</script>
+
+@*<div class="block-content form">
+    
+    @if (Model.CountMessageReceiver > 0)
+    {
+        <div class="message success">@Model.CountMessageReceiver.ToString() (number counted by parents)   messages had been sent</div>
+    }
+    else
+    {
+        <div class="message error">No message had been sent </div>
+    }
+
+    @if(Model.UseSms)
+    {
+        if(Model.FromNumberError.Length > 0)
+        {
+            <div class="message error">@Model.FromNumberError </div>
+        }
+        else
+        {
+            <div class="message success">@Model.CountSmsSent.ToString() (number of success sent)/@Model.CountSms.ToString() (number of existed phone numbers) had been sent</div>
+        }
+    
+        if(Model.SmsErrorList.Count > 0)
+        {
+            <div class="form">
+                <table width="100%" class="datatable table no-margin tblEmail dataTable" id="dataTableSmsResult" aria-describedby="dataTable_info" style="position: relative;margin-bottom: 20px">
+                    <thead>
+                        <tr role="row">
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableSmsResult" rowspan="1" colspan="1"> 
+                                First Name
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableSmsResult" rowspan="1" colspan="1"> 
+                                Middle Name
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableSmsResult" rowspan="1" colspan="1"> 
+                                Last Name
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableSmsResult" rowspan="1" colspan="1"> 
+                                Gender
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableSmsResult" rowspan="1" colspan="1"> 
+                                LocalId
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableSmsResult" rowspan="1" colspan="1"> 
+                                Parent's phone number
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableSmsResult" rowspan="1" colspan="1"> 
+                                Error
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody role="alert" aria-live="polite" aria-relevant="all">
+                        @for(int i=0; i < Model.SmsErrorList.Count;i++)
+                        {
+                            <tr class=  "@if(i%2==0){ <text>odd</text>} else { <text>even</text>}" style="color: red">
+                                <td class="">@Model.SmsErrorList[i].FirstName</td>
+                                <td class="">@Model.SmsErrorList[i].MiddleName</td>
+                                <td class="">@Model.SmsErrorList[i].LastName</td>
+                                <td class="">@Model.SmsErrorList[i].Gender</td>
+                                <td class="">@Model.SmsErrorList[i].LocalId</td>
+                                <td class="">@Model.SmsErrorList[i].ParentPhone</td>
+                                <td class="">@Model.SmsErrorList[i].Error</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        
+        }
+    }
+    @if(Model.UseEmail)
+    {
+        <div class="message success">@Model.CountEmailSent.ToString() (number of success sent)/@Model.CountEmail.ToString() (number of existed emails) had been sent</div>
+        <div class="clear-10"></div>
+        if (Model.EmailErrorList.Count > 0)
+        {
+            <div class="form">
+                <table width="100%" class="datatable table no-margin tblEmail dataTable" id="dataTableEmailResult" aria-describedby="dataTable_info" style="position: relative;margin-bottom:10px" >
+                    <thead>
+                        <tr role="row">
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableEmailResult" rowspan="1" colspan="1"> 
+                                First Name
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableEmailResult" rowspan="1" colspan="1"> 
+                                Middle Name
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableEmailResult" rowspan="1" colspan="1"> 
+                                Last Name
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableEmailResult" rowspan="1" colspan="1"> 
+                                Gender
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableEmailResult" rowspan="1" colspan="1"> 
+                                LocalId
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableEmailResult" rowspan="1" colspan="1"> 
+                                Parent's email
+                            </th>
+                            <th scope="col" class="sorting_desc" role="columnheader" tabindex="0" aria-controls="dataTableEmailResult" rowspan="1" colspan="1"> 
+                                Error
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody role="alert" aria-live="polite" aria-relevant="all">
+        
+                        @for(int i = 0; i< Model.EmailErrorList.Count ; i++)
+                        {
+                            <tr class=  "@if(i%2==0){ <text>odd</text>} else { <text>even</text>}" style="color: red">
+                                <td class="">@Model.EmailErrorList[i].FirstName</td>
+                                <td class="">@Model.EmailErrorList[i].MiddleName</td>
+                                <td class="">@Model.EmailErrorList[i].LastName</td>
+                                <td class="">@Model.EmailErrorList[i].Gender</td>
+                                <td class="">@Model.EmailErrorList[i].LocalId</td>
+                                <td class="">@Model.EmailErrorList[i].ParentEmail</td>
+                                <td class="">@Model.EmailErrorList[i].Error</td>
+                            </tr>
+                     
+                        }
+                
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+    
+
+</div>*@

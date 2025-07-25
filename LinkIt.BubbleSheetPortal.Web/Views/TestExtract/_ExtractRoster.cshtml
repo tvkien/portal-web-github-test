@@ -1,0 +1,354 @@
+@*<article class="container_12" style="margin-top: 2em" id="divExtractTestResultArea">
+    <section class="grid_12">*@
+<div class="block-border" style="margin-top: 2em" id="divExtractRosterArea">
+    <div class="block-content form">
+        <div class="clear-10">
+        </div>
+        <div class="no-margin last-child">
+            <table id="dataTableRoster" class="datatable table no-margin" width="100%">
+                <thead>
+                    <tr>
+                        <th scope="col" style="width: 13px">
+                            <input type="checkbox" id="chkAllRoster" />
+                        </th>
+                        <th scope="col">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            @LabelHelper.DistrictLabel Term
+                        </th>
+                        <th scope="col">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            School
+                        </th>                                              
+                        <th scope="col">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            Class
+                        </th>
+                        <th scope="col">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            User
+                        </th>  
+                        <th scope="col">
+                            <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                            Student
+                        </th>                      
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="height: 60px;"></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="clear-10">
+            </div>
+            <div style="text-align: center; padding-top: 7px; margin-bottom: -6px;" class="pButton">
+                <button id="btnRosterSubmitSelected" type="button" style="padding-right: 10px; padding-left: 10px;"
+                    onclick="SubmitSelectedRoster(null);" disabled="disabled">
+                    Create Extracts</button>
+            </div>
+            <div class="clear-10" style="height: 7px !important;">
+            </div>
+        </div>
+    </div>
+</div>
+@*</section>
+</article>*@
+<input type="hidden" id="hdfAllRosterIds" />
+<input type="hidden" id="hdfTrackRosterIdSelected" />
+
+<script type="text/javascript">    
+    function LoadListExtractRoster( ) {
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetExtractRoster", "TestExtract")',
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "DistrictId", value: GetDistrictID() },                    
+                    { name: "StrStartDate", value: $('#selectFromDateRoster').val() },
+                    { name: "StrEndDate", value: $('#selectToDateRoster').val() },
+                    { name: "SchoolId", value: $('#selectSchoolRoster').val() },
+                    { name: "TeacherId", value: $('#selectUserRoster').val() },
+                    { name: "ListClassIDs", value: BuildListClassSelected() }                   
+                );
+            },
+            bAutoWidth: false,
+            iDisplayLength: 50,
+            aLengthMenu: [50, 100, 500, 1000],
+            aaSorting: [[1, "asc"]],
+            oLanguage: { "sEmptyTable": "Match Not Found" },
+            aoColumns: [
+                { sType: 'int', sName: 'ClassStudentID', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'DistrictTerm', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'SchoolName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'ClassName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'UserName', bSearchable: true, bSortable: true },                                
+                { sType: 'string', sName: 'Student', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'ClassId', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBoxRoster(aData[0], aData[6]));               
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                $('#filterSheetsRoster').attr("disabled", "disabled");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#filterSheetsRoster').removeAttr('disabled');
+                $('#divExtractRosterArea').unblock();
+                $('.with-tip').tip();
+                $('.with-tip').tip();
+            }
+        };
+
+        function setCheckBoxRoster(classStudentID,classId) {
+            var checkboxString = '<input type="checkbox" name="chkRoster" value="' + classStudentID + '" classId="' + classId + '" />';
+            var isCheckAll = ($('#chkAllRoster:checked').val() == 'on');
+            if (isCheckAll || CheckSelectedRoster(classStudentID)) {
+                checkboxString = '<input type="checkbox" name="chkRoster" value="' + classStudentID + '" classId="' + classId + '" checked="checked"/>';
+            }
+            return checkboxString;
+        }
+
+        $("#dataTableRoster").data("options", options);
+        initializeDataTable($("#dataTableRoster"));
+    }
+
+    $('#chkAllRoster').live("click", function (e) {
+        if (this.checked) {
+            $('#hdfTrackRosterIdSelected').val('');
+            $('INPUT[name="chkRoster"][type=checkbox]').attr('checked', 'checked');
+            lstClassIds = '';
+        }
+        else {
+            $('INPUT[name="chkRoster"][type=checkbox]').removeAttr('checked');
+            lstClassIds = '';
+        }
+        setDisabledButtonsRoster();
+    });
+
+    function setDisabledButtonsRoster( ) {
+        if (!CheckSelectTemplatesRoster()) {
+            $('#btnRosterSubmitSelected').attr('disabled', 'disabled');
+            return;
+        }
+        var vListIds = $('#hdfTrackRosterIdSelected').val();
+        var isCheckAll = ($('#chkAllRoster:checked').val() == 'on');
+        if (vListIds.length == 0 && isCheckAll == false) {
+            $('#btnRosterSubmitSelected').attr('disabled', 'disabled');
+        } else {
+            $('#btnRosterSubmitSelected').removeAttr('disabled');
+        }
+    }
+
+    $('INPUT[name="chkRoster"][type=checkbox]').live("click", function (e) {
+        //alert($(this).val());
+        var vListIds;
+        if (this.checked) {
+            TrackingRosterSelected($(this).val(), $(this).attr('classId'));
+        }
+        else {
+            RemoveTrackingRosterId($(this).val(), $(this).attr('classId'));
+            $('#chkAllRoster').removeAttr('checked');
+        }
+        setDisabledButtonsRoster();
+    });
+
+    function GetRosterSelected() {
+        var studentIds = '';
+        $('INPUT[name="chkRoster"][type=checkbox]:checked').each(function (i, e) {
+            studentIds += $(e).val() + ';';
+            lstClassIds += $(e).attr('classId') + ';';
+        });
+        return studentIds.substr(0, classIds.length - 1);
+    }
+
+    function SubmitSelectedRoster(e) {
+        var listTemplatesExport = '';
+        
+        $(".RosterTemplateItem[isSelected=yes]").each(function () {
+            listTemplatesExport += ($(this).attr('templateid')) + ';';
+        });
+        var timezoneOffset = new Date().getTimezoneOffset();
+        var vListStudentId = $('#hdfTrackRosterIdSelected').val();
+
+        var isCheckAll = ($('#chkAllRoster:checked').val() == 'on');
+        if (vListStudentId.length > 0 || isCheckAll == true) {
+            ShowBlock($('#divExtractRosterArea'), 'Exporting');
+
+            var dataTable = $('#dataTableRoster').dataTable();
+            var settings = dataTable.fnSettings();
+            var columnSearchs = settings.aoColumns
+                .filter(function (column) { return column.bSearchable == true })
+                .map(function (column, index) { return index + 1 }).join(',');
+            var searchBox = $('#dataTableRoster_filter input').val();
+            $.ajax({
+                type: "Post",
+                url: '@Url.Action("AddExtractionToQueueRoster", "TestExtract")',
+                data: {
+                    DistrictId: GetDistrictID(),
+                    StrStartDate: $('#selectFromDateRoster').val(),
+                    StrEndDate: $('#selectToDateRoster').val(),
+                    SchoolId: $('#selectSchoolRoster').val(),
+                    TeacherId: $('#selectUserRoster').val(),
+                    ListClassIDs: isCheckAll ? BuildListClassSelected() : lstClassIds,
+                    lstIds: vListStudentId,
+                    lstTemplates: listTemplatesExport,
+                    timezoneOffset: timezoneOffset,
+                    isCheckAll: isCheckAll,
+                    columnSearchs,
+                    searchBox,
+                }
+            })
+        .done(function (response) {
+            $('#divExtractRosterArea').unblock();
+            if (response.success == true) {
+                LoadPopupConfirm();
+            } else {
+                alert('Please select class.');
+            }        
+            
+            //alert("Link Download: " + urlDownload);
+        });
+    }
+}
+
+function LoadPopupConfirm() {    
+    dialog = $("#popupConfirm111")
+        .dialog({
+            title: $(this).attr("data-dialog-title"),
+            close: function () {
+                //$(this).remove();
+            },
+            modal: true,
+            width: 440,
+            resizable: false
+        })
+        .load(this.href, function () { });
+}
+
+    function TrackingRosterSelected(classStudentID, classId) {
+    var userFormat = '_' + classStudentID + '_';
+    var listUserIdSelected = $('#hdfTrackRosterIdSelected').val();
+    if (listUserIdSelected.indexOf(userFormat) <= 0) {
+        listUserIdSelected += ';' + userFormat;
+        $('#hdfTrackRosterIdSelected').val(listUserIdSelected);
+    }
+
+    if (lstClassIds.indexOf(classId) <= 0) {
+        lstClassIds += ';' + classId;
+    }
+}
+
+    function RemoveTrackingRosterId(classStudentID, classId) {
+    var userFormat = '_' + classStudentID + '_';
+    var listUserIdSelected = $('#hdfTrackRosterIdSelected').val();
+    if (listUserIdSelected.indexOf(userFormat) > 0) {
+        userFormat = ';' + userFormat;
+        $('#hdfTrackRosterIdSelected').val(listUserIdSelected.replace(userFormat, ''));
+    }
+    var classIds = '';
+    $('INPUT[name="chkRoster"][type=checkbox]:checked').each(function(i, e) {
+        var clId = $(e).attr('classId');
+        if (classIds.indexOf(clId) <= 0) {
+            classIds += ';' + clId;
+            }
+    });
+    lstClassIds = classIds;    
+}
+
+    function CheckSelectedRoster(classStudentID) {
+    var userFormat = '_' + classStudentID + '_';
+    var listUserIdSelected = $('#hdfTrackRosterIdSelected').val();
+    if (listUserIdSelected.indexOf(userFormat) > 0) {
+        return true;
+    }
+    return false;
+}
+</script>
+
+<style type="text/css">
+    #dataTableRoster_wrapper {
+        margin-bottom: -52px !important;
+    }
+
+    .plButton {
+        text-align: center;
+        position: relative;
+        top: 47px;
+    }
+
+    #btnOk {
+        width: 79px;
+        margin-right: 10px;
+    }
+    /*.positionAdd {
+        position: relative;
+        right: -6px;
+        top: 26px;
+    }
+
+    button {
+        margin-left: 30px;
+    }*/
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    .ui-datepicker .ui-datepicker-header {
+        top: 0px;
+    }
+
+    .ui-datepicker .ui-datepicker-prev span,
+    .ui-datepicker .ui-datepicker-next span {
+        background-image: url("/Content/themes/base/images/ui-icons_222222_256x240.png");
+    }
+
+    .ui-datepicker .ui-icon {
+        width: 16px;
+        height: 16px;
+    }
+</style>

@@ -1,0 +1,509 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestFilterViewModel
+<fieldset id="fdChildrenFilter" style="margin-bottom: 15px">
+    <div class="columns" id="divChildrenFilter">
+        <div style="width: 45%; float: left;">
+            @if (Model.IsPublisher || Model.IsNetworkAdmin)
+            {
+                <div class="mb-3">
+                    <label>
+                        State
+                    </label>
+                    <span class="relative">
+                        <select id="selectState"></select>
+                    </span>
+                </div>
+            }
+
+            <div class="mb-3 block-content-dropdown-marquee" id="pftSchoolSelect">
+                <label>
+                    School
+                </label>
+                <div class="block-text-name relative">
+                    <select id="ftSchoolSelect"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+
+            </div >
+           <div class="mb-3 block-content-dropdown-marquee" id="pftTestSelect">
+                <label>
+                    Test
+                </label>
+                <div class="block-text-name relative">
+                    <select id="ftTestSelect"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3" id="pftTeacherSelect">
+                <label>
+                    Teacher
+                </label>
+                <span class="relative">
+                    <input type="text" id="txtTeacher" class="full-width">
+                </span>
+            </div>
+            <div class="mb-3" id="pftTimeSelect">
+                <label>
+                    Timeframe
+                </label>
+                <span class="relative">
+                    <select id="dateTime" class="full-width">
+                        <option value="0">All</option>
+                        <option value="14">2 weeks</option>
+                        <option value="30">1 month</option>
+                        <option value="60">2 months</option>
+                        <option value="90">3 months</option>
+                        <option selected value="180">6 months</option>
+                        <option value="365">1 year</option>
+
+                    </select>
+                </span>
+            </div>
+        </div>
+        <div style="width: 45%; margin-left: 68px; float: left" class="groupSelect">
+            @if (Model.IsPublisher || Model.IsNetworkAdmin)
+            {
+                <div class="mb-3 block-content-dropdown-marquee">
+                    <label>
+                        @LabelHelper.DistrictLabel
+                    </label>
+                    <div class="block-text-name relative">
+                        <select id="districtSelect"></select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @Html.Hidden("CurrentDistrictId", Model.DistrictId);
+            }
+            <div class="mb-3 block-content-dropdown-marquee" id="pftClassSelect">
+                <label>
+                    Class
+                </label>
+                <div class="block-text-name relative">
+                    <select id="ftClassSelect"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3 block-content-dropdown-marquee" id="pftTermSelect">
+                <label>
+                    Term
+                </label>
+                 <div class="block-text-name relative">
+                    <select id="ftTermSelect"></select>
+                    <div class="box-select">
+                        <span class="overlay"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3" id="pftStudentSelect">
+                <label>
+                    Student
+                </label>
+                <span class="relative">
+                    <input type="text" id="txtStudent" class="full-width">
+                </span>
+            </p>
+        </div>
+    </div>
+</fieldset>
+<style>
+    .groupSelect select {
+        width: 390px !important;
+    }
+
+    .form select {
+        width: 390px;
+    }
+    #pftTestSelect .block-text-name{
+        width: 390px;
+    }
+    #pftTestSelect .block-text-name .box-select  {
+         width: 370px;
+    }
+    #ftTestSelect {
+        border-color: transparent;
+    }
+    #pftTestSelect::after {
+        content: '';
+        float: none;
+        clear: both;
+        display: table;
+    }
+</style>
+<script type="text/javascript">
+    $(function () {
+        InitData();
+        $('#ftSchoolSelect').marquee({widthSelected: 390});
+        $('#ftTestSelect').marquee({widthSelected: 390});
+        $('#districtSelect').marquee({widthSelected: 390});
+        $('#ftClassSelect').marquee({widthSelected: 390});
+        $('#ftTermSelect').marquee({widthSelected: 390});
+    });
+
+    function checkEnableButton() {
+        if ($('#ftSchoolSelect').val() === null || $('#ftSchoolSelect').val() == 0) {
+
+            $('#filterSheets').prop('disabled', true);
+        }
+        else {
+            $('#filterSheets').prop('disabled', false);
+        }
+    }
+
+    function InitData() {
+
+        if ('@Model.IsPublisher' == 'True') {
+            loadStatesForPublisher();
+        }
+        else if ('@Model.IsNetworkAdmin' == 'True') {
+            loadStatesForNetworkAdmin();
+        }
+        else {
+            loadSchoolOfDistrictAdmin();
+        }
+
+    }
+    function loadStatesForPublisher() {
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            if (states.length === 1) {
+                AddSelectListItems($('#selectState'), states);
+                $('#selectState').trigger("change");
+            }else {
+                AddSelectListItems($('#selectState'), states, 'Select State');
+            }
+        });
+    }
+
+    function loadStatesForNetworkAdmin() {
+        $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function(states) {
+            AddSelectListItems($('#selectState'), states, 'Select State');
+            if (states.length === 1) {
+                AddSelectListItems($('#selectState'), states);
+                $('#selectState').trigger("change");
+            }else {
+                AddSelectListItems($('#selectState'), states, 'Select State');
+            }
+        });
+    }
+
+    function loadDistrictOfStateForPublisher() {
+        if ($('#selectState').val() != 0) {
+            $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: $('#selectState').val() }, function (districts) {
+                addDefaultOption($('#districtSelect'), "@LabelHelper.DistrictLabel");
+                addSelectListItemsWithSelectedValue($('#districtSelect'), districts);
+            });
+        }
+    }
+
+    function loadDistrictOfStateForNetworkAdmin() {
+        if ($('#selectState').val() != 'select') {
+            $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: $('#selectState').val() }, function (districts) {
+                addDefaultOption($('#districtSelect'), "@LabelHelper.DistrictLabel");
+                addSelectListItemsWithSelectedValue($('#districtSelect'), districts);
+            });
+        }
+    }
+    function loadSchoolOfDistrictAdmin() {
+        var districtId = @Model.DistrictId;
+            $.ajax({
+            url: '@Url.Action("GetSchoolTestResultDistrict", "TestResultsExport")',
+            data: { districtId: districtId, virtualTestId: 0, teacherId: 0, classId: 0, studentId: 0 },
+            type: 'GET',
+            success: function (data, textStatus, jqXHR) {
+                if (data.length == 0) {
+                    AddSelectListItems($('#ftSchoolSelect'), [{ Id: 0, Name: 'No Results Found' }]);
+                }
+
+                if (data.length == 1) {
+                    AddSelectListItems($('#ftSchoolSelect'), data);
+                    $('#ftSchoolSelect').trigger("change");
+                }
+                else {
+                    AddSelectListItems($('#ftSchoolSelect'), data, 'Select School');
+                }
+
+                checkEnableButton();
+            }
+        }).fail(function () {
+            $('#stDistrict').unblock();
+        });
+    }
+
+    $('#selectState').change(function () {
+        $("#districtSelect").empty();
+        $("#ftSchoolSelect").empty();
+        $("#ftClassSelect").empty();
+        $("#ftTermSelect").empty();
+        $("#ftTestSelect").empty();
+        $("#txtStudent").val("");
+        $("#txtTeacher").val("");
+        var selectedState = $('#selectState').val();
+        if (selectedState != '-1') {
+            if ('@Model.IsPublisher' === 'True') {
+                loadDistrictOfStateForPublisher();
+                checkEnableButton();
+            }
+            if ('@Model.IsNetworkAdmin' === 'True') {
+                loadDistrictOfStateForNetworkAdmin();
+                checkEnableButton();
+            }
+        }
+    });
+
+    $('#districtSelect').change(function () {
+        $("#ftSchoolSelect").empty();
+        $("#ftClassSelect").empty();
+        $("#ftTeacherSelect").empty();
+        $("#ftStudentSelect").empty();
+        $("#ftTestSelect").empty();
+
+        $("#ftTermSelect").empty();
+        checkEnableButton();
+        var districtId = $('#districtSelect').val();
+        if (districtId != 0) {
+            $('#stDistrict').unblock();
+            setTimeout(
+                function () {
+                    LoadChildrenFilter();
+                }, 100);
+    }
+    });
+
+    $('#ftSchoolSelect').change(function () {
+        $("#ftTestSelect").empty();
+
+        $("#ftTermSelect").empty();
+        $("#ftClassSelect").empty();
+        var schoolId = $('#ftSchoolSelect').val();
+
+        if (schoolId > 0) {
+            var districtId = GetDistrictId();
+            LoadClassFilter(districtId, schoolId);
+            LoadTestFilter(districtId, schoolId);
+            LoadTermFilter(districtId, 0, 0, schoolId);
+            checkEnableButton();
+        }
+        checkEnableButton();
+    });
+
+    $('#ftClassSelect').change(function () {
+        var districtId = GetDistrictId();
+        var schoolId = $('#ftSchoolSelect').val();
+        var classId = $('#ftClassSelect').val();
+        LoadTestByClass(districtId, classId, 0, schoolId, 0);
+        LoadTermFilter(districtId, 0, classId, schoolId);
+    });
+
+    // Get Test And Term.
+    function LoadTestByClass(districtId, classId, studentId, schoolId, teacherId) {
+          $('#ftTestSelect').empty();
+
+            $.ajax({
+                url: '@Url.Action("GetVirtualTestTestResultDistrict", "TestResultsExport")',
+                data: { districtId: districtId, classId: classId, studentId: studentId, schoolId: schoolId, teacherId: teacherId },
+                type: 'GET',
+                success: function (data, textStatus, jqXHR) {
+                    if (data.length == 0) {
+                        AddSelectListItems($('#ftClassSelect'), [{ Id: 0, Name: 'No Results Found' }]);
+                    } else if (data.length == 1) {
+                        AddSelectListItems($('#ftTestSelect'), data);
+                        $('#ftTestSelect').trigger("change");
+                    } else {
+                        AddSelectListItems($('#ftTestSelect'), data, 'Select Test');
+                    }
+                }
+            }).fail(function () {
+                //end waiting
+                $('#stDistrict').unblock();
+                })
+
+        $('#stDistrict').unblock();
+        }
+
+    //End childrent filter
+    function LoadChildrenFilter() {
+        //Clear data on dropdown
+        var districtId = GetDistrictId();
+        var virtualTestId = 0;
+        var teacherId = 0;
+        var classId = 0;
+        var studentId = 0;
+        LoadTestFilterChildren(districtId, virtualTestId, teacherId, classId, studentId);
+    }
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "0").text(defaultValue));
+        $.each(results, function (i, value) {
+            selectList
+                .append($("<option></option>")
+                        .attr("value", value.Id)
+                        .text(value.Name));
+        });
+
+    }
+
+    function AddSelectListItemsWithSelectedValue(selectList, results, defaultValue, selectedValue) {
+        selectList.empty();
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "0").text(defaultValue));
+        $.each(results, function (i, value) {
+            if (selectedValue == value.Id) {
+                selectList.append($("<option></option>").attr("selected", "selected").attr("value", value.Id).text(value.Name));
+            }else {
+                selectList.append($("<option></option>").attr("value", value.Id).text(value.Name));
+            }
+        });
+        //Load Second filter:
+        HideResultContent();
+        var flag = $('#drTestTeacherClassStudentSelect').val();
+        ShowReviewButton(flag);
+    }
+    function LoadClassFilter(districtId, schoolId) {
+        $('#ftClassSelect').empty();
+        $.ajax({
+            url: '@Url.Action("GetClassTestResultDistrict", "TestResultsExport")',
+            data: { districtId: districtId, virtualTestId: 0, studentId: 0, schoolId: schoolId, teacherId: 0 },
+            type: 'GET',
+            success: function (data, textStatus, jqXHR) {
+                if (data.length == 0) {
+                    AddSelectListItems($('#ftClassSelect'), [{ Id: 0, Name: 'No Results Found' }]);
+                }else if (data.length == 1) {
+                    AddSelectListItems($('#ftClassSelect'), data);
+                }else{
+                    AddSelectListItems($('#ftClassSelect'), data, 'Select Class');
+                }
+            }
+        }).fail(function () {
+            $('#stDistrict').unblock();
+        });
+        $('#stDistrict').unblock();
+    }
+
+    function LoadTestFilter(districtId, schoolId) {
+        $('#ftTestSelect').empty();
+
+        $.ajax({
+            url: '@Url.Action("GetVirtualTestTestResultDistrict", "TestResultsExport")',
+            data: { districtId: districtId, classId: 0, studentId: 0, schoolId: schoolId, teacherId: 0 },
+            type: 'GET',
+            success: function (data, textStatus, jqXHR) {
+                if (data.length == 0) {
+                    AddSelectListItems($('#ftTestSelect'), [{ Id: -1, Name: 'No Results Found' }]);
+                    $('#ftSchoolSelect').trigger("change");
+                }else if(data.length == 1){
+                    AddSelectListItems($('#ftTestSelect'), data);
+                }else{
+                    AddSelectListItems($('#ftTestSelect'), data, 'Select Test');
+                }
+
+            }
+        }).fail(function () {
+            //end waiting
+            $('#stDistrict').unblock();
+        });
+        $('#stDistrict').unblock();
+    }
+
+    function LoadTermFilter(districtId, virtualTestId, classId, schoolId) {
+        $('#ftTermSelect').empty();
+        $.ajax({
+            url: '@Url.Action("GetTermTestResultDistrict", "TestResultsExport")',
+            data: {
+                districtId: districtId, virtualTestId: virtualTestId, studentId: 0,
+                schoolId: schoolId, classId: classId, teacherId: 0
+            },
+            type: 'GET',
+            success: function (data, textStatus, jqXHR) {
+                if (data.length == 0) {
+                    AddSelectListItems($('#ftTermSelect'), [{ Id: 0, Name: 'No Results Found' }]);
+                }else if(data.length == 1){
+                    AddSelectListItems($('#ftTermSelect'), data);
+                }
+                else{
+                    AddSelectListItems($('#ftTermSelect'), data, 'Select @LabelHelper.Term');
+                }
+            }
+        }).fail(function () {
+            //TODO: end waiting
+            $('#stDistrict').unblock();
+        });
+        $('#stDistrict').unblock();
+    }
+
+    function LoadTestFilterChildren(districtId, virtualTestId, teacherId, classId, studentId) {
+        $.ajax({
+            url: '@Url.Action("GetSchoolTestResultDistrict", "TestResultsExport")',
+            data: { districtId: districtId, virtualTestId: virtualTestId, teacherId: teacherId, classId: classId, studentId: studentId },
+            type: 'GET',
+            success: function (data, textStatus, jqXHR) {
+                if (data.length == 0) {
+                    AddSelectListItems($('#ftSchoolSelect'), [{ Id: 0, Name: 'No Results Found' }]);
+                } else if (data.length == 1) {
+                    AddSelectListItems($('#ftSchoolSelect'), data);
+                    $('#ftSchoolSelect').trigger("change");
+                } else {
+                    AddSelectListItems($('#ftSchoolSelect'), data, 'Select School');
+                }
+                checkEnableButton();
+            }
+        }).fail(function () {
+            $('#stDistrict').unblock();
+        });
+        $('#stDistrict').unblock();
+    }
+
+    function ResetData() {
+        //clear dropdown
+        UnCheckparentFilter();
+    }
+
+    function GetDistrictId() {
+        var tmp = $('#CurrentDistrictId').val();
+        if (tmp > 0) {
+            return tmp;
+        } else {
+            tmp = $('#districtSelect').val();
+        }
+        return tmp;
+    }
+
+    function ShowReviewButton(flag) {
+        LoadChildrenFilter();
+    }
+
+    function ClearAll() {
+        $("#districtSelect").empty();
+        $("#ftSchoolSelect").empty();
+        $("#ftClassSelect").empty();
+        $("#ftTermSelect").empty();
+        $("#ftTestSelect").empty();
+
+        $("#txtStudent").val("");
+        $("#txtTeacher").val("");
+        $('#dateTime').val(180);
+        $("#filterSheets").attr("disabled", "disabled")
+        $('#selectState').empty();
+        InitData();
+    }
+
+    function HideMessage() {
+        $('#success-message').html('');
+        $('#error-messages').html('');
+        $('#success-message').hide();
+        $('#error-messages').hide();
+    }
+</script>

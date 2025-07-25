@@ -1,0 +1,304 @@
+
+<div class="block-border mt-4" id="divExtractTestArea">
+    <div class="block-content form">
+        
+        <table id="dataTableTest" class="datatable table no-margin" width="100%">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 13px">
+                        <input type="checkbox" id="chkAllTest" />
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                        Test Name
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                        Bank Name
+                    </th>
+                    <th scope="col" style="min-width: 100px;">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                        @LabelHelper.Subject
+                    </th>
+                    <th scope="col">
+                        <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                        @LabelHelper.TestGrade
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <div class="btn-wrapper d-none">
+            <button id="btnSubmitSelectTest" type="button" class="btn-blue me-3"
+                    onclick="SubmitSelectedTest(null);" disabled="disabled">
+                Create Extracts
+            </button>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="hdfAllTestIds" />
+<input type="hidden" id="hdfTrackTestIdSelected" />
+
+<script type="text/javascript">
+
+    function LoadListExtractTest( ) {
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetExtractTest", "TestExtract")',
+            fnServerParams: function (aoData) {
+                var subject = $('#selectSubjectTest').val() == null ? '' : $('#selectSubjectTest').val();
+                aoData.push(
+                    { name: "districtId", value: GetDistrictID() },                    
+                    { name: "ListTestIDs", value: BuildListTestSelected() },
+                    { name: "StrStartDate", value: $('#selectFromDateTest').val() },
+                    { name: "StrEndDate", value: $('#selectToDateTest').val() },
+                    { name: "BankdId", value: $('#selectBankTest').val() },
+                    { name: "GradeId", value: $('#selectGradeTest').val() },
+                    { name: "SubjectName", value: subject }
+                );
+            },
+            bAutoWidth: true,
+            iDisplayLength: 50,
+            aLengthMenu: [50, 100, 500, 1000],
+            aaSorting: [[1, "asc"]],
+            oLanguage: { "sEmptyTable": "Match Not Found" },
+            aoColumns: [
+                { sType: 'int', sName: 'VirtualTestId', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'TestName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'BankName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Subject', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Grade', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBoxTest(aData[0]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                $('#filterSheetsTest').attr("disabled", "disabled");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#filterSheetsTest').removeAttr('disabled');
+                $('#divExtractTestArea').unblock();
+                $('.with-tip').tip();
+                $('.with-tip').tip();
+                typeof InitTestIds == 'function' && InitTestIds();
+            },
+            fnInitComplete: function () {
+                var elSearchLabel = $('#dataTableTest_filter label');
+                var elSearchInput = elSearchLabel.find('input');
+
+                elSearchInput.css({ paddingLeft: '35px', position: 'relative' });
+                if (elSearchInput.length) {
+                    elSearchInput.get(0).style.setProperty('padding-left', '32px', 'important');
+                }
+
+                elSearchLabel.replaceWith(elSearchInput);
+                $('#dataTableTest_filter').addClass('data-search');
+
+                moveBtnExtract('divExtractTestArea');
+            }
+        };
+
+        function setCheckBoxTest(testId) {
+            var checkboxString = '<input type="checkbox" name="chkTest" value="' + testId + '" />';
+            if (CheckSelectedTest(testId)) {
+                checkboxString = '<input type="checkbox" name="chkTest" value="' + testId + '" checked="checked" />';
+            }
+            return checkboxString;
+        }
+
+        $("#dataTableTest").data("options", options);
+        initializeDataTable($("#dataTableTest"));
+    }
+
+    $('#chkAllTest').live("click", function (e) {
+        if (this.checked) {
+            //alert('Check All: ' + $('#hdfAllTestIds').val());
+            $('#hdfTrackTestIdSelected').val($('#hdfAllTestIds').val());
+            $('INPUT[name="chkTest"][type=checkbox]').attr('checked', 'checked');
+        }
+        else {
+            //alert('Uncheck All');
+            $('#hdfTrackTestIdSelected').val('');
+            $('INPUT[name="chkTest"][type=checkbox]').removeAttr('checked');
+        }
+        portalV2SkinCheckBox();
+        setDisabledButtonsTest();
+    });
+
+    function setDisabledButtonsTest( ) {
+        if (!CheckSelectTemplatesTest()) {
+            $('#btnSubmitSelectTest').attr('disabled', 'disabled');
+            return;
+        }
+        var vListIds = $('#hdfTrackTestIdSelected').val();
+        if (vListIds.length == 0) {
+            $('#btnSubmitSelectTest').attr('disabled', 'disabled');
+        } else {
+            $('#btnSubmitSelectTest').removeAttr('disabled');
+        }
+    }
+
+    $('INPUT[name="chkTest"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            TrackingTestSelected($(this).val());
+            if ($('INPUT[name="chkTest"][type=checkbox]').length == $('INPUT[name="chkTest"][type=checkbox]:checked').length) {
+                $('#chkAllTest').attr('checked', 'checked');
+            }
+        }
+        else {
+            RemoveTrackingTestId($(this).val());
+            $('#chkAllTest').removeAttr('checked');
+            portalV2SkinCheckBox();
+        }
+        setDisabledButtonsTest();
+    });
+
+    function GetTestSelected() {
+        var userIds = '';
+        $('INPUT[name="chkTest"][type=checkbox]:checked').each(function (i, e) {
+            userIds += $(e).val() + ',';
+        });
+        return userIds.substr(0, userIds.length - 1);
+    }
+
+    function SubmitSelectedTest(e) {
+        var listTemplatesExport = '';
+        
+        $(".testTemplateItem[isSelected=yes]").each(function () {
+            listTemplatesExport += ($(this).attr('templateid')) + ';';
+        });
+        var timezoneOffset = new Date().getTimezoneOffset();
+        var vListTest = $('#hdfTrackTestIdSelected').val();
+        var type = GetTypeExtract();
+        if (vListTest.length > 0) {
+            ShowBlock($('#divExtractTestArea'), 'Exporting');
+            $.ajax({
+                type: "Post",
+                url: '@Url.Action("AddExtractionToQueue", "TestExtract")',
+                data: { district: GetDistrictID(), lstIds: vListTest, lstTemplates: listTemplatesExport, timezoneOffset: timezoneOffset, type: type }
+            })
+        .done(function (response) {
+            $('#divExtractTestArea').unblock();
+            if (response.success == true) {
+                LoadPopupConfirm();
+            } else {
+                alert('Please select test.');
+            }        
+            
+            //alert("Link Download: " + urlDownload);
+        });
+    }
+}
+
+function LoadPopupConfirm() {    
+    dialog = $("#popupConfirm111")
+        .dialog({
+            title: $(this).attr("data-dialog-title"),
+            close: function () {
+                //$(this).remove();
+            },
+            modal: true,
+            width: 440,
+            resizable: false,
+            hideOnClose: true
+        })
+        .load(this.href, function () { });
+}
+
+function TrackingTestSelected(userId) {
+    var userFormat = '_' + userId + '_';
+    var listUserIdSelected = $('#hdfTrackTestIdSelected').val();
+    if (listUserIdSelected.indexOf(userFormat) <= 0) {
+        listUserIdSelected += ';' + userFormat;
+        $('#hdfTrackTestIdSelected').val(listUserIdSelected);
+    }
+}
+
+function RemoveTrackingTestId(userId) {
+    var userFormat = '_' + userId + '_';
+    var listUserIdSelected = $('#hdfTrackTestIdSelected').val();
+    if (listUserIdSelected.indexOf(userFormat) > 0) {
+        userFormat = ';' + userFormat;
+        $('#hdfTrackTestIdSelected').val(listUserIdSelected.replace(userFormat, ''));
+    }
+}
+
+function CheckSelectedTest(userId) {
+    var userFormat = '_' + userId + '_';
+    var listUserIdSelected = $('#hdfTrackTestIdSelected').val();
+    if (listUserIdSelected.indexOf(userFormat) > 0) {
+        return true;
+    }
+    return false;
+}
+</script>
+
+<style type="text/css">
+    #dataTableTest_wrapper .block-footer {
+        display: none;
+    }
+
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: var(--dark) !important;
+    }
+
+    .ui-datepicker .ui-datepicker-header {
+        top: 0px;
+    }
+
+    .ui-datepicker .ui-datepicker-prev span,
+    .ui-datepicker .ui-datepicker-next span {
+        background-image: url("/Content/themes/base/images/ui-icons_222222_256x240.png");
+    }
+
+    .ui-datepicker .ui-icon {
+        width: 16px;
+        height: 16px;
+    }
+</style>

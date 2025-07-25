@@ -1,0 +1,2 @@
+INSERT [dbo].[Configuration] ([Name], [Value], [Type]) VALUES (N'Portal-Notification-Url', N'http://portal.linkit.com/notification/downloadFile?key=', 3)
+INSERT [dbo].[Configuration] ([Name], [Value], [Type]) VALUES (N'Portal-Notification-Role', '2,5', 3)

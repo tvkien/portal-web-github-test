@@ -1,0 +1,570 @@
+<style>
+
+    /* No data available in table */
+     #dataTableSet .dataTables_empty div {
+         width: 445px !important;
+     }
+
+    .scrollItemSet thead,
+    .scrollItemSet tbody{display: block;}
+    .scrollItemSet tbody {
+        height: 400px;
+        overflow: auto;
+        overflow-x: hidden;
+    }
+    .scrollItemSet{
+        width: 463px !important;
+    }
+    .scrollItemSet tbody td {
+         /*word-break: break-all;*/ /* Not apply for whole table, just apply for long word in each td*/
+         word-wrap: break-word;
+     }
+    .scrollItemSet tbody td:nth-of-type(1) div{
+        width: 92px;
+    }
+    .scrollItemSet tbody td:nth-of-type(2) div
+    {
+        width: 320px;
+    }
+    .scrollItemSet img {
+        padding-left: 0px;
+        padding-right: 0px;
+    }
+    .noscrollItemSet tbody td:nth-of-type(2) div
+    {
+        width: 333px !important;
+    }
+    /* IE9 */
+    .scrollItemSetIE9 tbody td:nth-of-type(1) div
+    {
+        width: 89px;
+    }
+    .noscrollItemSetIE9 tbody td:nth-of-type(2) div
+    {
+        width: 328px !important;
+    }
+     #dataTableSet tbody tr {
+        height: 100% !important;
+    }
+     #divdataTableSet {
+        height: -20px;
+    }
+</style>
+<article class="container_12" style="width: 100%">
+    <section class="grid_12" style="width: 93%">
+        <div class="block-border" style="width: 100%">
+            <div class="block-content form" id="divOnTopSet">
+                <h1>Item Sets
+                    <a href="javascript:void(0)" onclick="CreateNewItemSet();">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Add New Item Set
+                    </a>
+                    <div class="clearfix"></div>
+                </h1>
+                <input type="hidden" id="hdfQtiBankIdSet" value="@ViewBag.ItemBankId"/>
+                <p style="height: 5px"></p>
+                <div class="no-margin last-child">
+                    <table id="dataTableSet" class="datatable table no-margin scrollItemSet" width="100%" >
+                        <thead>
+                            <tr>
+                                <th scope="col"></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Item Set
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Author Group
+                                </th>
+                                <th scope="col"></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Author Name
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+<script type="text/javascript">
+    var oTableItemSet;
+    var keepCurrentPageItemSet = 0;
+    var displayStartItemSet = 0;
+
+    $(function () {
+        removeTips();
+
+        var optionsItemSet = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            sAjaxSource: getAjaxSourceItemSet(),
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: 'itemBankId', value: itemBankId },
+                    { name: 'districtId', value: itemDistrictId }
+                );
+
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(htmlEncode(item.value));
+                        }
+                        break;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTIGroupId', bSearchable: false, bSortable: false, sWidth: "100px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: "363px" },
+                { sType: 'string', sName: 'AuthorGroup', bSearchable: true, bSortable: true, sWidth: "0px", bVisible: false },
+                { sType: 'integer', sName: 'AuthorGroupId', bSearchable: false, bSortable: false, sWidth: "0px", bVisible: false },
+                { sType: 'integer', sName: 'AuthorName', bSearchable: true, bSortable: false, sWidth: "0px", bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityItemSet(aData[0], aData[1], aData[3]));
+                addWordBreakToTableCell($('td:eq(1)', nRow), 15, aData[1]);
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableSet'), "Loading");
+                if (keepCurrentPageItemSet == 1) {
+                    keepCurrentPageItemSet = 0;
+                    oTableItemSet.DataTable.settings[1]._iDisplayStart = displayStartItemSet;//settings[1] because settings[0] is ItemBank
+                }
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableSet').unblock();
+                $('.with-tip').tip();
+
+                //This only for AssessmentItems
+                if ($("#divItemSets").height() > $("#divItemBanks").height()) {
+                    $("#divItemSets").sticky('destroy');
+                } else {
+                    if (!$("#divItemSets").parent().hasClass("sticky-wrapper")) {
+                        $("#divItemSets").sticky({ topSpacing: 0, className: "sticky" });
+                    }
+                }
+                formatTableForAddingVertialScrollBar('dataTableSet', 'scrollItemSet', 'noscrollItemSet', 'scrollItemSetIE9', 'noscrollItemSetIE9');
+            }
+        };
+
+        var $dataTableSet = $('#dataTableSet');
+        $dataTableSet.data('options', optionsItemSet);
+        oTableItemSet = $dataTableSet.dataTable();
+
+        function getAjaxSourceItemSet() {
+            return '@Url.Action("LoadItemSets")';//default
+        }
+
+        function SetDefaultAuthorGroupName(itemSetId, strName, authorGroupId) {
+            var addAuthorGroup = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle.png")';
+            var addAuthorGroupString = '<a href="javascript:void(0)" style="float:right" onclick="AddAuthorGroupToItemSet(this);" title="Assign Author Group" itemSetId="' + itemSetId + '" class="with-tip AddAuthorGroupToItemSet"><img src="' + addAuthorGroup + '" width="16" height="16"></a>';
+
+            var removeAuthorGroup = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/minus-red.png")';
+            var removeAuthorGroupString = '<a href="javascript:void(0)" style="float:right" onclick="RemoveAuthorGroupSet(this);" title="Deassign Author Group" itemSetId="' + itemSetId + '" authorGroupId="' + authorGroupId + '" class="with-tip removeAuthorGroupSet"><img src="' + removeAuthorGroup + '" width="16" height="16"></a>';
+
+            if (authorGroupId <= 0)
+                return addAuthorGroupString;
+            return strName + ' ' + removeAuthorGroupString;
+        }
+
+        function setIconVisibilityItemSet(itemSetId, Name) {
+            var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+            var editString = '<a href="javascript:void(0)" onclick="EditItemSet(this);" title="Item Set Properties" itemSetId="' + itemSetId + '" class="with-tip EditItemSet"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+            var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+            var deleteIconString = '<a href="javascript:void(0)" onclick="DeleteItemSet(this);" title="Delete Item Set" itemSetId="' + itemSetId + '" itemSetName="' + encodeURIComponent(Name) + '" class="with-tip deleteItemSet"><img src="' + deleteIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+            var openItemSetIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/folder-open-document-text.png")';
+            var openItemSetString = '<a href="javascript:void(0)" onclick="ViewQtiItem(this);" title="Open Item Set" itemSetId="' + itemSetId + '" itemSetName="' + encodeURIComponent(Name) + '" class="with-tip viewQtiItem"><img src="' + openItemSetIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+            var moveItemSetIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/move-icon.png")';
+            var moveItemSetString = '<a href="javascript:void(0)" onclick="ShowMoveItemSet(this);" title="Move\/Copy Item Set" itemSetId="' + itemSetId + '" itemSetName="' + encodeURIComponent(Name) + '" class="with-tip moveQtiItem"><img src="' + moveItemSetIcon + '" width="16" height="16" style="margin-right: 0px"></a>';
+
+
+            return editString + deleteIconString + openItemSetString + moveItemSetString;
+        }
+
+        function setIconOpenItemSet(itemSetId, Name) {
+            var openItemSetIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/folder-open-document-text.png")';
+            var openItemSetString = '<a href="javascript:void(0)" onclick="ViewQtiItem(this);" title="Open Item Set" QTIITemGroupID="' + itemSetId + '" itemSetName="' + encodeURIComponent(Name) + '" class="with-tip viewQtiItem"><img src="' + openItemSetIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+            return openItemSetString;
+        }
+    });
+
+    function AddAuthorGroupToItemSet(control) {
+        var itemSetId = $(control).attr('itemSetId');
+
+        var worker = $('<div />');
+        worker
+            .addClass("dialog")
+            .attr("id", "AddAuthorGroupDialogSet")
+            .appendTo("body")
+            .load('@Url.Action("LoadAuthorGroupListForItemSet", "Assessment")/?itemSetId=' + itemSetId, function () {
+                worker.dialog({
+                    title: $(this).attr("Add @LabelHelper.DistrictLabel to group"),
+                    close: function () {
+                        $('.ui-widget-overlay').remove();
+                        $(this).remove();
+                    },
+                    modal: false,
+                    width: 980,
+                    resizable: false
+                });
+            });
+
+        showModalDialogBG();
+    }
+
+    function RemoveAuthorGroupSet(control) {
+        if (confirm('Are you sure you want to deassign this AuthorGroup?')) {
+            var itemSetId = $(control).attr('itemSetId');
+            var authorGroupId = $(control).attr('authorGroupId');
+            $.post('@Url.Action("ItemSetRemoveAuthorGroup")', { itemSetId: itemSetId, authorGroupId: authorGroupId }, function (response) {
+                if (response == true) {
+                    ui.dataTableSet.fnDraw(false);
+                } else {
+                    alert(response.message);
+                }
+            });
+        }
+    }
+
+    function DeleteItemSet(control) {
+        var itemSetName = $(control).attr('itemSetName');
+        var itemSetId = $(control).attr('itemSetId');
+
+        LoadConfirmDeleteItemSet(itemSetId, itemSetName);
+    }
+
+    function DeleteItemSetByID(Id) {
+        $.post('@Url.Action("DeleteItemSet")', { itemSetId: Id }, function (response)
+        {
+            $(".dialog").dialog("close");
+            if (response == true) {
+                keepCurrentPageItemSet = 1;
+                displayStartItemSet = oTableItemSet.DataTable.settings[1]._iDisplayStart;
+                ui.dataTableSet.fnDraw(false);
+            } else {
+                alert(response.message);
+            }
+        });
+    }
+
+    function LoadConfirmDeleteItemSet(itemSetId, itemSetName) {
+        itemSetName = htmlEncode(itemSetName);
+        var url = '@Url.Action("LoadConfirmDeleteItemSet", "ItemBank")/?itemSetId=' + itemSetId + '&itemSetName=' + encodeURIComponent(itemSetName);
+        $.ajax({
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="PopupConfirmDeleteItemSet" class="dialog"></div>');
+                $("#PopupConfirmDeleteItemSet").append(html);
+                $('#PopupConfirmDeleteItemSet').dialog({
+                    title: "Popup Confirm Delete Item Set",
+                    open: function () {
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+
+                        $('#PopupConfirmDeleteItemSet').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    var isOpenAddNewItemSet = false;
+    function CreateNewItemSet() {
+        if ($("#SelectedItemBankId").val().length == 0) {
+            alert('Please select an item bank');
+            return;
+        }
+        if (isOpenAddNewItemSet == true) {
+            return;
+        }
+        isOpenAddNewItemSet = true;
+        var url = '@Url.Action("LoadCreateItemSet", "ItemBank")';
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTopSet").append('<div id="PopupCreateItemBank" class="dialog"></div>');
+                $("#PopupCreateItemBank").append(html);
+                $('#PopupCreateItemBank').dialog({
+                    title: "",
+                    open: function () {
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupCreateItemBank').remove();
+                        $("body .my-overlay").remove();
+                        isOpenAddNewItemSet = false;
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    function EditItemSet(control) {
+        var itemSetId = $(control).attr('itemSetId');
+        LoadEditItemSet(itemSetId);
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: 2000' + 'px; z-index: 1001;"></div>');
+    }
+
+    function cancelChange() {
+        $(".dialog").dialog("close");
+    }
+
+    function createItemSet() {
+        //Check exist ItemBank with UserID
+        var vItemSetName = $("#inputItemSetName").val();
+        var vQtiBankId = $("#SelectedItemBankId").val();
+
+        if (vItemSetName.trim() != '') {
+            vItemSetName = encodeURIComponent(htmlEncode(vItemSetName));
+            $.post('@Url.Action("CreateItemSet")', { itemSetName: vItemSetName, iQtiBankId: vQtiBankId }, function (response) {
+                if (response == true) {
+                    keepCurrentPageItemSet = 1;
+                    displayStartItemSet = oTableItemSet.DataTable.settings[1]._iDisplayStart;
+                    ui.dataTableSet.fnReloadAjax('@Url.Action("LoadItemSets")?itemBankId=' + vQtiBankId);
+                    $('#success-message').show();
+                    setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                } else {
+                    var errorList = { ErrorList: [{ ErrorMessage: response.message }] };
+                    addErrorMessages(errorList);
+                    $('#btnCreateItemSet').removeAttr('disabled');
+                }
+            });
+        } else {
+            var response = { ErrorList: [{ ErrorMessage: 'Please input Item Set Name' }] };
+            addErrorMessages(response);
+        }
+    }
+
+    function LoadEditItemSet(itemSetId) {
+        var url = '@Url.Action("EditItemSet", "ItemBank")?itemSetId=' + itemSetId;
+        ShowBlock($('#dataTableSet'), "Loading");
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="PopupEditItemSet" class="dialog"></div>');
+                $("#PopupEditItemSet").append(html);
+                $('#PopupEditItemSet').dialog({
+                    title: "",
+                    open: function () {
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        ui.dataTableSet.fnDraw(false);
+                        $('#PopupEditItemSet').remove();
+                        $("body .my-overlay").remove();
+                        $('#dataTableSet').unblock();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    function ShowMoveItemSet(control) {
+        var itemSetId = $(control).attr('itemSetId');
+        var itemSetName = $(control).attr('itemSetName');
+        itemSetName = htmlEncode(itemSetName);
+        var worker = $('<div />');
+        worker
+            .addClass("dialog")
+            .attr("id", "divMoveCopyItemSetDialog")
+            .appendTo("body")
+            .load('@Url.Action("LoadMoveItemSet", "ItemBank")?itemSetId=' + itemSetId + '&itemSetName=' + encodeURIComponent(itemSetName), function () {
+                worker.dialog({
+                    title: $(this).attr("Move Item Set"),
+                    close: function () {
+                        $('.ui-widget-overlay').remove();
+                        $(this).remove();
+                        $('#dataTableSet').dataTable().fnDraw(false);
+                    },
+                    modal: false,
+                    width: 750,
+                    resizable: false
+                });
+            });
+
+        showModalDialogBG();
+    }
+
+    function ViewQtiItem(control) {
+        var districtId = $('#selectDistrict').val();
+        var itemSetId = $(control).attr('itemSetId');
+        var itemSetName = $(control).attr('itemSetName');
+        var url = '@Url.Action("Index", "QTIItem")?qtiItemGroupID=' + itemSetId + '&itemSetName=' + itemSetName + '&districtId=' + districtId;
+        window.location.href = url;
+    }
+
+    function saveItemSet() {
+        //TODO: Update ItemSet
+        var qtiGroupId = $('#QtiGroupId').val();
+        var vName = $('#Name').val();
+        if (vName.trim() != '') {
+            $('#btnSaveItemSet').attr('disabled', true);
+            $.ajax({
+                url: '@Url.Action("UpdateItemSet")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ QtiGroupId: qtiGroupId, Name: vName }),
+                success: function (response) {
+                    if (response == true) {
+                        keepCurrentPageItemSet = 1;
+                        displayStartItemSet = $('#dataTableSet').dataTable().DataTable.settings[1]._iDisplayStart;
+                        //ui.dataTableSet.fnDraw(false);
+                        $('#success-message').show();
+                        setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                    } else {
+                        addErrorMessages(response);
+                        $('#btnSaveItemSet').removeAttr('disabled');
+                    }
+                }
+            });
+        }
+        else {
+            var errorMessage = { ErrorList: [{ ErrorMessage: 'Please input Item Set Name' }] };
+            addErrorMessages(errorMessage);
+        }
+    }
+</script>
+<script type="text/javascript">
+    var posWas;
+    $.browser.chrome = /chrom(e|ium)/.test(navigator.userAgent.toLowerCase());
+    $(window).bind('scroll', function () { //when the user is scrolling...
+        SetItemSetPosition();
+        if ($.browser.chrome) {
+            var setPositionTime = setTimeout(function () {
+                SetItemSetPosition();
+                clearTimeout(setPositionTime);
+            },0);
+        } else {
+            //SetItemSetPosition();
+        }
+    });
+
+    window.onresize = function (event) {
+        SetItemSetPosition();
+        if ($.browser.chrome) {
+            var setPositionTime = setTimeout(function () {
+                SetItemSetPosition();
+                clearTimeout(setPositionTime);
+            }, 0);
+        } else {
+            //SetItemSetPosition();
+        }
+    };
+    var setPositionTimeOut;
+    function SetItemSetPosition() {
+        
+        var itemBankTop = $('#divItemBanks').offset().top;
+        var newTop = 0;
+        if ($('#divItemBanks').height() > $('#divItemSets').height()) {
+
+            if ($.browser.chrome) {
+                newTop = document.body.scrollTop;
+            } else {
+                newTop = document.documentElement.scrollTop;
+            }
+            if (newTop < itemBankTop) {
+                newTop = itemBankTop;
+            }
+
+        }
+        else {
+            newTop = itemBankTop;
+        }
+        if (newTop > $('#divItemBanks').height() + $('#divItemBanks').offset().top) {
+            newTop = $('#divItemBanks').height() + $('#divItemBanks').offset().top;
+        }
+
+        var newLeft = $('#divItemBanks').offset().left + $('#divItemBanks').width();
+        $('#divItemSets').css({ 'left': newLeft + 'px' + '', 'top': newTop + 'px', 'position': 'absolute' });
+        var setOffsetTime = setTimeout(function () {
+            $('#divItemSets').offset({ top: newTop, left: newLeft });
+            clearTimeout(setOffsetTime);
+        }, 0);
+
+    }
+
+</script>

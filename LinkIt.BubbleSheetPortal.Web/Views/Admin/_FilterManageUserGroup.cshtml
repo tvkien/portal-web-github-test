@@ -1,0 +1,117 @@
+<h1>Select State/@LabelHelper.DistrictLabel</h1>
+<fieldset>
+    <div class="columns">
+        <div class="colx2-left">
+            @if (Model.IsPublisher || Model.IsNetworkAdmin)
+            {
+                <div class="mb-3">
+                    <label>State</label>
+                    <select id="selectState" class="full-width" style="width: 300px"></select>
+                </div>
+            }
+        </div>
+        <div class="colx2-right">
+            @if (Model.IsPublisher || Model.IsNetworkAdmin)
+            {
+                <div class="mb-3 block-content-dropdown-marquee">
+                    <label>@LabelHelper.DistrictLabel</label>
+
+                    <div class="block-text-name ">
+                        <select id="selectDistrict" class="full-width" style="width: 300px"></select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</fieldset>
+
+<script>
+    var isPublisher = '@Model.IsPublisher' == 'True';
+    var isNetworkAdmin = '@Model.IsNetworkAdmin' == 'True';
+
+    var isNewSession = '@ViewBag.IsNewSession';
+    var filter = null;
+    if (isNewSession == 'True') {
+        removeFilterInLocalStorage();
+    }
+    else {
+        filter = getFilterFromLocalStorage();
+    }
+
+    $('#selectDistrict').marquee({ widthSelected: 300 });
+
+    if ('@Model.IsPublisher' == 'True') {
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            addListItemsWithDefaultValue('State', '#selectState', states, filter?.stateID);
+        });
+    }
+
+    if ('@Model.IsNetworkAdmin' == 'True') {
+        $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+            addListItemsWithDefaultValue('State', '#selectState', states, filter?.stateID);
+        });
+    }
+
+    $('#selectState').change(function () {
+        $('#filterSheets').attr('disabled', true);
+        if ($(this).val() > 0) {
+            populateDistricts();
+        }
+        else {
+            $('#selectDistrict').empty();
+        }
+    });
+
+    $('#selectDistrict').change(function () {
+        if ($(this).val() > 0) {
+            //$('#addUserGroupBtn').attr('disabled', false);
+            $('#filterSheets').attr('disabled', false);
+        } else {
+            disableButtons();
+        }
+    });
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            if ('@Model.IsPublisher' == 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addListItemsWithDefaultValue('@LabelHelper.DistrictLabel', '#selectDistrict', districts, filter?.districtID);
+                });
+            }
+            if ('@Model.IsNetworkAdmin' == 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addListItemsWithDefaultValue('@LabelHelper.DistrictLabel', '#selectDistrict', districts, filter?.districtID);
+                });
+            }
+        }
+    }
+
+    function getFilterFromLocalStorage() {
+        var filter = localStorage.getItem("UserGroupFilter");
+        if (filter) {
+            return JSON.parse(filter);
+        }
+
+        return null;
+    }
+
+    function removeFilterInLocalStorage() {
+        localStorage.removeItem("UserGroupFilter");
+    }
+
+    function addListItemsWithDefaultValue(type, selectListId, results, defValue) {
+        addSelectListItemsWithDefaultValue($(selectListId), results, 'Select ' + type);
+
+        if (defValue) {
+            $(selectListId + ' option[value=' + defValue + ']').attr('selected', 'selected');
+        }
+
+        $(selectListId).trigger('change');
+    }
+
+</script>

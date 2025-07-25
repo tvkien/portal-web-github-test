@@ -1,0 +1,472 @@
+<style type="text/css">
+    
+
+    .scrollItemSet th:first-child,
+    .scrollItemSet td:first-child {
+        width: 55px;
+        text-align: center;
+    }
+
+    #portal-v2-containter #tips div {
+        padding: 5px 8px !important;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-copyMoveItemDialog"],
+    .ui-dialog[aria-labelledby="ui-dialog-title-copyMoveItemDialog"] .dialog {
+        padding: 0;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-copyMoveItemDialog"] .ui-dialog-titlebar {
+        padding: 0;
+        position: absolute;
+        width: 10px;
+        right: 24px;
+        height: 14px;
+        top: 32px;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-copyMoveItemDialog"] .ui-dialog-title,
+    .ui-dialog[aria-labelledby="ui-dialog-title-copyMoveItemDialog"] .ui-icon-closethick {
+        display: none;
+    }
+
+    #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-copyMoveItemDialog"] .ui-dialog-titlebar-close, #portal-v2-containter .ui-dialog-titlebar-close {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        top: 0;
+        right: 0;
+    }
+
+    #portal-v2-containter .ui-dialog[aria-labelledby="ui-dialog-title-copyMoveItemDialog"] .ui-dialog-titlebar-close:after, #portal-v2-containter .ui-dialog-titlebar-close:after {
+        bottom: unset;
+        right: unset
+    }
+</style>
+<div class="modal-component-content">
+    <div class="modal-passage-body p-4">
+        <div class="form" id="divMoveItemSet">
+            <h2 class="header">
+                Copy/Move Item(s)
+            </h2>
+            <div id="publisherContent">
+                <input type="checkbox" id="createACopy" name="CreateACopy" />
+                <label for="createACopy">Create a Copy</label>
+            </div>
+            <ul style="display: none" id="error-messages-copymove" class="message error mt-3"></ul>
+            <ul style="display: none" id="success-message-copymove" class="message success mt-3">
+            </ul>
+            <hr class="my-4" />
+            <div class="row g-3">
+                <div class="col-6">
+                    <h2 class="header float-left mt-2 mb-0" id="itemBankLabel" style="display: none">Item Banks</h2>
+                    <div>
+                        @if (ViewBag.IsNetworkAdmin)
+                        {
+                            <div class="row g-3">
+                                <div class="col-6 ">
+                                    <label>State</label>
+                                    <select id="selectState" class="full-width"></select>
+                                </div>
+                                <div class="col-6">
+                                    <label>@LabelHelper.DistrictLabel</label>
+                                    <select id="selectDistrict" class="full-width"></select>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div>
+                        <table id="dataTableItemBankOnTop" class="datatable table no-margin scrollItem table-scroll" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="padding: 0;display: none;"></th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Item Bank
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody style="cursor: pointer">
+                                <tr>
+                                    <td style="height: 60px;"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <h2 class="header float-left mt-2 mb-0" id="itemSetLabel" style="display: none">Item Sets</h2>
+                    <div>
+                        <table id="dataTableItemSetOnTop" class="datatable table no-margin scrollItemSet table-scroll" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col"></th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Item Set
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="height: 60px;"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+<input type="hidden" id="SelectedItemBankId" name="SelectedItemBankId"/>
+<input type="hidden" id="SelectedItemSetId" name="SelectedItemSetId"/>
+<script type="text/javascript">
+    function addDefaultProviderOption(selectList, objectText) {
+        selectList.empty();
+        selectList
+            .append($("<option></option>")
+                .attr("value", "select")
+                .text(objectText));
+    }
+
+    function innitDropdownListItemBank(selectedDistrictID) {
+        var dropdownSelector = '#selectItemBank';
+
+        $.ajax({
+            url: '@Url.Action("LoadItemBanks","QTIItem")',
+            dataType: 'json',
+            async: false,
+            success: function (data) {
+                addDefaultProviderOption($(dropdownSelector), "Select Bank");
+                //reset Select All -> All
+                addSelectListWithDefaultValue($(dropdownSelector), data, 0);
+            },
+            beforeSend: function () {
+            },
+            complete: function () {
+            }
+        });
+    }
+    $(function () {
+        //innitDropdownListItemBank(0);
+        LoadItemBankTable();
+        InitItemSetTable(0);
+
+        if ('@ViewBag.IsNetworkAdmin' === 'True') {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                addDefaultOption($('#selectState'), "State");
+                addSelectListItems($('#selectState'), states);
+                $('#selectState').val(@ViewBag.StateId);
+                $('#selectState').trigger('change');
+            });
+
+            $('#selectState').change(function () {
+                if ($('#selectState').val() != 'select') {
+                    populateDistricts();
+                }
+            });
+
+            $('#selectDistrict').change(function () {
+                if ($('#selectDistrict').val() != 'select') {
+                    $("#dataTableItemBankOnTop").dataTable().fnReloadAjax(getAjaxSourceItemBank());
+                }
+            });
+        }
+
+    });
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                addSelectListItems($('#selectDistrict'), districts);
+            });
+        }
+    }
+    var oTableItemBankOnPopup;
+    function LoadItemBankTable() {
+
+        $('#dataTableItemBankOnTop tbody').click(function (event) {
+            $(oTableItemBankOnPopup.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+            if (event.target.tagName.toUpperCase() == 'TD' && event.target.id != null && event.target.id.length > 0) {
+                $(event.target.parentNode).addClass('row_selected');
+                //showItemSet
+                $("#SelectedItemBankId").val(event.target.id);
+                ui.dataTableItemSetOnTop.fnReloadAjax(getAjaxSourceItemSet(event.target.id));
+            }
+
+            //now there is always a div inside td
+            //event.target is now div not td
+            if (event.target.parentNode.tagName.toUpperCase() == 'TD' && event.target.parentNode.id != null && event.target.parentNode.id.length > 0) {
+                $(event.target.parentNode.parentNode).addClass('row_selected');
+                //showItemSet
+                $("#SelectedItemBankId").val(event.target.parentNode.id);
+                ui.dataTableItemSetOnTop.fnReloadAjax(getAjaxSourceItemSet(event.target.parentNode.id));
+            }
+        });
+
+        var optionsItemBankOnPopup = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            sAjaxSource: getAjaxSourceItemBank(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox 
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTIBankId', bSearchable: false, bSortable: false, sWidth: "0px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).hide();
+                $('td:eq(1)', nRow).attr('id', aData[0]);
+                addWordBreakToTableCell($('td:eq(0)', nRow), 25, aData[1]);
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableItemBankOnTop'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableItemBankOnTop').unblock();
+                $('.with-tip').tip();
+                formatTableForAddingVertialScrollBar('dataTableItemBankOnTop', 'scrollItem', 'noscrollItem', 'scrollItemIE9', 'noscrollItemIE9');
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('dataTableItemBankOnTop_filter');
+                $('.with-tip').tip();
+                
+                $('#dataTableItemBankOnTop_wrapper .block-custom-header').prepend($('#itemBankLabel'));
+                $('#itemBankLabel').show();
+            }
+        };
+        $("#dataTableItemBankOnTop").data("options", optionsItemBankOnPopup);
+        initializeDataTable($("#dataTableItemBankOnTop"));
+        oTableItemBankOnPopup = $('#dataTableItemBankOnTop').dataTable();
+       
+
+    }
+    function getAjaxSourceItemBank() {
+        var districtId = $('#selectDistrict').val();
+        return '@Url.Action("LoadItemBanks","ItemBank")?districtId=' + districtId;
+    }
+
+    function InitItemSetTable() {
+
+        var optionsItemSet = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            sAjaxSource: getAjaxSourceItemSet(0),
+            fnServerParams: function (aoData) {
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTIGroupId', bSearchable: false, bSortable: false, sWidth: "55px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, bVisible: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityMoveCopy(aData[0]));
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableItemSetOnTop'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableItemSetOnTop').unblock();
+                $('.with-tip').tip();
+                formatTableForAddingVertialScrollBar('dataTableItemSetOnTop', 'scrollItemSet', 'noscrollItemSet', 'scrollItemSetIE9', 'noscrollItemSetIE9');
+                setTimeout(function () {
+                    $('.with-tip').tip();
+                }, 1000)
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('dataTableItemSetOnTop_filter');
+                $('.with-tip').tip();
+                $('#dataTableItemSetOnTop_wrapper .block-custom-header').prepend($('#itemSetLabel'));
+                $('#itemSetLabel').show();
+            }
+        };
+
+        $("#dataTableItemSetOnTop").data("options", optionsItemSet);
+        initializeDataTable($("#dataTableItemSetOnTop"));
+    }
+    function getAjaxSourceItemSet(itemBankId) {
+        var districtId = 0;
+        if ('@ViewBag.IsNetworkAdmin' == 'True') {
+            districtId = $('#selectDistrict').val();
+        }
+        return '@Url.Action("LoadItemSets","ItemBank")?itemBankId=' + itemBankId + '&districtId=' + districtId;
+    }
+
+    function setIconVisibilityMoveCopy(qtiGroupId) {
+        var moveItemSetIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/move-icon-v2.svg")';
+        var moveItemSetString = '<a href="javascript:void(0)" onclick="ShowCopyMoveItemConfirm(' + qtiGroupId + ');" title="Move\/Copy Item" class="with-tip"><img src="' + moveItemSetIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        return moveItemSetString;
+    }
+
+    function ShowCopyMoveItemConfirm(qtiGroupId) {
+        $('#SelectedItemSetId').val(qtiGroupId);
+        var createCopy = $('#createACopy').is(':checked');
+        var message = 'Do you want to move the selected items to this item set?';
+        if (createCopy) {
+            message = 'Do you want to copy the selected items to this item set?';
+        }
+        CustomConfirm_F3882887_C118_41B9_AD02_E5A90B180FEE(message,true);
+    }
+    function CopyMoveItem() {
+        var selectedQtiItemIds = getSelectedQtiItemIds();//define in _ItemListNormalView.cshtml
+
+        var qtiGroupId = $('#SelectedItemSetId').val();
+        var createCopy = $('#createACopy').is(':checked');
+        if (createCopy) {
+            ShowBlock($('#copyMoveItemDialog').parent(), 'Copying');
+        }
+        else {
+            ShowBlock($('#copyMoveItemDialog').parent(), 'Moving');
+        }
+        //$('.my-overlay').last().css('z-index', 2000);
+
+        $.ajax({
+            url: '@Url.Action("CopyMoveItems","QTIItem")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ selectedQtiItemIds: selectedQtiItemIds, toQtiGroupId: qtiGroupId, createCopy: createCopy }),
+            success: function (response) {
+                $('#copyMoveItemDialog').parent().unblock();
+
+                if (response.Success == 'Success') {
+                    $('#success-message-copymove').show();
+                    if (createCopy) {
+                        $('#success-message-copymove').html('<li>Items successfully copied.</li>');
+                    }
+                    else {
+                        $('#success-message-copymove').html('<li>Items successfully moved.</li>');
+                    }
+                    //close dialog
+                    setTimeout(function () {
+                        //$(".dialog").dialog("close");
+                        //$('#dataTableItemBankOnTop').unblock();
+                    }, 1000);
+
+                } else {
+                    $('#error-messages-copymove').show();
+                    $('#error-messages-copymove').html('<li>' + upperFistCharacter(response.message) + '</li>');
+
+                }
+            }
+        });
+
+    }
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    function htmlDecode(value) {
+        return $('<div/>').html(value).text();
+    }
+
+</script>
+<script>
+    function CustomConfirm_F3882887_C118_41B9_AD02_E5A90B180FEE(message, isLongMessage) {
+        var yesButton = '<button onclick="CustomConfirmYesClick__F3882887_C118_41B9_AD02_E5A90B180FEE(this);">Yes</button>';
+        var noButton = '<button onclick="CustomConfirmNoClick__F3882887_C118_41B9_AD02_E5A90B180FEE(this);">No</button>';
+        var diaglogWidth = 'auto';
+        var diaglogId = 'CustomConfirmDialog__F3882887_C118_41B9_AD02_E5A90B180FEE';
+
+        if (typeof isLongMessage != "undefined" && isLongMessage == true) {
+            messageTextAlign = 'left';
+            messageBoxWidth = 540;
+        }
+        var strHtml = '<section>' +
+            '<div class="block-border">' +
+            '<div class="block-content p-4"><div class="text-center font-bold" style="line-height: 26px;">' + message +
+            `</div></div>
+                    <div class="modal-component-footer">
+                        <div slot="footer">
+                            ${noButton}
+			                ${yesButton}
+                        </div>
+		            </div>
+            </section>`;
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog dialog-custom-new-skin")
+            .attr("id", diaglogId)
+            .appendTo("body")
+
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: diaglogWidth,
+                maxheight: 400,
+                resizable: false,
+                open: function() {
+                    //$(".ui-dialog-titlebar-close").hide();
+                    var idDialog = '#' + diaglogId;
+                    var parent = $(idDialog).parent();
+                    $(parent).find('.ui-dialog-titlebar .ui-dialog-titlebar-close').hide();
+                }
+            });
+    }
+
+    function CustomConfirmYesClick__F3882887_C118_41B9_AD02_E5A90B180FEE(item) {
+        $("#CustomConfirmDialog__F3882887_C118_41B9_AD02_E5A90B180FEE").dialog("close");
+        //do copy or move
+        CopyMoveItem();
+    }
+    function CustomConfirmNoClick__F3882887_C118_41B9_AD02_E5A90B180FEE(item) {
+        $("#CustomConfirmDialog__F3882887_C118_41B9_AD02_E5A90B180FEE").dialog("close");
+        
+    }
+</script>

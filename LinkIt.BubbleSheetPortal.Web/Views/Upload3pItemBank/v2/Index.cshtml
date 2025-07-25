@@ -1,0 +1,402 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers;
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Testdesign, "Third Party Item Banks"); ;
+
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<link href="@Url.Content("~/Content/themes/AssessmentItem/css/popup.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/vue-components/vue-modal.css")" rel="stylesheet" type="text/css" />
+
+<style type="text/css">
+    .file_upload_datafile {
+        background: none;
+        position: relative;
+        width: 32px;
+        height: 32px;
+        border: 0 solid var(--white);
+        float: left;
+        border-radius: 0;
+        margin-top: 18px;
+        margin-left: 35px;
+        margin-top: 15px;
+        cursor: pointer;
+    }
+
+        .file_upload_datafile:before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            font-size: 1.9em;
+            color: var(--lightBlue);
+            background-image: url('/Content/images/icons/upload-icon.svg');
+            background-repeat: no-repeat;
+            background-size: contain;
+        }
+
+        .file_upload_datafile:hover {
+            background: none;
+        }
+
+    .ie9 #file_upload_datafile {
+        padding-top: 0px;
+    }
+
+    .filefails-list {
+        margin-top: 10px;
+        max-height: 200px;
+        overflow: hidden;
+        overflow-y: auto;
+    }
+
+    .filefails-list-item {
+        padding: 3px 0;
+    }
+
+    .uploadListDataTableArea .no-margin.last-child {
+        margin: 0 !important;
+    }
+
+    .uploadListDataTableArea .block-pagination {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .uploadListDataTableArea table.datatable {
+        width: 100% !important;
+    }
+
+    #upload-by-item-bank .modal-component-close {
+        display: none !important;
+    }
+
+    #CustomAlertDialog button {
+        margin: 0
+    }
+
+    #upload-by-item-bank .modal-component-body .filefails-list .filefails-list-item,
+    #upload-by-item-bank .modal-component-body p {
+        text-align: center;
+        font-weight: bold;
+    }
+</style>
+<article class="container_12" id="upload-by-item-bank">
+    <section class="grid_12" id="sectionUpload">
+        <div class="block-border">
+            <div class="block-content block-24 form" id="divOnTop">
+                <h1> Upload Item </h1>
+                <div class="d-flex flex-row align-items-center">
+                    <div class="col-3">
+                        <label>Source</label>
+                        <select id="selectSource" class="full-width"></select>
+                    </div>
+                    <input id="file_upload_datafile" name="file_upload_datafile" type="file" class="mt-1" title="Upload" />
+                </div>
+            </div>
+        </div>
+
+        <div class="block-border mt-4">
+            <div class="block-content block-24 form" id="divUploadFileList">
+                <div class="uploadListDataTableArea">
+                    <table id="uploadListDataTable" class="datatable table" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Imported Date
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Zip File
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    User
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+    <modal-component v-bind:show.sync="isShowModalUploadProcessing" v-bind:width="400" style="display: none;">
+        <div slot="header"></div>
+        <div slot="body">
+            <div v-if="fileFails.length > 0">
+                <h4 v-html="fileText"></h4>
+                <div class="filefails-list">
+                    <div class="filefails-list-item" v-for="filefail in fileFails">
+                        {{filefail}}
+                    </div>
+                </div>
+            </div>
+            <div v-else>
+                <p>{{fileText}}</p>
+            </div>
+        </div>
+        <div slot="footer">
+            <button type="button" class="btn-red" v-on:click="isShowModalUploadProcessing = !isShowModalUploadProcessing">Close</button>
+        </div>
+    </modal-component>
+</article>
+
+@section scripts {
+    <script type='text/javascript' src='@Url.Content("~/Scripts/jquery.dataTables.rowReordering.js")'></script>
+    <script type="text/javascript">
+    window.Vue = Vue;
+
+    var uploadItemBankVM = new Vue({
+        el: '#upload-by-item-bank',
+        data: {
+            isShowModalUploadProcessing: false,
+            fileText: '',
+            fileFails: []
+        }
+    });
+
+    $(function () {
+
+        $.get('@Url.Action("GetQTI3pSource")', function (sources) {
+            addDefaultOption($('#selectSource'), "Source");
+            addSelectListItems($('#selectSource'), sources);
+            LoadZipFilesToTable();
+        });
+
+        $('#selectSource').change(function () {
+            $("#uploadListDataTable").dataTable().fnReloadAjax(GetAjaxSource());
+        });
+
+        function LoadZipFilesToTable() {
+            var options = {
+                bServerSide: true,
+                bDestroy: true,
+                bStateSave: false,
+                sAjaxSource: GetAjaxSource(),
+                fnServerParams: function (aoData) {
+                    //TuanVo:encode text in filter searchbox
+                    var item = null;
+                    for (var i = 0; i < aoData.length; i++) {
+                        item = aoData[i];
+                        if (item.name == 'sSearch') {
+                            do {
+                                item.value = item.value.replace('""', '"');
+                            } while (item.value.indexOf('""') >= 0)
+
+                            if (item.value == '"') {
+                                item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                            } else {
+                                item.value = encodeURIComponent(item.value);
+                            }
+                            break;
+                        }
+                    }
+                },
+                bAutoWidth: false,
+                iDisplayLength: 10,
+                aaSorting: [[0, "desc"]],
+                aoColumns: [
+                    { sType: 'string', sName: 'ImportedDate', bSearchable: true, bSortable: true, sWidth: "100px" },
+                    { sType: 'string', sName: 'ZipFileName', bSearchable: true, bSortable: true, sWidth: "250px" },
+                    { sType: 'string', sName: 'UploadUser', bSearchable: false, bSortable: true, sWidth: "165px" },
+                    { sType: 'integer', sName: 'DataFileUploadLogID', bSearchable: false, bSortable: false, bVisible: false }
+                ],
+                fnRowCallback: function (nRow, aData) {
+                    //$('td:eq(0)', nRow).html(Date.getByTicks(aData[0]));
+                    $('td:eq(0)', nRow).html(displayDateWithFormat(aData[0], true));
+                    $('td:eq(1)', nRow).html('<a href="javascript:void(0);" id="openQuestionList" onClick="showItemListPage(' + aData[3] + ')">' + aData[1] + '</a>');
+                    $('td:eq(1)', nRow).addClass("cursor-pointer");
+                    return nRow;
+                },
+                fnPreDrawCallback: function () {
+                    ShowBlock($('#uploadListDataTable'), "Loading");
+                    return true;
+                },
+                fnDrawCallback: function () {
+                    $('#uploadListDataTable').unblock();
+                    $('.with-tip').tip();
+                },
+                fnInitComplete: function () {
+                    tranformSearchInputDataTable('uploadListDataTable_filter')
+                }
+            };
+
+            $("#uploadListDataTable").data("options", options);
+            $('#uploadListDataTable').dataTable();
+        }
+
+        function GetAjaxSource() {
+            var qTI3pSource = $('#selectSource').val();
+            if (qTI3pSource == null || qTI3pSource == 'select')
+                qTI3pSource = 0;
+            return '@Url.Action("GetUploadFileList")?qTI3pSourceId=' + qTI3pSource;
+
+        }
+
+        //Upload data
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+        var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+        function getFormData(auth) {
+            return { 'AUTHID': auth, 'qti3pSourceId': $('#selectSource').val() };
+        }
+        if (window.FormData !== undefined) {
+            $('#file_upload_datafile').uploadifive({
+                'uploadScript': '@Url.Action("UploadDataFile")',
+                'overrideEvents': ['onDialogClose'],
+                'formData': { AUTHID: auth, qti3pSourceId: $('#selectSource').val() },
+                'buttonText': ' ',
+                'fileObjName': 'postedFile',
+                'multi': false,
+                'removeCompleted': true,
+                'width': 32,
+                'height': 32,
+                'auto': true,
+                'fileSizeLimit': '0',
+                'fileType': ['application/x-zip-compressed', 'application/zip'],
+                'buttonClass': 'file_upload_datafile',
+                'fileTypeExts': '*.zip',
+                'onInit': function () {
+                    $("#uploadifive-file_upload_datafile-queue").hide();
+                    $('#uploadifive-file_upload_datafile').click(function (e) {
+                        validFile = true;
+                        if ($('#selectSource').val() == 'select' && $('#selectSource').val() !== null) {
+                            e.preventDefault();
+                            CustomAlert("Please select Source type.");
+                        }
+                    });
+                    $('.file_upload_datafile input').attr('title', '')
+                },
+                'onUpload': function (file) {
+                    $("#uploadifive-file_upload_datafile-queue").hide();
+                    $('#file_upload_datafile').data('uploadifive').settings.formData = getFormData(auth);
+                    $('#error-messages').hide();
+                    $('#error-messages').empty();
+                    if (validFile == true) {
+                        ShowBlock($('#sectionUpload'), 'Uploading');
+                    }
+
+                },
+                'onUploadComplete': function (file, data) {
+                    $("#uploadifive-file_upload_datafile-queue").hide();
+                    var result = $.parseJSON(data);
+                    if (result == undefined) {
+                        CustomAlert('An error has occured.  Please try again');
+                    }
+                    if (result.success == true) {
+                        $('#error-messages').hide();
+                        $('#upload-block').html('');
+                        var logId = result.dataFileUploadLogId;
+                        SetIntervalCheckStatus(logId);
+                    }
+                    else {
+                        $('#sectionUpload').unblock();
+                        $('#error-messages').show();
+                        $('#error-messages').html('<li>' + result.message + '</li>');
+                        CustomAlert(result.message, true);
+                        ui.uploadListDataTable.fnReloadAjax();
+                        $('#file_upload_datafile').uploadifive('cancel', $('.uploadifive-queue-item').first().data('file'));
+                    }
+                },
+                'onError': function (errorType, file) {
+                    $("#uploadifive-file_upload_datafile-queue").hide();
+                    $('#sectionUpload').unblock();
+                    validFile = false;
+                    if (errorType == 'FORBIDDEN_FILE_TYPE') {
+                        CustomAlert('The file you are trying to upload is not a .zip file. Please try again', true);
+                    } else {
+                        CustomAlert('The file ' + file.name + ' returned an error and was not added to the queue.', true);
+                    }
+                },
+                'onCancel': function (file) {
+                    $('#sectionUpload').unblock();
+                    $("#uploadifive-file_upload_datafile-queue").hide();
+                }
+            });
+        }
+
+        $('#file_upload_datafile').parent().attr('title', 'Upload');
+        if (isFirefox) {
+            $('#file_upload_datafile').next().attr('title', 'Upload');
+        }
+        $('#uploadifive-file_upload_datafile').tip({ position: "bottom" });
+        $('#uploadifive-file_upload_datafile').css('margin', '24px 0 0 16px');
+    });
+
+    function checkUploadProcessingStatus(id) {
+        var response_data;
+        ShowBlock($('#sectionUpload'), 'Uploading');
+        $.ajax({
+            url: '@Url.Action("CheckStatusUploadDataFile")',
+            type: 'GET',
+            data: { dataFileUploadLogId: id },
+            async: false,
+            success: function (response) {
+                response_data = response;
+            }
+        });
+        return response_data;
+    }
+
+    function SetIntervalCheckStatus(logId) {
+        var interval = setInterval(function () {
+            var resultStatus = checkUploadProcessingStatus(logId);
+            if (resultStatus.success == false) {
+                clearInterval(interval);
+                $('#sectionUpload').unblock();
+                uploadItemBankVM.isShowModalUploadProcessing = true;
+                uploadItemBankVM.fileText = resultStatus.message;
+                uploadItemBankVM.fileFails = [];
+                return;
+            } else {
+                if (resultStatus.processingStatus != undefined) {
+                    clearInterval(interval);
+                    $('#sectionUpload').unblock();
+                    ui.uploadListDataTable.fnReloadAjax();
+
+                    uploadItemBankVM.isShowModalUploadProcessing = true;
+
+                    if (!!resultStatus.fileFails && resultStatus.fileFails.length > 0) {
+                        uploadItemBankVM.fileText = resultStatus.fileSuccessCount + ' Files Imported Successfully.<br />Failed to Import ' + resultStatus.fileFails.length + ' Files:';
+                        uploadItemBankVM.fileFails = resultStatus.fileFails;
+                    } else {
+                        uploadItemBankVM.fileText = 'Your items were successfully uploaded.';
+                        uploadItemBankVM.fileFails = [];
+                    }
+                }
+            }
+        }, 5000);
+    }
+
+    function showItemListPage(dataFileUploadLogId) {
+        var url = '@Url.Action("ShowQTI3pItems", "Upload3pItemBank")\?dataFileUploadLogId=' + dataFileUploadLogId;
+        window.location.href = url;
+    }
+    </script>
+}

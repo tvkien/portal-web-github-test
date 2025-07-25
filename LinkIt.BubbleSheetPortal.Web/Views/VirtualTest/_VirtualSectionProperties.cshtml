@@ -1,0 +1,343 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.VirtualSectionTestPropertiesViewModel
+
+<style>
+    #divInstrustion .topMenu {
+    width: 551px ;
+}
+.DivFieldSet {
+    padding-left: 10px;
+    padding-right: 10px;
+    width: 593px;
+}
+.divBotButton {
+    padding-right: 10px;
+    padding-left: 10px;
+}
+</style>
+<article class="container_12" style="width: 100%">
+    <section class="grid_12" style="width: 93%">
+        <div class="block-border" style="width: 100%">
+            <div class="block-content form">
+                <h1 class="PropertyTitle">Section Properties</h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>Section properties successfully updated.</li>
+                </ul>
+                <div class="no-margin last-child">
+                    @using (Html.BeginForm("EditTestSectionProperties", "VirtualTest", FormMethod.Post, new {id = "editSectionTestPropertiesForm", @class = "form"}))
+                    {
+                        @Html.AntiForgeryToken()
+                        <div id="notification"></div>
+                        <div class="DivFieldSet">
+                            <fieldset>
+                                <div style="display: inline-block; width: 85px;"><lable style="display: inline-block"> Section Title:</lable>
+                                </div>
+                                <div style="display: inline-block; width: 458px;">
+                                    @Html.TextBoxFor(x => x.Title, new {@class = "full-width", tabindex = 1})
+                                </div>
+                            </fieldset>
+                        </div>
+                        @Html.TextArea("xmlContent", Model.Instruction, new {@style = "display:none"})
+                        <input id="VirtualSectionId" name="VirtualSectionId" type="hidden" value="@Model.VirtualSectionId"/>
+                        <input id="VirtualTestId" name="VirtualTestId" type="hidden" value="@Model.VirtualTestId"/>
+                        <div class="clear10"></div>
+                        <div id="divInstrustion" class="DivFieldSet">
+                            <fieldset>
+                                <legend>Section Instructions:</legend>
+                                <div class="topMenu">
+                                    <div id="topSpace"></div>
+                                    <div class="questionType" id="questionType">
+                                        <div class="clear"></div>
+                                    </div>
+                                </div>
+                                <div class="clear"></div>
+                                <div class="qContent">
+                                    <div class="clear"></div>
+                                    <div class="clear"></div>
+                                    <textarea cols="80" id="txtSectionTestPropertiesInstruction" name="editor1" rows="10"></textarea>
+                                </div>
+                            </fieldset>
+                            <div class="clear10"></div>
+                        </div>
+                        <div class="DivFieldSet">
+                            <fieldset>
+                                <div class="section-audio-title">
+                                    <lable style="display: inline-block"> Section Audio:</lable>
+                                </div>
+                                <div id="divAudio" class="section-upload-audio" style="display: inline-block; width: 150px;">
+                                    <input id="file_upload_blackboard" name="file_upload" type="file" style="display: none" title="Upload Audio for Section" />
+                                    <input id="audioRef" name="audioRef" type="hidden" value="@Model.AudioRef" />
+                                </div>
+                                <div class="showAudioArea">
+                                    <div class="showAudio">
+                                        <img class="playSectionAudioIcon" src="../content/images/small_audio_play.png" alt="play audio" />
+                                        <img class="stopSectionAudioIcon" src="../content/images/small_audio_stop.png" alt="stop audio" />
+                                        <img class="removeSectionAudioIcon" src="../content/images/cancel.png" alt="Remove audio" />
+                                    </div>
+                                </div>
+                                <div></div>
+
+                                <div style="display: inline-block">
+                                    <lable style="display: inline-block">Tutorial Section:</lable>
+                                </div>
+                                <div style="display: inline-block; padding-top: 10px;">
+                                    @Html.CheckBoxFor(x => x.IsTutorialSection)
+                                </div>
+
+                                @if (Model.VirtualSectionOrders.Count > 0)
+                                {
+                                    <div></div>
+                                    <div style="display: inline-block">
+                                        <lable style="display: inline-block">Section Ordering:</lable>
+                                    </div>
+                                    <div style="display: inline-block; padding-top: 10px;">
+                                        @Html.DropDownListFor(x => x.VirtualSectionOrder, Model.VirtualSectionOrders, new { id = "selectSectionOrder", @class = "selectSectionOrder" })
+                                    </div>
+                                }
+
+                            </fieldset>
+                        </div>
+                        <div class="DivFieldSet" style="display: none">
+                            <fieldset>
+                                <div style="display: inline-block; width: 115px;"><lable style="display: inline-block">Conversion Table:</lable>
+                                </div>
+                                <div style="display: inline-block; width: 505px;">
+                                    @Html.DropDownListFor(x => x.ConversionSetId, Model.AvailableConversionSets, new {id = "selectConversionSet", @class = "selectConversionSet"})
+                                </div>
+                            </fieldset>
+                        </div>
+                        <div class="divBotButton" style="padding-top: 10px">
+                            @if (Model.VirtualSectionId > 0)
+                            {
+                                <text>
+                                    <button id="btnDeleteSection" type="button" class="divBotButton" onclick=" DeleteSection(@Model.VirtualSectionId, @Model.VirtualTestId) " style="margin-bottom: 5px; width: 140px; margin-left: 0px">Delete Section</button>
+                                </text>
+                            }
+                            <button id="btnSubmit" type="button" class="float-right btnSave" onclick=" SaveSectionTestProperties() " style="width: 140px; margin-right: 0px">Save Changes</button>
+                        </div>
+                    }
+                    <div class="clear10"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        registerAudioUpload();
+
+        $(".playSectionAudioIcon").click(function () {
+            $.ajax({
+                url: '@Url.Action("GetSectionAudioUrl","VirtualTest")/?audioRef=' + encodeParameter($('#audioRef').val()),
+                type: 'POST',
+                success: function (response) {
+                    var urlSrc = response.Url;
+                    window.playsound = new vnsAudio({
+                        src: urlSrc,
+                        onEnded: function () {
+                            window.playsound.pause();
+                            $(".playSectionAudioIcon").show();
+                            $(".stopSectionAudioIcon").hide();
+                        }
+                    });
+                },
+                failure: function (response) {
+                    alert(response);
+                }
+            });
+
+            $(".stopSectionAudioIcon").show();
+            $(this).hide();
+        });
+
+        $(".stopSectionAudioIcon").click(function () {
+            if (window.playsound) {
+                window.playsound.pause();
+                $(".playSectionAudioIcon").show();
+                $(this).hide();
+            }
+        });
+        $(".removeSectionAudioIcon").click(function () {
+            $(this).parents(".showAudio").hide();
+            $(".section-upload-audio").show();
+            $('#audioRef').val('');
+        });
+    });
+
+    try {
+        CKEDITOR.instances['txtSectionTestPropertiesInstruction'].destroy(true);
+    } catch (e) {}
+
+    // Replace the <textarea id="editor"> with an CKEditor
+    CKEDITOR.replace('txtSectionTestPropertiesInstruction', {
+        extraPlugins: 'sharedspace,indent,dialog,contextmenu,liststyle,tabspaces',
+        height: 150,
+        toolbar: [
+            ['JustifyLeft', 'JustifyCenter', 'JustifyRight', '-', 'NumberedList', 'BulletedList'],
+            ['Bold', 'Italic', 'Underline'], ['Sameline'],
+            ['FontSize', 'Subscript', 'Superscript', '-', 'RemoveFormat'],
+            ['Link', 'Unlink', 'Table', 'SpecialChar', 'Indent', 'Outdent', 'Tabspaces']
+        ],
+        sharedSpaces: {
+            top: 'topSpace',
+            bottom: 'bottomSpace'
+        },
+        extraAllowedContent: 'span[stylename]; span(smallText,normalText,largeText,veryLargeText);'
+    });
+    if (CKEDITOR.env.ie && CKEDITOR.env.version == 8)
+        document.getElementById('ie8-warning').className = 'warning';
+
+    $(document).ready(function () {
+        xmlInstructionImport($('#xmlContent'));
+        populateConversionSet($('#selectConversionSet'));
+    });
+    function SaveSectionTestProperties() {
+        var $divMain = $('#divMain');
+        ShowBlock($divMain, 'Saving');
+        $('#btnSubmit').disableBt();
+        $('#success-message').hide();
+        $('#xmlContent').val(xmlInstructionExport());
+        var url = '@Url.Action("EditTestSectionProperties")';
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: $('#editSectionTestPropertiesForm').serialize(),
+            success: function (response) {
+                var $errorMsg = $('#error-messages');
+                var $successMsg = $('#success-message');
+
+                $divMain.unblock();
+                RefreshSectionQuestion(@Model.VirtualTestId);//defined in _VirtualSectionQuestion.cshtml
+
+                if (response.Success == true) {
+                    //get the virtualsectionid and assign to hidden
+                    $('#VirtualSectionId').val(response.VirtualSectionId);
+                    $errorMsg.hide();
+                    $successMsg.show();
+                    resetSectionIntrustionEditorDirty();//defined in Index.cshtml
+                    window.setTimeout(function () {
+                        $successMsg.hide();
+                    }, 5000);
+                    //Get the section label on the left
+                    var sectionLabel = $('#' + '@Model.VirtualSectionId').find('.VirtualSectionLable').first();
+                    if(sectionLabel!=null) {
+                        //refresh section name after updatting
+                        sectionLabel.text($('#Title').val());
+                    }
+                }
+                else {
+                    $errorMsg.show().addClass('no-margin').html('<ul><li>' + response.ErrorMessage + '</li></ul>')
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                $divMain.unblock();
+                alert(response);
+            }
+        });
+
+    }
+
+    //Copy and modify from Content\themes\TeskMaker\ckeditor_mk.js -> xmlPassageImport
+    function xmlInstructionImport(element) {
+        var xmlContent = "";
+        if (element.val() != "") {
+            xmlContent = element.val();
+
+            CKEDITOR.instances["txtSectionTestPropertiesInstruction"].setData(xmlContent, function () {
+                //This to make sure state of CKEditor is false after loaded data. Waiting 1s
+                var that = this;
+                window.setTimeout(function () {
+                    that.resetDirty();
+                }, 1000);
+
+            });
+            CKEDITOR.instances["txtSectionTestPropertiesInstruction"].resetDirty();
+        }
+    }
+    //Copy and modify from xmlPassageExport
+    function xmlInstructionExport() {
+        var data = CKEDITOR.instances["txtSectionTestPropertiesInstruction"].getData();
+        var $div = $('<div/>').html(data);
+        return $div.text().trim() == '' ? '' : data;
+    }
+
+    function populateConversionSet(conversionSetSelect) {
+        conversionSetSelect.empty();
+        $.get('@Url.Action("GetConversionSets")', function (response) {
+            addDefaultOptionToUserSchool(conversionSetSelect, "Conversion Table");
+            addSelectListItems(conversionSetSelect, response);
+            conversionSetSelect.val(@Model.ConversionSetId);
+        });
+
+    }
+
+    function registerAudioUpload() {
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+        function getFormData(auth) {
+            return { 'AUTHID': auth, id: $('#VirtualSectionId').val() };
+        }
+
+        $('#file_upload_blackboard').uploadifive({
+            'uploadScript': '@Url.Action("SectionAudioUpload")',
+            'overrideEvents': ['onDialogClose'],
+            'formData': { AUTHID: auth },
+            'buttonText': 'SELECT FILE',
+            'fileObjName': 'file',
+            'multi': false,
+            'removeCompleted': true,
+            'width': 120,
+            'height': 30,
+            'auto': true,
+            'fileSizeLimit': '71680KB',
+            'buttonClass': 'file_upload_blackboard',
+            'onInit': function () {
+                $("#uploadifive-file_upload_blackboard-queue").hide();
+            },
+            'onUpload': function (file) {
+                $("#uploadifive-file_upload_blackboard-queue").hide();
+                $('#file_upload_blackboard').data('uploadifive').settings.formData = getFormData(auth);
+                ShowBlock($('#divAudio'), 'Processing');
+            },
+            'onUploadComplete': function (file, data) {
+                $("#uploadifive-file_upload_blackboard-queue").hide();
+                var result = $.parseJSON(data);
+                if (result == undefined) {
+                    CustomAlert('An error has occured.  Please try again');
+                } else {
+                    if (result.success == 'true') {
+                        $('#audioRef').val(result.url);
+                        CustomAlert('Upload file successfully.');
+                        $(".section-upload-audio").hide();
+                        $(".showAudio").show();
+                    }
+                    else {
+                        CustomAlert(result.errorMessage);
+                    }
+                }
+
+                $('#divAudio').unblock();
+            },
+            'onError': function (errorType, file) {
+                if (errorType == 'FORBIDDEN_FILE_TYPE') {
+                    CustomAlert('The file you are trying to upload is not a .zip file. Please try again', true);
+                } else {
+                    CustomAlert('The file ' + file.name + ' returned an error and was not added to the queue.', true);
+                }
+                $('#divAudio').unblock();
+            },
+            'onCancel': function (file) {
+                $('#divAudio').unblock();
+            }
+        });
+
+        $('#file_upload_blackboard').attr('title', 'Upload File');
+
+        if ($('#audioRef').val() !== '') {
+            $(".section-upload-audio, .stopSectionAudioIcon").hide();
+            $(".showAudio").show();
+        }
+    }
+</script>

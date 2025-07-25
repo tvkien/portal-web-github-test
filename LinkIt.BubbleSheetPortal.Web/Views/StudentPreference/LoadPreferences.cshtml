@@ -1,0 +1,89 @@
+﻿@using LinkIt.BubbleSheetPortal.Models
+@model List<StudentPreferences>
+
+<div class="accordion-scroll m-t-15">
+    <div id="accordion-assignment-setting" class="accordion w-750">
+        <div class="accordion-title active">
+            <h3>Display</h3>
+        </div>
+        <div class="accordion-content active">
+            <table class="table table-accordion">
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="w-370 table-accordion-title">@item.DisplayName</td>
+                            <td class="w-380">
+                                <input @(item.Value == 0 ? "checked=checked" : "") type="radio" value="0" name="@item.Name" /> OFF
+                                <input @(item.Value == 1 ? "checked=checked" : "") type="radio" value="1" name="@item.Name" /> ON
+                            </td>
+                            <td class="w-380">
+                                <input @(item.Locked == 1 ? "checked=checked" : "") type="checkbox" name="@item.Name" /> Locked
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <button id="btnSaveStudentTestPreferences" type="button">Save</button>
+</div>
+
+<input type="hidden" id="hdStudentTestPreferences" value="@Json.Encode(Model)" />
+<script type="text/javascript">
+    var studentTestPreferences = null;
+
+    $(document).ready(function () {
+        studentTestPreferences = JSON.parse($('#hdStudentTestPreferences').val());
+
+        $('#dvStudentTestPreferences').on('click', 'input', function() {
+            var name = $(this).attr('name');
+            var type = $(this).attr('type');
+            var value = $(this).val();
+            var checked = $(this).attr('checked');
+
+            for (var i = 0; i < studentTestPreferences.length; i++) {
+                if (studentTestPreferences[i].Name == name) {
+                    if (type == 'radio') {
+                        studentTestPreferences[i].Value = value;
+                    }
+                    else if (type == 'checkbox') {
+                        studentTestPreferences[i].locked = checked == 'checked' ? 1 : 0;
+                    }
+                }
+            }
+        });
+
+        $('#btnSaveStudentTestPreferences').click(function() {
+            $('#error-messages').hide();
+
+            var isValid = true;
+            for (var i = 0; i < studentTestPreferences.length; i++) {
+                if (studentTestPreferences[i].Value == null) {
+                    isValid = false;
+                    break;
+                }
+            }
+
+            if (!isValid) {
+                $('#error-messages').show();
+                return false;
+            }
+
+            ShowBlock($('#dvStudentTestPreferencesWraper'), 'Saving');
+            var model = { StudentPreferences: studentTestPreferences };
+            var json = JSON.stringify(model);
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("SavePreferences")',
+                data: json,
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    $('#dvStudentTestPreferencesWraper').unblock();
+                    //alert(1);
+                }
+            });
+        });
+    });
+</script>

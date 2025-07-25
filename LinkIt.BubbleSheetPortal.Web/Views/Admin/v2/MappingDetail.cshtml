@@ -1,0 +1,1339 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.MappingDetailViewModel
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "MappingDetail");
+}
+<script type="text/javascript">
+    $(function () {
+        $('.dataadmin').addClass('current');
+        $('.managemapping').addClass('current');
+
+        getRequiredColumns();
+
+        //        var destinationColumnChangeHandler = function () {
+        //            columnTypeReset();
+        //            setDestinationColunmForMapping();
+        //        }
+
+        //        $('#ddlDestinationColumn').change(destinationColumnChangeHandler).keypress(destinationColumnChangeHandler);
+
+        var destinationColumnTypeChangeHandler = function () {
+            errorNotificationHide();
+            if (hasDestinationColInSelectedMapping()) {
+                populateColumnType();
+                autoSetBorderForMappingGrid();
+                setButtonDisabled('#btnNextPhase', !checkMappingIsFullyValid());
+            }
+        }
+        $('#ddlColumnType').change(destinationColumnTypeChangeHandler).keypress(destinationColumnTypeChangeHandler);
+
+
+
+        $('#btnNewMapping').click(function () {
+            errorNotificationHide();
+            $('#mappingGrid tr').removeClass('row-selected');
+            $('#mappingGrid tbody').append('<tr class="row-selected" onclick="mappingRowSelect(this);"><td class="srcColMapping"><p>-</p></td><td class="desColMapping"><p>-</p></td><td class="desTypeColMapping"><p>-</p></td><td class="valueColMapping"><p>-</p></td></tr>');
+            $('#btnRemoveMapping').removeAttr('disabled');
+            if (hasSelectedSourceColumn())
+                $('#btnLinkMapping').removeAttr('disabled');
+            resetDesColumnDDL();
+            $('#divScrollMapping').scrollTop($('#mappingGrid').height());
+            columnTypeReset();
+            selectedSourceColumn(null);
+            setButtonDisabled('#btnNextPhase', true);
+            autoSetBorderForMappingGrid();
+        });
+
+        $('#btnRemoveMapping').click(function () {
+            errorNotificationHide();
+            $('#btnRemoveMapping').attr('disabled', 'disabled');
+            $('#mappingGrid tr.row-selected').remove();
+            $('#btnLinkMapping').attr('disabled', 'disabled');
+            if (!hasSelectedSourceColumn())
+                $('#btnAddMapping').attr('disabled', 'disabled');
+            $('#divScrollMapping').scrollTop($('#mappingGrid').height());
+            setButtonDisabled('#btnNextPhase', !checkMappingIsFullyValid());
+            autoSetBorderForMappingGrid();
+        });
+
+        $('#btnAddMapping').click(function () {
+            errorNotificationHide();
+            $('#mappingGrid tr').removeClass('row-selected');
+            var sourceColumnId = $('#sourceColumnGrid tr.row-selected td:eq(0)').attr('rel');
+            var sourceColumn = $('#sourceColumnGrid tr.row-selected td:eq(0)').text();
+            $('#mappingGrid tbody').append('<tr class="row-selected" onclick="mappingRowSelect(this);"><td rel="' + sourceColumnId + '" class="srcColMapping"><p>' + sourceColumn + '</p></td><td class="desColMapping"><p>-</p></td><td class="desTypeColMapping"><p>-</p></td><td class="valueColMapping"><p>-</p></td></tr>');
+            $('#btnRemoveMapping').removeAttr('disabled');
+            if (hasSelectedSourceColumn())
+                $('#btnLinkMapping').removeAttr('disabled');
+            resetDesColumnDDL();
+            $('#divScrollMapping').scrollTop($('#mappingGrid').height());
+            columnTypeReset();
+            setButtonDisabled('#btnNextPhase', true);
+            autoSetBorderForMappingGrid();
+        });
+
+        $('#btnLinkMapping').click(function () {
+            errorNotificationHide();
+            var colType = $('#mappingGrid tr.row-selected td').eq(2).attr('rel');
+            if (colType != '2') {
+                var sourceColumnId = $('#sourceColumnGrid tr.row-selected td:eq(0)').attr('rel');
+                var sourceColumn = $('#sourceColumnGrid tr.row-selected td:eq(0)').text();
+                $('#mappingGrid tr.row-selected td').eq(0).html(generateWordWrap(sourceColumn));
+                $('#mappingGrid tr.row-selected td').eq(0).attr('rel', sourceColumnId);
+                if (colType == '4') {
+                    initLookupMappingBlock();
+                    getLookupValueDic();
+                }
+                else {
+                    var colTypeVal = $('#mappingGrid tr.row-selected td').eq(3).attr('rel');
+                    $('#ddlColumnType').val(colType);
+                    getColumnTypeValue(colType, colTypeVal);
+                }
+            }
+            else {
+                errorNotification("Error. Fixed value mapping cannot have a source column.", false);
+            }
+            setButtonDisabled('#btnNextPhase', !checkMappingIsFullyValid());
+            autoSetBorderForMappingGrid();
+        });
+
+        $('#prefixTextbox').blur(function () {
+            errorNotificationHide();
+            setColumnTypeValueForMapping(this);
+        });
+
+        $('#fixedValueTextbox').blur(function () {
+            errorNotificationHide();
+            setColumnTypeValueForMapping(this);
+        });
+
+        $('#ddlFixedValue').change(function () {
+            errorNotificationHide();
+            setColumnTypeValueForMapping(this);
+        });
+
+        $('#lookupValueTextbox').blur(function () {
+            errorNotificationHide();
+            setNewValueForLookupGrid(this);
+            autoSetBorderForLookupGrid();
+        });
+
+        $('#ddlLookupValue').change(function () {
+            errorNotificationHide();
+            setNewValueForLookupGrid(this);
+        });
+
+        getMappingRule('@Model.MapID', 0);
+
+        $("#lookupValueTextbox").keyup(function (event) {
+            if (event.keyCode == 13) {
+                $("#lookupValueTextbox").blur();
+                $("#lookupValueTextbox").focus();
+            }
+        });
+    });
+
+    function autoAddBorderRight(div, width) {
+        $(div).css('border-right', '1px solid #999');
+        $(div).css('border-bottom', '1px solid #999');
+        $(div).css('width', width);
+    }
+    function generateWordWrap(text) {
+        var htmlText = '<p>' + text + '</p>';
+        return htmlText;
+    }
+    function autoRemoveBorderRight(div, width) {
+        $(div).css('border-right', '');
+        $(div).css('border-bottom', '');
+        $(div).css('width', width);
+    }
+
+    function populateDestinationColumnsList(isCommonPhase) {
+        var columnType = '1';
+        if(!isCommonPhase)
+            columnType = '2';
+        $.get('@Url.Action("GetStandardColumns")', { loaderType: '1', columnType: columnType }, function (data) {
+            generateDesColTable(data);
+            resetDesColumnDDL();
+        });
+
+    }
+    function getDesColumnDDLValue() {
+        return $('#ddDesColText').attr('rel');
+    }
+
+    function resetDesColumnDDL() {
+        $('#ddDesColText').attr('rel', '');
+        $('#ddDesColText').val('---Select---');
+    }
+
+    function setValueForDesColumnDDL(val) {
+        var desColName = '';
+        var desColId = '';
+        $('#desColTypeGrid tr').each(function () {
+            var name = $(this).find("td").eq(0).text();
+            var id = $(this).find("td").eq(0).attr('rel');
+            if (id == val) {
+                desColId = id;
+                desColName = name;
+                return;
+            }
+        });
+
+        if (desColId != '') {
+            setValueAndTextForDesColumnDDL(desColId, desColName);
+        }
+        else {
+            resetDesColumnDDL();
+        }
+    }
+    function setValueAndTextForDesColumnDDL(val, text) {
+        $('#ddDesColText').attr('rel', val);
+        $('#ddDesColText').val(text);
+    }
+
+    function generateDesColTable(data) {
+        $('#desColTypeGrid').empty();
+        $.each(data, function (i, value) {
+            $('#desColTypeGrid').append('<tr onclick="desColListSelected(this);"><td class="desColNameGrid" rel="' + value.ColumnID + '"><p>' + value.Name + '</p></td><td class="desColDescriptionGrid"><p>' + value.Description + '</p></td></tr>');
+        });
+    }
+
+    function setNewValueForLookupGrid(el) {
+        var text = $(el).val();
+        if ($.trim(text) != '') {
+            $('#lookupGrid tr.row-selected td').eq(1).html(generateWordWrap(text));
+            //if (isHasAllNewLookupValue())
+                getLookupValueDic();
+        }
+    }
+
+    function setColumnTypeValueForMapping(el) {
+        var text = $(el).val();
+        var columnTypeName = $('option:selected', '#ddlColumnType').text();
+        var columnTypeId = $('#ddlColumnType').val();
+        //if ($.trim(text) != '')
+        setColumnTypeForMapping(columnTypeId, columnTypeName, text, text);
+        setButtonDisabled('#btnNextPhase', !checkMappingIsFullyValid());
+    }
+
+    function addSourceList(selectList, results) {
+        if (results.length == 0) {
+            selectList.html('<option>No Results Found</option>');
+            return;
+        }
+        $.each(results, function (i, value) {
+            selectList.append('<li><p style="width:190px; word-wrap:break-word;">' + value + '</p></li>');
+        });
+    }
+    function populateColumnType() {
+        columnTypeBlockReset();
+        var selectedType = $('#ddlColumnType').val();
+        switch (selectedType) {
+            case "1":
+                setColumnTypeForMapping(selectedType, 'Source Column','', '-');
+                break;
+            case "2":
+                setColumnTypeForMapping(selectedType, 'Fixed Value', '', '');
+                populateFixedBlock(null);
+                break;
+            case "3":
+                setColumnTypeForMapping(selectedType, 'Prefix + Source Column', '', '');
+                $('#prefixTextbox').val('');
+                $('#prefixBlock').show();
+                break;
+            case "4":
+                setColumnTypeForMapping(selectedType, 'Lookup Mapping', '', '-');
+                initLookupMappingBlock();
+                break;
+        }
+        setButtonDisabled('#btnNextPhase', !checkMappingIsFullyValid());
+    }
+
+    function populateLookupMappingBlock() {
+        var dic = $.parseJSON($('#mappingGrid tr.row-selected td').eq(3).attr('rel'));
+        var desColId = $('#mappingGrid tr.row-selected td').eq(1).attr('rel');
+        if (dic != null) {
+            // load grid
+            $('#lookupGrid').empty();
+            $.each(dic, function (i, value) {
+                $('#lookupGrid').append('<tr onclick="lookupValueRowSelect(this);"><td class="existingColLookup"><p>' + value[0] + '</p></td><td class="newColLookup"><p>' + value[1] + '</p></td></tr>');
+            });
+            // load lookup value
+            if (desColId != null) {
+                $.get('@Url.Action("GetFixedOrLookupValuesForColumn")', { columnId: desColId }, function (lookupdata) {
+                    generateLookupValue('#ddlLookupValue', '#lookupValueTextbox', lookupdata, null)
+                });
+            }
+            else {
+                $('#ddlLookupValue').hide();
+                $('#lookupValueTextbox').hide();
+            }
+        }
+        else {
+            initLookupMappingBlock();
+        }
+    }
+
+    function initLookupMappingBlock() {
+        var srcColIdx = $('#mappingGrid tr.row-selected td').eq(0).attr('rel');
+        var desColId = $('#mappingGrid tr.row-selected td').eq(1).attr('rel');
+        if (srcColIdx != null && srcColIdx != '') {
+            // load grid
+            var mapId = '@Model.MapID';
+            $.get('@Url.Action("GetUniqueValuesForSourceColumn")', { mappingId: mapId, columnId: srcColIdx }, function (data) {
+                //if (data.length > 0) {
+                    generateLookupGrid(data, false);
+                    if (desColId != null) {
+                        $.get('@Url.Action("GetFixedOrLookupValuesForColumn")', { columnId: desColId }, function (lookupdata) {
+                            generateLookupValue('#ddlLookupValue', '#lookupValueTextbox', lookupdata, null);
+                            if (lookupdata.length > 0)
+                                generateLookupGrid(data, true);
+                            getLookupValueDic();
+                        });
+                    }
+                    else {
+                        $('#ddlLookupValue').hide();
+                        $('#lookupValueTextbox').hide();
+                    }
+                    $('#lookupValueBlock').show();
+                //}
+            });
+        }
+    }
+
+    function generateLookupValue(ddl, textbox, data, selectedVal) {
+        if (data.length > 0) {
+            $(ddl).empty();
+            $(ddl).show();
+            $(textbox).hide();
+            $(ddl).append($("<option></option>")
+                        .attr("value", "Unknown")
+                        .text("Unknown"));
+            $.each(data, function (i, value) {
+                $(ddl).append($("<option></option>")
+                        .attr("value", value)
+                        .text(value));
+            });
+            if (selectedVal != null)
+                $(ddl).val(selectedVal);
+        }
+        else {
+            $(ddl).hide();
+            $(textbox).val('');
+            $(textbox).show();
+            if (selectedVal != null)
+                $(textbox).val(selectedVal);
+        }
+    }
+
+    function generateLookupGrid(data, hasLookupValue) {
+        $('#lookupGrid').empty();
+        $.each(data, function (i, value) {
+            if(hasLookupValue == true)
+                $('#lookupGrid').append('<tr onclick="lookupValueRowSelect(this);"><td class="existingColLookup"><p>' + value + '</p></td><td class="newColLookup"><p>Unknown</p></td></tr>');
+            else
+                $('#lookupGrid').append('<tr onclick="lookupValueRowSelect(this);"><td class="existingColLookup"><p>' + value + '</p></td><td class="newColLookup"><p></p></td></tr>');
+        });
+        if (data.length <= 0) {
+            $('#newTextBlock').hide();
+        }
+        else {
+            $('#newTextBlock').show();
+        }
+        autoSetBorderForLookupGrid();
+    }
+
+    function hasDestinationColInSelectedMapping() {
+        var selected = $('#mappingGrid tr.row-selected td:eq(1)').attr('rel');
+        if (selected == null || selected == '')
+            return false;
+        return true;
+    }
+
+    function setColumnTypeForMapping(colType, typeText, valueHiden ,valueText) {
+        if (colType == '2') {
+            $('#mappingGrid tr.row-selected td').eq(0).removeAttr('rel');
+            $('#mappingGrid tr.row-selected td').eq(0).html(generateWordWrap('-'));
+        }
+        $('#mappingGrid tr.row-selected td').eq(2).attr('rel', colType);
+        $('#mappingGrid tr.row-selected td').eq(2).html(generateWordWrap(typeText));
+        $('#mappingGrid tr.row-selected td').eq(3).attr('rel', valueHiden);
+        $('#mappingGrid tr.row-selected td').eq(3).html(generateWordWrap(valueText));
+    }
+
+    function columnTypeBlockReset() {
+        $('#fixedValueBlock').hide();
+        $('#prefixBlock').hide();
+        $('#lookupValueBlock').hide();
+    }
+
+    function populateFixedBlock(typeVal) {
+        var destinationColumn = getDesColumnDDLValue();
+
+        if (destinationColumn != null) {
+            $.get('@Url.Action("GetFixedOrLookupValuesForColumn")', { columnId: destinationColumn }, function (data) {
+                generateFixedBlock(data, typeVal);
+                setButtonDisabled('#btnNextPhase', !checkMappingIsFullyValid());
+            });
+        }
+    }
+
+    function generateFixedBlock(data,typeVal) {
+        $('#fixedValueBlock').show();
+        generateLookupValue('#ddlFixedValue', '#fixedValueTextbox', data, typeVal);
+        if (data.length > 0 && typeVal == null) {
+            setColumnTypeForMapping('2', 'Fixed Value', 'unknown', 'Unknown');
+        }
+    }
+
+    function columnTypeReset() {
+        columnTypeBlockReset();
+        $("#ddlColumnType").val('1');
+    }
+
+    function checkSelected(el) {
+        var key = el.selectedIndex;
+        for (var i = 0; i < el.length; i++) {
+            if (i != key) {
+                el[i].selected = false;
+            }
+         }
+    }
+
+
+    function hasSelectedMapping() {
+        if ($('.mapping-table tr.row-selected').length > 0)
+            return true;
+        return false;
+    }
+
+    function mappingRowSelect(tr) {
+        errorNotificationHide();
+        if ($(tr).hasClass('row-selected')) {
+                $('#btnRemoveMapping').attr('disabled', 'disabled');
+                $('#btnLinkMapping').attr('disabled', 'disabled');
+                if (!hasSelectedSourceColumn())
+                    $('#btnAddMapping').attr('disabled', 'disabled');
+                else {
+                    $('#btnAddMapping').removeAttr('disabled');
+                }
+                $(tr).removeClass('row-selected');
+        }
+        else {
+            $('#mappingGrid tr').removeClass('row-selected');
+            $(tr).addClass('row-selected');
+            $('#btnRemoveMapping').removeAttr('disabled');
+            if (hasSelectedSourceColumn())
+                $('#btnLinkMapping').removeAttr('disabled');
+
+            var srcColId = $('td:eq(0)', tr).attr('rel');
+            var desColId = $('td:eq(1)', tr).attr('rel');
+            var colType = $('td:eq(2)', tr).attr('rel');
+            var typeVal = $('td:eq(3)', tr).text();
+            //$('#ddlDestinationColumn').val(desColId);
+            setValueForDesColumnDDL(desColId);
+            selectedSourceColumn(srcColId);
+            $('#ddlColumnType').val(colType);
+            getColumnTypeValue(colType, typeVal);
+        }
+    }
+
+    function getColumnTypeValue(colType,typeVal) {
+        switch (colType) {
+            case "1":
+                columnTypeBlockReset();
+                break;
+            case "2":
+                columnTypeBlockReset();
+                populateFixedBlock(typeVal);
+                break;
+            case "3":
+                columnTypeBlockReset();
+                $('#prefixBlock').show();
+                $('#prefixTextbox').val(typeVal);
+                break;
+            case "4":
+                columnTypeBlockReset();
+                populateLookupMappingBlock();
+                autoSetBorderForLookupGrid();
+                $('#lookupValueBlock').show();
+                break;
+            default:
+                columnTypeReset();
+                break;
+        }
+    }
+
+    function setDestinationColunmForMapping() {
+        if ($('#mappingGrid tr.row-selected').length > 0) {
+            var destinationColumnId = $('#ddDesColText').attr('rel');
+            var currentDesColId = $('#mappingGrid tr.row-selected td:eq(1)').attr('rel');
+            if (destinationColumnId != '' && destinationColumnId != currentDesColId) {
+                var destinationColumnName = $('#ddDesColText').val();
+                var columnTypeName = $('option:selected','#ddlColumnType').text();
+                $('#mappingGrid tr.row-selected td').eq(1).html(generateWordWrap(destinationColumnName));
+                $('#mappingGrid tr.row-selected td').eq(1).attr('rel', destinationColumnId);
+                $('#mappingGrid tr.row-selected td').eq(2).html(generateWordWrap(columnTypeName));
+                $('#mappingGrid tr.row-selected td').eq(2).attr('rel', '1'); // default = Source Column
+                $('#mappingGrid tr.row-selected td').eq(3).html(generateWordWrap('-'));
+                $('#mappingGrid tr.row-selected td').eq(3).removeAttr('rel');
+            }
+        }
+    }
+
+    function lookupValueRowSelect(tr) {
+        if ($(tr).hasClass('row-selected')) {
+            $(tr).removeClass('row-selected');
+        }
+        else {
+            $('#lookupGrid tr').removeClass('row-selected');
+            $(tr).addClass('row-selected');
+            var newVal = $('#lookupGrid tr.row-selected td').eq(1).text();
+            getValueForLookup(newVal);
+        }
+    }
+
+    function getValueForLookup(val){
+        $('#ddlLookupValue').val(val);
+        $('#lookupValueTextbox').val(val);
+        if ($('#lookupValueTextbox').is(':visible')) {
+            $('#lookupValueTextbox').focus();
+        }
+    }
+
+    function isHasAllNewLookupValue() {
+        var lookupGridLength = $('#lookupGrid tr').length;
+        var hasAll = true;
+        $('#lookupGrid tr').each(function (index, tr) {
+            if ($.trim($(tr).children().eq(1).text()) == '')
+            hasAll = false;
+        });
+
+        return hasAll;
+    }
+
+    function getLookupValueDic() {
+        var lookupGridLength = $('#lookupGrid tr').length;
+        var dic = Create2DArray(lookupGridLength);
+        var i = 0;
+        $('#lookupGrid tr').each(function (index, tr) {
+            dic[i][0] = $(tr).children().eq(0).text();
+            dic[i][1] = htmlEscape($(tr).children().eq(1).text());
+            i++;
+        });
+
+        setColumnTypeForMapping('4', 'Lookup Mapping', JSON.stringify(dic), '-');
+        setButtonDisabled('#btnNextPhase', !checkMappingIsFullyValid());
+    }
+
+    function Create2DArray(rows) {
+        var arr = [];
+
+        for (var i = 0; i < rows; i++) {
+            arr[i] = [];
+        }
+
+        return arr;
+    }
+
+    function desColListSelected(tr) {
+        errorNotificationHide();
+        $(tr).addClass('row-selected');
+        var newColumnName = $('#divDesColGrid tr.row-selected td').eq(0).text();
+        var newColumnId = $('#divDesColGrid tr.row-selected td').eq(0).attr('rel');
+        if (hasSelectedMapping()) {
+            if (!hasDesColumnExisting(newColumnId)) {
+                $('#ddDesColText').val(newColumnName);
+                $('#ddDesColText').attr('rel', newColumnId);
+
+                columnTypeReset();
+                setDestinationColunmForMapping();
+                errorNotificationHide();
+            }
+            else {
+                errorNotification('Destination column has already existed', false);
+            }
+            setButtonDisabled('#btnNextPhase', !checkMappingIsFullyValid());
+        }
+
+        $('#divDesColGrid tr').removeClass('row-selected');
+        $('#divDesColGrid').hide();
+    }
+
+    function autoSetBorderForMappingGrid() {
+        if ($('#mappingGrid').height() > $('#divScrollMapping').height()) {
+            autoAddBorderRight('#divScrollMapping','474px');
+        }
+        else {
+            autoRemoveBorderRight('#divScrollMapping','475px');
+        }
+    }
+
+    function autoSetBorderForLookupGrid() {
+        if ($('#lookupGrid').height() > $('#divScrollLookup').height()) {
+            autoAddBorderRight('#divScrollLookup', '469px');
+        }
+        else {
+            autoRemoveBorderRight('#divScrollLookup', '471px');
+        }
+    }
+
+    function hasDesColumnExisting(newDesColId) {
+        var trs = $('#mappingGrid tr');
+        var currentColumnId = $('#mappingGrid tr.row-selected td').eq(1).attr('rel');
+        var existing = false;
+        for (var i = 0; i < trs.length; i++) {
+            var iteratorColId = $('td:eq(1)', trs[i]).attr('rel');
+            if (iteratorColId == newDesColId && iteratorColId != currentColumnId) {
+                existing = true;
+                break;
+            }
+        }
+
+        return existing;
+    }
+
+    function desColListClick() {
+        if ($('#divDesColGrid').is(':visible')) {
+            $('#divDesColGrid').hide();
+        }
+        else {
+            $('#divDesColGrid').show();
+        }
+    }
+
+    function getXmlTransformFromMappingTable() {
+        var xmltext = '<?xml version="1.0" encoding="utf-8"?><local xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><mappings>';
+        $('#mappingGrid tr').each(function (i, tr) {
+            xmltext += '<mapping ';
+            var srcCol = $('td:eq(0)', tr).text();
+            var srcColId = $('td:eq(0)', tr).attr('rel');
+            if (srcColId == null || srcColId == '') {
+                srcCol = '-';
+                srcColId = '-1';
+            }
+            var desCol = $('td:eq(1)', tr).text();
+            var desColId = $('td:eq(1)', tr).attr('rel');
+            if (desColId == null || desColId == '') {
+                desCol = '-';
+                desColId = '-1';
+            }
+            var type = $('td:eq(2)', tr).attr('rel');
+            if (type == null || type == '') {
+                type = '-1';
+            }
+            switch (type) {
+                case '1': // source column mapping
+                    xmltext += 'xsi:type="SourceColumnMapping" source="' + htmlEscape(srcCol) + '" sourceposition="' + srcColId + '" destination="' + htmlEscape(desCol) + '" destinationid="' + desColId + '" />';
+                    break;
+                case '2': // fixed value mapping
+                    var fixVal = $('td:eq(3)', tr).text();
+                    if (fixVal == null) {
+                        fixVal = '-';
+                    }
+                    xmltext += 'xsi:type="FixedValueMapping" source="" sourceposition="-1" destination="' + htmlEscape(desCol) + '" destinationid="' + desColId + '" value="' + htmlEscape(fixVal) + '" />';
+                    break;
+                case '3':
+                    var prefixVal = $('td:eq(3)', tr).text();
+                    if (prefixVal == null) {
+                        prefixVal = '-';
+                    }
+                    xmltext += 'xsi:type="PrefixMapping" source="' + htmlEscape(srcCol) + '" sourceposition="' + srcColId + '" destination="' + htmlEscape(desCol) + '" destinationid="' + desColId + '" prefix="' + htmlEscape(prefixVal) + '" />';
+                    break;
+                case '4':
+                    var dic = $.parseJSON($('td:eq(3)', tr).attr('rel'));
+                    xmltext += 'xsi:type="LookupMapping" source="' + htmlEscape(srcCol) + '" sourceposition="' + srcColId + '" destination="' + htmlEscape(desCol) + '" destinationid="' + desColId + '" >';
+                    xmltext += '<lookup>';
+                    if (dic != null) {
+                        $.each(dic, function (idx, lkval) {
+                            xmltext += '<value existing="' + htmlEscape(lkval[0]) + '" new="' + htmlEscape(lkval[1]) + '" />';
+                        });
+                    }
+                    xmltext += '</lookup></mapping>';
+                    break;
+                case '-1':
+                    xmltext += 'xsi:type="SourceColumnMapping" source="' + htmlEscape(srcCol) + '" sourceposition="' + srcColId + '" destination="' + htmlEscape(desCol) + '" destinationid="' + desColId + '" />';
+                    break;
+            }
+        });
+        xmltext += '</mappings></local>';
+
+        return xmltext;
+
+    }
+
+    function isMappingValid() {
+        var valid = true;
+        var errormsg = '';
+        var trs = $('#mappingGrid tr');
+        var requiredColumns = null;
+        if (currentPhase > 0)
+            requiredColumns = requiredTestColumns;
+        else
+            requiredColumns = requiredTestColumns;
+        if (trs.length <= 0 && requiredColumns.length>0) {
+            valid = false;
+            errormsg = 'Error. Mapping for ['+requiredColumns[0].Name+'] destination column is required.';
+        }
+        else {
+            var currentMappingRow = 0;
+            for (var i = 0; i < trs.length; i++) {
+                currentMappingRow = i + 1;
+                var tr = trs[i];
+                var srcCol = $('td:eq(0)', tr).attr('rel');
+                var desCol = $('td:eq(1)', tr).attr('rel');
+                var type = $('td:eq(2)', tr).attr('rel');
+                if (desCol == null || $.trim(desCol) == '') {
+                    valid = false;
+                    errormsg = 'Error. Mapping row ' + currentMappingRow + ': destination column is not specified.';
+                    break;
+                }
+
+                switch (type) {
+                    case '1':
+                        if (srcCol == null || $.trim(srcCol) == '') {
+                            valid = false;
+                            errormsg = 'Error. Mapping row ' + currentMappingRow + ': source column is not selected.';
+                        }
+                        break;
+                    case '2':
+                        var fixVal = $('td:eq(3)', tr).text();
+                        if (fixVal == null) {
+                            valid = false;
+                            errormsg = 'Error. Mapping row ' + currentMappingRow + ': fixed value is not specified.';
+                        }
+                        break;
+                    case '3':
+                        var prefixVal = $('td:eq(3)', tr).text();
+                        if (srcCol == null || $.trim(srcCol) == '') {
+                            valid = false;
+                            errormsg = 'Error. Mapping row ' + currentMappingRow + ': source column is not specified.';
+                            break;
+                        }
+                        if (prefixVal == null || $.trim(prefixVal) == '') {
+                            valid = false;
+                            errormsg = 'Error. Mapping row ' + currentMappingRow + ': prefix value is not specified.';
+                            break;
+                        }
+                        break;
+                    case '4':
+                        if (srcCol == null || $.trim(srcCol) == '') {
+                            valid = false;
+                            errormsg = 'Error. Mapping row ' + currentMappingRow + ': source column is not specified.';
+                            break;
+                        }
+                        var dic = $.parseJSON($('td:eq(3)', tr).attr('rel'));
+                        if (dic == null) {
+                            valid = false;
+                            errormsg = 'Error. Mapping row ' + currentMappingRow + ': lookup value is not specified';
+                            break;
+                        }
+                        for (var j = 0; j < dic.length; j++) {
+                            if ($.trim(dic[j][1]) == '') {
+                                valid = false;
+                                errormsg = 'Error. Mapping row ' + currentMappingRow + ': certain lookup values are not specified.';
+                                break;
+                            }
+                        }
+                        break;
+                    default:
+                        valid = false;
+                        errormsg = 'Error. Mapping row ' + currentMappingRow + ': destination column type is invalid.';
+                        break;
+                }
+
+                if (!valid)
+                    break;
+            }
+        }
+
+        return { success: valid, message: errormsg };
+    }
+
+    function validateAndUpdateMappingPhase(isGoNextPhase) {
+        var phase = currentPhase;
+        var mappingXml = getXmlTransformFromMappingTable();
+        var mappId = '@Model.MapID';
+        $.ajax({
+            url: '@Url.Action("ValidateAndUpdateMappingPhase")',
+            type: 'POST',
+            data: { mappingId: mappId, phaseId: phase, mappingPhaseXmlText: mappingXml }, //
+            success: function (response) {
+                if (response.success == true) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                    if (isGoNextPhase == true) {
+                        getMappingRule('@Model.MapID', currentPhase + 1);
+                        HideBlock('#adminContent');
+                    }
+                }
+                else {
+                    errorNotification(response.message, false);
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+
+    function savingMappingPhase(isBackPrevPhase) {
+        var phase = currentPhase;
+        var mappingXml = getXmlTransformFromMappingTable();
+        var mappId = '@Model.MapID';
+        $.ajax({
+            url: '@Url.Action("savingMappingPhase")',
+            type: 'POST',
+            data: { mappingId: mappId, phaseId: phase, mappingPhaseXmlText: mappingXml }, //
+            success: function (response) {
+                if (response.success == true) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                    if (isBackPrevPhase == true) {
+                        getMappingRule('@Model.MapID', currentPhase - 1);
+                    }
+                    else {
+                        HideBlock('#adminContent');
+                    }
+                }
+                else {
+                    errorNotification(response.message, false);
+                    HideBlock('#adminContent');
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+
+    function populateMappingGrid(data) {
+        var table = $('#mappingGrid tbody');
+        table.empty();
+        if (data != null) {
+            $.each(data, function (i, mapping) {
+                var sourcePos = mapping.SourcePosition;
+                var source = mapping.Source;
+                if (sourcePos == '-1') {
+                    sourcePos = '';
+                    source = '-';
+                }
+                var desColId = mapping.DestinationColumnID;
+                var destination = mapping.Destination;
+                if (desColId == '-1') {
+                    desColId = '';
+                    destination = '-';
+                }
+                var mappingType = mapping.MappingType;
+                var mappingTypeName = mapping.MappingTypeName;
+                var mappingValue = mapping.MappingValue;
+                switch (mappingType) {
+                    case "1":
+                        if (desColId != '') {
+                            table.append('<tr onclick="mappingRowSelect(this);"><td class="srcColMapping" rel="' + sourcePos + '"><p>' + source + '</p></td><td class="desColMapping" rel="' + desColId + '"><p>' + destination + '</p></td><td class="desTypeColMapping" rel="' + mappingType + '"><p>' + mappingTypeName + '</p></td><td class="valueColMapping"><p>-</p></td></tr>');
+                        }
+                        else {
+                            table.append('<tr onclick="mappingRowSelect(this);"><td class="srcColMapping" rel="' + sourcePos + '"><p>' + source + '</p></td><td class="desColMapping" rel="' + desColId + '"><p>' + destination + '</p></td><td class="desTypeColMapping" rel=""><p>-</p></td><td class="valueColMapping"><p>-</p></td></tr>');
+                        }
+                        break;
+                    case "2":
+                        table.append('<tr onclick="mappingRowSelect(this);"><td class="srcColMapping"><p>-</p></td><td class="desColMapping" rel="' + desColId + '"><p>' + destination + '</p></td><td class="desTypeColMapping" rel="' + mappingType + '"><p>' + mappingTypeName + '</p></td><td class="valueColMapping" rel="' + mappingValue + '"><p>' + mappingValue + '</p></td></tr>');
+                        break;
+                    case "3":
+                        table.append('<tr onclick="mappingRowSelect(this);"><td class="srcColMapping" rel="' + sourcePos + '"><p>' + source + '</p></td><td class="desColMapping" rel="' + desColId + '"><p>' + destination + '</p></td><td class="desTypeColMapping" rel="' + mappingType + '"><p>' + mappingTypeName + '</p></td><td class="valueColMapping" rel="' + mappingValue + '"><p>' + mappingValue + '</p></td></tr>');
+                        break;
+                    case "4":
+                        table.append('<tr onclick="mappingRowSelect(this);"><td class="srcColMapping" rel="' + sourcePos + '"><p>' + source + '</p></td><td class="desColMapping" rel="' + desColId + '"><p>' + destination + '</p></td><td class="desTypeColMapping" rel="' + mappingType + '"><p>' + mappingTypeName + '</p></td><td class="valueColMapping" rel=\'' + mappingValue + '\'><p>-</p></td></tr>');
+                        break;
+                }
+
+            });
+            setButtonDisabled('#btnNextPhase', !checkMappingIsFullyValid());
+            autoSetBorderForMappingGrid();
+        }
+        else {
+            populateMappingGridWithDefaultColumns();
+            setButtonDisabled('#btnNextPhase', !checkMappingIsFullyValid());
+        }
+        HideBlock('#adminContent');
+    }
+
+    function populateMappingGridWithDefaultColumns() {
+        var columnType = 1;
+        if (currentPhase > 0)
+            columnType = 2;
+        $.get('@Url.Action("GetDefaultColumnForSpecifiedPhase")', { loaderType: '1', columnType: columnType }, function (data) {
+            var table = $('#mappingGrid tbody');
+            table.empty();
+            if (data != null) {
+                $.each(data, function (i, column) {
+                    var desColId = column.ColumnID;
+                    var destination = column.Name;
+                    table.append('<tr onclick="mappingRowSelect(this);"><td class="srcColMapping" rel=""><p>-</p></td><td class="desColMapping" rel="' + desColId + '"><p>' + destination + '</p></td><td class="desTypeColMapping" rel="1"><p>Source Column</p></td><td class="valueColMapping"><p>-</p></td></tr>');
+                });
+            }
+            autoSetBorderForMappingGrid();
+        });
+    }
+
+    function savingMapping() {
+        errorNotificationHide();
+        ShowBlock($('#adminContent'), "Saving");
+        savingMappingPhase(false);
+    }
+
+    function completeMappingRule() {
+        errorNotificationHide();
+        ShowBlock($('#adminContent'), "Saving mapping");
+        var checkvalid = isMappingValid();
+        if (checkvalid.success == true) {
+            var phase = currentPhase;
+            var mappingXml = getXmlTransformFromMappingTable();
+            var mappId = '@Model.MapID';
+            $.ajax({
+                url: '@Url.Action("CompleteMappingPhase")',
+                type: 'POST',
+                data: { mappingId: mappId, phaseId: phase, mappingPhaseXmlText: mappingXml }, //
+                success: function (response) {
+                    if (response.success == true) {
+                        $('#error-messages').hide();
+                        $('#success-message').show();
+                        window.location.href = '@Url.Action("CreateMappingOutputFile", new { mapID= Model.MapID })';
+                        HideBlock("#adminContent");
+                    }
+                    else {
+                        errorNotification(response.message, false);
+                        HideBlock("#adminContent");
+                    }
+                    $('#btnSubmit').enableBt();
+                },
+                failure: function (response) {
+                    alert(response);
+                    HideBlock("#adminContent");
+                }
+            });
+        }
+        else {
+            errorNotification(checkvalid.message, false);
+            HideBlock("#adminContent");
+        }
+    }
+
+    function goNextPhase() {
+        errorNotificationHide();
+        ShowBlock($('#adminContent'), "Saving mapping");
+        var checkvalid = isMappingValid();
+        if (checkvalid.success == true) {
+            validateAndUpdateMappingPhase(true);
+        }
+        else {
+            errorNotification(checkvalid.message, false);
+            HideBlock('#adminContent');
+        }
+    }
+
+    function backPrevPhase() {
+        errorNotificationHide();
+        ShowBlock($('#adminContent'), "Saving mapping");
+        savingMappingPhase(true);
+    }
+
+    function getMappingRule(_mapId, _phaseId) {
+        $.get('@Url.Action("GetMappingPhase")', { mappingId: _mapId, phaseId: _phaseId }, function (data) {
+            populateMappingGrid(data);
+        });
+        currentPhase = _phaseId
+        var nextphase = _phaseId + 1;
+        $('#btnNextPhase').text('Test ' + nextphase);
+        $('#btnNextPhase').attr('onclick', 'goNextPhase()');
+        if (_phaseId == 0) {
+            $('#btnPrevPhase').hide();
+            $('#divMappingPhase h1').text('Common Columns')
+            populateDestinationColumnsList(true);
+        }
+        else
+            if (_phaseId == 1) {
+                $('#divMappingPhase h1').text('Test ' + currentPhase);
+                $('#btnPrevPhase').text('Common Columns');
+                $('#btnPrevPhase').attr('onclick', 'backPrevPhase()');
+                $('#btnPrevPhase').show();
+                populateDestinationColumnsList(false);
+            }
+            else {
+                if (_phaseId > 1) {
+                    var prevphase = _phaseId - 1;
+                    $('#divMappingPhase h1').text('Test ' + currentPhase);
+                    $('#btnPrevPhase').text('Test ' + prevphase);
+                    $('#btnPrevPhase').attr('onclick', 'backPrevPhase()');
+                    $('#btnPrevPhase').show();
+                    populateDestinationColumnsList(false);
+                }
+            }
+    }
+
+    var currentPhase = 0;
+    function errorNotificationHide() {
+        $('#error-messages').hide();
+    }
+
+    function errorNotification(errorMsg, isAppend) {
+        $('#success-message').hide();
+        if (!isAppend)
+            $('#error-messages').empty();
+        $('#error-messages').append('<li>' + errorMsg + '</li>');
+        $('#error-messages').show();
+    }
+
+    var mouse_is_inside = false;
+
+    $(document).ready(function () {
+        $('#divDesCol').hover(function () {
+            mouse_is_inside = true;
+        }, function () {
+            mouse_is_inside = false;
+        });
+
+        $("body").mouseup(function () {
+            if (!mouse_is_inside) $('#divDesColGrid').hide();
+        });
+    });
+
+    function ShowBlock(div, text) {
+        div.block({ css: {
+            border: 'none',
+            padding: '15px',
+            backgroundColor: '#000',
+            '-webkit-border-radius': '10px',
+            '-moz-border-radius': '10px',
+            opacity: 1,
+            color: '#fff'
+        },
+            message: '<h2 style="color:#fff">' + text + ' ...</h2>'
+        });
+    }
+
+    function HideBlock(div) {
+        $(div).unblock();
+    }
+
+    function htmlEscape(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function selectedSourceColumn(srcVal) {
+        if (srcVal == null || srcVal == '') {
+            $('#btnAddMapping').attr('disabled', 'disabled');
+            $('#btnLinkMapping').attr('disabled', 'disabled');
+            $('#sourceColumnGrid tr').removeClass('row-selected');
+        }
+        else {
+            $('#btnAddMapping').removeAttr('disabled');
+            if (hasSelectedMapping())
+                $('#btnLinkMapping').removeAttr('disabled');
+            setSelectedSrcCol(srcVal);
+        }
+
+    }
+
+    function srcColListSelected(tr) {
+        if ($(tr).hasClass('row-selected')) {
+            $('#btnLinkMapping').attr('disabled', 'disabled');
+            $('#btnAddMapping').attr('disabled', 'disabled');
+            $(tr).removeClass('row-selected');
+            $('#sampleDataList').empty();
+        }
+        else {
+            $('#sourceColumnGrid tr').removeClass('row-selected');
+            $(tr).addClass('row-selected');
+            if (hasSelectedMapping())
+                $('#btnLinkMapping').removeAttr('disabled');
+            $('#btnAddMapping').removeAttr('disabled');
+            var srcColId = $('td:eq(0)', tr).attr('rel');
+            populateSampleData(srcColId);
+        }
+    }
+
+    function hasSelectedSourceColumn() {
+        if (getSeletedSrcColId() != null)
+            return true;
+        return false;
+    }
+
+    function getSeletedSrcColId()
+    {
+        var srcColId = $('#sourceColumnGrid tr.row-selected td:eq(0)');
+        if(srcColId!=null)
+        return $(srcColId).attr('rel');
+        return null;
+    }
+
+    function setSelectedSrcCol(colId) {
+        var srcCols = $('#sourceColumnGrid tr td');
+        for (var i = 0; i < srcCols.length; i++) {
+            var td = srcCols[i];
+            if ($(td).attr('rel') == colId) {
+                $('#sourceColumnGrid tr').removeClass('row-selected');
+                $(td).parent().addClass('row-selected');
+                var pos = $('#sourceColumnGrid tr').index($(td).parent());
+                var srcRowHeight = $(td).parent().height();
+                var divContainHeight = $('#divSrcColContainer').height();
+                var midNum = divContainHeight / srcRowHeight;
+                if (pos > midNum)
+                    $('#divSrcColContainer').scrollTop((pos - midNum/2) * srcRowHeight);
+                else {
+                    $('#divSrcColContainer').scrollTop((pos - midNum) * srcRowHeight);
+                }
+                populateSampleData(colId);
+                break;
+            }
+        }
+    }
+
+    function populateSampleData(srcColId) {
+        $('#sampleDataList').empty();
+        var mapId = '@Model.MapID'
+        if (srcColId != null) {
+            $.get('@Url.Action("GetSampleData")', { mappingId: mapId, columnId: srcColId }, function (data) {
+                addSourceList($('#sampleDataList'), data);
+            });
+        }
+    }
+
+    function checkMappingIsFullyValid() {
+        if (isMappingValid().success == true) {
+            var requiredColumns;
+            if (currentPhase == 0) {
+                requiredColumns = requiredCommonColumns;
+            }
+            else if (currentPhase > 0) {
+                requiredColumns = requiredTestColumns;
+            }
+            if (requiredColumns.length > 0) {
+                var trs = $('#mappingGrid tr');
+                var ishas = false;
+                for (var i = 0; i < requiredColumns.length; i++) {
+                    ishas = false;
+                    var requiredCol = requiredColumns[i];
+                    for (var j = 0; j < trs.length; j++) {
+                        var tr = trs[j];
+                        if ($('td:eq(1)', tr).attr('rel') == requiredCol.ColumnID) {
+                            ishas = true;
+                            break;
+                        }
+                    }
+                    if (ishas == false)
+                        break;
+                }
+                return ishas;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    var requiredCommonColumns;
+    var requiredTestColumns;
+
+    function getRequiredColumns() {
+        $.get('@Url.Action("GetRequiredColumnForSpecifiedPhase")', { loaderType: '1', columnType: '1' }, function (data) {
+            requiredCommonColumns = data;
+        });
+        $.get('@Url.Action("GetRequiredColumnForSpecifiedPhase")', { loaderType: '1', columnType: '2' }, function (data) {
+            requiredTestColumns = data;
+        });
+    }
+
+    function setButtonDisabled(btn, isDisabled) {
+        if (isDisabled == true)// disabled
+        {
+            $(btn).attr('style', 'color: #BFBFBF;border-color: #E9F2F6 #C4C3C3 #A2A2A2 #E3E2E2;background: -moz-linear-gradient( top, #F0F2F2, #C8C8C8 );background: -webkit-gradient( linear, left top, left bottom, from(#F0F2F2), to(#C8C8C8) );text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.75);-webkit-box-shadow: none;box-shadow: none;cursor: auto;');
+            $(btn).attr('onclick', '#');
+        }
+        else {
+            $(btn).removeAttr('style');
+            $(btn).attr('onclick', 'goNextPhase();');
+        }
+    }
+</script>
+<article id="adminContent" class="container_13">
+    <div>
+        <section class="grid_4">
+            <div class="block-border">
+                <div class="block-content form">
+                    <h1>Map Data</h1>
+                    <fieldset style="width:200px">
+                        <legend>Columns</legend>
+                        <div style="overflow-y: auto; height: 450px; border-top: 1px solid var(--grey7); border-bottom: 1px solid var(--grey7); border-right: 1px solid var(--grey7); " id="divSrcColContainer">
+                            <table id="sourceColumnGrid" class="lookup-table">
+                                @foreach (var srcCol in Model.SourceColumns)
+                                {
+                                    <tr onclick="srcColListSelected(this);"><td style="width:186px" rel="@srcCol.Key"><p style="width:175px; word-wrap:break-word;">@srcCol.Value</p></td></tr>
+                                }
+                            </table>
+                        </div>
+                    </fieldset>
+                    <fieldset style="width:200px">
+                        <legend>Sample Data</legend>
+                        <ul id="sampleDataList" class="generate-student-list">
+                        </ul>
+                    </fieldset>
+
+                </div>
+            </div>
+        </section>
+        <section class="grid_1" style=" margin-top: 60px">
+            <div style="margin-top:20px">
+                <button class="btnNewMapping" style="padding:0.286em 1.9em 0.357em 0.3em" type="button" id="btnNewMapping" name="New">New <img src="../../Content/images/icon1.png" /></button>
+            </div>
+            <div style="margin-top:10px">
+                <button class="btnAddMapping" style="padding:0.286em 1.6em 0.357em 0.4em" type="button" id="btnAddMapping" name="Add" disabled="disabled">Add <img style=" width:27px; height: 27px" src="../../Content/images/icon2.png" /></button>
+            </div>
+            <div style="margin-top:10px">
+                <button class="btnLinkMapping" style="padding:0.286em 2.06em 0.357em 0.4em" type="button" id="btnLinkMapping" name="Link" disabled="disabled">Link<img src="../../Content/images/icon3.png" /></button>
+            </div>
+            <div style="margin-top:10px">
+                <button class="btnRemoveMapping" style="padding:0.286em 0.3em 0.357em" type="button" id="btnRemoveMapping" name="Remove" disabled="disabled">Remove<img src="../../Content/images/icon4.png" /></button>
+            </div>
+        </section>
+        <section id="mapping-block" class="grid_8">
+            <div class="block-border">
+                <div id="divMappingPhase" class="block-content form">
+                    <ul style="display: none; margin-bottom: -32px;position: relative;top: -5px; width: 510px;" id="error-messages" class="message error">
+                    </ul>
+                    <ul style="display: none; margin-bottom: -32px;position: absolute;right: 18px; width: 513px;" id="success-message" class="message success">
+                        <li>Mapping successfully updated.</li>
+                    </ul>
+
+                    <h1>Commons Colums</h1>
+                    <div style="position:relative;padding:0px">
+                        <div>
+                            <a id="btnPrevPhase" class="headerButton" style="display:none; position: absolute;right: 193px;top: -42px;"></a>
+                        </div>
+                        <div style="position: absolute; top: -42px;left: 325px;">
+                            <a id="btnNextPhase" class="headerButton">Test 1</a>
+                        </div>
+                        <div style="position: absolute;right: 82px;top: -42px;">
+                            <a id="btnSavingPhase" class="headerButton" onclick="savingMapping();">Save</a>
+                        </div>
+                        <div style="position: absolute;right: 0;top: -42px;">
+                            <a id="btnComplete" class="headerButton" onclick="completeMappingRule();">Complete</a>
+                        </div>
+                    </div>
+
+                    <div style="clear:both;padding-bottom: 40px"></div>
+                    <fieldset style="width:470px">
+                        <legend>Mappings</legend>
+                        <ul class="head" style=" list-style: none; width: 473px; font-size: 1.2em; font-weight: bold; border: 1px solid var(--grey7)">
+                            <li style=" float: left; padding: 8px 0 8px 10px; width: 128px; border-right: 1px solid var(--grey7)">Source</li>
+                            <li style=" float: left; padding: 8px 0 8px 10px; width: 118px; border-right: 1px solid var(--grey7);">Destination</li>
+                            <li style=" float: left; padding: 8px 0 8px 10px; width: 108px; border-right: 1px solid var(--grey7);">Type</li>
+                            <li style=" float:left; padding: 8px 0 8px 10px;">Value</li>
+                        </ul>
+                        @*<div style=" clear: both; border-top: 1px solid #999; border-bottom: 1px solid #999;"></div>*@
+                        <div style="overflow-y:auto; overflow-x:hidden; height:300px; margin-top: -24px; width:475px" id="divScrollMapping">
+                            <table id="mappingGrid" class="mapping-table">
+                                <tbody style="text-align:center">
+                                </tbody>
+                            </table>
+                        </div>
+                    </fieldset>
+                    <fieldset style="width:470px">
+                        <table>
+                            <tr>
+                                <td style="width:100px">
+                                    <label>Destination:</label>
+                                </td>
+                                <td>
+                                    <div id="divDesCol" style=" margin-bottom: 9px;margin-left: -2px;">
+                                        <div><input id='ddDesColText' class="fakeddl" type="input" readonly="readonly" onclick="desColListClick();" /><select onclick="desColListClick();" class="fakeddlbutton"></select></div>
+                                        <div style="position:absolute; visibility:visible; display:none; padding-left:4px" id="divDesColGrid">
+                                            <table style="border: 1px solid var(--grey7);">
+                                                <tr style="font-weight:bold; background-color:ActiveBorder; height:30px;">
+                                                    <td style="vertical-align: top;text-align:center;padding: 0.5em;border-left: 1px dotted var(--dark);width:117px;">Column</td>
+                                                    <td style="vertical-align: top; text-align: center; padding: 0.5em; border-left: 1px dotted var(--dark); width: 264px;">Description</td>
+                                                </tr>
+                                            </table>
+                                            <div style="overflow-y: auto; height: 300px; border-bottom: 1px solid var(--grey7); border-right: 1px solid var(--grey7); width: 407px; ">
+                                                <table id='desColTypeGrid' class="lookup-table">
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label>Type:</label>
+                                </td>
+                                <td>
+                                    @Html.DropDownListFor(m => m.SelectedType, new SelectList(Model.DestinationColumnTypes, "Value", "Text"), new { id = "ddlColumnType" })
+                                </td>
+                            </tr>
+                        </table>
+                    </fieldset>
+                    <fieldset style="width:470px">
+                        <legend>Value</legend>
+                        <div id="fixedValueBlock" style="display:none">
+                            <table>
+                                <tr>
+                                    <td style="width:100px">
+                                        <label>Value:</label>
+                                    </td>
+                                    <td>
+                                        <select id="ddlFixedValue" style="display:none"></select>
+                                        <input type="text" id="fixedValueTextbox" style="display:none" />
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div id="prefixBlock" style="display:none">
+                            <table>
+                                <tr>
+                                    <td style="width:100px">
+                                        <label>Value:</label>
+                                    </td>
+                                    <td>
+                                        <input type="text" id="prefixTextbox" />
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div id="lookupValueBlock" style="display:none">
+                            <label>Value Mapping:</label>
+                            <table style="border: 1px solid var(--grey7);">
+                                <tr style="font-weight:bold; background-color:ActiveBorder; height:30px;">
+                                    <td style="vertical-align: top; text-align: center; padding: 0.5em; border-left: 1px dotted var(--dark); width: 213px;">Existing</td>
+                                    <td style="vertical-align: top; text-align: center; padding: 0.5em; border-left: 1px dotted var(--dark); width: 231px;">New</td>
+                                </tr>
+                            </table>
+                            <div style="overflow-y:auto; overflow-x:hidden; height:120px" id="divScrollLookup">
+                                <table cellpadding="0" cellspacing="0" id='lookupGrid' class="lookup-table" style="width: 470px; border-left: 1px solid var(--grey7); border-bottom: 1px solid var(--grey7); border-right: 1px solid var(--grey7); ">
+                                </table>
+                            </div>
+                            <table id="newTextBlock">
+                                <tr>
+                                    <td style="width:100px">
+                                        <label>New:</label>
+                                    </td>
+                                    <td>
+                                        <select id="ddlLookupValue" style="display:none"></select>
+                                        <input type="text" id="lookupValueTextbox" style="display:none" />
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+        </section>
+    </div>
+</article>

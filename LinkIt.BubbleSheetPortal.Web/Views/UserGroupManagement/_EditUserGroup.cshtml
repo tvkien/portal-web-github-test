@@ -1,0 +1,86 @@
+@model LinkIt.BubbleSheetPortal.Web.Models.UserGroup.EditUserGroupDto
+
+<section class="grid-12">
+    <div class="block-border">
+        <div class="block-content form">
+            <h1>Edit User Group</h1>
+            <ul style="display: none" id="error-messages-edit-group" class="no-margin message error"></ul>
+            @using (Html.BeginForm("UpdateXLIGroup", "UserGroupManagement", FormMethod.Post, new { id = "editUserGroupFrom", @class = "form" }))
+            {
+                <fieldset>
+                    @Html.HiddenFor(x => x.XLIGroupID)
+                    @Html.HiddenFor(x => x.DistrictID, new { id = "hdfDistrictId" })
+                    <p>
+                        <label>Name</label>
+                        <span class="relative">
+                            @Html.TextBoxFor(m => m.Name, new { @class = "full-width", maxlength = "50" })
+                        </span>
+                    </p>
+                    <div style="float:left">
+                        @Html.CheckBoxFor(x => x.InheritRoleFunctionality)
+                        <label style="display: contents"> Keep Default Access</label>
+                        <div style="float:right; margin-left:5px">
+                            <a href="javascript:void(0)" title="When checked, users in this group will maintain their standard module access plus the access they are given in the group.&#10When unchecked, users in this group will only have access to the modules they are given in the group.">
+                                <img src="/Content/themes/Constellation/images/icons/fugue/information-blue.png" width="16" height="16">
+                            </a>
+                        </div>
+                    </div>
+
+                </fieldset>
+
+                <button id="btnEditUserGroupSubmit" type="submit" name="Save">Submit</button>
+                <button id="btnEditUserGroupCancel" type="button" class="grey">Cancel</button>
+            }
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#btnEditUserGroupCancel").click(function () {
+            $('.ui-widget-overlay').remove();
+            $('#editUserGroup').remove();
+        });
+
+        $('#editUserGroupFrom').submit(function (event) {
+            event.preventDefault();
+            $('#btnEditUserGroupSubmit').disableBt();
+
+            var data = {
+                XLIGroupID: $("#XLIGroupID").val(),
+                Name: $("#Name").val(),
+                DistrictID: $("#hdfDistrictId").val(),
+                InheritRoleFunctionality: $("#InheritRoleFunctionality").is(':checked'),
+            };
+
+            $.ajax({
+                url: '@Url.Action("UpdateXLIGroup", "UserGroupManagement")',
+                type: 'POST',
+                data: data,
+                success: function (response) {
+                    if (response) {
+                        if(response.success){
+                            $('.ui-widget-overlay').remove();
+                            $('#editUserGroup').remove();
+                            $('#tblUserGroup').dataTable().fnDraw();
+                        }
+                        else {
+                            $('#btnEditUserGroupSubmit').enableBt();
+                            $('#error-messages-edit-group').empty();
+                            
+                            if (response.message) {
+                                $('#error-messages-edit-group').append('<li>' + response.message + '</li>');
+                                $('#error-messages-edit-group').show();
+                            } else {
+                                $('#error-messages-edit-group').hide();
+                            }
+                        }
+                    }
+                },
+                failure: function (response) {
+                    addErrorMessages(response);
+                }
+            });
+        });
+    });
+</script>

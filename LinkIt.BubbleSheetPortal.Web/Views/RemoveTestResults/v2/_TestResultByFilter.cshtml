@@ -1,0 +1,526 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.DisplayTestResultFilterV2ViewModel
+<section class="m-0">
+    <div class="block-content form">
+        <h1 id="btnShowTestResultExported" class="off mb-2">
+            Remove Test Results
+        </h1>
+        <div class="mb-2 box-warning" style="max-width: fit-content;">
+            <img src="/Content/images/icons/icon-info.svg" class="ico-info">
+            <p>Select tests to be removed. To remove all test results, use the Remove All Results button.</p>
+        </div>
+        <div id="switchControl" class="form-check form-switch d-flex flex-row align-items-center ms-0 ps-0 float-start" style="height: 46px;">
+            <label class="form-check-label mb-0 deactivated-title me-2" for="swtShowByTestResults">Display by Test Result</label>
+            <div id="btnShowByTestResults" class="off">
+                <input class="form-check-input" type="checkbox" id="swtShowByTestResults" @(Model.DisplayByTestResults ? "checked" : "") onchange="$('#filterSheets').trigger('click');">
+            </div>
+        </div>
+        <div id="groupBtn" style="display: none;">
+            <div class="d-flex align-items-center">
+                <button id="btnSubmitAll" onclick="SubmitAll(null)" class="off btn-blue me-3 d-block with-tip" title="Remove all results, regardless of selection">
+                    Remove All Results
+                </button>
+
+                <button id="btnSubmitSelected" onclick="SubmitSelected(null);" class="off btn-blue me-3 d-block with-tip" title="Remove selected results on the current screen">
+                    Remove Selected Results
+                </button>
+
+                <button id="btnSubmitSelectedResultArtifacts" onclick="SubmitRemoveArtifactSelected(null);" class="off btn-blue me-3 d-block with-tip" title="Remove artifacts from selected results">
+                    Remove Result Artifacts
+                </button>
+            </div>
+        </div>
+
+        <div id="test-result-export" class="last-child">
+            @if (Model.DisplayByTestResults)
+            {
+                @Html.Partial("v2/_DisplayByTestResults");
+            }
+            else
+            {
+                @Html.Partial("v2/_DisplayByTests");
+            }
+        </div>
+
+        <div class="pButton">
+            <button id="btnSubmitSelected1" type="button" style="display: none;" disabled="disabled">
+                Submit
+            </button>
+        </div>
+        <input id="removeAllFlag" type="hidden" value="false" />
+        <input id="inputTotalTest" type="hidden" value="" />
+        <input id="inputTotalTestResult" type="hidden" value="" />
+        <input id="inputTotalStudent" type="hidden" value="" />
+        <input id="inputTestResultIds" type="hidden" value="" />
+    </div>
+</section>
+
+<style type="text/css">
+    .ui-dialog {
+        padding: 0;
+        border: 0;
+    }
+
+        .ui-dialog .dialog {
+            padding: 0;
+            min-height: auto !important;
+        }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+        .ui-dialog[aria-labelledby=ui-dialog-title-messageDialog].dialogCustom .ui-dialog-titlebar {
+            display: none;
+        }
+
+    #portal-v2-containter #dataTable input[type=checkbox]:not(.form-check-input) {
+        margin: 0;
+    }
+
+    #portal-v2-containter .block-footer {
+        display: none;
+    }
+
+    .ui-progressbar {
+        height: 2em;
+        border-radius: unset;
+    }
+
+    .ui-progressbar .ui-progressbar-value {
+        margin: 0;
+        height: 100%;
+        border-radius: unset;
+    }
+
+    .ui-widget-header {
+        border: 1px solid #dddddd !important;
+        background: #e9e9e9 !important;
+        position: inherit;
+    }
+
+    .ui-progressbar-overlay {
+        background: url(/Content/themes/RemoveTestResults/images/Indeterminate.gif);
+        height: 100%;
+        opacity: 0.25;
+    }
+
+    #portal-v2-containter .message.warning {
+        max-width: fit-content;
+        border: 1px solid var(--borderColor);
+        padding: 0.5rem 1rem;
+    }
+
+    @@media (max-width: 1440px) and (min-width: 1200px) {
+        #portal-v2-containter .btn-blue {
+            padding: 11px 15px;
+        }
+    }
+
+</style>
+<script type="text/javascript">
+
+    $.ajaxSetup({
+        timeout: 300000 // in milliseconds 
+    });
+
+    $('#chkAllTestResult').live("click", function (e) {
+        var testResultIds = GetTestResultSelected();
+        if (this.checked) {
+            $('INPUT[name="chkTestResult"][type=checkbox]').attr('checked', true);
+        }
+        else {
+            $(this).removeAttr('checked');
+            $('INPUT[name="chkTestResult"][type=checkbox]').removeAttr('checked').removeClass('input-checked-v2');
+        }
+        testResultIds == '' ? setDisabledButtons(true) : setDisabledButtons(false)
+    });
+
+    function setDisabledButtons(isDisabled) {
+        if (isDisabled) {
+            $('#btnSubmitSelected').disableBt();
+            $('#btnSubmitSelectedResultArtifacts').disableBt();
+        }
+        else {
+            $('#btnSubmitSelected').enableBt();
+            $('#btnSubmitSelectedResultArtifacts').enableBt();
+        }
+    }
+
+    $('INPUT[name="chkTestResult"][type=checkbox]').live("click", function (e) {
+        if (this.checked) {
+            var checkboxes = $('INPUT[name="chkTestResult"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $('#chkAllTestResult').removeAttr('checked').removeClass('input-checked-v2');
+                    checkall = false;
+                    break;
+                }
+            }
+            if (checkall) {
+                $('#chkAllTestResult').attr('checked', true);
+            }
+            setDisabledButtons(false);
+            $(this).attr('checked', true);
+        }
+        else {
+            $('#chkAllTestResult').removeAttr('checked').removeClass('input-checked-v2');
+            var checkedboxes = $('INPUT[name="chkTestResult"][type=checkbox]:checked');
+            if (checkedboxes.length > 0) {
+                setDisabledButtons(false);
+            }
+            else {
+                setDisabledButtons(true);
+            }
+            $(this).removeAttr('checked').removeClass('input-checked-v2');
+        }
+    });
+
+    function GetTestResultSelected() {
+        var testResultIds = '';
+        if ($('#swtShowByTestResults').is(':checked')) {
+            $('INPUT[name="chkTestResult"][type=checkbox]:checked').each(function (i, e) {
+                testResultIds += $(e).val() + ',';
+            });
+        }
+        else {
+            $('#test-result-export #dataTable tbody > tr > td input[name="chkTestResult"][type=checkbox]:checked').each(function (i, e) {
+                let tdTestResultIds = $(e).closest('tr').children('td.test-result-id-list');
+                testResultIds += tdTestResultIds.text() + ',';
+            });
+        }
+
+        return testResultIds.substr(0, testResultIds.length - 1);
+    }
+
+    function SubmitSelected(e) {
+        var tableData = $('#dataTable').dataTable().fnGetData();
+        var isDisplayByTest = $('INPUT[id="swtShowByTestResults"][type=checkbox]:checked').length == 0 ? true : false;
+
+        var countTest = 0;
+        var countStudent = 0;
+        var testResultIds = GetTestResultSelected();
+
+        if (isDisplayByTest) {
+
+            var strTestIds = '';
+            $('INPUT[name="chkTestResult"][type=checkbox]:checked').each(function (i, e) {
+                strTestIds += $(e).val() + ',';
+            });
+            var lstTestIds = strTestIds.toString().split(',').filter(x => x != '');
+            countTest = lstTestIds.length;
+
+            var dataSelected = tableData.filter(x => lstTestIds.includes(x[0].toString()));
+
+            var lstStudents = dataSelected.map(function (item) {
+                return item[8];
+            }).join(',');
+            countStudent = lstStudents.split(',').filter(onlyUnique).length;
+        }
+        else {
+            var lstTestResultIds = testResultIds.toString().split(',');
+            var dataSelected = tableData.filter(x => lstTestResultIds.includes(x[0].toString()));
+
+            var lstStudents = dataSelected.map(function (item) {
+                return item[2];
+            });
+
+            countStudent = lstStudents.filter(onlyUnique).length;
+
+            var lstTests = dataSelected.map(function (item) {
+                return item[1];
+            });
+
+            countTest = lstTests.filter(onlyUnique).length;
+        }
+        LoadGradeTestMessage(testResultIds, countTest, countStudent);
+    }
+
+    function onlyUnique(value, index, self) {
+        return self.indexOf(value) === index;
+    }
+
+    function SubmitRemoveArtifactSelected(e) {
+        var testResultIds = '';
+        testResultIds = GetTestResultSelected();
+        LoadRemoveArtifactMessage(testResultIds);
+    }
+
+    function SubmitAll(e) {
+        var totalTest = $('#inputTotalTest').val();
+        var totalStudent = $('#inputTotalStudent').val();
+        LoadGradeTestMessage('', totalTest, totalStudent);
+    }
+
+    function LoadGradeTestMessage(testResultIds, totalTest, totalStudent) {
+        var totalTestResult = 0;
+        if (testResultIds == '') {
+            totalTestResult = $('#inputTotalTestResult').val();
+        }
+        else {
+            totalTestResult = testResultIds.toString().split(',').length;
+        }
+        $('#inputTestResultIds').val(testResultIds);
+        var tmp = $('#hdTestRegraderForm').val(),
+            hbody = $("body").height() - 109;
+        var tmpMessage1 = ' result';
+        var tmpMessage2 = ' test';
+        if (totalTestResult > 1)
+            tmpMessage1 = ' results';
+        if (totalTest > 1)
+            tmpMessage2 = ' tests';
+        var message = 'You are about to permanently delete student test results. <br />' +
+            ' This action cannot be undone (i.e., online and bubble sheet student responses will be permanently removed; only bubble sheets can be rescanned).<br /><br />' +
+            'If you need assistance determining whether to remove test results, please contact us at <a href="mailto:technology@linkit.com">technology@linkit.com</a>.<br /><br />' +
+            'Are you sure you want to remove ' + NumberWithCommas(totalTestResult) + tmpMessage1 + ' across ' + NumberWithCommas(totalTest) + ' ' + tmpMessage2 + ' and ' + NumberWithCommas(totalStudent) + ' distinct students?';
+        var strHtml = '<section class="m-0">' +
+                        '<div class="form p-4">' +
+                        '<p class="styleMessage fw-bold" style="margin-bottom:0px;">' + message +
+                        '</p>' +
+                        '</div>' +
+                        '<div class="modal-component-footer">' +
+                        '<div slot="footer">' +
+                        '<button id="btnCancel" type="button" name="cancel" onclick="CancelRemove(null)">Cancel</button>' +
+                        '<button id="btnOk" type="button" onclick="OpenConfirmDialog(' + totalTestResult + ',' + totalTest + ',' + totalStudent + ')">OK</button>' +
+                        '</div>' +
+                        '</div></div></section>';
+        if (tmp == 'REGRADER') {
+            var tmpMessage2 = ') test result?';
+            if (totalTestResult > 1)
+                tmpMessage2 = ') test results?';
+            message = 'Are you sure you want to regrade the (' + totalTestResult + tmpMessage2;
+            strHtml = '<section class="m-0">' +
+                        '<div class="form p-4">' +
+                        '<p class="styleMessage fw-bold" style="margin-bottom:0px;">' + message +
+                        '</p>' +
+                        '</div>' +
+                        '<div class="modal-component-footer">' +
+                        '<div slot="footer">' +
+                        '<button id="btnCancel" type="button" name="cancel">Cancel</button>' +
+                        '<button id="btnOk" type="button" ListTestResultIDs="' + testResultIds + '" name="ok">OK</button>' +
+                        '</div>' +
+                        '</div></div></section>';
+        }
+
+        $("<div></div>")
+                    .html(strHtml)
+                    .addClass("dialog")
+                    .attr("id", "messageDialog")
+                    .appendTo("body")
+                    .dialog({
+                        close: function () { $(this).remove(); },
+                        modal: true,
+                        width: 500,
+                        resizable: false,
+                        dialogClass: 'dialogCustom'
+                    });
+    }
+
+    function LoadConfirmDialog(totalTestResult, totalTest, totalStudent) {
+        var tmpMessage1 = ' result';
+        var tmpMessage2 = ' test';
+        if (totalTestResult > 1)
+            tmpMessage1 = ' results';
+        if (totalTest > 1)
+            tmpMessage2 = ' tests';
+
+        var message = 'Are you sure you want to remove ' + NumberWithCommas(totalTestResult) + tmpMessage1 + ' across ' + NumberWithCommas(totalTest) + ' ' + tmpMessage2 + ' and ' + NumberWithCommas(totalStudent) + ' distinct students? <br /><br />' +
+            ' To proceed, please enter the number of test results you are going to delete.';
+
+        var strHtml = '<section class="m-0">' +
+                        '<div class="form p-4">' +
+                        '<p class="styleMessage fw-bold" style="margin-bottom:0px;color:red;">' + message +
+                        '</p>' +
+                        '<input type="text" id="input-number-confirm" class="w-100" style="margin-top:22px;" onkeydown="NumberTextBox_Keydown(event)" onkeyup="NumberTextBox_KeyUp(event)" />' +
+                        '</div>' +
+                        '<div class="modal-component-footer">' +
+                        '<div slot="footer">' +
+                        '<button id="btnCancel" type="button" name="cancel" onclick="CancelRemove(null)">Cancel</button>' +
+                        '<button id="btnOk" type="button" name="ok" onclick="SubmitRemove(' + totalTestResult + ')">OK</button>' +
+                        '</div>' +
+                        '</div></div></section>';
+
+        $("<div></div>")
+                    .html(strHtml)
+                    .addClass("dialog")
+                    .attr("id", "messageDialog")
+                    .appendTo("body")
+                    .dialog({
+                        close: function () { $(this).remove(); },
+                        modal: true,
+                        width: 500,
+                        resizable: false,
+                        dialogClass: 'dialogCustom'
+                    });
+    }
+
+    function LoadRemoveArtifactMessage(testResultIds) {
+        //debugger;
+        var total = testResultIds.toString().split(',');
+        var tmp = $('#hdTestRegraderForm').val(),
+            hbody = $("body").height() - 109;
+        var message = 'You are about to permanently delete student test result artifacts. <br />' +
+            ' This action cannot be undone (i.e., online and bubble sheet student responses will be permanently removed; only bubble sheets can be rescanned).<br /><br />' +
+            'If you need assistance determining whether to remove test result artifacts, please contact us at <a href="mailto:technology@linkit.com">technology@linkit.com</a> .<br /><br />' +
+            'Are you sure you want to remove ' + NumberWithCommas(total.length) + ' result artifact(s)?';
+        //alert("Test: " + tmp);
+        var strHtml = '<section class="m-0">' +
+                        '<div class="form p-4">' +
+                        '<p class="styleMessage fw-bold" style="margin-bottom:0px;">' + message +
+                        '</p>' +
+                        '</div>' +
+                        '<div class="modal-component-footer">' +
+                        '<div slot="footer">' +
+                        '<button id="btnCancel" type="button" name="cancel" onclick="CancelRemove()">Cancel</button>' +
+                        '<button id="btnOkRemoveArtifact" type="button" ListTestResultIDs="' + testResultIds + '" name="ok">OK</button>' +
+                        '</div>' +
+                        '</div></div></section>';
+        if (tmp == 'REGRADER') {
+            var tmpMessage2 = ') test result?';
+            if (total.length > 1)
+                tmpMessage2 = ') test results?';
+            message = 'Are you sure you want to regrade the (' + total.length + tmpMessage2;
+            strHtml = '<section class="m-0">' +
+                        '<div class="form p-4">' +
+                        '<p class="styleMessage fw-bold" style="margin-bottom:0px;">' + message +
+                        '</p>' +
+                        '</div>' +
+                        '<div class="modal-component-footer">' +
+                        '<div slot="footer">' +
+                        '<button id="btnCancel" type="button" name="cancel" onclick="CancelRemove(null);">Cancel</button>' +
+                        '<button id="btnOkRemoveArtifact" type="button" ListTestResultIDs="' + testResultIds + '" name="ok">OK</button>' +
+                        '</div>' +
+                        '</div></div></section>';
+        }
+
+        $("<div></div>")
+                    .html(strHtml)
+                    .addClass("dialog")
+                    .attr("id", "messageDialog")
+                    .appendTo("body")
+                    .dialog({
+                        close: function () { $(this).remove(); },
+                        modal: true,
+                        width: 500,
+                        resizable: false,
+                        dialogClass: 'dialogCustom'
+                    });
+    }
+
+    function ReloadTestResult() {
+        $('#chkAllTestResult').removeAttr('checked').removeClass('input-checked-v2');
+        setDisabledButtons(true);
+    }
+
+    function IsRegraderView() {
+        if ($('#hdTestRegraderForm').val() == 'REGRADER') {
+            return true;
+        }
+        return false;
+    }
+
+    function LoadPopupProgress() {
+        var url = '@Url.Action("LoadProgressRemove", "RemoveTestResults")';
+            $.ajax({ url: url, cache: false })
+                .done(function (html) {
+                    $("#divOnTop").append('<div id="idPopupProgressRemove" class="dialog"></div>');
+                    $("#idPopupProgressRemove").append(html);
+                    $('#idPopupProgressRemove').dialog({
+                        title: "",
+                        open: function () {
+                            $(this).parents('.ui-dialog').find('.ui-dialog-titlebar-close').remove();
+                            //Create overlay for popup
+                            $("body").append('<div class="my-overlay" style="z-index: ' + ($('.ui-dialog').css("z-index") - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        },
+                        beforeclose: function () {
+                            return true;
+                        },
+                        close: function () {
+                            $('#idPopupProgressRemove').remove();
+                            $("body .my-overlay").remove();
+                        },
+                        modal: false,
+                        width: 430,
+                        resizable: false
+                    });
+                });
+    }
+
+    function OpenConfirmDialog(totalTestResult, totalTest, totalStudent) {
+        $(".dialog").dialog("close");
+        LoadConfirmDialog(totalTestResult, totalTest, totalStudent);
+    }
+
+    function SubmitRemove(totalTestResult) {
+        var strInputConfirm = $('#input-number-confirm').val();
+        strInputConfirm = strInputConfirm.replace(/\,/g, '');
+        $(".dialog").dialog("close");
+        var strTotalTestResult = totalTestResult.toString();
+        if(strInputConfirm === strTotalTestResult) {
+            LoadPopupProgress();
+        }
+        else {
+            LoadWarningDialog();
+        }
+    }
+
+    function CancelRemove(e) {
+        $(".dialog").dialog("close");
+    }
+
+    function NumberWithCommas(x) {
+        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function NumberTextBox_Keydown(e) {
+        // Allow: backspace, delete, tab, escape, enter and .
+        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110]) !== -1 ||
+            // Allow: Ctrl+A
+            (e.keyCode == 65 && e.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (e.keyCode >= 35 && e.keyCode <= 39)) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+    }
+
+    function NumberTextBox_KeyUp(e) {
+        var value = $('#input-number-confirm').val();
+        value = value.replace(/\,/g, '');
+        $('#input-number-confirm').val(NumberWithCommas(value));
+    }
+
+    function LoadWarningDialog() {
+        var message = 'The number of test results you entered does not match the number of test results you have selected for deletion. Please check your selection and try again.';
+        var strHtml = '<section class="m-0">' +
+            '<div class="form p-4">' +
+            '<p class="styleMessage fw-bold" style="margin-bottom:0px;">' + message +
+            '</p>' +
+            '</div>' +
+            '<div class="modal-component-footer">' +
+            '<div slot="footer">' +
+            '<button type="button" onclick="CancelRemove(null)">Close</button>' +
+            '</div>' +
+            '</div></div></section>';
+
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "messageDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $(this).remove(); },
+                modal: true,
+                width: 500,
+                resizable: false,
+                dialogClass: 'dialogCustom'
+            });
+    }
+
+</script>

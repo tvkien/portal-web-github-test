@@ -1,0 +1,1055 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.ComposeMessageViewModel 
+<script src="@Url.Content("~/Scripts/jquery.listSplitter.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/ckeditor/ckeditor.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Content/themes/AssignmentRegrader/js/css_browser_selector.js")" type="text/javascript"></script>
+
+@{
+    Layout = "~/Views/Shared/_LayoutParentConnect.cshtml";
+}
+
+<div id="divComposeContent">
+    @using (Html.BeginForm("Inbox", "MailBox", FormMethod.Post, new { id = "composeForm", @class = "parentConnectComposeSelector" }))
+    {
+        @Html.Hidden("IsCompose", true)
+        @Html.Hidden("From")
+        @Html.Hidden("Subject")
+        @Html.Hidden("HtmlContent")
+        @Html.Hidden("SelectedStudentGroupId")
+        @Html.Hidden("SelectedStudentId")
+        @Html.Hidden("ClassId")
+        @Html.Hidden("UseEmail")
+        @Html.Hidden("UseSms")
+        @Html.Hidden("UseRequestAck")
+        @Html.Hidden("Sendby")
+        @Html.Hidden("ReplyEnable")
+        
+
+        <ul style="display: none" id="error-messages" class="message error"></ul>
+        <div id="inboxContainer">
+            <!--<legend>New Message</legend>-->
+                    <!---------Email Form From Here------------>
+                    <style type="text/css">
+                        .sendmail{width: 100%;}
+                        .sendmail .title{background-color: Gray;color: White;height: 23px;padding:10px 0px 0px 5px;font-weight: bold;font-size: 12px;}
+                        .sendmail .from,
+                        .sendmail .subject{border-bottom: solid 1px #eeeeee;padding: 5px 0px;border-left: solid 1px #eeeeee;border-right: solid 1px #eeeeee;background-color: #fcfcfc;}
+                        .sendmail .subject{border-bottom: solid 0px #ffffff;}
+                        .sendmail .sendTitle{float: left;width: 55px;padding:7px 0px 0px 5px;color: #AAAAAA;}
+                        .sendmail .sendinput{width: 90%;float: left;}
+                        .sendmail .sendinput input{border: solid 0px white;background-color: transparent;background-image: none;width: 100%}
+                        #myckeditor .cke{box-shadow: 0 0 0px rgba(255, 255, 255, 0.15);border: 1px solid #eeeeee;}
+                        #myckeditor .cke_top{background-image: none;border-bottom: 1px solid #eeeeee; background-color: #fcfcfc;-ms-filter: "progid:DXImageTransform.Microsoft.gradient(enabled=false)";}
+                        .sendvia{margin-bottom: 10px;}
+                        .sendvia .sendvia_item{float: left;margin-right: 30px;}
+
+                        .ui-tabs .ui-tabs-nav li:hover {
+                                background: #029CDC !important;
+                         }
+                        
+                        .ui-tabs .ui-tabs-nav li.ui-tabs-selected {
+                            border-right: 0 solid #CCCCCC !important;
+                            margin-bottom: 0;
+                            padding-bottom: 1px;
+                            padding-right: 1.5px;
+                            z-index: 9999999 !important;
+                        }
+                    </style>
+                    <div class="sendmail">
+                        <div class="sendvia input-height grey-bg">
+                            <div class="sendvia_item"><input type="checkbox" id="ckbEmail" /><label for="ckbEmail"> Email</label></div>
+                            <div class="sendvia_item"><input type="checkbox" id="ckbSms" /><label for="ckbSms"> SMS</label></div>
+                            <!--<div class="sendvia_item"><input type="checkbox" id="ckbRequestAck" /><label for="ckbRequestAck"> Request Acknowledgement</label></div>-->
+                            <div class="sendvia_item"><input type="checkbox" id="ckbReplyEnable" /><label for="ckbReplyEnable"> Enable Reply</label></div>
+                            <div class="clear"></div>
+                        </div>
+                        <div class="clear"></div>
+                        <div class="title">New Message</div>
+                        <div class="from">
+                            <div class="sendTitle">From: </div>
+                            <div class="sendinput"><input type="text" id="txtMsgFrom" readonly="readonly" /></div>
+                            <div class="clear"></div>
+                        </div>
+                        <div class="subject">
+                            <div class="sendTitle">Subject: </div>
+                            <div class="sendinput"><input type="text" id="txtMsgSubject" /></div>
+                            <div class="clear"></div>
+                        </div>
+                        <div class="mailcontent">
+                            <div id="myckeditor"></div>
+                        </div>
+                    </div>
+                    <script type="text/javascript">
+                        CKEDITOR.appendTo('myckeditor');
+                    </script>
+                    <!---------Email Form End Here------------>
+        </div>
+                
+    }
+</div>
+<!-- Close tab content-->
+</div>
+<!-- Move this to out of tab content-->
+<div class="clear-10"></div>
+<div>
+<div class="clear-10"></div>   
+<fieldset class="grey-bg">
+    <legend>Select Parents</legend>
+    <div class="columns">
+        <div class="colx2-left">
+            <input id="radioSingleStudent" type="radio" name="classSelection" checked="checked" onclick="ChooseSingleStudent();" />
+            <label for="radioSingleStudent">By Parent</label>
+                                
+            <input id="radioMultiStudent" type="radio" name="classSelection" onclick="ChooseMultiStudent();" />
+            <label for="radioMultiStudent">By Group</label>
+        </div>
+    </div>
+    <div class="columns" id="divContentLoad">
+        <div id="singleStudentContainer">
+            <div class="block-border">
+                <div id="adminContentByParent" class="block-content form">
+                        <fieldset class="grey-bg">
+                            <div class="columns">
+                                @if(Model.IsPublisher || Model.IsNetworkAdmin)
+                                {
+                                    <div class="colx2-left">
+                                        <p>
+                                            <label>@LabelHelper.DistrictLabel</label>
+                                            <select id="selectDistrict" class="compose_select" onchange="ddlDistrictChange()"></select>
+                                        </p>
+                                        <p>
+                                            <label>School</label>
+                                            <select id="selectSchool" class="compose_select" onchange="ddlSchoolChange()"></select>                    
+                                        </p>
+                                    </div>
+                                    <div class="colx2-right">
+                                        <p>
+                                            <label>Teacher</label>
+                                            <select id="selectTeacher" class="compose_select" onchange="ddlTeacherChange()"></select>                    
+                                        </p>
+                                        <p>
+                                            <label>Class</label>
+                                            <select id="selectClass" class="compose_select" onchange="ddlClassChange()"></select>
+                                        </p>
+                                    </div>
+                                }
+                                else
+                                {
+                                     <div class="colx2-left">
+                                        <p>
+                                             <label>School</label>
+                                            <select id="selectSchool" class="compose_select" onchange="ddlSchoolChange()"></select> 
+                                            <select id="selectDistrict" class="compose_select" onchange="ddlDistrictChange()" style="visibility: hidden"></select>
+                                        </p>
+                                        <p>
+                                                              
+                                        </p>
+                                    </div>
+                                    <div class="colx2-right">
+                                        <p>
+                                            <label>Teacher</label>
+                                            <select id="selectTeacher" class="compose_select" onchange="ddlTeacherChange()"></select>                    
+                                        </p>
+                                        <p>
+                                            <label>Class</label>
+                                            <select id="selectClass" class="compose_select" onchange="ddlClassChange()"></select>
+                                        </p>
+                                    </div>
+                                }
+                            </div>
+                        </fieldset>
+                </div>
+            </div>
+                    
+        <article id="studentListArt">
+                <section>
+                <div class="block-border" id="divStudentListBorder">
+                    <div class="block-content form block-content_compose_list_student">
+                        <!-- Load _ListStudentInClass.cshtml here -->  
+                        <div id="studentListDiv" class="studentListCompose"></div>
+                        <div class="clear"></div>
+                    </div>
+                </div>         
+                </section>
+            </article>
+        </div>
+        <div id="multiStudentContainer">
+            <div class="columns" id="divMultibleClasses" style="margin-top: -20px; margin-bottom: 10px">
+                <div id="selectedStudentGroupContainer" style="float: left; display: none;padding-top: 10px;">
+                    <strong>Currently Selected Row: </strong><span id="currentlySelectedStudentGroup"></span>
+                    <span id="currentlySelectedStudentGroupId" style="visibility:hidden"></span>
+                </div>
+                <div id="divbtnAddNewGroup" style="display: none;float: right;position: relative;"><img class="positionAdd" src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" alt="#" />@Html.ActionLink("ADD NEW GROUP", "AddEditStudentGroup", null, new { @class = "openDialog addStudentGroupButton", data_dialog_id = "studentGroupDialog", data_dialog_title = "" })</div>
+            </div>
+            <div class="block-border">
+                <div class="block-content form" style="padding-bottom: 0px;">
+                    <!-- Load _ListStudentGroup.cshtml here -->
+                    <div id="divMultiStudent" style="display: none;">
+                    </div>
+                </div>
+            </div>
+        </div>  
+
+    </div>
+</fieldset>
+<div class="clear"></div> 
+
+<button class="float-right" id="btnSendStudents" type="submit">Send</button>
+<button class="float-right" id="btnSendStudentGroup" type="submit">Send</button>
+
+<div class="clear"></div>
+<div id="dialogManualGrading"></div>
+
+<script type="text/javascript">
+    $(function () {
+        $('.parent_connect').addClass('current');
+        $('#mailBoxTab').addClass('current');
+        hideStudentList();
+        
+        
+        
+        
+        //Default select by parent
+        if ($('#radioMultiStudent:checked').val() == 'on') {
+            ChooseMultiStudent();
+        } else {
+            ChooseSingleStudent();
+        }
+        //Select Parents -> By Parent -> District: Load all district for Publisher
+        @if (Model.IsPublisher||Model.IsNetworkAdmin)
+        {
+            <text>
+            //show all district
+        
+            innitDropdownListDistrict(null, true);
+            $("#selectDistrict").show();
+            </text>
+        }
+        else if (Model.IsDistrictAdmin || Model.IsSchoolAdmin || Model.IsTeacher)
+        {
+            <text>
+
+            //show only the district of current user
+            //only Publiser can see district
+            var selectedDistrictID = '@Model.CurrentSelectedDistrictId';
+            innitDropdownListDistrict(selectedDistrictID, false);
+            $("#selectDistrict").hide();
+
+            //Display all school that user has right access to
+            innitDropdownListSchool(selectedDistrictID, null, true);
+            
+            </text>
+
+        }
+      
+        //Register event handler for change event of dropdownlist
+        //registerDdlChange();
+
+        //Set From
+        $('#txtMsgFrom').val('@Model.From');
+        
+        $(document).ready(function () {
+            $("#inbox").css({ "margin-bottom": "30px" });// Temp add margin bottom for inbox. Must be change Master later
+            
+            $(".openDialog").live("click", function (e) {
+                var url = this.href;
+                var reportGroupID = $(this).attr("reportGroupID");
+                var reportGroupName = $(this).attr("reportGroupName");
+                e.preventDefault();
+                //use custom popup
+                PopulateAddEditGroupPopup(url,reportGroupID,reportGroupName);
+                
+                //$("<div></div>")
+                //    .addClass("dialog")
+                //    .attr("id", $(this)
+                //        .attr("data-dialog-id"))
+                //    .appendTo("body")
+                //    .dialog({
+                //        title: $(this).attr("data-dialog-title"),
+                //        close: function () { $(this).remove(); },
+                //        modal: true,
+                //        width: 1000,
+                //        resizable: false,
+                //        draggable: true,
+                //        open: function (event, ui) {
+                //            //Set position top
+                //            $(this).dialog({ position: 'top' });
+                //        },
+                //    })
+                //    .load(url, { reportGroupName: reportGroupName, reportGroupID: reportGroupID }, function () { });
+                
+
+
+
+            });
+            
+          
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+
+            $("#btnCancel").live("click", function (e) {
+                e.preventDefault();
+                $(".dialog").dialog("close");
+            });
+            
+            $('#ckbReplyEnable').attr('checked', false);
+
+        }); //end  $(document).ready
+
+        //Event handler for submit event
+        $('#btnSendStudents').click(function (e) {
+            Send(e);
+            
+        }); 
+
+        $('#btnSendStudentGroup').click(function (e) {
+            Send(e);
+
+        });
+
+    });// end  $(function()
+
+    function Send(e) {
+
+        e.preventDefault();
+
+        var from = $("#txtMsgFrom").val();
+        var subject = $("#txtMsgSubject").val();
+        var htmlContent = CKEDITOR.instances.editor1.getData();
+        var useEmail = $('#ckbEmail').is(':checked');
+        var useSms = $('#ckbSms').is(':checked');
+        var useRequestAck = $('#ckbRequestAck').is(':checked');
+        var enableReply = $('#ckbReplyEnable').is(':checked');
+        subject = $.trim(subject);
+
+        if (subject.length == 0) {
+            //alert("Please input message subject.");
+            alertMessage("Please input message subject.");
+            return;
+        }
+
+        htmlContent = $.trim(htmlContent);
+
+        if (htmlContent.length == 0) {
+            //alert("Please input message body.");
+            alertMessage("Please input message body.");
+            return;
+        }
+
+        var selectedStudentId = '';
+        var selectedStudentGroupId = '';
+        var sendby = '';
+        var classId = '';
+
+        //if user select a group of students to send, get the selected groupid
+        if ($('#radioMultiStudent:checked').val() == 'on') {
+            selectedStudentGroupId = $('#currentlySelectedStudentGroupId').text(); //TuanVo_1
+            selectedStudentGroupId = $.trim(selectedStudentGroupId);
+            if (selectedStudentGroupId.length == 0) {
+                //alert("Please select one group to send.");
+                alertMessage("Please select one group to send.");
+                return;
+            }
+            sendby = "group";
+        } else {
+            var temp = $("#selectClass");
+            if (temp != null) {
+                classId = temp.val();
+            }
+            if (classId == null) {
+                //alert("Please select class to find student.");
+                alertMessage("Please select class to find student.");
+                return;
+            }
+                
+            if (classId.length == 0) {
+                //alert("Please select class to find student.");
+                alertMessage("Please select class to find student.");
+                return;
+            }
+
+            //User select student one by one to send message, get the list of studentid
+            if (typeof getSelectedStudentIds == 'function') {
+                selectedStudentId = getSelectedStudentIds(); //this method is declared in _ListStudentInClass.cshtml, selectedStudentId looks like 1,2,3,4
+
+            }
+            selectedStudentId = $.trim(selectedStudentId);
+            if (selectedStudentId.length == 0) { //check to make sure a class has been selected
+                //alert("Please select at least one student to send.");
+                alertMessage("Please select at least one student to send.");
+                return;
+            }
+            sendby = "students";
+
+        }
+
+
+        $('#SelectedStudentGroupId ').val(selectedStudentGroupId);
+        $('#SelectedStudentId ').val(selectedStudentId);
+        $('#ClassId ').val(classId);
+        $('#From ').val(from);
+        $('#Subject ').val(subject);
+        $('#HtmlContent ').val(htmlContent);
+        $('#UseEmail ').val(useEmail);
+        $('#UseSms ').val(useSms);
+        $('#UseRequestAck ').val(useRequestAck);
+        $('#ReplyEnable ').val(enableReply);
+        $('#Sendby ').val(sendby);
+
+        ShowBlock($('#reviewList'), "Sending messages");
+
+        $('#composeForm').submit(); //hidden field will be submit to action method
+
+
+        //No use ajax
+
+        //var data = {
+        //    sendby: sendby,
+        //    selectedStudentGroupId: selectedStudentGroupId,
+        //    selectedStudentId: selectedStudentId,
+        //    classId: classId,
+        //    from: from,
+        //    subject: subject,
+        //    htmlContent: htmlContent,
+        //    useEmail: useEmail,
+        //    useSms: useSms,
+        //    useRequestAck: useRequestAck
+        //};
+
+        ////clear error message
+        //$("#error-messages").html('');
+        //$("#error-messages").hide();
+        //$('#btnSendStudents').disableBt();
+        //$('#btnSendStudentGroup').disableBt();
+        //ShowBlock($('#divComposeContent'), "Sending messages");
+        //ShowBlock($('#divContentLoad'), "Sending messages");
+
+
+                                        @*$.ajax({
+                    url: '@Url.Action("Compose")',
+                    traditional: true,
+                    type: 'POST',
+                    data: data,
+                    success: function (response) {
+                        if (response.Success != false) {
+                            $('#error-messages').hide();
+                            //location.href = response.Path; //TuanVo
+                            //display summary sending result
+                            
+
+                            //
+                            //$("#divReceiverCount").show();
+                            //var msg = response.CountMessageReceiver.toString() + "message had been sent";
+                            //$("#divReceiverCount").html(msg);
+
+                            //$("#divEmailCount").show();
+                            //msg = response.CountEmailSent.toString() + " emails had been sent";
+                            //$("#divEmailCount").html(msg);
+
+                            //$("#divSmsCount").show();
+                            //msg = response.CountSmsSent.toString() + " sms  had been sent";
+                            //$("#divSmsCount").html(msg);
+
+                            
+
+                        }
+                        else {
+                            addErrorMessages(response);
+                        }
+                        $('#divComposeContent').unblock();
+                        $('#divContentLoad').unblock();
+                        $('#btnSendStudents').enableBt();
+                        $('#btnSendStudentGroup').enableBt();
+
+                    },
+                    failure: function (response) {
+                        alert(response);
+                    }
+        });*@
+
+    }
+
+
+    function ChooseSingleStudent() {
+
+        //Hide group
+        $("#multiStudentContainer").hide();
+        $("#singleStudentContainer").show();
+
+        $('#btnSendStudents').show();
+        $('#btnSendStudentGroup').hide();
+
+    }
+
+    function ChooseMultiStudent() {
+        //Hide group
+        $("#multiStudentContainer").show();
+        $("#singleStudentContainer").hide();
+
+        ShowBlock($('#divComposeContent'), "Loading Group List");
+        $('#divMultiStudent').load('@Url.Action("LoadListStudentGroup")', function(response) {
+            $('#divComposeContent').unblock();
+            $('#divContentLoad').unblock();
+            if (response == false) {
+                addErrorMessages(response);
+                return;
+            }
+
+            //$("#studentContent").hide(); //TuanVo
+            //$("#divSingleClass").hide(); //TuanVo
+            $("#divMultiStudent").show();
+            //$("#btnSubmit").hide();
+            //$('#btnGroupPrintingSubmit').show(); //TuanVo
+            $("#divbtnAddNewGroup").show();
+        });
+        $('#btnSendStudents').hide();
+        $('#btnSendStudentGroup').show();
+    }
+
+    $.ajaxSetup({ cache: false });
+
+    function hideStudentList() {
+        $("#studentListArt").hide();
+        //$("#divStudentListBorder").hide();
+    }
+    function showStudentList() {
+        $("#studentListArt").show();
+        //$("#divStudentListBorder").show();
+    }
+    function addDisabled(e) {
+        $(e).attr('disabled', 'disabled');
+        $(e).css('color', 'gray');
+    }
+
+    function removeDisabled(e) {
+        $(e).removeAttr('disabled');
+        $(e).css('color', '');
+    }
+
+        
+    function ddlDistrictChange() {
+        var dropdownSelector = '#selectDistrict';
+        var selectedValue = $(dropdownSelector).val();
+        $('#selectSchool').empty();
+        $('#selectTeacher').empty();
+        $('#selectClass').empty();
+        //loadDistrictDetail();
+        
+        innitDropdownListSchool(selectedValue, null, true);
+        hideStudentList();
+    }
+
+    function ddlSchoolChange() {
+        var dropdownSelector = '#selectSchool';
+        var selectedValue = $(dropdownSelector).val();
+        $('#selectClass').empty();
+
+        var districtID = $('#selectDistrict').val();
+        $('#selectTeacher').empty();
+        innitDropdownListTeacher(districtID, selectedValue, null, true);
+
+        hideStudentList();
+    }
+
+
+    function ddlTeacherChange() {
+        var dropdownSelector = '#selectTeacher';
+        var selectedValue = $(dropdownSelector).val();
+        $('#selectClass').empty();
+
+        var districtID = $('#selectDistrict').val();
+        var schoolID = $('#selectSchool').val();
+        innitDropdownListClass(districtID, schoolID, selectedValue, true);
+        //loadTeacherContent();
+        hideStudentList();
+    }
+
+
+    function ddlClassChange() {
+        hideStudentList();
+        loadStudentContent();
+    }
+
+    function innitDropdownListDistrict(selectedDistrictID, enable) {
+        var dropdownSelector = '#selectDistrict';
+        if (enable == false) {
+            addDisabled(dropdownSelector);
+        } else {
+            removeDisabled(dropdownSelector);
+        }
+
+        $.ajax({
+            url: '@Url.Action("GetAllDistrict", "Admin")',
+            dataType: 'json',
+            async: false,
+            success: function (districts) {
+                addDefaultOption($(dropdownSelector), "@LabelHelper.DistrictLabel");
+                addSelectListWithDefaultValue($(dropdownSelector), districts, selectedDistrictID);
+            },
+            beforeSend: function () {
+                showAdminContentLoading(); 
+            },
+            complete: function () {
+                hideAdminContentLoading();
+            }
+        });
+        // hide student list
+        hideStudentList();
+    }
+    //copy from ManageClass
+    function innitDropdownListSchool(selectedDistrictID, selectedSchoolID, enable) {
+        var dropdownSelector = '#selectSchool';
+        $(dropdownSelector).empty();
+
+        if (enable == false) {
+            addDisabled(dropdownSelector);
+        } else {
+            removeDisabled(dropdownSelector);
+        }
+
+        if (selectedDistrictID == null || selectedDistrictID == '' || selectedDistrictID == '0' || selectedDistrictID == 'select') {
+            return;
+        }
+
+        var url = '@Model.RoleId' == '8' || '@Model.RoleId' == '2' ? '@Url.Action("GetSchoolsByUser")' : '@Url.Action("GetSchools")';
+
+        $.ajax({
+            url: url,
+            data: { districtId: selectedDistrictID, userId: '@Model.CurrentUserId' },
+            dataType: 'json',
+            async: false,
+            success: function (schools) {
+                addDefaultOption($(dropdownSelector), "School");
+                addSelectListWithDefaultValue($(dropdownSelector), schools, selectedSchoolID);
+                
+                //TuanVo: if there's only one school -> display the school
+                if ($('#selectSchool > option').length == 2) {
+                    $('#selectSchool').get(0).selectedIndex = 1;
+                    //Init dropdownlist teacher as well (when there is only one School)
+                    innitDropdownListTeacher(selectedDistrictID, $(dropdownSelector).val(),null,true );
+                }
+            
+            },
+            beforeSend: function () {
+                showAdminContentLoading();
+            },
+            complete: function () {
+                hideAdminContentLoading();
+            }
+        });
+        // hide student list
+        hideStudentList();
+    }
+    
+    function innitDropdownListTeacher(selectedDistrictID, selectedSchoolID, selectedTeacherID, enable) {
+       
+        
+        var dropdownSelector = '#selectTeacher';
+        if (enable == false) {
+            addDisabled(dropdownSelector);
+        } else {
+            removeDisabled(dropdownSelector);
+        }
+
+        if (selectedDistrictID == null || selectedDistrictID == '' || selectedDistrictID == '0' || selectedDistrictID == 'select') {
+            return;
+        }
+
+        if (selectedSchoolID == null || selectedSchoolID == '' || selectedSchoolID == '0' || selectedSchoolID == 'select') {
+            return;
+        }
+
+        $.ajax({
+            url: '@Url.Action("GetTeachersInSchool")',
+            data: { schoolId: selectedSchoolID },
+            dataType: 'json',
+            async: false,
+            success: function(teachers) {
+                addDefaultOption($(dropdownSelector), "Teacher");
+                addSelectListWithDefaultValue($(dropdownSelector), teachers, selectedTeacherID, function(item) {
+                    return item.DisplayName;
+                });
+                //TuanVo: if there's only one teacher -> display the teacher
+                if ($('#selectTeacher > option').length == 2) {
+                    $('#selectTeacher').get(0).selectedIndex = 1;
+                    //Init dropdownlist class as well (  when there's only one teacher)
+                    innitDropdownListClass(selectedDistrictID,selectedSchoolID, $(dropdownSelector).val(), null, true);
+                }
+            },
+            beforeSend: function() {
+                showAdminContentLoading();
+            },
+            complete: function() {
+                hideAdminContentLoading();
+            }
+        });
+        // hide student list
+        hideStudentList();
+    }
+    
+
+    function innitDropdownListClass(selectedDistrictID, selectedSchoolID, selectedTeacherID, selectedClassID, enable) {
+        // hide student list
+        hideStudentList();
+        
+        var dropdownSelector = '#selectClass';
+        if (enable == false) {
+            addDisabled(dropdownSelector);
+        } else {
+            removeDisabled(dropdownSelector);
+        }
+
+        if (selectedDistrictID == null || selectedDistrictID == '' || selectedDistrictID == '0' || selectedDistrictID == 'select') {
+            return;
+        }
+
+        if (selectedSchoolID == null || selectedSchoolID == '' || selectedSchoolID == '0' || selectedSchoolID == 'select') {
+            return;
+        }
+
+        if (selectedTeacherID == null || selectedTeacherID == '' || selectedTeacherID == '0' || selectedTeacherID == 'select') {
+            return;
+        }
+        
+        
+        $.ajax({
+            url: '@Url.Action("GetClasses")',
+            data: { userId: selectedTeacherID, schoolId: selectedSchoolID },
+            async: false,
+            success: function (classes) {
+                addDefaultOption($(dropdownSelector), "Class");
+                addSelectListWithDefaultValue($(dropdownSelector), classes, selectedClassID);
+                //TuanVo: if there's only one class -> display the class
+                if ($('#selectClass > option').length == 2) {
+                    $('#selectClass').get(0).selectedIndex = 1;
+                    //Display student in class as well (  when there's only one class)
+                    loadStudentContent();
+                }
+            },
+            beforeSend: function () {
+                showAdminContentLoading();
+            },
+            complete: function () {
+                hideAdminContentLoading();
+            }
+        });
+       
+    }
+    function innitDropdownListClassForTeacher() {
+        var dropdownSelector = '#selectClass';
+
+        var selectedTeacherID = '@Model.CurrentUserId';
+
+        $.ajax({
+            url: '@Url.Action("GetClassesByUserId")',
+            data: { userId: selectedTeacherID, schoolId: null },
+            async: false,
+            success: function (classes) {
+                addDefaultOption($(dropdownSelector), "Class");
+                addSelectListWithDefaultValue($(dropdownSelector), classes, null);
+            },
+            beforeSend: function () {
+                showAdminContentLoading();
+            },
+            complete: function () {
+                hideAdminContentLoading();
+            }
+        });
+        // hide student list
+        hideStudentList();
+    }
+
+    var ajaxCallByParentsCount = 0;
+    function showAdminContentLoading() {
+        if (ajaxCallByParentsCount == 0) {
+            ShowBlock($('#adminContentByParent'), "Loading");
+        }
+
+        ajaxCallByParentsCount++;
+    }
+
+    function hideAdminContentLoading() {
+        ajaxCallByParentsCount--;
+        if (ajaxCallByParentsCount == 0) {
+            $('#adminContentByParent').unblock();
+        }
+    }
+    function loadStudentContent() {
+        var classId = $('#selectClass').val();
+        displayStudentView(classId);
+    }
+    function displayStudentView(classId) {
+        
+        var mainContentSelector = '#studentListDiv';
+        
+        $(mainContentSelector).empty();
+        $(mainContentSelector).show();
+        if (classId == null || classId == 'select') {
+            return;
+        }
+        
+        showAdminContentLoading();
+        $(mainContentSelector).load('@Url.Action("LoadStudentInClass")', { classId: classId}, function (response) {
+            hideAdminContentLoading();
+            showStudentList();
+            //if (typeof (showFooter) === 'function') showFooter(); //TuanVo
+            if (response == false) {
+                alert("Error happen. Please refresh page.");
+            }
+        });
+    }
+
+</script>
+
+<script>
+    //Use this popup to avoid error scrolling in Chrome
+    function PopulateAddEditGroupPopup(url, reportGroupID, reportGroupName) {
+        //alert(reportGroupID);
+        ShowBlock($('#reviewList'), 'Loading');//block the whole page
+        $.ajax({
+            url: url,
+            data: { reportGroupID: reportGroupID, reportGroupName: reportGroupName },
+            cache: false
+        }).done(function (html) {
+            $("#dialogManualGrading").append('<div id="PopupAddEditStudentGroup" class="dialog"></div>');
+            $("#PopupAddEditStudentGroup").append(html);
+            $('#reviewList').unblock();
+            $('#PopupAddEditStudentGroup').dialog({
+                title: "",
+                draggable: true,
+                open: function () {
+
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+                    //Set position top
+                    $(this).dialog({ position: 'top' });
+                    
+                    //Create overlay for popup
+                    $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                close: function () {
+                    $('#PopupAddEditStudentGroup').remove();
+                    $("body .my-overlay").remove();
+                },
+                modal: false,
+                width: 1000,
+                
+                resizable: false
+            });
+
+        });
+
+    }
+    
+    function CloseGraderPopup() {
+        $("#PopupAddEditStudentGroup").dialog("close");
+    }
+
+</script>    
+<script>
+    //Build custom alert window message
+    function alertMessage(message) {
+        var okButton = '<button style="width:63px;" onclick="closeAlert();">OK</button>';
+
+        var strHtml = '<section class="grid_5">' +
+            '<div class="block-border" style="width: ' + 400 + 'px;">' +
+            '<div class="block-content form" style="padding-bottom: 1em;"><div>' + message +
+            '</div><div style="text-align:center;padding-top:20px;padding-bottom:10px;">' + okButton + '</div></div></div></section>';
+        $("<div></div>")
+            .html(strHtml)
+            .addClass("dialog")
+            .attr("id", "alertDialog")
+            .appendTo("body")
+            .dialog({
+                close: function () { $('.ui-widget-overlay').remove(); $(this).remove(); },
+                modal: false,
+                width: 460,
+                maxheight: 500,
+                resizable: false,
+            });
+
+        showModalDialogBG();
+    }
+
+    function closeAlert() {
+        $('#alertDialog').dialog('close');
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+</script>
+<style type="text/css">
+    .parentconnet {
+        padding: 10px 0px;
+    }
+    .positionAdd
+    {
+        position: absolute;
+        left: 7px;
+        top: 9px;
+    }
+    .addStudentGroupButton {
+        display: block;
+        font-size: 0.778em;
+        text-transform: uppercase;
+        color: #cccccc !important;
+        border: 1px solid;
+        border-color: #7e9098 #61727b #2b373d;
+        background: #40535c url(../Content/themes/Constellation/images/old-browsers-bg/title-link-bg.png) repeat-x top;
+        -webkit-background-size: 100% 100%;
+        -moz-background-size: 100% 100%;
+        -o-background-size: 100% 100%;
+        background-size: 100% 100%;
+        background: -moz-linear-gradient(top,white,#9eb1ba 4%,#40535c);
+        background: -webkit-gradient(linear,left top, left bottom,from(white),to(#40535c),color-stop(0.03, #9eb1ba));
+        -moz-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        -webkit-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        -moz-border-radius: 0.286em;
+        -webkit-border-radius: 0.286em;
+        -webkit-background-clip: padding-box;
+        border-radius: 0.286em;
+        line-height: 2em;
+        white-space: nowrap;
+        padding: 0.5em 2.77em;
+        width: 80px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .addStudentGroupButton:hover {
+        color: white;
+        border-color: #1eafdc #1193d5 #035592;
+        background: #057fdb url(../Content/themes/Constellation/images/old-browsers-bg/title-link-hover-bg.png) repeat-x top;
+        -webkit-background-size: 100% 100%;
+        -moz-background-size: 100% 100%;
+        -o-background-size: 100% 100%;
+        background-size: 100% 100%;
+        background: -moz-linear-gradient(top,white,#2bcef3 4%,#057fdb);
+        background: -webkit-gradient(linear,left top, left bottom,from(white),to(#057fdb),color-stop(0.03, #2bcef3));
+    }
+    
+    button
+    {
+        margin-left: 30px;
+    }
+    .ui-widget-header
+    {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        top: 34px;
+    }
+    
+    .ui-dialog
+    {
+        background: transparent;
+        border: 0;
+    }
+    .ui-dialog .ui-dialog-titlebar-close
+    {
+        position: absolute;
+        right: 8px;
+        top: -8px;
+        width: 30px;
+        height: 42px;
+    }
+    .ui-dialog .ui-dialog-titlebar-close:hover {
+        border-width: 0px;
+    }
+    .ui-widget-header .ui-icon
+    {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+    .ui-icon
+    {
+        width: 40px;
+        height: 40px;
+    }
+    .ui-icon-closethick
+    {
+        background-position: 2px 2px;
+    }
+    .ui-state-hover
+    {
+        border-right: 0px solid !important;
+        background: transparent !important;
+    }
+    .ui-widget-header .ui-state-hover {
+      
+    }
+    
+    .ui-widget-overlay
+    {
+        background: #2b2b2d !important;
+    }
+
+    .block-controls
+    {
+        display: block;
+    }
+
+    .float-left {
+        display: none;
+    }
+
+    .studentListCompose .no-margin .block-controls
+    {
+        margin: 0px;
+    }
+
+    #dataTable_wrapper {
+        margin-bottom: -52px !important;
+    }
+
+    .block-content .compose_list_student {
+        margin: 20px -22px 0px -22px;
+    }
+
+    .tblEmail tr td {
+        word-break: break-all;
+    }
+
+    .block-content_compose_list_student {
+        padding-bottom: 6px;
+    }
+
+    .studentListCompose .no-margin
+    {
+        margin-left: -1.667em;
+        margin-right: -1.667em;
+    }
+
+    .ie #dataTable_wrapper {
+        margin-bottom: -48px !important; 
+    }
+    .ie .pButton {
+        position: relative;
+        top: 5px !important;
+    }
+    .ie .studentListCompose .block-controls
+    {
+        margin-top: -1.66em;
+        margin-bottom: 0px;
+    }
+    .ie .studentListCompose .no-margin
+    {
+        margin-left: -1.667em;
+        margin-right: -1.667em;
+    }
+
+    .chrome #dataTable_wrapper
+    {
+        margin-bottom: -16px !important;
+    }
+    .ui-widget .compose_select
+    {
+        font-family: Verdana, Arial, Helvetica, sans-serif;
+        font-size: 12px;
+         width: 350px;
+    }
+</style>

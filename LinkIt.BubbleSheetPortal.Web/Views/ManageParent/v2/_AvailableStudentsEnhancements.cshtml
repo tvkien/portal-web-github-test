@@ -1,0 +1,443 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+
+<div class="modal-component-manage-class pt-0" style="padding-right: 0.375rem">
+    <div class="mb-4">
+        <div class="form accordionDiv">
+            <div :class="['manage-class-toggle accordion-title', { 'active': isShowFilter, 'is-toggle': isShowFilter }]">
+                <div v-on:click="isShowFilter = !isShowFilter" class="d-flex flex-row justify-content-between">
+                    <h3 class="header u-cursor-pointer manage-class-legend mb-0 fw-normal">Filter by Program, Or @LabelHelper.TestGrade</h3>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
+                <div id="filterContent" class="d-flex flex-row mt-3" v-if="isShowFilter">
+                    <div class="col-9">
+                        <h3 class="mb-3">Program</h3>
+                        <div class="columns-filters">
+                            <div v-for="program in manageClass.programs" class="columns-filter">
+                                <label>
+                                    <input type="checkbox" v-bind:value="program.Id" v-model="manageClass.programSelected">
+                                    {{ program.Name }}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <h3 class="mb-3">@LabelHelper.TestGrade</h3>
+                        <div class="columns-filters">
+                            <div v-for="grade in manageClass.grades" class="columns-filter">
+                                <label>
+                                    <input type="checkbox" v-bind:value="grade.Id" v-model="manageClass.gradesSelected">
+                                    {{ grade.Name }}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex flex-row justify-content-end mt-4">
+            <button v-on:click="clearAllCheckBox" class="btn-blue me-3">Clear Filter</button>
+            <button v-on:click="applyFilter" class="btn-red">Apply Filters</button>
+        </div>
+    </div>
+    <div>
+        <div class="form">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="block-heading">
+                    <h1 class="title-large mb-0">Students</h1>
+                </div>
+                <div>
+                    <button id="btnAddNewUserToSchool" v-on:click="redirecToAddNewStudent" v-if="currentlyEditing && isShowAddNewStudent" class="btn-text btn-plus-icon py-0 me-4">
+                        Add new student
+                    </button>
+                    <a id="btnAssignStudent" class="btn btn-link p-0 ms-3" v-on:click="prompAddStudentToParent" v-bind:disabled="isDisabledButton">
+                        Assign student(s) to parent
+                        <i class="fa-solid fa-plus ms-2"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="d-flex flex-row justify-content-between align-items-center">
+                <div class="d-flex fex-row align-items-center">
+                    <input type="checkbox" id="cbShowSelectedStudent" v-model="isShowSelectedStudent" v-bind:disabled="isDisabledShowSelectedStudent" class="field-checkbox me-2" />
+                    <label for="cbShowSelectedStudent" class="label-show-selected">
+                        <b>Show selected students only</b>
+                    </label>
+                </div>
+                <button v-show="isShowViewSelectedStudent" href="#" v-bind:class="{ 'disabled': isDisabledButton }" v-on:click="removeAllSelectedStudent" class="btn btn-link p-0 border-0">
+                    Remove All Selected Students
+                    <i class="fa-solid fa-trash ms-2"></i>
+                </button>
+            </div>
+
+            <div v-show="isShowViewSelectedStudent">
+                <div id="formInactiveStudentAddClass" v-on:click="changeInactive" class="form-check form-switch d-flex flex-row align-items-center mt-3 ps-0 float-left">
+                    <label class="form-check-label mb-0 deactivated-title" for="btnShowInactiveStudentAddClass">Show Inactive:</label>
+                    <span class="ms-1 me-3">{{ showInactiveText }}</span>
+                    <div>
+                        <input v-model="showInactive" class="form-check-input" type="checkbox" name="btnShowInactiveStudentAddClass" id="btnShowInactiveStudentAddClass">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <div v-show="!isShowViewSelectedStudent">
+                    <div class="datatablefiltermanageclass">
+                        <table id="datatablefiltermanageclass" class="datatable table no-margin datatable-filter-manage-class" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width: 15px">
+                                        <input type="checkbox" id="chkAllStudent" v-on:click="checkAllStudent" v-model="isCheckAllStudent" />
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Name
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Local ID
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Gender
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        @LabelHelper.StudentGrade
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div v-show="isShowViewSelectedStudent">
+                    <div class="datatableSelectedStudentOnly">
+                        <table id="datatableSelectedStudentOnly" class="datatable table no-margin" width="100%">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width: 15px">
+                                        Actions
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Full Name
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Local ID
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        Gender
+                                    </th>
+                                    <th scope="col">
+                                        <span class="column-sort">
+                                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                        </span>
+                                        @LabelHelper.StudentGrade
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <modal-component v-bind:show.sync="isShowModalAddStudentParent" v-bind:width="560">
+        <div name="close"></div>
+        <div slot="header"></div>
+        <div slot="body">
+            <div class="block-content block-24 form">
+                <div class="modal-component-loading" v-if="isLoading">
+                    <div class="modal-component-loading-content">
+                        <h2>Loading...</h2>
+                    </div>
+                </div>
+                <p v-html="promtMessage" style="font-weight: bold"></p>
+                <div class="d-flex flex-row align-items-center">
+                    Relationship to Student:
+                    <input type="text" id="txtRelationshipStudentParent" class="ms-2" v-on:keyup="handleInputChange"/>
+                </div>
+                <div class="d-flex flex-row align-items-center mt-3">
+                    Access to this Student's Data:
+                    <input type="checkbox" id="cbStudentDataAccessStudentParent" class="ms-2" />
+                </div>
+            </div>
+        </div>
+        <div slot="footer">
+            <button v-on:click="closeModalConfirmAddParent">Cancel</button>
+            <button id="isShowButtonAddStudent" v-on:click="addStudentToParent" v-bind:disabled="isDisableAssignBtn">Assign Students To Parent</button>
+        </div>
+    </modal-component>
+</div>
+
+<style>
+    #portal-v2-containter #datatableSelectedStudentOnly_wrapper,
+    .datatablefiltermanageclass .no-margin.last-child {
+        margin: 0;
+    }
+
+    #portal-v2-containter .last-child .block-pagination {
+        margin: 12px 0;
+    }
+
+    #portal-v2-containter .accordion-title.manage-class-toggle {
+        margin: 0;
+        padding: 12px 16px;
+        background: var(--blue1) !important;
+        border: none;
+        color: var(--navyColor);
+    }
+
+    #portal-v2-containter .accordion-title.active .fa-chevron-down {
+        transition: .3s transform ease-in-out;
+        transform: rotate(180deg);
+    }
+
+    #portal-v2-containter .accordionDiv {
+        background: var(--blue1);
+        border: 1px solid var(--blue3);
+    }
+    #portal-v2-containter .accordion-title.manage-class-toggle i {
+        margin-top: 3px;
+        margin-left: auto;
+        float: right;
+    }
+
+    #portal-v2-containter .accordion-title.manage-class-toggle h3 {
+        color: var(--navyColor);
+    }
+    #portal-v2-containter table thead tr th:first-child {
+        text-align: center;
+    }
+</style>
+
+<script type="text/javascript">
+    var selectedStudentTable;
+    function displayFilterManageClass() {
+
+        var $datatableFilterManageClass = $('#datatablefiltermanageclass');
+        var sAjaxSourceUrl = AddOrEditParent.getAjaxSourceForStudentList();
+
+        if($datatableFilterManageClass.dataTable().data('options'))
+        {
+            $datatableFilterManageClass.dataTable().fnSettings().sAjaxSource = sAjaxSourceUrl;
+            $datatableFilterManageClass.dataTable().fnDraw();
+
+            removeCheckAllSudent();
+            return;
+        }
+        var datatableSettings = {
+            bServerSide: true,
+            bDestroy: true,
+            sAjaxSource: sAjaxSourceUrl,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'StudentId', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'FullName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Code', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Gender', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Grade', bSearchable: true, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                AddOrEditParent.isCheckAllStudent = false;
+                AddOrEditParent.selectedStudents = []
+                AddOrEditParent.selectedStudentsObject = []
+                $('td:eq(0)', nRow).html(setIconCheckBox(aData[0]));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                $datatableFilterManageClass.css('width', 'auto').css('width', '100%');
+                ShowBlock($('#datatablefiltermanageclass'), 'Loading');
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#datatablefiltermanageclass').unblock();
+                $datatableFilterManageClass.css('width', 'auto').css('width', '100%');
+
+                var checkboxes = $('INPUT[name="chkStudentId"][type=checkbox]');
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if (!(checkboxes[i]).checked) {
+                        $('#chkAllStudent').prop('checked', false);
+                        $('#chkAllStudent').removeClass("input-checked-v2");
+                        AddOrEditParent.isCheckAllStudent = false;
+                    } else {
+                        checkboxes.eq(i).parents('tr').addClass('is-selected');
+                    }
+                }
+                portalV2SkinCheckBox()
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('datatablefiltermanageclass_filter');
+                $(".datatablefiltermanageclass .block-custom-header").append($('#formInactiveStudentAddClass'));
+
+                removeCheckAllSudent()
+            }
+        }
+
+        $datatableFilterManageClass.data('options', datatableSettings);
+    }
+
+    function displaySelectedStudentOnly() {
+        AddOrEditParent.initialDatableSelectedOnly = true;
+        var $datatableSelectedStudentOnly = $('#datatableSelectedStudentOnly');
+
+        var datatableSettings = {
+            aaData: AddOrEditParent.selectedStudentsObject,
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            bFilter: false,
+            bDestroy: true,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                 { sType: 'integer', sName: 'StudentId', bSearchable: false, bSortable: false },
+                 { sType: 'string', sName: 'FullName', bSearchable: false, bSortable: true },
+                 { sType: 'string', sName: 'Code', bSearchable: false, bSortable: true },
+                 { sType: 'string', sName: 'Gender', bSearchable: false, bSortable: true },
+                 { sType: 'string', sName: 'Grade', bSearchable: false, bSortable: true }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconCheckBox(aData[0]));
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($datatableSelectedStudentOnly, 'Loading');
+                return true;
+            },
+            fnDrawCallback: function () {
+                this.parent().applyTemplateSetup();
+                $datatableSelectedStudentOnly.unblock();
+            },
+            fnInitComplete: function () {
+                this.parent().applyTemplateSetup();
+            },
+            //sDom: '<"block-controls"l<\'float-left\'<"#showUser">><f>>rti<"block-footer clearfix"<"controls-buttons"p>>',
+            sDom: 'rti<"block-footer clearfix"> <"block-pagination"l<\'float-left\'<"#showUser">><"controls-buttons"p>>',
+
+        };
+
+        selectedStudentTable = $datatableSelectedStudentOnly.dataTable(datatableSettings);
+    }
+    function setIconCheckBox(studentid) {
+        var checkboxString = '<div style="text-align: center;">' + '<input style="text-align: center;" type="checkbox" name="chkStudentId" value="' + studentid + '" /></div>';
+        if (AddOrEditParent.isShowSelectedStudent) {
+            var deassignIcon = '<i class="custom-icon fa-solid fa-circle-xmark icon-red"></i>';
+            checkboxString = '<a href="#" title="Remove" class="with-tip" onclick="removeStudent(event,' + studentid + ')">' + deassignIcon + '</a>';
+        } else if (CheckSelected(studentid)) {
+            checkboxString = '<div style="text-align: center;">' + '<input style="text-align: center;" type="checkbox" checked="checked" name="chkStudentId" value="' + studentid + '" /></div>';
+        }
+        return checkboxString;
+    }
+
+    $('input[name="chkStudentId"][type=checkbox]').live("click", function (e) {
+        //get object rows data
+        var data = $('#datatablefiltermanageclass').dataTable().fnGetData($(this).parents('tr').index());
+
+        var $chkAllStudent = $('#chkAllStudent');
+        var $trRow = $(this).parents('tr');
+
+        if (this.checked) {
+            $trRow.addClass('is-selected');
+
+            if (AddOrEditParent.selectedStudents.indexOf(this.value) < 0) {
+                AddOrEditParent.selectedStudents.push(this.value);
+                AddOrEditParent.selectedStudentsObject.push(data);
+            }
+
+            var checkboxes = $('INPUT[name="chkStudentId"][type=checkbox]');
+            var checkall = true;
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (!(checkboxes[i]).checked) {
+                    $chkAllStudent.prop('checked', false);
+                    $chkAllStudent.removeClass("input-checked-v2");
+                    checkall = false;
+                    break;
+                }
+            }
+
+            if (checkall) {
+                $chkAllStudent.prop('checked', true);
+                $chkAllStudent.addClass("input-checked-v2")
+            }
+        } else {
+            var index = AddOrEditParent.selectedStudents.indexOf(this.value);
+            AddOrEditParent.selectedStudents.splice(index, 1);
+            AddOrEditParent.selectedStudentsObject.splice(index, 1);
+            $chkAllStudent.prop('checked', false);
+            $chkAllStudent.removeClass("input-checked-v2");
+            $trRow.removeClass('is-selected');
+
+            if (AddOrEditParent.isCheckAllStudent && AddOrEditParent.removeStudentSelectAll.indexOf(this.value) < 0) {
+                AddOrEditParent.removeStudentSelectAll.push(this.value);
+            }
+        }
+    });
+
+    $('#example tbody').on('click', 'tr', function () {
+        $(this).toggleClass('selected'); /// it work with selected
+        var data = table.row($(this)).data();
+        alert(data[1] + "  " + data[2]); ///not work , it error undefined and undefined
+    });
+
+    function removeCheckAllSudent() {
+        var showSelectedStudentEl = $("#chkAllStudent");
+        if (!showSelectedStudentEl.is(':checked')) {
+            showSelectedStudentEl.removeClass('input-checked-v2')
+        }
+    }
+
+    function getSelectedStudentIds() {
+        var studentIds = '';
+        $('INPUT[name="chkStudentId"][type=checkbox]:checked').each(function (i, e) {
+            studentIds += $(e).val() + ',';
+        });
+        return studentIds.substr(0, studentIds.length - 1);
+    }
+
+    function CheckSelected(studentId) {
+        if ((AddOrEditParent.selectedStudents.indexOf(studentId.toString()) > -1) ||
+            (AddOrEditParent.isCheckAllStudent && AddOrEditParent.removeStudentSelectAll.indexOf(studentId.toString()) == -1)) {
+            return true;
+        }
+        return false;
+    }
+
+    function removeStudent(event, studentid) {
+        event.preventDefault();
+        $('#tips > div').remove();
+        var index = AddOrEditParent.selectedStudents.indexOf(studentid.toString());
+        AddOrEditParent.selectedStudents.splice(index, 1);
+        AddOrEditParent.selectedStudentsObject.splice(index, 1);
+
+        if (AddOrEditParent.isCheckAllStudent) {
+            AddOrEditParent.removeStudentSelectAll.push(studentid.toString());
+        }
+        selectedStudentTable.fnClearTable();
+        selectedStudentTable.fnAddData(AddOrEditParent.selectedStudentsObject);
+        selectedStudentTable.fnDraw();
+    }
+</script>

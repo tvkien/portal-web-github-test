@@ -1,0 +1,179 @@
+<article class="container_12">
+    <section class="mb-0">
+        <div class="block-border" id="divSelectSection">
+            <div class="block-content form">
+                <ul style="display: none" id="add-error-messages" class="message error mb-4 mt-0 mx-0"></ul>
+                <ul style="display: none" id="add-success-message" class="message success mb-4 mt-0 mx-0">
+                    <li>Items successfully added to section.</li>
+                </ul>
+                @if (ViewBag.HasMoreThanOneSection)
+                {
+                    <div>
+                        <p>
+                            <label>Select a section to add</label>
+                            <select id="selectSectionAdd" class="full-width"></select>
+                        </p>
+                    </div>
+                }
+                @if (ViewBag.HasQuestionGroups)
+                {
+                    <div style="margin-top: 16px;">
+                        <label>Select a group to add</label>
+                        <select id="selectGroupAdd" class="full-width"></select>
+                    </div>
+                }
+            </div>
+            <div class="btn-wrapper-add-item-pop-up">
+                <button class="btn-cancel" type="button" onclick="SelectSectionDialogCancel()">Cancel</button>
+                <button class="btn-red" type="button" id="btnAddQtiItemToSection" onclick="addQtiItemToSection()">Add</button>
+            </div>
+        </div>
+    </section>
+</article>
+<style>
+    .btn-wrapper-add-item-pop-up {
+        background: var(--navyColor);
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+    }
+
+    .btn-cancel {
+        display: flex;
+        align-items: center;
+        padding: 11px 32px;
+        font-weight: 900;
+        cursor: pointer;
+        width: fit-content;
+        height: 48px;
+        box-sizing: border-box;
+        border: 0;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        text-decoration: none;
+        color: var(--white) !important;
+    }
+
+    .ui-dialog[aria-labelledby="ui-dialog-title-SelectSectionDialog"] .ui-dialog-titlebar {
+        display: none;
+    }
+
+    #add-success-message li:before {
+        margin-left: 0 !important;
+    }
+</style>
+<script type="text/javascript">
+    $(function() {
+
+        //Init State
+        if ('@ViewBag.HasMoreThanOneSection' == 'True') {
+            $.get('@Url.Action("GetSections")?virtualTestId=@ViewBag.VirtualTestId', function(states) {
+                AddSelectListItems($('#selectSectionAdd'), states, 'Select Section');
+            });
+            $('#selectSectionAdd').change(function (){
+                $('#selectGroupAdd').empty();
+                var vSectionId = $('#selectSectionAdd').val();
+                if (@ViewBag.VirtualTestId > 0 && '@ViewBag.HasQuestionGroups' === 'True' && vSectionId > 0 ) {
+                    $.get('@Url.Action("GetQuestionGroupByVirtualtest", "VirtualTest")?virtualTestId=@ViewBag.VirtualTestId&sectionId=' + vSectionId, function(lstQuestionGroup) {
+                        addDefaultOption($('#selectGroupAdd'), "Question Group");
+                        addSelectListItems($('#selectGroupAdd'), lstQuestionGroup);
+                    });
+                }
+            });
+        }
+        if (@ViewBag.VirtualTestId > 0 && '@ViewBag.HasQuestionGroups' === 'True' && '@ViewBag.HasMoreThanOneSection' === 'False') {
+            $('#selectGroupAdd').empty();
+            $.get('@Url.Action("GetQuestionGroupByVirtualtest", "VirtualTest")?virtualTestId=@ViewBag.VirtualTestId', function(lstQuestionGroup) {
+                addDefaultOption($('#selectGroupAdd'), "Question Group");
+                addSelectListItems($('#selectGroupAdd'), lstQuestionGroup);
+            });
+        }
+
+    });
+
+    function AddSelectListItems(selectList, results, defaultValue) {
+        if (results.length == 0) {
+            return;
+        }
+        selectList.append($("<option></option>").attr("value", "-1").text(defaultValue));
+        $.each(results, function(i, value) {
+            selectList
+                .append($("<option></option>")
+                    .attr("value", value.Id)
+                    .text(value.Name));
+        });
+
+    }
+
+    function SelectSectionDialogCancel() {
+        //Find the closest ancestor element that has a dialog class and close it
+        $(this.event.target).closest(".dialog").dialog('close');
+    }
+
+    function addQtiItemToSection() {
+        var selectedItemId = getSelectedItems('chkItem'); //defined in _ListItemsFromLibraryNew.cshtml
+        if ('@ViewBag.OnPopup'.length > 0) {
+            var selectedItemId = getSelectedItems('chkItemOnePassage'); //defined in _ListItemOnePasssage.cshtml
+        }
+        if (is3pUpload()) {//defined in _ImportItemsFromLibrary.cshtml
+            selectedItemId = getSelectedItemsUpload();//defined in _ListItemsFromLibraryUpload.cshtml
+        }
+        //get section
+        var virtualSectionId = 0;
+        if ('@ViewBag.HasMoreThanOneSection' == 'True') {
+            virtualSectionId = $('#selectSectionAdd').val();
+        } else {
+            virtualSectionId = @ViewBag.UniqueVirtualSectionId;
+        }
+
+        //if (virtualSectionId == null || virtualSectionId == 'select' || virtualSectionId <= 0) { //Now allow virtualSectionId = 0 for the Default Section
+        if (virtualSectionId == null || virtualSectionId == 'select' || virtualSectionId < 0) {
+            return;
+        }
+        //get group question
+        var questionGroupId = 0;
+        if ('@ViewBag.HasQuestionGroups' == 'True') {
+            questionGroupId = $('#selectGroupAdd').val();
+        }
+        ShowBlock($("#SelectSectionDialog"), "Adding");
+        ShowBlock($("#SelectSectionOnItemPassageDialog"), "Adding");
+        
+        $('#btnAddQTI3ItemsToTest').attr('disabled','disabled');
+        $.post('@Url.Action("AddQti3ItemsToVirtualSection")', {virtualTestId:'@ViewBag.VirtualTestId', qtiItemIdString: selectedItemId, virtualSectionId: virtualSectionId,is3pUpload:is3pUpload(),questionGroupId:questionGroupId }, function (response) {
+            $("#SelectSectionDialog").unblock();
+            if (response.Success == 'Success') {
+                //Reload virtual section
+                //LoadSectionItemsToTablePopup(virtualSectionId); //define in _SectionItem.cshtml
+                $('#add-success-message').show();
+                setTimeout(function() {
+                    //Close dialog
+                    $(".dialog").last().dialog("close");
+                }, 3000);
+
+                if ('@ViewBag.OnPopup'.length > 0) {
+                    var dataTable = $('#virtualSectionPopup-' + virtualSectionId).dataTable(); //In _SectionItemPopup.cshtml
+                    dataTable.fnDraw();
+                } else {
+                    var dataTable = $('#virtualSection-' + virtualSectionId).dataTable(); //In _SectionItem.cshtml
+                    dataTable.fnDraw();
+                }
+                $('#chkAllItem').removeAttr('checked').removeClass('input-checked-v2');
+                $('INPUT[name="chkItem"][type=checkbox]').removeAttr('checked');
+            } else {
+                customAlert(response.errorMessage);
+                $('#btnAddQTI3ItemsToTest').removeAttr('disabled');
+            }
+        });
+    }
+
+    function getSelectedItems(name) {
+        var Ids = '';
+        $('INPUT[name="' + name + '"][type=checkbox]:checked').each(function (i, e) {
+            Ids += $(e).val() + ',';
+        });
+        return Ids.substr(0, Ids.length - 1);
+    }
+
+</script>

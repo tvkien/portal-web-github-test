@@ -1,0 +1,148 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.LoginAccountViewModel
+@{
+    Layout = "~/Views/Shared/_LogOnNetworkAdminPartial.cshtml";
+}
+<style type="text/css">
+    .NetworkAdminSelect
+    {
+        width: 500px ;
+      margin-left: auto ;
+      margin-right: auto ;
+
+    }
+    
+</style>
+
+<section class="" style="padding-top:100px">
+    <div class="block-border NetworkAdminSelect">
+        <div class="block-content">
+            <div class="no-margin last-child">
+                <table id="dataTableNetworkAdminSelect" class="datatable table no-margin" width="100%">
+                    <thead>
+                        <tr>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                @LabelHelper.DistrictLabel Member
+                            </th>
+                            <th scope="col">
+                                <span class="column-sort">
+                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                </span>
+                                LiCode
+                            </th>
+                            <th scope="col"></th>
+                            <th scope="col"></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            </div>
+    </div>
+     <div id="custom-footer-logon" style="bottom: 15px; position: fixed;right: 10%;"> 
+        <img src="../../Content/images/loog-linkit-16x16.png" style="position: relative; top: 5px;"></img>
+        <span style="font-size: 11px;">Copyright &copy; 2014 | Powered by LinkIt!</span>
+    </div>
+</section>
+
+<script type="text/javascript">
+    var oTableNetworkAdminSelect;
+    
+    $(function () {
+        LoadDSPDistrict();
+    });
+
+    function LoadDSPDistrict() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            bFilter: false,
+            bStateSave: false,
+            sAjaxSource: getAjaxSourceNetworkAdminSelect(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox 
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                    if (item.name == 'iDisplayLength') {//Display all
+                        item.value = 10000;
+                    }
+                }
+
+            },
+            bAutoWidth: false,
+            bPaginate: false,
+            //aLengthMenu: [[10], [10]],
+            iDisplayLength: 10000,
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'string', sName: 'Name', bSearchable: false, bSortable: false, sWidth: "300px" },
+                { sType: 'string', sName: 'LiCode', bSearchable: false, bSortable: false, sWidth: "50px" },
+                { sType: 'integer', sName: 'DistrictId', bSearchable: false, bSortable: false, sWidth: "20px" },
+                { sType: 'integer', sName: 'StateId', bSearchable: false, bSortable: false,bVisible:false, sWidth: "20px" }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(2)', nRow).html(setIconVisibilityDistrictMember(aData[1],aData[2],aData[3]));
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableNetworkAdminSelect'), "Loading");
+                
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableNetworkAdminSelect').unblock();
+                $('.with-tip').tip();
+                $('#dataTableNetworkAdminSelect_info').hide();//no show footer of table 
+                
+            }
+        };
+
+        $("#dataTableNetworkAdminSelect").data("options", options);
+        //initializeDataTable($("#dataTableNetworkAdminSelect"));
+        oTableNetworkAdminSelect = $('#dataTableNetworkAdminSelect').dataTable();
+    }
+    function getAjaxSourceNetworkAdminSelect() {
+        return '@Url.Action("LoadDSPDistrict")';
+    }
+
+    function setIconVisibilityDistrictMember(LiCode,districtId,stateId) {
+
+        var icon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/navigation.png")';
+        var string = '<a href="javascript:void(0)" onclick="UseDsitrict(this);" title="Impersonate this  @LabelHelper.DistrictLabel Admin" LiCode="' + LiCode + '" DistrictId="' + districtId + '" StateId="' + stateId + '" class="with-tip viewQtiItem"><img src="' + icon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        return string;
+    }
+    
+    function UseDsitrict(control) {
+        var LiCode = $(control).attr('LiCode');
+        var districtId = $(control).attr('DistrictId');
+        var stateId = $(control).attr('StateId');
+        var url = '@Url.Action("NetworkAdminImpersontateDistrictAdmin")\?districtId=' + districtId + '&stateId=' + stateId + '&LiCode=' + LiCode;
+        $.ajax({
+            url: url,
+            dataType: 'json',
+            type: 'POST',
+            success: function (data) {
+                location.href = data.RedirectUrl;
+            }
+        });
+    }
+
+  
+</script>

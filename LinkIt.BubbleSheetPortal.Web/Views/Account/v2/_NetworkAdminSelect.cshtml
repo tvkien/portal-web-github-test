@@ -1,0 +1,149 @@
+<script src="@Url.Content("~/Scripts/customv2.js")" type="text/javascript"></script>
+
+@*@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCustomBundle()*@
+
+<p class="title-large">Select another @LabelHelper.DistrictLabel</p>
+
+<div class="no-margin last-child">
+    <table id="dataTableNetworkAdminSelect" class="datatable table no-margin" width="100%">
+        <thead>
+            <tr>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    State
+                </th>
+                <th scope="col">
+                    <span class="column-sort">
+                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                    </span>
+                    @LabelHelper.DistrictLabel
+                </th>
+                <th scope="col">
+                    @*<span class="column-sort">
+                            <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                            <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                        </span>
+                        LiCode*@
+                </th>
+                <th scope="col"></th>
+                <th scope="col"></th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script type="text/javascript">
+    var oTableNetworkAdminSelect;
+
+    $(function () {
+        LoadDSPDistrict();
+    });
+
+    function LoadDSPDistrict() {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            bFilter: false,
+            bStateSave: false,
+            sAjaxSource: getAjaxSourceNetworkAdminSelect(),
+            fnServerParams: function (aoData) {
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    //if (item.name == 'sSearch') {
+                    //    do {
+                    //        item.value = item.value.replace('""', '"');
+                    //    } while (item.value.indexOf('""') >= 0)
+
+                    //    if (item.value == '"') {
+                    //        item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                    //    } else {
+                    //        item.value = encodeURIComponent(item.value);
+                    //    }
+                    //    break;
+                    //}
+                    if (item.name == 'iDisplayLength') {//Display all
+                        item.value = 10000;
+                    }
+                }
+
+            },
+            bAutoWidth: false,
+            bPaginate: false,
+            //aLengthMenu: [[10], [10]],
+            iDisplayLength: 'All',
+            aaSorting: [[0, "asc"]],
+            aoColumns: [
+                { sType: 'string', sName: 'State', bSearchable: false, bSortable: true, sWidth: "100px", bVisible: true },
+                { sType: 'string', sName: 'Name', bSearchable: false, bSortable: true, sWidth: "200px" },
+                { sType: 'string', sName: 'LiCode', bSearchable: false, bSortable: false, sWidth: "0px", bVisible: false },
+                { sType: 'integer', sName: 'DistrictId', bSearchable: false, bSortable: false, sWidth: "20px" },
+                { sType: 'integer', sName: 'StateId', bSearchable: false, bSortable: false, bVisible: false, sWidth: "20px" }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html('<div style="max-width:100px;min-width:100px;width:100px;word-break: break-all">' + aData[0] + '</div>');
+                $('td:eq(1)', nRow).html('<div style="max-width:120px;min-width:120px;width:120px;word-break: break-all">' + aData[1] + '</div>');
+                $('td:eq(2)', nRow).html(setIconVisibilityDistrictMember(aData[2], aData[3], aData[4]));
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableNetworkAdminSelect'), "Loading");
+
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableNetworkAdminSelect').unblock();
+                $('.with-tip').tip();
+                $('#dataTableNetworkAdminSelect_info').remove();//no show footer of table
+                $('#dataTableNetworkAdminSelect_wrapper .block-controls').remove();
+                $('#dataTableNetworkAdminSelect_wrapper .block-footer').remove();
+            }
+        };
+
+        $("#dataTableNetworkAdminSelect").data("options", options);
+        //initializeDataTable($("#dataTableNetworkAdminSelect"));
+        //oTableNetworkAdminSelect = $('#dataTableNetworkAdminSelect').dataTable();
+    }
+    function getAjaxSourceNetworkAdminSelect() {
+        return '@Url.Action("LoadDSPDistrict")';
+    }
+
+    function setIconVisibilityDistrictMember(LiCode, districtId, stateId) {
+        var icon = '<i class="custom-icon fa-solid fa-circle-arrow-right icon-green"></i>';
+        var string = '<a href="javascript:void(0)" onclick="UseDsitrict(this);" title="Go To @LabelHelper.DistrictLabel" LiCode="' + LiCode + '" DistrictId="' + districtId + '" StateId="' + stateId + '" class="with-tip viewQtiItem">' + icon + '</a>';
+
+        return string;
+    }
+
+    function UseDsitrict(control) {
+        var LiCode = $(control).attr('LiCode');
+        var districtId = $(control).attr('DistrictId');
+        var stateId = $(control).attr('StateId');
+        var url = '@Url.Action("NetworkAdminImpersontateDistrictAdmin")\?districtId=' + districtId + '&stateId=' + stateId + '&LiCode=' + LiCode;
+        $.ajax({
+            url: url,
+            dataType: 'json',
+            type: 'POST',
+            success: function (data) {
+                location.href = data.RedirectUrl;
+
+            }
+        });
+    }
+
+</script>
+<style>
+    .dropdown-menu #dataTableNetworkAdminSelect a {
+        padding: 0;
+        min-height: auto;
+    }
+
+    #portal-v2-containter #divNetworkAdminSelectLayout .last-child .block-pagination {
+        display: none;
+    }
+</style>

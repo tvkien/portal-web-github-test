@@ -1,0 +1,228 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.AuthorGroup.AddAuthorGroupUserSchoolDistrictViewModel
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.dialog.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/themes/base/jquery.ui.all.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/dialog-draggable.css")" rel="stylesheet" type="text/css" />
+<article class="container_12" style="margin-top: 2px; width: 700px;">
+    <section class="grid_9">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Add School to Author Group</h1>
+                @if (Model.IsPublisher||Model.IsNetworkAdmin)
+                {
+                    <div id="generateContent">
+                        <div class="block-content form bubbleSheetSelector">
+                            <ul style="display: none" id="error-messages" class="message error"></ul>
+                        
+                            <fieldset id="publisherContent" class="grey-bg">
+                                <div class="columns">
+                                    <div class="colx2-left">
+                                        <p>
+                                            <label>State</label>
+                                            <select id="selectStatePopup"></select>
+                                        </p>
+                                    </div>
+                                    <div class="colx2-right">
+                                        <p>
+                                            <label>@LabelHelper.DistrictLabel</label>
+                                            <select id="selectDistrictPopup"></select>
+                                        </p>
+                                    </div>
+                                </div>
+                            </fieldset>                        
+                            <div class="clear"></div>
+                        </div>
+                    </div>
+                }
+                <div class="clear-25"></div>
+                <div id="reviewList">
+                    <div class="block-content form">
+                        <h1>Select School To Add
+                        </h1>
+                        <div id="studentNotInClassNotifications"></div>
+                        <p style="height: 5px"></p>
+                        <div class="no-margin last-child">
+                            <table id="dataTableAddSchool" class="datatable table no-margin" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" style="width: 15px"></th>
+                                        <th scope="col">
+                                            <span class="column-sort">
+                                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                            </span>
+                                            Name
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div style="clear: both"></div>
+                <div class="no-margin last-child" style="padding-left: 17px; padding-top: 20px">
+                    <button id="btnCancel" onclick="closeAddAuthorGroupSchool()" type="button" class="grey classProgramButton">Close</button>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    //declare global variables
+    var districtId = 0;
+    var stateId = 0;
+
+    $(function () {
+        @if (Model.IsPublisher||Model.IsNetworkAdmin)
+        {
+<text>
+        LoaddataTableAddSchool();
+        if ('@Model.IsPublisher' === 'True') {
+            $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+                populateStates(states);
+            });
+        }
+        if ('@Model.IsNetworkAdmin' === 'True') {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                populateStates(states);
+            });
+        }
+
+        $('#selectStatePopup').change(function () {
+            $('#selectDistrictPopup').empty();
+            if ($('#selectStatePopup').val() != 'select') {
+                populateDistricts();
+                assignStateDistrictSchool($('#selectStatePopup').val(), 0);
+            }
+        });
+        $('#selectDistrictPopup').change(function () {
+            if ($('#selectDistrictPopup').val() != 'select') {
+                assignStateDistrictSchool($('#selectStatePopup').val(), $('#selectDistrictPopup').val());
+                $("#dataTableAddSchool").dataTable().fnReloadAjax(getAjaxSourceForAuthorGroupSchool());
+            }
+        });
+        </text>
+        }
+        @if (!Model.IsPublisher && !Model.IsNetworkAdmin)
+        {
+<text>
+        stateId = '@Model.StateId';
+        districtId = '@Model.DistrictId';
+        LoaddataTableAddSchool();
+</text>
+        }
+    });
+
+    function assignStateDistrictSchool(selectedState, selectedDistrict) {
+        stateId = selectedState;
+        districtId = selectedDistrict;
+    }
+
+    function populateStates(states) {
+        addDefaultOption($('#selectStatePopup'), "State");
+        addSelectListItems($('#selectStatePopup'), states);
+    }
+
+    function populateDistricts() {
+        $('#selectDistrictPopup').empty();
+        var stateValue = $('#selectStatePopup').val();
+        if (stateValue != 'select') {
+            if ('@Model.IsPublisher' === 'True') {
+                $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                    addDefaultOption($('#selectDistrictPopup'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrictPopup'), districts);
+
+                });
+            }
+            if ('@Model.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrictPopup'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrictPopup'), districts);
+
+                });
+            }
+        }
+}
+
+function LoaddataTableAddSchool() {
+    var options = {
+        bServerSide: true,
+        bDestroy: true,
+        sAjaxSource: getAjaxSourceForAuthorGroupSchool(),
+        fnServerParams: function (aoData) {
+            var item = null;
+            for (var i = 0; i < aoData.length; i++) {
+                item = aoData[i];
+                if (item.name == 'sSearch') {
+                    do {
+                        item.value = item.value.replace('""', '"');
+                    } while (item.value.indexOf('""') >= 0)
+
+                    if (item.value == '"') {
+                        item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                    } else {
+                        item.value = encodeURIComponent(item.value);
+                    }
+                    break;
+                }
+            }
+
+        },
+        bStateSave: false,
+        bAutoWidth: false,
+        iDisplayLength: 10,
+        aaSorting: [[1, "asc"]],
+        aoColumns: [
+            { sType: 'integer', sName: 'SchoolId', bSearchable: false, bSortable: false },
+            { sType: 'string', sName: 'SchoolName', bSearchable: true, bSortable: true }
+        ],
+        fnPreDrawCallback: function () {
+            ShowBlock($('#dataTableAddSchool'), "Loading");
+            return true;
+        },
+        fnRowCallback: function (nRow, aData) {
+            $('td:eq(0)', nRow).html(setIconVisibilityAddSchool(aData[0]));
+            return nRow;
+        },
+        fnDrawCallback: function () {
+            $('#dataTableAddSchool').unblock();
+            $('.with-tip').tip();
+        }
+    };
+
+    $("#dataTableAddSchool").data("options", options);
+    initializeDataTable($("#dataTableAddSchool"));
+}
+
+function getAjaxSourceForAuthorGroupSchool() {
+    return '@Url.Action("GetSchoolList")?districtId=' + districtId + '&authorGroupId=@Model.AuthorGroupId';
+    }
+
+    function setIconVisibilityAddSchool(schoolId) {
+        var addIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")';
+        return '<a href="javascript:void(0)" title="Add School To Group" schoolId="' + schoolId + '" authorGroupId="' + '@Model.AuthorGroupId' + '" class="with-tip" onclick="AddSchoolToGroup(this);"><img src="' + addIcon + '" width="16" height="16"></a>';
+    }
+
+    function AddSchoolToGroup(control) {
+        var self = $(control);
+        var schoolId = self.attr('schoolId');
+        var authorGroupId = self.attr('authorGroupId');
+
+        if (confirm("Do you want to add this school to this author group?")) {
+            $.post('@Url.Action("AddSchoolToAuthorGroup")', { schoolId: schoolId, authorGroupId: authorGroupId }, function (response) {
+                if (response == true) {
+                    ui.dataTableAddSchool.fnDraw();
+                    LinkIt.success('#studentNotInClassNotifications', 'School added');
+
+                } else {
+                    alert('Error. User does not exist.');
+                }
+            });
+
+            self.hide();
+        }
+    }
+</script>

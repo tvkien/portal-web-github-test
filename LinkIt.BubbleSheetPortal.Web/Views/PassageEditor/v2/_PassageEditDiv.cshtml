@@ -1,0 +1,765 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.EditPassageViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@{
+    ViewBag.Title = "Edit Passage";
+}
+<style>
+
+    #audioPassage {
+        border: none;
+        box-shadow: 0 0 0;
+    }
+
+    .addAudio {
+        height: 30px;
+        width: 70px;
+        line-height: 30px;
+    }
+
+</style>
+<script type="text/javascript" src="@BundleHelper.Version("~/Scripts/Passage/PopupRevertPassage.js")"></script>
+<div id="divPassageEdit" class="bubbleSheetSelector" style="margin-top: 0px">
+    <h2 class="header">Edit Passage - @Model.Name</h2>
+    <ul style="display: none" id="error-messages-edit" class="message error"></ul>
+    <ul style="display: none" id="success-message-edit" class="message success">
+        <li>Passage successfully updated.</li>
+    </ul>
+    @using (Html.BeginForm("Edit", "PassageEditor", FormMethod.Post, new { id = "editPassageForm", @class = "form" }))
+    {
+        <div id="notification"></div>
+        <div>
+            <h2 class="p-header">Passage Properties</h2>
+            <div class="columns">
+                <input type="hidden" id="qtiRefObjectId" name="QtiRefObjectId" value="@Model.QtiRefObjectId" />
+                @Html.TextArea("xmlContentPassage", Model.XmlContentPassage, new { @style = "display:none" })
+                <div class="row g-3">
+                    <div class="col-3">
+                        <label>Name</label>
+                        <input id="txtNameEdit" type="text" name="Name" class="full-width" value="@Model.Name" />
+                    </div>
+                    <div class="col-3">
+                        <label>@LabelHelper.TestGrade</label>
+                        <select id="selectPassageGradeEdit" name="GradeId" data-bind='options: PassageGrades, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select @LabelHelper.TestGrade", value: PassageGradeId'></select>
+                    </div>
+                    <div class="col-3">
+                        <label>@LabelHelper.Subject</label>
+                        <div class="block-text-name" style="width: 100%">
+                            <select id="selectPassageSubjectEdit" name="Subject" data-bind='options: PassageSubjects, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Passage @LabelHelper.Subject", value: PassageSubjectText'></select>
+                            <div class="box-select" style="width: 100%">
+                                <span class="overlay"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-3">
+                        <label>Text Type</label>
+                        <select id="selectTextTypeEdit" name="TextTypeId" data-bind='options: TextTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Type", value: TextTypeId'></select>
+                    </div>
+                    <div class="col-3">
+                        <label>Text Sub Type</label>
+                        <div class="block-text-name" style="width: 100%">
+                            <select id="selectTextSubTypeEdit" name="TextSubTypeId" data-bind='options: TextSubTypes, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Text Sub Type", value: TextSubTypeId'></select>
+                            <div class="box-select" style="width: 100%">
+                                <span class="overlay"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <label>Flesch Kincaid</label>
+                        <select id="selectFleschKincaidIdsEdit" name="FleschKincaidId" data-bind='options: FleschKincaidIds, optionsText: "Text", optionsValue: "Value", optionsCaption: "Select Flesch Kincaid", value: FleschKincaidId'></select>
+                    </div>
+                    <div class="col-3 mt-auto">
+                        <button id="btnRevertPassage" type="button" class="btn-blue mx-4" onclick="openPopupRevertPassage()">Revert</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="my-4">
+            <h2 class="p-header">Passage Content</h2>
+            <div class="topMenu" style="width: 100%">
+                <div id="topSpacePassage"></div>
+                <div class="questionType" id="questionType">
+                    <ul>
+                        <li>
+                            <div class="audio js-audio" id="audioPassage">
+                                <div class="audioRemove" id="audioRemovePassage">
+                                    <img alt="Play audio" class="bntPlay" src="../../Content/themes/TestMaker/v2/multiplechoice_images_small_audio_play.svg" title="Play audio" />
+                                    <img alt="Stop audio" class="bntStop" src="../../Content/themes/TestMaker/v2/multiplechoice_images_small_audio_stop.svg" title="Stop audio" />
+                                    <input type="button" value="Remove audio" class="ckbutton removeAudio cke_toolgroup" />
+                                    <span class="audioRef"></span>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="qContent">
+                <textarea cols="80" id="passageContent" name="editor1" rows="10"></textarea>
+            </div>
+        </div>
+
+        <div class="modal-component-footer" id="custom-footer" style="margin: 0 -24px -24px -24px">
+            <div slot="footer">
+                <button id="btnCancelPassage" type="button" class="" onclick="backToPassageListEdit()">Cancel</button>
+                @if (Model.FromItemEditor)
+                {
+                    <button id="btnSubmit" type="button" class="float-right btnSave" onclick="submitAndAttachEditPassage()">Save and Attach</button>
+                }
+                else
+                {
+                    <button id="btnSubmit" type="button" class="float-right btnSave button-edit-passage" onclick="submitEditPassage()">Save and Attach</button>
+                }
+            </div>
+        </div>
+        <input type="hidden" id="SubjectText" name="SubjectText" />
+    }
+    <popup-revert-passage v-ref:popuprevertpassage :is-show-popup-revert-passage.sync="isShowPopupRevertPassage" :qti-ref-object-id="@Model.QtiRefObjectId" v-on:on-revert-passage="revertPassageVueInstantClick" />
+</div>
+
+<!-- Remember filter -->
+<input type="hidden" id="hdNameSearch" name="hdNameSearch" />
+<input type="hidden" id="hdSubject" name="hdSubject" />
+<input type="hidden" id="hdSearchBox" name="hdSearchBox" />
+
+<script type="text/javascript">
+    // Replace the <textarea id="editor"> with an CKEditor
+    // instance, using default configurations.
+    $(document).ready(function () {
+        MKEditor = {
+            isPassageEditor:true,
+            imgUrl: "../../Content/themes/TestMaker/",
+            audioUrl: '@Url.Action("AudioUpload","PassageEditor")',
+            videoUrl: '@Url.Action("VideoUpload","PassageEditor")',
+            objectId: '@Model.QtiRefObjectId',
+            loadAudioUrl: window.location.protocol + "//" + window.location.hostname + '@Url.Action("GetAudio","PassageEditor")',
+            imgUpload: '@Url.Action("ImageUpload","PassageEditor")',
+            GetViewReferenceImg: window.location.protocol + "//" + window.location.hostname + '/TestAssignmentRegrader/GetViewReferenceImg?imgPath=', //This is config for view image on test maker
+            UseS3Content: true, // this variable use to download to applition(  server) or S3
+            S3PassageMedia: '',
+            GetViewReferenceImgS3: ''
+        };
+        @if (Model.MediaModel != null)
+        {
+            <text>MKEditor.S3PassageMedia = '@Model.MediaModel.PassageMediaFolderPath';</text>
+            <text>MKEditor.GetViewReferenceImg = '@Model.MediaModel.TestMediaFolderPath';</text>
+            <text>MKEditor.GetViewReferenceImgS3 = '@Model.MediaModel.TestMediaFolderPath';</text>
+            <text>MKEditor.UseS3Content = true;</text>
+        }
+
+        CKEDITOR.replace('passageContent', {
+            customConfig: window.location.protocol + "//" + window.location.hostname + '/Content/themes/TestMaker/myconfig.js',
+            extraPlugins: 'mathjax,sharedspace,multiplechoice,mathfraction,imageupload,indent,dialog,contextmenu,liststyle,boxedtext,pastefromword,video,glossary,tabspaces,leaui_formula',
+            alphaBeta: alphabet,
+            playAudio: loadAudioUrl,
+            qtiSchemeID: 1,
+            height: 400,
+            toolbar: [
+                ['JustifyLeft', 'JustifyCenter', 'JustifyRight', '-', 'NumberedList', 'BulletedList'],
+                ['Bold', 'Italic', 'Underline'],
+                ['Sameline'],
+                ['FontSize', 'Subscript', 'Superscript', '-', 'RemoveFormat'],
+                ['Link', 'Unlink', 'Table', 'AudioUpload', 'ImageUpload', 'VideoUpload', 'SpecialChar', 'Mathjax', 'LeauiFormula', 'Glossary'],
+                ['Indent','Outdent','Tabspaces'],
+                ['BoxedText']
+            ],
+            sharedSpaces:
+                {
+                    top: 'topSpacePassage',
+                    bottom: 'bottomSpacePassage'
+                },
+            extraAllowedContent: 'span[stylename]; span(smallText,normalText,largeText,veryLargeText);'
+        });
+
+        CKEDITOR.on('instanceReady', function (ev) {
+            var isFromItemBankEditBtn = $('#divPassageCreateContent').find('#divPassageEdit').length;
+            if (isFromItemBankEditBtn > 0) {
+                $(document).scrollTop(0);
+            }
+        });
+
+        if (CKEDITOR.env.ie && CKEDITOR.env.version == 8)
+            document.getElementById('ie8-warning').className = 'warning';
+
+
+            if('@Model.FileNotFound'==='True') {
+                customAlert("File Not Found!<br>" + decodeURIComponent('@Model.FileName'));
+            }
+
+            ckID = "passageContent";
+            xmlPassageImport($('#xmlContentPassage'));
+
+            //Assign search criteria to hidden fields
+            $("#hdNameSearch").val('@Model.NameFilter');
+            $("#hdNameSearch").html('@Model.NameFilter').text();
+            $("#hdNameSearch").val(encodeURIComponent($("#hdNameSearch").text()));
+
+            $("#hdSubject").val('@Model.SubjectFilter');
+            $("#hdSubject").html('@Model.SubjectFilter').text();
+            $("#hdSubject").val(encodeURIComponent($("#hdSubject").text()));
+
+            $("#hdSearchBox").val('@Model.SearchBoxFilter');
+            $("#hdSearchBox").html('@Model.SearchBoxFilter').text();
+            $("#hdSearchBox").val(encodeURIComponent($("#hdSearchBox").text()));
+            if(@Model.QtiRefObjectId == 0) {
+                //Can not find ref object
+                $('#btnSubmit').attr('disabled', 'disabled');
+            }
+            if ('@Model.FromPassageEditor' == 'False') {
+                $('#btnCancelPassage').text('Close');
+            }
+            //stop video
+            $('iframe').filter((idx, e) => e.src?.startsWith(window.location.origin)).contents().find("video").trigger('pause');
+
+            // if item banks -> show 'Save' else test design -> show 'Save and Attach'
+            showButtonText();
+    });
+
+    function showButtonText()
+    {
+        var text = isSaveText() ? "Save" : "Save and Attach";
+        $('#btnSubmit').html(text);
+    }
+
+    function isItemBankScreen() {
+        return $("#qtiItemDataTable_wrapper") && $("#qtiItemDataTable_wrapper").length > 0;
+    }
+
+    function isSaveText()
+    {
+        var fromItemBankScreen = $("#qtiItemDataTable_wrapper") && $("#qtiItemDataTable_wrapper").length > 0;
+        // from ItemBankScreen
+        if (fromItemBankScreen) {
+            return fromItemBankScreen;
+        }
+        // from PassageEditor
+        else {
+            var qtiRefObjectId = '@Model.QtiRefObjectId';
+            var assignedObjectIdList = $("#assignedObjectIdList").val();
+            var assignedObjectIds = [];
+            if (assignedObjectIdList && assignedObjectIdList !== '') {
+                assignedObjectIds = assignedObjectIdList.split(";");
+            }
+            return jQuery.inArray(qtiRefObjectId, assignedObjectIds) !== -1;
+        }
+    }
+
+
+    function backToPassageListEdit() {
+        if ('@Model.FromPassageEditor' == 'True') {
+            var url = '@Url.Action("Index", "PassageEditor")?nameSearch=' + $("#hdNameSearch").val();
+            @if (Model.PassageNumber != null)
+            {
+                <text>
+            url += '&passageNumber=' + @Model.PassageNumber;
+            </text>
+            }
+            url += '&gradeId=' + @Model.GradeIdFilter;
+
+            url += '&subject=' + $("#hdSubject").val();
+            url += '&textTypeId=' + @Model.TextTypeIdFilter;
+            url += '&textSubTypeId=' + @Model.TextSubTypeIdFilter;
+            url += '&fleschKincaidId=' + @Model.FleschKincaidIdFilter;
+            url += '&searchBox=' + $("#hdSearchBox").val();
+            //window.location.replace('@Url.Action("Index", "PassageEditor")');
+            window.location.replace(url);
+        }
+        if ('@Model.FromItemSetEditor' == 'True') {
+            //close this dialog and display the already created passage in the filter
+            SetReloadFilterPasssage('fromItemSetEditor');
+        }
+        if ('@Model.FromItemEditor' == 'True') {
+            //close this dialog and display the already created passage in the filter
+            $("#txtNameEdit").val("");
+            $("#qtiRefObjectId").val("");
+             SetReloadFilterPasssage('fromItemEditor');
+        }
+    }
+
+    function EditPassage(autoClose) {
+        $('#btnSubmit').disableBt();
+        $('#success-message-edit').hide();
+        $("#confirmMessagePassageV2").dialog("close");
+
+        $('#xmlContentPassage').val(xmlPassageExport());
+        $('#SubjectText').val( $("#selectPassageSubjectEdit option:selected").text());
+        if ($('#SubjectText').val() === 'Select Passage @LabelHelper.Subject') {
+            $('#SubjectText').val('');
+        }
+        $.ajax({
+            //url: $('#editPassageForm').target, //sometime $('#editPassageForm').target is undefined
+            url:'@Url.Action("Edit", "PassageEditor")',
+            type: 'POST',
+            data: $('#editPassageForm').serialize(),
+            success: function (response) {
+                passageEditorVueInstant.$refs.popuprevertpassage.GetMostRecentItemVersions();
+                if (response.Success == true) {
+                    $('#error-messages-edit').hide();
+                    $('#success-message-edit').show();
+                    //window.location.href = '@Url.Action("Edit", "PassageEditor")/' + response.qtiRefObjectId;
+                    if (autoClose) {
+                        var qtiItemIdString = '@Model.QtiItemIdsAssignPassage';
+
+                        if (qtiItemIdString != null && qtiItemIdString != '' && !isItemBankScreen()) {
+                            assignPassageForManyQtiItems(qtiItemIdString, response.qtiRefObjectId);
+                        }
+                        else {
+                            //close this dialog and display the already created passage in the filter
+                            SetReloadFilterPasssage('fromItemEditor');
+                        }
+                    }
+                }
+                else {
+                    addErrorMessages(response);
+                    $('#error-messages-edit').addClass('no-margin');
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    }
+
+    function assignPassageForManyQtiItems(qtiItemIdString, qtiRefObjectID)
+    {
+       $.post('@Url.Action("AssignPassageForManyQtiItems", "Passage")', { qtiItemIdString: qtiItemIdString, qtiRefObjectID: qtiRefObjectID }, function (response) {
+            if (response.Success == 'Success') {
+                LinkIt.success('#passageNotifications', 'Passage Assigned');
+                var assignedIdList = $("#QtiItemAssignedQTIRefObjectIDString").val();
+                if (assignedIdList == null) {
+                    assignedIdList = '';
+                }
+                assignedIdList = assignedIdList + ",-" + qtiRefObjectID + "-";
+                $("#QtiItemAssignedQTIRefObjectIDString").val(assignedIdList);
+
+                //close this dialog and display the already created passage in the filter
+                SetReloadFilterPasssage('fromItemEditor');
+            } else {
+                alert(response.errorMessage);
+            }
+        });
+    }
+
+    function KeyValuePair(data) {
+        var self = this;
+        self.Text = ko.observable(data.Name);
+        self.Value = ko.observable(data.Id);
+    }
+
+    var vmPassageEdit;
+    var viewModelPassageEdit = function () {
+        var self = this;
+
+        //Grade
+        self.PassageGradeId = ko.observable('');
+        self.PassageGrades = ko.observableArray([]);
+        self.DisplayPassageGrades = ko.computed(function () {
+            var url = '@Url.Action("GetAvailableGrades")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageGrades(mappedObjects);
+                self.PassageGradeId('@Model.GradeId');
+            });
+        });
+
+        //Subject
+        self.PassageSubjectText = ko.observable('');
+        self.PassageSubjects = ko.observableArray([]);
+
+        self.DisplayPassageSubjects = ko.computed(function () {
+            var url = '@Url.Action("GetQtiPassageSubjects", "Passage")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.PassageSubjects(mappedObjects);
+
+                self.PassageSubjectText('@Model.SubjectText');
+                //$("#selectPassageSubjectEdit option:contains(" + '@Html.Raw(Model.SubjectText)' + ")").attr('selected', 'selected');
+                $("#selectPassageSubjectEdit option").each(function() {
+                    if($(this).text() == '@Html.Raw(Model.SubjectText)') {
+                        $(this).attr('selected', 'selected');
+                    }
+                });
+            });
+        });
+
+        //TextType
+        self.TextTypeId = ko.observable('');
+        self.TextTypes = ko.observableArray([]);
+
+        self.DisplayTextType = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PTextType", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.TextTypes(mappedObjects);
+                self.TextTypeId('@Model.TextTypeId');
+            });
+        });
+
+        //TextSubType
+        self.TextSubTypeId = ko.observable('');
+        self.TextSubTypes = ko.observableArray([]);
+
+        self.DisplayTextSubType = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PTextSubType", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.TextSubTypes(mappedObjects);
+                self.TextSubTypeId('@Model.TextSubTypeId');
+            });
+        });
+
+        //FleschKincaidModel
+        self.FleschKincaidId = ko.observable('');
+        self.FleschKincaidIds = ko.observableArray([]);
+
+        self.DisplayFleschKincaid = ko.computed(function () {
+            var url = '@Url.Action("GetQTI3PFleschKincaid", "ItemBank")';
+            $.ajax({
+                url: url,
+                type: 'get',
+                cache: false,
+                data: {}
+            }).done(function (data) {
+                var mappedObjects = $.map(data, function (item) {
+                    return new KeyValuePair(item);
+                });
+                self.FleschKincaidIds(mappedObjects);
+                self.FleschKincaidId('@Model.FleschKincaidId');
+            });
+        });
+
+    };
+
+    $(function () {
+        vmPassageEdit = new viewModelPassageEdit();
+        ko.cleanNode(document.getElementById("divPassageEdit"));
+        ko.applyBindings(vmPassageEdit, document.getElementById("divPassageEdit"));
+        bindEventsEdit();
+        //display subject
+        $('#SubjectText').val('@Html.Raw(Model.SubjectText)');
+        $('#selectPassageSubjectEdit').marquee();
+        $('#selectTextSubTypeEdit').marquee();
+    });
+
+    function bindEventsEdit() {
+        $('button[data-dialog="close"]').die('click');
+        $(document).on('click', 'button[data-dialog="close"]', function(e) {
+
+            var self = $(e.target);
+            self.closest('.dialog').dialog('close');
+
+        });
+    }
+
+    function SetReloadFilterPasssage(from) {
+        $('#txtPassageNumber').val($('#qtiRefObjectId').val());
+        $('#txtName').val($('#txtNameEdit').val());
+        $('#selectPassageGrade').val($('#selectPassageGradeEdit').val());
+        $('#selectPassageSubject').val($('#selectPassageSubjectEdit').val());
+        $('#selectTextType').val($('#selectTextTypeEdit').val());
+        $('#selectTextSubType').val($('#selectTextSubTypeEdit').val());
+        $('#selectFleschKincaidIds').val($('#selectFleschKincaidIdsEdit').val());
+        $('#selectPassageNumber').val('');
+
+        if (from == 'fromItemSetEditor') {
+            showPassageFilterFromItemSet($('#txtNameEdit').val(),$('#selectPassageGradeEdit').val(),$('#selectPassageSubjectEdit').val(),
+                $('#selectTextTypeEdit').val(),$('#selectTextSubTypeEdit').val(),$('#selectFleschKincaidIdsEdit').val());//defined in QtiItem/_PassageAssignForm.cshtml
+
+        }
+        if (from == 'fromItemEditor') {
+            showPassageFilterFromItemSet($('#txtNameEdit').val(),$('#selectPassageGradeEdit').val(),$('#selectPassageSubjectEdit').val(),
+                $('#selectTextTypeEdit').val(),$('#selectTextSubTypeEdit').val(),$('#selectFleschKincaidIdsEdit').val());
+            //defined in TestMaker/_PassageAssignForm.cshtml
+            $('#PopupAddReference').prev('.ui-widget-header').css('top', '70px');
+            RecoverTestMakerCKEditorConfig();//defined in Index.cshtml or Edit.cshtml
+        }
+        $('.cke_editor_passageContent_dialog').remove();//clear dialog of image upload ,video upload
+    }
+
+    $(function() {
+        $("#editPassageForm").submit(function(e) {
+            e.preventDefault();
+            return;
+        });
+    });
+
+    function submitEditPassage() {
+        var vName = $('#txtNameEdit').val();
+        if (vName.length > 50) {
+            loadAlertMessage();
+        } else {
+            $('.btnSave').attr("disabled", "disabled")
+            CheckPassageHasATest(true);
+        }
+    }
+
+    function submitAndAttachEditPassage() {
+        var vName = $('#txtNameEdit').val();
+        if (vName.length > 50) {
+            loadAlertMessage();
+        } else {
+            $('.btnSave').attr("disabled", "disabled")
+            CheckPassageHasATest(true);
+        }
+    }
+
+    function loadAlertMessage(ReopenRevertPassagePopup) {
+        var url = '@Url.Action("LoadAlertPassageName", "PassageEditor")';
+        $.ajax(
+            {
+                url: url, cache: false
+            })
+            .done(function (html) {
+                $("#divPassageEdit").append('<div id="PopupAlertPassageName" class="dialog"></div>');
+                $("#PopupAlertPassageName").append(html);
+                $('#PopupAlertPassageName').dialog({
+                    dialogClass: 'PopupAlertPassageName',
+                    title: "",
+                    open: function () {
+                        //$("body").append('<div class="my-overlay my-overlay-custom" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        var $doc = $(document);
+                        var $body = $('body');
+                        var $overlay = $('<div />');
+                        var $uidialog = $('.ui-dialog');
+                        var zIndexArr = [];
+                        var maxIndex = 0;
+
+                        // Push all zIndex to array
+                        $uidialog.each(function() {
+                            var $self = $(this);
+                            var zIndex = $self.css('z-index').replace('px', '');
+
+                            zIndexArr.push(zIndex);
+                        });
+
+                        // Get max value in array
+                        maxIndex = Math.max.apply(Math, zIndexArr);
+
+                        // Overlay
+                        $overlay
+                            .attr({
+                                'class': 'my-overlay'
+                            })
+                            .css({
+                                'width': $doc.width(),
+                                'height': $doc.height(),
+                                'background-color': '#000',
+                                'opacity': '0.3',
+                                'position': 'absolute',
+                                'top': '0',
+                                'left': '0',
+                                'z-index': maxIndex - 1
+                            });
+
+                        $overlay.appendTo($body);
+
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#PopupAlertPassageName').remove();
+                        $("body .my-overlay").remove();
+                        if (ReopenRevertPassagePopup) {
+                            openPopupRevertPassage();
+                        }
+                    },
+                    modal: false,
+                    width: 400,
+                    resizable: false
+                });
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+            ('#PopupAlertPassageName').dialog('close');
+        });
+    }
+
+    function cancelAlertPassage() {
+        $("#PopupAlertPassageName").dialog("close");
+    }
+
+    function CheckPassageHasATest(autoClose, typeSave, callback) {
+        var url = '@Url.Action("CheckVirtualTestsHasRefObject")?qtiRefObjectId=' + '@Model.QtiRefObjectId' + '&virtualTestId=' + '@Model.VirtualTestId';
+        $.ajax({
+            url: url,
+            traditional: true,
+            type: 'GET',
+            data: {},
+            success: function (data) {
+                if (typeSave === 'revert') {
+                    if (callback) callback(data);
+                    return;
+                }
+                if (data.NumOfVirtualTest > 0) {
+                    var message = 'This passage is already being used on ' + data.NumOfVirtualTest + ' other test(s), are you sure you want to edit?';
+                    confirmMessagePassageV2(message, autoClose);
+                } else {
+                    EditPassage(autoClose);
+                }
+            },
+            failure: function (response) {
+                customAlert(response);
+            }
+        });
+    }
+
+    function closeMessagePassageV2() {
+        $("#confirmMessagePassageV2").dialog("close");
+        $('#generateContent').unblock();
+        $('#btnSubmit').enableBt();
+    }
+    function confirmMessagePassageV2(message, autoClose) {
+        confirmMessageV2(
+            {
+                message,
+                cbYesBtnFuncName: 'EditPassage(' + autoClose + ')',
+                cbCancelBtnFuncName: 'closeMessagePassageV2()'
+            },
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'confirmMessagePassageV2'
+                    }
+                }
+            }
+        )
+    }
+    var passageEditorVueInstant = new Vue({
+        el: '#divPassageEdit',
+        data: {
+            isShowPopupRevertPassage: false,
+        },
+        methods:{
+            revertPassageVueInstantClick: function (item) {
+                this.isShowPopupRevertPassage = false;
+                revertPassageClick(item)
+            },
+            openPopup: function (item) {
+                this.isShowPopupRevertPassage = true
+            },
+        }
+    });
+
+    function openPopupRevertPassage() {
+        passageEditorVueInstant.openPopup();
+    }
+
+    function revertPassageClick(item) {
+        var vName = $('#txtNameEdit').val();
+        if (vName.length > 50) {
+            loadAlertMessage(true);
+        } else {
+            $('.btnSave').attr("disabled", "disabled")
+            CheckPassageHasATest(true, 'revert', function(data) {
+                if (data.NumOfVirtualTest > 0) {
+                    var dateString = moment(item.ChangedDate).format("MMM DD, YYYY hh:mmA") || "";
+                    var message = 'This passage is already being used on ' + data.NumOfVirtualTest + ' other test(s). Your current item will be reverted to the version from '+ dateString +'. Are you sure you want to revert?';
+                    customConfirm(message).then(function(result) {
+                        if (result) {
+                            handleRevertPassage(item, true);
+                        } else {
+                            openPopupRevertPassage();
+                        }
+                    })
+                } else {
+                    handleRevertPassage(item);
+                }
+            });
+        }
+    }
+
+    function handleRevertPassage(item, passConfirmPopup) {
+        if (passConfirmPopup) {
+            performRevertPassage(item);
+            return;
+        }
+        var dateString = moment(item.ChangedDate).format("MMM DD, YYYY hh:mmA") || "";
+        var message = `Your current item will be reverted to the version from ${dateString}`;
+        customConfirm(message).then(function (result) {
+            if (result) {
+                performRevertPassage(item);
+            } else {
+                openPopupRevertPassage();
+            }
+        });
+    }
+
+    function performRevertPassage(item) {
+        $('#btnSubmit').disableBt();
+        $('#success-message-edit').hide();
+        ShowBlock($('#divPassageEdit'), "Reverting");
+        $.ajax({
+            url: '@Url.Action("RevertPassage")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                qtiRefObjectId: item.QTIRefObjectId,
+                qtiRefObjectHistoryId: item.QTIRefObjectHistoryId
+            })
+        }).done(function (response) {
+            $('#btnSubmit').enableBt();
+            $('#divPassageEdit').unblock();
+            passageEditorVueInstant.$refs.popuprevertpassage.GetMostRecentItemVersions();
+            if (response.success) {
+                if (CKEDITOR.instances['passageContent'].getData()) {
+                    var newXmlContent = response.revertedXmlContent;
+                    if(newXmlContent && newXmlContent.trim() !== '') {
+                        $('#xmlContentPassage').val(response.revertedXmlContent);
+                        xmlPassageImport($('#xmlContentPassage'));
+                    } else {
+                        $('#xmlContentPassage').val('');
+                        CKEDITOR.instances['passageContent'].setData('');
+                    }
+                    var qtiItemIdString = '@Model.QtiItemIdsAssignPassage';
+                    if (qtiItemIdString != null && qtiItemIdString != '' && !isItemBankScreen()) {
+                        assignPassageForManyQtiItems(qtiItemIdString, response.qtiRefObjectId);
+                    }
+                    else {
+                        //close this dialog and display the already created passage in the filter
+                        SetReloadFilterPasssage('fromItemEditor');
+                    }
+                }
+                $('#success-message-edit').show();
+            } else {
+                addErrorMessages(response);
+                setTimeout(function () {
+                    $('#error-messages').hide();
+                }, 5000);
+            }
+        });
+    }
+</script>

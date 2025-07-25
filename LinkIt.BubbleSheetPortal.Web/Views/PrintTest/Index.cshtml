@@ -1,0 +1,615 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.PrintTestViewModel
+@{
+    ViewBag.Title = "Print Test";
+}
+<script src="@Url.Content("~/Scripts/jquery.listSplitter.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/FeLibs/jquery-coolfieldset/js/jquery.coolfieldset.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/constants.js")" type="text/javascript"></script>
+<article class="container_12">
+    <section class="grid_12">
+        <div id="generateContent" class="block-border">
+            @using (Html.BeginForm("Index", "PrintTest", FormMethod.Post, new { id = "TestAssignmentForm", @class = "block-content form bubbleSheetSelector" }))
+            {
+                <h1>Print Test</h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                if (Model.IsPublisher|| Model.IsNetworkAdmin)
+                {
+                <fieldset id="publisherContent" class="grey-bg">
+                    <legend>Select State/@LabelHelper.DistrictLabel</legend>
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <div class="mb-3">
+                                <label>State</label>
+                                <select id="selectState"></select>
+                            </div>
+                        </div>
+                        <div class="colx2-right">
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>@LabelHelper.DistrictLabel</label>
+                                <div class="block-text-name">
+                                    <select id="selectDistrict"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                }
+                else
+                {
+                <input id="hdfDistrictId" value="@Model.DistrictId" type="hidden"/>
+                }
+                <fieldset class="grey-bg" id="fsSelectTest">
+                    <legend>Select Test</legend>
+
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <div class="mb-3">
+                                <label>@LabelHelper.TestGrade</label>
+                                <select id="selectGrade"></select>
+                            </div>
+                            <div class="mb-3">
+                                <label>@LabelHelper.Subject</label>
+                                <select id="selectSubject"></select>
+                            </div>
+                        </div>
+                        <div class="colx2-right">
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>Bank</label>
+                                <div class="block-text-name">
+                                     <select id="selectBank"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 block-content-dropdown-marquee">
+                                <label>Test</label>
+                                <div class="block-text-name">
+                                    <select id="selectTest"></select>
+                                    <div class="box-select">
+                                        <span class="overlay"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="clear"></div>
+                <div id="aDivPrintTest" style="float: right; display: none;">
+                </div>
+                <div class="clear"></div>
+                <div id="divPopupTestResult"></div>
+                <input type="hidden" value="0" id="hdfLoadExistAssingment" />
+                <input type="hidden" value="" id="hdfPreferenceLevel" />
+                <input type="hidden" value="TestAssignmentPage" id="hdfTestAssignmentPage" />
+            }
+        </div>
+    </section>
+</article>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor.js"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_utils.js"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_functions.js"></script>
+<script type="text/javascript" src="/Content/themes/TestMaker/ckeditor_mk.js"></script>
+
+<script type="text/javascript">
+    $(document).ready(function() {
+        var linkitProtocol = window.location.protocol;
+        var linkitHostname = window.location.hostname;
+
+        MKEditor = {
+            imgUrl: "../../Content/themes/TestMaker/",
+            audioUrl: "/PassageEditor/AudioUpload/",
+            objectId: '0',
+            loadAudioUrl: linkitProtocol + "//" + linkitHostname + "/PassageEditor/GetAudio",
+            imgUpload: "/PassageEditor/ImageUpload/",
+            GetViewReferenceImg: linkitProtocol + "//" + linkitHostname + '/TestAssignmentRegrader/GetViewReferenceImg?imgPath=' //This is config for view image on test maker
+        };
+    });
+</script>
+<script type="text/javascript">
+    function PopupPrintTest(virtualTestID) {
+        ShowBlock($('#generateContent'), 'Loading');
+
+        var url = '@Url.Action("PrintVirtualTest", "PrintTest")';
+
+        var districtId = $('#hdfDistrictId').val();
+        if (districtId == null) {
+            districtId = $('#selectDistrict').val();
+        }
+
+        $.ajax({
+            url: url,
+            cache: false,
+            data: { testId: virtualTestID, districtID: districtId }
+        }).done(function (html) {
+            $('#generateContent').unblock();
+            $('body').append('<div id="PrintVirtualTestPanel" class="dialog"></div>');
+            $("#PrintVirtualTestPanel").append(html);
+            $('#PrintVirtualTestPanel').dialog({
+                title: "",
+                open: function () {
+
+                    //If width of popup gt window width popup auto show on the left
+                    var currentPopup = $(this);
+                    if (currentPopup.width() > $(window).width()) {
+                        currentPopup.parent().css({ "left": "0" });
+                    }
+
+                    //Create overlay for popup
+                    $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                },
+                beforeclose: function () {
+                    return true;
+                },
+                close: function () {
+                    $('#PrintVirtualTestPanel').remove();
+                    $("body .my-overlay").remove();
+                },
+                modal: false,
+                width: 1006,
+                resizable: false
+            });
+
+        });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+</script>
+<script type="text/javascript">
+    $('#fsSelectOption').coolfieldset();
+    $(function () {
+        $('#fsSelectOption').coolfieldset({ collapsed: true });
+        $('#selectDistrict').marquee();
+        $('#selectBank').marquee();
+        $('#selectTest').marquee();
+
+        $(document).ready(function () {
+            $(".openDialog").live("click", function (e) {
+                e.preventDefault();
+                if (allowPrinting()) {
+                    PopupPrintTest($('#selectTest').val());
+                }
+            });
+
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+
+            $("#btnCancel").live("click", function (e) {
+                e.preventDefault();
+                $(".dialog").dialog("close");
+            });
+
+            $("#btnRemove").live("click", function (e) {
+                e.preventDefault();
+            });
+
+            $("#btnAddClass").live("click", function (e) {
+                e.preventDefault();
+            });
+
+            $("#btnContinue").live("click", function (e) {
+                e.preventDefault();
+            });
+        });
+
+        @if (Model.IsPublisher||Model.IsNetworkAdmin)
+        {
+            <text>
+        $('#selectState').change(function () {
+            $('#selectDistrict').empty();
+            $('#selectTeacher').empty();
+            $('#selectGrade').empty();
+            //populateSubjects();
+            $('#selectTerm').empty();
+            $('#selectClass').empty();
+            $('#studentContent').hide();
+            $('#studentsList').html($('#studentsTemplate').html());
+            if ($('#selectState').val() != 'select') {
+                populateDistricts();
+            }
+            $("#aDivPrintTest").hide();
+        });
+
+        function populateDistricts() {
+            $('#selectDistrict').empty();
+            var stateValue = $('#selectState').val();
+            if (stateValue != 'select') {
+                if ('@Model.IsPublisher' === 'True') {
+                    $.get('@Url.Action("GetDistricts", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#selectDistrict'), districts);
+                    });
+                }
+                if ('@Model.IsNetworkAdmin' === 'True') {
+                    $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                        addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                        addSelectListItems($('#selectDistrict'), districts);
+                    });
+                }
+            }
+        }
+        </text>
+        }
+
+        @if (Model.IsAdmin || Model.CanSelectTeachers || Model.IsSchoolAdmin)
+        {
+            <text>
+
+        </text>
+        }
+        else
+        {
+            <text>
+
+
+        </text>
+        }
+
+        @if (Model.IsPublisher)
+        {
+            <text>
+        $.get('@Url.Action("GetStates", "PopulateStateDistrict")', function (states) {
+            populateStates(states);
+        });
+            </text>
+        }
+        else
+        {
+            if (Model.IsNetworkAdmin)
+            {
+                <text>
+        $.get('@Url.Action("GetStatesByDictricIds", "PopulateStateDistrict")', { dictricIds: '@Model.StrIds' }, function (states) {
+            populateStates(states);
+        });
+
+                </text>
+        }
+            else {
+                <text>
+            BuildDistrictSettings($('#hdfDistrictId').val());
+            $.get('@Url.Action("GetGradesByDistrictCustomOrder", "PopulateTest")', { districtId: '-1' }, function (grades) {
+                populateGrades(grades);
+            });
+            </text>
+        }
+        }
+
+                @*$.get('@Url.Action("GetGrades", "PopulateTest")', function (grades) {
+            populateGrades(grades);
+        });*@
+        function populateGradesByDistrict() {
+            $('#selectGrade').empty();
+            $('#selectSubject').empty();
+            var districtValue = $('#selectDistrict').val();
+            if (districtValue != 'select') {
+                $.get('@Url.Action("GetGradesByDistrictCustomOrder", "PopulateTest")', { districtId: districtValue }, function (grades) {
+                    //populateSchools(schools);
+                    populateGrades(grades);
+                });
+            }
+        }
+
+        $('#selectDistrict').change(function () {
+            populateGradesByDistrict();
+            $('#studentContent').hide();
+
+            //\Reload @LabelHelper.GradeLabel
+            $("#selectGrade").val($("#selectGrade option:first").val());
+            $('#selectSubject').empty();
+            $('#selectBank').empty();
+            $('#selectTest').empty();
+
+            $("#aDivPrintTest").hide();
+        });
+
+        $('#selectGrade').change(function () {
+            populateSubjects();
+            $("#aDivPrintTest").hide();
+        });
+
+        $('#selectSubject').change(function () {
+            populateBanks();
+            $("#aDivPrintTest").hide();
+        });
+
+        $('#selectBank').change(function () {
+            populateTests();
+            CheckIfBankLocked($(this).val());
+            $('#fsSelectOption').hide();
+            $("#aDivPrintTest").hide();
+        });
+
+
+        $('#selectTest').change(function () {
+            $("#aDivPrintTest").hide();
+            var testId = $('#selectTest').val();
+            if (testId != 'select' && testId != '') {
+                CheckAuthorOfTest(testId, () => {
+                    BuildLinkPrintTest();
+                });
+
+                $.get('@Url.Action("CheckIfTestRequiresCorrection","PopulateTest")', { testId: testId }, function (response) {
+                    if (response.Success == 1 || response.Success == 2) {
+                        var vMessage = 'One or more question has point possible larger than 25. Please check the test or contact technology@linkit.com for help';
+                        if (response.Success == 1) {
+                            vMessage = 'Please contact technology@linkit.com and have them fix the question ordering associated with test id ' + testId;
+                        }
+                        $("<section><div class='block-border'><div class='block-content'><h1>Error With Test</h1><p>" + vMessage + ".</p></div></div></section>")
+                            .appendTo("article")
+                            .dialog({
+                                title: $(this).attr("data-dialog-title"),
+                                close: function () { $(this).remove(); },
+                                modal: true,
+                                width: 500,
+                                resizable: false
+                            })
+                            .load(this.href, function () {
+                            });
+                    }
+                });
+            } else {
+                $('#fsSelectOption').hide();
+            }
+        });
+
+        $('#selectSheetStyle').change(function () {
+            if ($(this).val() == 2) {
+                $('#divBubbleSize').hide();
+                $('#bubbleFormat').hide();
+            } else {
+                $('#divBubbleSize').show();
+                $('#bubbleFormat').show();
+            }
+        });
+
+
+    });
+
+
+    $.ajaxSetup({ cache: false });
+
+
+    function populateStates(states) {
+        addDefaultOption($('#selectState'), "State");
+        addSelectListItems($('#selectState'), states);
+    }
+
+    function populateDistricts(districts) {
+        addDefaultOption($('#selectDstrict'), "@LabelHelper.DistrictLabel");
+        addSelectListItems($('#selectDistrict'), districts);
+    }
+
+    function CheckIfBankLocked(bankValue) {
+        if (bankValue != 'select') {
+            $.get('@Url.Action("CheckIfBankLocked", "Bank")', { bankId: bankValue }, function (response) {
+                $('#selectBank').data('locked', response.Locked);
+            });
+        }
+    }
+
+    function CheckAuthorOfTest(virtualTestId, callback) {
+        $.get('@Url.Action("CheckIfCurrentUserIsAuthor", "VirtualTest")', { virtualTestId }, function (response) {
+            $('#selectTest').data('isAuthor', response.IsAuthor);
+            callback && callback();
+        });
+    }
+
+    function populateGrades(grades) {
+        $('#selectGrade').empty();
+        addDefaultOption($('#selectGrade'), "@LabelHelper.TestGrade");
+        addSelectListItems($('#selectGrade'), grades);
+    }
+
+    function populateSubjects() {
+        resetSubjects();
+        var gradeValue = $('#selectGrade').val();
+        var districtValue = 0;
+        if ($('#selectDistrict').length && $('#selectDistrict').val() != null && $('#selectDistrict').val() != 'select') {
+            districtValue = $('#selectDistrict').val();
+        }
+        if (gradeValue != 'select') {
+            $.get('@Url.Action("GetSubjectsByGradeIdAndAuthorCustomOrder", "SearchBank")', { gradeId: gradeValue, districtId: districtValue }, function (subjects) {
+                addDefaultOption($('#selectSubject'), "@LabelHelper.Subject");
+                addSelectListItems($('#selectSubject'), subjects);
+            });
+        }
+    }
+
+    function populateBanks() {
+        resetBanks();
+        var subjectValue = $('#selectSubject').val();
+        var districtValue = 0;
+        if ($('#selectDistrict').length) {
+            districtValue = $('#selectDistrict').val();
+        }
+        var gradeValue = $('#selectGrade').val();
+        if (subjectValue != 'select') {
+                        @*$.get('@Url.Action("GetBanksForPrintTest", "PopulateTest")', { subjectId: subjectValue, districtId: districtValue }, function (banks) {*@
+            $.get('@Url.Action("GetBanksBySubjectNameCustomOrder", "SearchBank")', { subjectName: subjectValue, districtId: districtValue, gradeId: gradeValue, moduleCode: RestrictionModule.PRINT }, function (banks) {
+                addDefaultOption($('#selectBank'), "Bank");
+                addSelectListItems($('#selectBank'), banks);
+            });
+        }
+    }
+
+    function populateTests() {
+        $('#selectTest').empty();
+
+        var bankValue = $('#selectBank').val();
+        var districtId = $("#selectDistrict").val();
+        if (!districtId) districtId = 0;
+        if (bankValue != 'select') {
+            $.get('@Url.Action("GetTestsCustomOrder", "PopulateTest")', { bankId: bankValue, districtId: districtId, moduleCode: RestrictionModule.PRINT, isIncludeRetake: true }, function (tests) {
+                addDefaultOption($('#selectTest'), "Test");
+                addSelectListItems($('#selectTest'), tests);
+            });
+        }
+    }
+
+
+    function resetSubjects() {
+        $('#selectSubject').empty();
+        resetBanks();
+    }
+
+    function resetBanks() {
+        $('#selectBank').empty();
+        $('#selectTest').empty();
+
+    }
+
+
+    function BuildDistrictSettings() {
+        var districtId = $('#hdfDistrictId').val();
+        if (districtId == null) {
+            districtId = $('#selectDistrict').val();
+        }
+
+        var isMulticlass = false;
+        if ($('#radioMultiClass:checked').val() == 'on') {
+            isMulticlass = true;
+        }
+
+        var bankId = $('#selectBank').val();
+
+        //var urlDistrictSetting = '@Url.Action("TestSettings")?districtId=' + districtId + '&isMultiClass=' + isMulticlass + '&bankId=' + bankId;
+        //$("#aDistrictSetting").attr("href", urlDistrictSetting);
+        //$("#aDistrictSetting").show();
+
+    }
+
+    function BuildLinkPrintTest() {
+        var districtId = $('#hdfDistrictId').val();
+        if (districtId == null) {
+            districtId = $('#selectDistrict').val();
+        }
+        var bankId = $('#selectBank').val();
+        var testId = $('#selectTest').val();
+        if (testId > 0) {
+            var disabledClass = !allowPrinting() ? 'disabled-link grey' : '';
+            var urlPrintTest = '@Url.Action("PrintTest")?testId=' + testId + '&bankId=' + bankId + '&districtId=' + districtId;
+            var printIcon = '<img src="' + '@Url.Content("~/Content/themes/Constellation/images/icons/web-app/32/Print.png")' + '" >';
+            var vPrintTestContent = ' <a class="openDialog addGroupButton LinkitStypeButton big-button ' + disabledClass + '" data-dialog-id="PringtTest"' +
+                ' data-dialog-title="" title="Print Test" href="' + urlPrintTest + '">Print Test</a>';
+
+            $("#aDivPrintTest").html('');
+            $("#aDivPrintTest").append(vPrintTestContent);
+            $("#aDivPrintTest").show();
+            $('#btnPreview').show();
+        } else {
+            $("#aDivPrintTest").hide();
+            $('#btnPreview').hide();
+        }
+    }
+
+    function allowPrinting() {
+        var isLocked = $('#selectBank').data('locked');
+        var isAuthor = $('#selectTest').data('isAuthor');
+        return isAuthor || !isLocked || '@Model.IsTeacher' !== '@true' && '@Model.IsSchoolAdmin' !== '@true';
+    }
+
+</script>
+<div class="columns" id="studentsTemplate" style="display: none;">
+    <ul id="students" class="generate-student-list with-icon icon-user"></ul>
+</div>
+<style type="text/css">
+    .positionAdd {
+        position: relative;
+        right: -6px;
+        top: 26px;
+    }
+
+    .disabled-link {
+        pointer-events: none;
+        opacity: 0.5;
+        user-select: none;
+    }
+
+    button {
+        margin-left: 30px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid #aaa !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: #2b2b2d !important;
+    }
+
+    #studentContent {
+        position: relative;
+    }
+
+    .coolfieldset, .coolfieldset.expanded {
+        border: 1px solid #aaa;
+    }
+
+        .coolfieldset.collapsed {
+            border: 0;
+            border-top: 1px solid #aaa;
+        }
+
+        .coolfieldset legend {
+            padding-left: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .coolfieldset legend, .coolfieldset.expanded legend {
+            background: transparent url(/Content/themes/base/images/expanded.gif) no-repeat center left;
+            background-size: 10px 10px;
+        }
+
+        .coolfieldset.collapsed legend {
+            background: transparent url(/Content/themes/base/images/collapsed.gif) no-repeat center left;
+            background-size: 10px 10px;
+        }
+        #selectTest {
+            border-color: transparent;
+        }
+</style>

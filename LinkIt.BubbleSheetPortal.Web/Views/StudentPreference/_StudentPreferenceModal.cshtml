@@ -1,0 +1,242 @@
+@model List<LinkIt.BubbleSheetPortal.Models.StudentPreferenceItem>
+
+<div class="block-border" id="studentRefModal" style="position: static; z-index: 1002">
+    <div id="divContentTestSettingTestProperty" class="block-content form bubbleSheetSelector" style="z-index: 1002;">
+        <fieldset class="grey-bg" style="z-index: 1002">
+            <legend>Preferences</legend>
+            <span v-if="mixed" style="color:#ef1111">*Mixed settings are used</span>
+            <ul style="display: none; margin-bottom: 10px;" id="success-message" class="message success"></ul>
+
+            <div class="accordion-scroll m-t-15">
+                <div id="accordion-assignment-setting" class="accordion">
+                    <div v-for="item in listRefs">
+                        <div class="accordion-title first active" v-if="item.tagName">
+                            <h3>{{item.tagName}}</h3>
+                        </div>
+                        <div class="accordion-content active">
+                            <table class="table table-accordion u-w-p-100">
+                                <tbody>
+                                    <tr v-for="ref in item.refs">
+                                        <td class="w-370 table-accordion-title">{{ref.name}}</td>
+                                        <td class="w-380">
+                                            <input type="radio" value="0" name="{{ref.key}}" v-model="ref.value" id="{{ref.key + '0'}}"
+                                                   :disabled="(ref.key !='showTest' && listRefs[0].refs[0].value == 0) || ref.isDisabled"
+                                                   v-on:click="actionRefClick(ref.key, 0)"/>
+                                            <label for="{{ref.key + '0'}}">OFF</label>
+                                            <input type="radio" value="1" name="{{ref.key}}" id="{{ref.key + '1'}}" 
+                                                   v-model="ref.value" :disabled="(ref.key !='showTest' && listRefs[0].refs[0].value == 0) || ref.isDisabled"
+                                                   v-on:click="actionRefClick(ref.key, 1)"/>
+                                            <label for="{{ref.key + '1'}}">ON</label>
+                                        </td>
+                                        <td class="w-130">
+                                            <input type="checkbox" id="{{'check_' + ref.key}}" v-model="ref.isLock" 
+                                                   :disabled="(ref.key !='showTest' && listRefs[0].refs[0].value == 0) || ref.isDisabled"/>
+                                            <label for="{{'check_' + ref.key}}">Lock</label>
+                                            <span v-if="ref.isBlock" class="img-block with-tip" title="Mixed settings are used" >
+                                                <img src="../../Content/themes/TestMaker\skins\moonocolor\images\lock.png" alt="Mixed settings are used" />
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button class="float-right" id="btnTestSettingTestProperty"  v-on:click="save" type="button">Save</button>
+            <button class="float-right mgright10 w70" id="btnTestSettingCancel" type="button">Cancel</button>
+        </fieldset>
+    </div>
+</div>
+<script>
+    var studentRefModal = new Vue({
+        el: '#studentRefModal',
+        data: {
+            model: @Html.Raw(Json.Encode(Model)),
+            isNoneLinkIt: '@ViewBag.IsNoneLinkItTest' == "True" ? true : false,
+            listRefs: [
+                {
+                    tagName: '',
+                    refs: [
+                        { name: 'Display Test on Student Portal', key: 'showTest', value: 0, isLock: false, isDisabled: false }
+                    ]
+                },
+                {
+                    tagName: 'Tags',
+                    refs: [
+                        { name: 'Show Standards', key: 'showStandards', value: 1, isLock: false, isDisabled: false },
+                        { name: 'Show Topics', key: 'showTopics', value: 1, isLock: false, isDisabled: false },
+                        { name: 'Show Skills', key: 'showSkills', value: 0, isLock: false, isDisabled: false },
+                        { name: 'Show Question Types', key: 'showQuestionType', value: 0, isLock: false, isDisabled: false },
+                        { name: 'Show Other Tags', key: 'showOther', value: 0, isLock: false, isDisabled: false }
+                    ]
+                },
+                {
+                    tagName: 'Questions',
+                    refs: [
+                        { name: 'Show Item Data', key: 'showItemData', value: 0, isLock: false, isDisabled: false },
+                        { name: 'Show Question Content', key: 'showQuestions', value: 0, isLock: false, isDisabled: true },
+                    ]
+                },
+                {
+                    tagName: 'Options',
+                    refs: [
+                        { name: 'Show Correct Answers', key: 'showCorrectAnswers', value: 0, isLock: false, isDisabled: true },
+                        { name: 'Show Student Answers', key: 'showStudentAnswers', value: 0, isLock: false, isDisabled: true },
+                        { name: 'Show Points Possible', key: 'showPointPossible', value: 0, isLock: false, isDisabled: true },
+                    ]
+                },
+                {
+                    tagName: 'Time Spent',
+                    refs: [
+                        { name: 'Show Student Time Spent', key: 'showStudentTimeSpent', value: 0, isLock: false, isDisabled: true },
+                        { name: 'Show Class Time Spent (Avg.)', key: 'showClassTimeSpent', value: 0, isLock: false, isDisabled: true },
+                        { name: 'Show School Time Spent (Avg.)', key: 'showSchoolTimeSpent', value: 0, isLock: false, isDisabled: true },
+                        { name: 'Show District Time Spent (Avg.)', key: 'showDistrictTimeSpent', value: 0, isLock: false, isDisabled: true },
+                    ]
+                },
+                {
+                    tagName: 'Averages',
+                    refs: [
+                        { name: 'Show Class Average', key: 'showClassAverages', value: 0, isLock: false, isDisabled: false },
+                        { name: 'Show School Average', key: 'showSchoolAverage', value: 0, isLock: false, isDisabled: false },
+                        { name: 'Show District Average', key: 'showDistrictAverage', value: 0, isLock: false, isDisabled: false },
+                    ]
+                },
+                {
+                    tagName: 'Test Review',
+                    refs: [
+                        { name: 'Can Review Test', key: 'reviewTest', value: 0, isLock: false, isDisabled: false }
+                    ]
+                }
+            ],
+            rawData: [],
+            mixed: false
+        },
+        created: function () {
+            var data = @Html.Raw(Json.Encode(Model));
+            this.rawData = data;
+            this.bindingDataToView();
+
+            if (this.isNoneLinkIt) {
+                this.listRefs.length = 1;
+            }
+        },
+        methods: {
+            actionRefClick: function (key, value) {
+                if (key == 'showItemData') {
+                    dependKeys = ['showQuestions', 'showCorrectAnswers', 'showStudentAnswers', 'showPointPossible', 'showStudentTimeSpent',
+                        'showClassTimeSpent', 'showSchoolTimeSpent', 'showDistrictTimeSpent'];
+                    this.listRefs.forEach(function (item) {
+                        item.refs.forEach(function (ref) {
+                            if (dependKeys.indexOf(ref.key) > -1) {
+                                ref.isDisabled = value == 0 ? true : false;
+                            }
+                        });
+                    });
+                } else if (key == 'showTest' && value == 0) {
+                    this.listRefs.forEach(function (item) {
+                        item.refs.forEach(function (ref) {
+                            ref.value = 0;
+                        });
+                    });
+                }
+            },
+            bindingDataToView: function () {
+                for (var i = 0; i < this.model.length; i++) {
+                    this.setRefValue(this.model[i]);
+                }
+            },
+            bindingDataToModel: function () {
+                var refModels = [];
+                for (var i = 0; i < this.listRefs.length; i++) {
+                    var group = this.listRefs[i];
+                    for (var j = 0; j < group.refs.length; j++) {
+                        var ref = group.refs[j];
+                        refModels.push({
+                            Name: ref.key,
+                            Value: ref.value,
+                            Locked: ref.isLock ? 1: 0
+                        });
+                    }
+                }
+
+                return refModels;
+            },
+            setRefValue: function (model) {
+                for (var i = 0; i < this.listRefs.length; i++) {
+                    var ref = this.listRefs[i];
+                    for (var j = 0; j < ref.refs.length; j++) {
+                        var item = ref.refs[j];
+                        if (item.key == model.Name) {
+                            item.value = model.Value;
+                            item.isLock = model.Locked;
+                            item.isBlock = model.IsKey;
+                        }
+                    }
+                }
+                if (model.IsKey) {
+                    this.mixed = true;
+                }
+            },
+            save: function () {
+                var refs = this.bindingDataToModel();
+                 var testIds = [];
+                if(virtualTestID) {
+                    testIds.push(virtualTestID);
+                } else {
+                    var testEls = $('.cbTestId:checked');
+                    for (var i = 0; i < testEls.length; i++) {
+                        testIds.push($(testEls[i]).val());
+                    }
+                }
+                
+                
+                var level = $("#selectedLevel").val().toLowerCase();
+
+                var model = {
+                    VirtualTestIDs: testIds,
+                    Level: level,
+                    DistrictID: $('#selectedDistrictID').val() ? $('#selectedDistrictID').val() : 0,
+                    SchoolID: $('#selectedSchoolID').val() ? $('#selectedSchoolID').val() : 0,
+                    Items: refs
+                };
+                if(this.mixed) {
+                    CustomConfirm( {
+                        message:"Some of inherited preferences are locked. These can't be changed the setting. Are you sure you want to continue?",
+                        yes: function() {
+                            ShowBlock($('#studentRefModal'), 'Loading')
+                            saveStudentTestPreferences("/StudentPreference/SaveStudentTestPreferences", model, function (response) {
+                                $('#studentRefModal').unblock();
+                                if (response.Status == 'success') {
+                                    customAlertMessage({message: 'Save Student Preferences Successfully!', open: function(element) {
+                                        $(element).parent('.ui-dialog').addClass('alert-custom');
+                                    }});
+                                }
+                            });
+                        },
+                        no: function () {
+                        },
+                        open: function (element) {
+                            $(element).parent('.ui-dialog').addClass('alert-custom');
+                        }
+                    });
+                } else {
+                    ShowBlock($('#studentRefModal'), 'Loading')
+                    saveStudentTestPreferences("/StudentPreference/SaveStudentTestPreferences", model, function (response) {
+                        $('#studentRefModal').unblock();
+                        if (response.Status == 'success') {
+                            customAlertMessage({
+                                message: 'Save Student Preferences Successfully!',
+                                open: function (element) {
+                                $(element).parent('.ui-dialog').addClass('alert-custom');
+                            }});
+                        } else {
+                        }
+                    });
+                }
+              
+            }
+        }
+    });
+</script>

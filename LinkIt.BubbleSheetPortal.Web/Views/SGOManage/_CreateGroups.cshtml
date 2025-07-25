@@ -1,0 +1,144 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.SGOAddEditGroupViewModel
+<section style='z-index: 2004'>
+    <div class='block-border' style='z-index: 2004'>
+        <div class='block-content' style='z-index: 1004'>
+            <h1>Create Groups</h1>
+            <div>
+                <div style="width: 100%; min-height: 220px">
+                    <ul style="display: none" id="error-messages" class="message error"></ul>
+                    <table id="tbCreateGroups" class="table">
+                        <thead>
+                            <tr>
+                                <th>Number</th>
+                                <th>Name</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.LstGroups.Count > 0)
+                            {
+                                int i = 0;
+                                foreach (var viewModel in Model.LstGroups)
+                                {
+                                    i++;
+                                    <text>
+                                        <tr id="idRowCount-@i" rownumber="@i">
+                                            <td>
+                                                <input class="groupOrder" id="idOrder-@i" type="text" style="width: 50px;" readonly="readonly" value="@i" />
+                                            </td>
+                                            <td>
+                                                <input type="text" class="clsGroupName" value="@viewModel.Name" />
+                                            </td>
+                                            <td>
+                                                <div class="icon icon-sgo-delete clsDeleteGroup" onclick="removeRowAndReorder(this)" deleteid="@i">Delete Row and Reoder</div>
+                                            </td>
+                                        </tr>
+                                    </text>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <br />
+                <div style="margin-top: 20px; text-align: center;">
+                    <button id="idbntAddGroups" type="button" onclick="btnAddGroups()">Add Group</button>
+                    <button type="button" onclick="SaveGroup();" id="idSaveGroups">Save Groups</button>
+                    <button type="button" onclick="btnClosePopupAddGroup()">Close</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+<script>
+    var rowCount = @Model.LstGroups.Count;
+
+    $(function()
+    {
+        fillColor();
+        
+        if (@Model.LstGroups.Count >= 10) {
+            $('#idbntAddGroups').disableBt();
+        } else {
+            $('#idbntAddGroups').enableBt();
+        }
+
+        $('#tbCreateGroups input[class=clsGroupName]').each(function() {
+            var self = $(this);
+            var vDecode = htmlDecode(self.val());
+            self.val(vDecode);
+        });
+    });
+
+    function btnAddGroups() {
+        $('#error-messages').hide();
+        rowCount++;
+        $('#tbCreateGroups > tbody:last-child').append('<tr id="idRowCount-' + rowCount + '" rownumber="' + rowCount + '">' +
+            '<td><input class="groupOrder" id="idOrder-' + rowCount + '" type="text" style="width: 50px;" readonly="readonly" value="' + rowCount + '" /></td>' +
+            '<td><input class="clsGroupName" type="text" /></td>' +
+            '<td><div class="icon icon-sgo-delete clsDeleteGroup" onclick="removeRowAndReorder(this)" deleteid="' + rowCount + '">Delete Row and Reoder</div></td>' +
+            '</tr>');
+
+        if (rowCount >= 10) {
+            $('#idbntAddGroups').disableBt();
+        } else {
+            $('#idbntAddGroups').enableBt();
+        }
+        fillColor();
+    }
+
+    function removeRowAndReorder(e) {
+        $('#error-messages').hide();
+        $('#idRowCount-' + $(e).attr('deleteid')).remove();
+        // Reset row count
+        rowCount = 0;
+        // Re order
+        var $tbCreateGroups = $('#tbCreateGroups');
+        $tbCreateGroups.find('tbody tr').each(function(ind, order) {
+            var $order = $(order);
+            var vIndex = parseInt(ind + 1, 10);
+            $order.attr('id', 'idRowCount-' + vIndex);
+            $order.attr('rownumber', vIndex);
+
+            var $orderInput = $order.find('.groupOrder');
+            $orderInput.val(vIndex);
+
+            var $divDelete = $order.find('.clsDeleteGroup');
+            $divDelete.attr('deleteid', vIndex);
+            rowCount++;
+
+            //console.log('rowCount: - ' + rowCount);
+            //console.log('groupOrder: - ' + $order.find('.groupOrder').val());
+            //console.log('clsDeleteGroup: - ' + $order.find('.clsDeleteGroup').attr('deleteid'));
+            //console.log('clsGroupName: - ' + $order.find('.clsGroupName').val());
+            //console.log('------------------------------------------------------------------' + rowCount);
+        });
+
+        if (rowCount >= 10) {
+            $('#idbntAddGroups').disableBt();
+        } else {
+            $('#idbntAddGroups').enableBt();
+        }
+        fillColor();
+    }
+
+    function fillColor() {
+        var totalGroup = 0;
+        $('#tbCreateGroups > tbody > tr').each(function (index, order) {
+            totalGroup += 1;
+        });
+        $.get('@Url.Action("GetColorGroups", "SGOManage")', { totalGroups: totalGroup }, function (response) {
+            if (response.success == true) {
+                //console.log(response.colors.length + '_' + totalGroup);
+                $.each(response.colors, function (i, value) {
+                    var vi = i + 1;
+                    $('#idRowCount-' + vi).find('td').css({
+                        'background': value.Name,
+                        'transition': 'background 0.1s linear',
+                        '-webkit-transition': 'background 0.1s linear'
+                    });
+                });
+            }
+        });
+    }
+</script>

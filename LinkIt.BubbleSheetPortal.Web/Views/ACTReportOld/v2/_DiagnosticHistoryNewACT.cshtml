@@ -1,0 +1,99 @@
+﻿@using LinkIt.BubbleSheetPortal.Common.Enum
+@using LinkIt.BubbleSheetPortal.Models
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.ACTReport.ACTReportMasterViewModel
+
+@{
+    var domainTagNames = new List<string>();
+    if (Model.DomainTagData.Any())
+    {
+        var testResultId = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(x => x.IsSelected).TestResultID;
+        domainTagNames = Model.DomainTagData.Where(x => x.TestResultID == testResultId).Select(x => new {x.TagName, x.MinQuestionOrder}).Distinct().OrderBy(x => x.MinQuestionOrder).Select(x => x.TagName).ToList();
+        if (domainTagNames.Any() == false)
+        {
+            var newACTTest = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(x => x.VirtualTestSubTypeID == (int) VirtualTestSubType.NewACT);
+            if (newACTTest != null)
+            {
+                testResultId = newACTTest.TestResultID;
+                domainTagNames = Model.DomainTagData.Where(x => x.TestResultID == testResultId).Select(x => new { x.TagName, x.MinQuestionOrder }).Distinct().OrderBy(x => x.MinQuestionOrder).Select(x => x.TagName).ToList();
+            }
+        }
+    }
+}           
+
+<style>
+    .col_StudentHistory .tblDiagnostic {
+        width: 635px !important;
+    }
+        /*.tblDiagnostic thead th {
+            padding: 10px 7px !important;
+        }*/
+</style>
+<div>
+    <div class="boxtitle">
+        Subscores
+    </div>
+
+    <table class="datatable table utility-table tblDiagnostic big_line">
+        <thead>
+            <tr>
+                <th class="utility" rowspan="2" style="width: 80px;">Test Date</th>
+                <th class="utility" rowspan="2">Diag Form</th>
+                <th class="utility" rowspan="2" style="width: 50px;">STEM</th>
+                <th class="utility" rowspan="2" style="width: 50px;">ELA</th>
+                <th class="utility" colspan="4" style="text-align: center;">Writing Subscores</th>                
+            </tr>
+            <tr>
+                @foreach (var tagName in domainTagNames)
+                {
+                    <th class="utility" style="width: 80px;">@tagName</th>
+                }                
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.Count; i++)
+            {
+                var item = Model.DiagnosticHistoryViewModel.TestAndScoreViewModels[i];
+                if (item.VirtualTestSubTypeID == 2)
+                {
+                    continue;
+                }
+                string style = "";
+                string cssClass = "";
+                if (item.IsSelected)
+                {
+                    style = "font-weight:bold; font-style:italic;";
+                    cssClass = "question-detail-answer";
+                }
+
+                var domainTagDataOfTestResult = Model.DomainTagData.Where(x => x.TestResultID == item.TestResultID).OrderBy(x => x.MinQuestionOrder).ToList();
+
+                <tr class="@cssClass">
+                    @{
+                        var hasElaScore = 
+                            domainTagDataOfTestResult.Any(x => domainTagDataOfTestResult.IndexOf(x) < domainTagNames.Count && domainTagNames.Any(d => d.ToLower() == x.TagName.ToLower())) &&
+                            domainTagDataOfTestResult.Where(x => domainTagDataOfTestResult.IndexOf(x) < domainTagNames.Count && domainTagNames.Any(d => d.ToLower() == x.TagName.ToLower())).Sum(x => x.CorrectAnswer) > 0;
+                    }
+                    <td class="utility" style="@style"><p style="width: 80px">@item.TestDateText</p></td>
+                    <td class="utility" style="@style word-break:break-all;">@item.TestName</td>
+                    <td class="utility" style="@style text-align: right;">@item.StemScoreText</td>
+                    <td class="utility" style="@style text-align: right;">
+                        @if (hasElaScore)
+                        {
+                            @item.ElaScoreText    
+                        }                        
+                    </td>
+                    @foreach (var tagName in domainTagNames)
+                    {
+                        var domainTag = domainTagDataOfTestResult.FirstOrDefault(x => x.TagName.ToLower() == tagName.ToLower());                        
+                        <td class="utility" style="@style text-align: right;">
+                            @if (hasElaScore && domainTag != null)
+                            {
+                                @domainTag.CorrectAnswer
+                            }
+                        </td>
+                    }           
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

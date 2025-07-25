@@ -1,0 +1,59 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Envoc.Core.Shared.Extensions;
+
+namespace LinkIt.BubbleSheetPortal.Models
+{
+    public class XliModule
+    {
+        private string name = string.Empty;
+        private string code = string.Empty;
+        private string path = string.Empty;
+        private string displayTooltip = string.Empty;
+        private string displayName = string.Empty;
+        private string helpText = string.Empty;
+
+        public int XliModuleId { get; set; }
+        public int XliAreaId { get; set; }
+        public int ModuleOrder { get; set; }
+        public bool AllRoles { get; set; }
+        public bool Restrict { get; set; }
+
+        public string Name
+        {
+            get { return name; }
+            set { name = value.ConvertNullToEmptyString(); }
+        }
+
+        public string Code
+        {
+            get { return code; }
+            set { code = value.ConvertNullToEmptyString(); }
+        }
+
+        public string Path
+        {
+            get { return path; }
+            set { path = value.ConvertNullToEmptyString(); }
+        }
+
+        public string DisplayName
+        {
+            get { return displayName; }
+            set { displayName = value.ConvertNullToEmptyString(); }
+        }
+
+        public string DisplayTooltip
+        {
+            get { return displayTooltip; }
+            set { displayTooltip = value.ConvertNullToEmptyString(); }
+        }
+        public string HelpText
+        {
+            get { return helpText; }
+            set { helpText = value.ConvertNullToEmptyString(); }
+        }
+    }
+}

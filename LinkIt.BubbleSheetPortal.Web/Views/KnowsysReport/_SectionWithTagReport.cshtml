@@ -1,0 +1,315 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.ACTReport.ACTReportMasterViewModel
+<div>
+    @{
+        var sections = Model.SectionTagViewModels.Take(5).ToList();
+    }
+    @for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
+    {
+        var sectionTag = sections[sectionIndex];
+        if (sections.IndexOf(sectionTag) >= 5)
+        {
+            // Do not print E/W section
+            break;
+        }
+
+        // Rename section name as per knowsys report requirement
+        if (sectionTag.SectionName.ToLower() == "writing")
+        {
+            sectionTag.SectionName = "Essay";
+        }
+        else if (sectionTag.SectionName.ToLower() == "e/w")
+        {
+            sectionTag.SectionName = "Writing";
+        }
+            
+
+        <div class="boxtitle">
+            <span>@sectionTag.SectionName</span>
+        </div>
+        if (sectionIndex < 4)
+        {
+            <table class="datatable table" style="width: 20%;">
+                <tbody>
+                    <tr class="utility">
+                        <td class="utility" style="font-weight: bold; border-bottom: 1px solid #999999 !important;">Score</td>
+                        <td class="utility" style="text-align: right; border-bottom: 1px solid #999999 !important;">
+                            @if (@sectionTag.SectionName.ToLower() == "english")
+                            {
+                                @:@Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(en => en.IsSelected).EnglishScoreText
+                            }
+                            @if (@sectionTag.SectionName.ToLower() == "math")
+                            {
+                                @:@Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(en => en.IsSelected).MathScoreText
+                            }
+                            @if (@sectionTag.SectionName.ToLower() == "reading")
+                            {
+                                @:@Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(en => en.IsSelected).ReadingScoreText
+                            }
+                            @if (@sectionTag.SectionName.ToLower() == "science")
+                            {
+                                @:@Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.FirstOrDefault(en => en.IsSelected).ScienceScoreText
+                            }
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            foreach (var tagCategory in sectionTag.TagCategoryReportViewModels)
+            {
+                if (string.IsNullOrEmpty(tagCategory.TagCategoryName))
+                {
+                    continue;
+                }
+                if (tagCategory.IsTechniqueCategory && tagCategory.IsShowTechnicalCategory)
+                {
+                    <table class="datatable table utility-table">
+                        <thead>
+                            <tr>
+                                <th class="utility" width="254px">
+                                    @tagCategory.TagCategoryName
+                                </th>
+                                <th class="utility" width="60px" style="text-align: center;">Incorrect</th>
+                                <th class="utility" width="60px" style="text-align: center;">Blank</th>
+                                <th class="utility" style="text-align: center;">Incorrectly Answered</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                            {
+                                <tr>
+                                    <td class="utility">
+                                        @singleTag.TagName
+                                    </td>
+                                    <td class="utility" style="text-align: center;">
+                                        @singleTag.IncorrectAnswer
+                                    </td>
+                                    <td class="utility" style="text-align: center;">
+                                        @singleTag.BlankAnswer
+                                    </td>
+                                    <td class="utility">
+                                        @string.Join(", ", singleTag.ListAnswerInTag.Where(x => x.PointsEarned != x.PointsPossible && x.WasAnswered).Select(x => x.QuestionOrder.ToString() /* + x.CorrectAnswer + ":" + x.AnswerLetter*/))
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    if (!tagCategory.IsTechniqueCategory)
+                    {
+                        <table class="datatable table utility-table">
+                            <thead>
+                                <tr>
+                                    <th class="utility" width="254px">
+                                        @tagCategory.TagCategoryName
+                                    </th>
+                                    <th class="utility" width="60px" style="text-align: center;">Total</th>
+                                    <th class="utility" width="60px" style="text-align: center;">Correct</th>
+                                    <th class="utility" width="60px" style="text-align: center;">Incorrect</th>
+                                    <th class="utility" width="60px" style="text-align: center;">Blank</th>
+                                    <th class="utility" width="60px" style="text-align: center;">Percent</th>
+                                    <th class="utility" style="text-align: center;">Historical Avg %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var singleTag in tagCategory.SingleTagReportViewModels)
+                                {
+                                    <tr>
+                                        <td class="utility">
+                                            @singleTag.TagName
+                                        </td>
+                                        <td class="utility" style="text-align: center;">
+                                            @singleTag.TotalAnswer
+                                        </td>
+                                        <td class="utility" style="text-align: center;">
+                                            @singleTag.CorrectAnswer
+                                        </td>
+                                        <td class="utility" style="text-align: center;">
+                                            @singleTag.IncorrectAnswer
+                                        </td>
+                                        <td class="utility" style="text-align: center;">
+                                            @singleTag.BlankAnswer
+                                        </td>
+                                        <td class="utility" style="text-align: center;">
+                                            @string.Format("{0}%", singleTag.Percent)
+                                        </td>
+                                        <td class="utility" style="text-align: center;">
+                                            @string.Format("{0}%", singleTag.HistoricalAverage)
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                }
+            }
+
+            if (sectionTag.TagCategoryReportViewModels.All(x => string.IsNullOrEmpty(x.TagCategoryName)))
+            {
+                <div class="clear-25"></div>
+            }            
+
+            //render answers
+            const int answerRowNumber = 40;
+            int index = 1;
+            var listAnswer = sectionTag.AnswerSectionViewModels.ToList();
+            var tableWidth = 0;
+            var strWidth = string.Empty;
+
+            if (listAnswer.Any())
+            {
+                <div style="width: 440px; float: left">
+                    <div class="boxtitleQuestion">
+                        <span>Questions</span>
+                    </div>
+                    <table class="datatable table">
+                        <thead>
+                            <tr>
+                                <th class="utility" style="width: 56px">Q#</th>
+                                <th class="question-detail-answer" style="width: 56px">Ans</th>
+                                <th class="utility" style="width: 56px">Mark</th>
+                                <th class="utility" style="width: 100%">Tags</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < answerRowNumber; i++)
+                            {
+                                if (i < listAnswer.Count)
+                                {
+
+                                    <tr>
+                                        <td class="utility" style="width: 56px">@(listAnswer.IndexOf(listAnswer[i]) + 1)</td>
+                                        <td class="question-detail-answer" style="width: 56px">@listAnswer[i].CorrectAnswer</td>
+                                        <td class="utility" style="width: 56px">
+                                            @if (listAnswer[i].IsCorrected)
+                                            {
+                                                @Html.Raw("&#10003;");
+                                            }
+                                            else
+                                            {
+                                                if (listAnswer[i].IsBlank)
+                                                {
+                                                    @:-
+                                                }
+                                                else
+                                                {
+                                                    @listAnswer[i].AnswerLetter
+                                                }
+                                            }
+                                        </td>
+                                        <td class="utility">@listAnswer[i].TagNames</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                if (listAnswer.Count > answerRowNumber)
+                {
+                    <div style="width: 440px; float: right; margin-top: 26px; ">
+                        <table class="datatable table">
+                            <thead>
+                                <tr>
+                                    <th class="utility" style="width: 56px">Q#</th>
+                                    <th class="question-detail-answer" style="width: 56px">Ans</th>
+                                    <th class="utility" style="width: 56px">Mark</th>
+                                    <th class="utility" style="width: 100%">Tags</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = answerRowNumber; i < listAnswer.Count; i++)
+                                {
+                                    <tr>
+                                        <td class="utility" style="width: 56px">@(listAnswer.IndexOf(listAnswer[i]) + 1)</td>
+                                        <td class="question-detail-answer" style="width: 56px">@listAnswer[i].CorrectAnswer</td>
+                                        <td class="utility" style="width: 56px">
+                                            @if (listAnswer[i].IsCorrected)
+                                            {
+                                                @Html.Raw("&#10003;");
+                                            }
+                                            else
+                                            {
+                                                if (listAnswer[i].IsBlank)
+                                                {
+                                                    @:-
+                                                }
+                                                else
+                                                {
+                                                    @listAnswer[i].AnswerLetter
+                                                }
+                                            }
+                                        </td>
+                                        <td class="utility">@listAnswer[i].TagNames</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+        }
+        else if (sectionIndex == 4)
+        {
+            var listAnswer = sectionTag.AnswerSectionViewModels.ToList();
+            var index = 1;
+            <table class="datatable table" style="width: 20%;">
+                <tbody>
+                    @foreach (var answer in listAnswer)
+                    {
+                        <tr class="utility">
+                            <td class="utility" style="font-weight: bold; border-bottom: 1px solid #999999 !important;">Score @index</td>
+                            <td class="utility" style="text-align: right; border-bottom: 1px solid #999999 !important;">@answer.PointsEarned</td>
+                        </tr>
+                        index++;
+                    }
+                    @if (listAnswer.Any())
+                    {
+                        <tr class="utility">
+                            <td class="utility" style="font-weight: bold">Total</td>
+                            <td class="utility" style="text-align: right;">@listAnswer.Sum(x => x.PointsEarned)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+                    //wirting
+                    foreach (var essayFile in Model.BubbleSheetFileSubViewModels)
+                    {
+                        <img src="@essayFile.ImageUrl" width="960" />
+                    }
+        }
+
+        <div class="page-breaker"></div>
+
+        
+        @*<!--always break on first section-->
+        if (sectionIndex == 0)
+        {
+            <text><div class="page-breaker"></div></text>
+        }        
+        else if (sectionIndex == sections.Count - 1) 
+        {
+            <!--for last section-->
+            
+            <!--if 4-page report, always break-->
+            if (Model.ACTSummaryScoreViewModel.ShowChart)
+            {
+                <text><div class="page-breaker"></div></text>
+            }            
+            else
+            {
+                <!--for 2-page report-->
+        
+                <!--if this is NOT the last report, break-->
+                if (Model.IsLastReportInList == false)
+                {
+                    <text><div class="page-breaker"></div></text>
+                }
+            }
+        }
+        else
+        {
+            <text><div class="page-breaker"></div></text>
+        }*@
+    }
+</div>

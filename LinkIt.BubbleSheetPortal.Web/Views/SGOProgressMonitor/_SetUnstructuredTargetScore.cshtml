@@ -1,0 +1,126 @@
+﻿@using DevExpress.Office.Utils
+@model List<LinkIt.BubbleSheetPortal.Models.SGO.SGOGroup>
+<style>
+    .table-sgo-new input[type="text"][name="txtTeacherTargetScoreCustom"] {
+        width: 320px;
+    }
+
+    .table-sgo-new {
+        font-weight: bold;
+    }
+</style>
+
+<section style='z-index: 2004'>
+    <div class='block-border' style='z-index: 2004' id="divIdSetTargetScoreTop">
+        <div class='block-content' style='z-index: 1004;'>
+            <h1>Set Scores</h1>
+            <div>
+                <div style="width: 100%; min-height: 60px">
+                    <table class="table-sgo-new">
+                        <thead>
+                            <tr>
+                                <th style="width: 150px; text-align: left;">Goal
+                                </th>
+                                <th style="text-align: left;">Teacher Score                                    
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var sgoGroup in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <p>@Html.Raw(sgoGroup.TargetScoreCustom)</p>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="txtTeacherSGOScoreCustom" data="@sgoGroup.SGOGroupID" value="@sgoGroup.TeacherSGOScoreCustom"/>
+                                    </td>
+                                </tr>
+                            }
+                            <tr>
+                                <td>
+                                    <p>Total Score</p>
+                                </td>
+                                <td>
+                                    <input type="text" id="txtTotalTeacherSGOScoreCustom" value="@ViewBag.TotalTeacherSGOSCoreCustom"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <br />
+                <div style="margin-top: 20px; text-align: center;">
+                    <button id="btnSaveTargetScore" type="button">Save Scores</button>
+                    <button type="button" onclick="closePopup('popupSetTargetScore')" class="grey">Close</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<script>        
+    function IsNumeric(event) {
+        var key = event.which;
+        if (!(key > 47 && key < 58) && key != 8)
+            event.preventDefault();
+    }
+
+    $('#btnSaveTargetScore').click(function () {
+
+        var sgoGroups = [];
+
+        var isValid = 1;
+        var maxTotalTeacherSGOScoreCustom = 4;
+
+        $.each($('input[name="txtTeacherSGOScoreCustom"]'), function (i, item) {
+            if ($(item).val() == '') {
+                CustomAlert('Please set all scores.');
+                isValid = 0;
+                return false;
+            }
+
+            sgoGroups.push({
+                SGOGroupID: $(item).attr('data'),
+                TeacherSGOScoreCustom: $(item).val(),
+            });
+        });
+
+        if (isValid == 0)
+            return;
+
+        if ($('#txtTotalTeacherSGOScoreCustom').val() == '0' || $('#txtTotalTeacherSGOScoreCustom').val() == '') {
+            CustomAlert('Please set total teacher score.');
+            return;
+        }
+
+        if (parseInt($('#txtTotalTeacherSGOScoreCustom').val()) > maxTotalTeacherSGOScoreCustom) {
+            CustomAlert('Total teacher score cannot be greater than ' + maxTotalTeacherSGOScoreCustom);
+            return;
+        }
+
+        ShowBlock($('#popupSetTargetScore'), 'Save');
+        $('#btnSaveTargetScore').attr('disabled', 'disabled');
+        $.ajax({
+            type: "POST",
+            url: '@Url.Action("SetTeacherScoreCustom", "SGOProgressMonitor")',
+            data: {
+                sgoId: $('input[name="sgoId"]').val(),
+                sgoGroupData: JSON.stringify(sgoGroups),
+                totalTeacherSGOScoreCustom: $('#txtTotalTeacherSGOScoreCustom').val()
+            }
+        })
+            .done(function (response) {
+                $('#popupSetTargetScore').unblock();
+                closePopup('popupSetTargetScore');
+                loadSgoResultContent();
+
+                if (response.result == true) {
+                    $('#btnSubmitForApprove').removeAttr('disabled');
+                } else {
+                    $('#btnSubmitForApprove').attr('disabled', 'disabled');
+                }
+            });
+    });
+</script>

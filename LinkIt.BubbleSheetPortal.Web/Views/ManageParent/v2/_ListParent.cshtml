@@ -1,0 +1,460 @@
+<style>
+    #portal-v2-containter #dataTable_wrapper {
+        margin: 0;
+    }
+    #portal-v2-containter table.datatable {
+        table-layout: fixed;
+    }
+    #portal-v2-containter table tbody td:first-child:not(:empty) a {
+        margin-left: 0.5em;
+        display: inline-block;
+    }
+    #portal-v2-containter table thead tr th:first-child {
+        padding-left: .7em;
+    }
+    #portal-v2-containter .modal-component-body {
+        padding: 0 1.5em 1.5em 1.5em;
+    }
+    #portal-v2-containter .modal-component-header {
+        padding: 1.5em 0 0 1.5em;
+    }
+</style>
+<div class="block-border" id="divParent">
+    <div class="block-content form">
+        <div class="d-flex flex-row justify-content-between">
+            <h1 id="manage-parent-commands">
+                Parents
+            </h1>
+            <div>
+                <button class="btn-plus-icon btn-text" onclick="redirectToAddParentPage()">Add new parent</button>
+            </div>
+        </div>
+        <div class="d-inline-flex flex-row btn-action-table me-2" style="gap: .5em; display: none; position: relative; ">
+            <button class="btn-blue" id="btnGenRCode" :disabled="selectedUsersCount <= 0">
+                Generate registration code
+            </button>
+            <button class="btn-blue" v-on:click="showingDistributeModal = !showingDistributeModal" :disabled="selectedUsersCount <= 0">
+                Distribute
+            </button>
+        </div>
+        <div style="display: none;" id="formCheckDeactivate" class="form-check form-switch d-flex flex-row align-items-center ms-0 ps-0 float-left">
+            <label class="form-check-label mb-0 deactivated-title" for="btnShowInactiveParent">Show Inactive Parents:</label>
+            <span class="ms-1 me-3" id="showInactiveParentText">Off</span>
+            <div>
+                <input class="form-check-input" type="checkbox" id="btnShowInactiveParent">
+            </div>
+        </div>
+        <div id="divNotifications"></div>
+
+        <div class="list-parent">
+            <table id="dataTable" class="datatable table" width="100%">
+                <thead>
+                    <tr>
+                        <th scope="col" class="black-cell"style="width: 100px; max-width: 105px"><input type="checkbox" id="rcodeCheckAll" /></th>
+                        <th scope="col" style="min-width: 120px !important; word-break: break-all;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Name
+                        </th>
+                        <th scope="col" style="min-width: 150px !important;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Students
+                        </th>
+                        <th scope="col" style="width: 170px; max-width: 170px !important;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Registration Code
+                        </th>
+                        <th scope="col" style="width: 15%; max-width: 160px !important;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Email
+                        </th>
+                        <th scope="col" style="width: 15%; max-width: 120px !important;">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Email Sent
+                        </th>
+                        <th scope="col">
+                            <span class="column-sort">
+                                <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                            </span>
+                            Last Login
+                        </th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody style="word-break: break-word;">
+                    <tr>
+                        <td style="height: 60px;"></td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div id="dialogManualGrading"></div>
+<modal-component v-bind:show.sync="showingDistributeModal" v-bind:width="400" id="modal-distribute">
+    <div slot="close"><span></span></div>
+    <div slot="header">
+        <div class="block-heading">
+            <h1 class="block-heading-item is-active">DISTRIBUTE</h1>
+        </div>
+    </div>
+    <div slot="body" class="mt-4">
+        <input type="radio" id="distribute-by-email" name="distribute-type" v-model="distributeMethod" value="distribute-by-email" />
+        <label for="distribute-by-email" class="ms-1"><b>Distribute by Email</b></label><br />
+        <div style="margin-left:26px" v-show="checkedDistributeByEmail">You will be sending emails to <b>{{selectedUsersCount}}</b> user{{(selectedUsersCount > 0 ? 's' : '')}}. Emails will only be sent to users who have email addresses on file.</div>
+
+        <input style="margin-top: 20px" type="radio" id="distribute-by-print-page" name="distribute-type" v-model="distributeMethod" value="distribute-by-print-page" />
+        <label for="distribute-by-print-page" class="ms-1"><b>Distribute by Printed Page</b></label>
+        <div style="margin-left:26px" v-show="checkedDistributeByPrintedPage">You will be printing registration codes for <b>{{selectedUsersCount}}</b> user{{(selectedUsersCount > 0 ? 's' : '')}}</div>
+
+    </div>
+    <div slot="footer">
+        <button id="btnCancel" type="button" v-on:click="showingDistributeModal = false">Cancel</button>
+        <button id="btnSubmit" type="submit" v-on:click="submitDistribute" name="distribute">Submit</button>
+    </div>
+
+</modal-component>
+
+<div id="idPopupPrintConfirm" class="dialog" style="display:none">
+    <section>
+        <div class='block-border'>
+            <div class='block-content block-24'>
+                <h2 class="header">Parent Detail Print</h2>
+                <a class="d-inline-block" style="margin-bottom: 2rem" id="idlinkFilePrint" target="_blank" href="#">
+                    <u>
+                        Click here to open PDF file
+                    </u>
+                </a>
+                <div class="modal-component-footer" style="margin: 0 -24px -24px -24px">
+                    <div slot="footer">
+                        <button id="idbtnClosePrintPopup" type="button" onclick="closePrintPopup();">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script type="text/javascript">
+
+    $(document).ready(function () {
+        InitLoadParent();
+    });
+
+    function InitLoadParent() {
+        var pageSize = _historyData && _historyData.pageSize > 0 ? parseInt(_historyData.pageSize) : 50;
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetParentList", "ManageParent")',
+            oSearch: {
+                sSearch: _historyData.searchText
+            },
+            onSearch: storageSession,
+            oLanguage: { "sZeroRecords": "No results meet your search criteria. Try changing your date range or other filters and search again." },
+            fnServerParams: function (aoData) {
+
+                var currentParams = currentFilterParams || _historyData;
+                aoData.push(
+                    { name: "districtId", value: !isFirstLoad ? -1 : (currentParams && currentParams.districtID ? currentParams.districtID : $('#selectDistrict').val()) },
+                    { name: "parentName", value: currentParams.parentName},
+                    { name: "studentName", value: currentParams.studentName},
+                    { name: "gradeId", value: currentParams && currentParams.gradeID ? currentParams.gradeID : $('#selectGrade').val() },
+                    { name: "schoolId", value: currentParams && currentParams.schoolID ? currentParams.schoolID : $('#selectAdminSchool').val() },
+                    { name: "showInactiveParent", value: currentParams && currentParams.showInactive ? currentParams.showInactive : showInactiveParent },
+                    { name: "loginTimeFrame", value: currentParams && currentParams.loginTimeFrame ? currentParams.loginTimeFrame : $('#selectLoginTimeframe').val() },
+                    { name: "hasRegistrationCode", value: currentParams && currentParams.hasRegistrationCode ? currentParams.hasRegistrationCode : $('#selectHasRegistrationCode').val() }
+                );
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: pageSize,
+            aLengthMenu: [50, 100, 500, 1000],
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'string', sName: 'UserId', mData: 'UserId', bSearchable: false, bSortable: false, sWidth: '100px' },
+                { sType: 'string', sName: 'ParentFullName', mData: 'ParentFullName', bSearchable: true, bSortable: true, bAutoWidth:false },
+                { sType: 'string', sName: 'SchoolNames', mData: 'SchoolNames', bSearchable: true, bSortable: true, bAutoWidth: false  },
+                { sType: 'string', sName: 'RegistrationCode', mData: 'RegistrationCode', bSearchable: true, bSortable: true, bAutoWidth: false, sWidth: '170px' },
+                { sType: 'string', sName: 'Email', mData: 'Email', bSearchable: true, bSortable: true, bAutoWidth: false },
+                { sType: 'string', sName: 'EmailLastSent', mData: 'EmailLastSent', bSearchable: true, bSortable: true, bAutoWidth: false },
+                { sType: 'string', sName: 'LastLoginDate', mData: 'LastLoginDate', bSearchable: true, bSortable: true, bAutoWidth: false, sWidth: '120px' },
+                { sType: 'string', sName: 'Active', mData: 'Active', bSearchable: false, bSortable: true, bVisible: false },
+
+            ],
+            fnRowCallback: function (nRow, aData) {
+
+                $(getCellBymData('#dataTable', 'UserId', nRow)).html(setIconVisibility(aData['UserId'], aData['Active']));
+                $(getCellBymData('#dataTable', 'SchoolNames', nRow), nRow).html(buildHtmlForSchoolNames(aData['SchoolNames']));
+
+                $(getCellBymData('#dataTable', 'EmailLastSent', nRow), nRow).html(displayDateWithFormatJsonDate(aData['EmailLastSent'], true));
+                $(getCellBymData('#dataTable', 'LastLoginDate', nRow), nRow).html(displayDateWithFormatJsonDate(aData['LastLoginDate'], false));
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), 'Loading');
+                ManageParentApp.selectedUsers = [];
+                $('#rcodeCheckAll').prop("checked", false);
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('.with-tip').tip();
+                $('.tipSchoolNameDetail').qtip({
+                    hide: {
+                        fixed: true,
+                        delay: 300
+                    },
+                    style: {
+                        classes: 'qtip-students qtip-bootstrap qtip-shadow'
+                    },
+                    position: {
+                        at: 'center right',
+                        my: 'left center',
+                        viewport: $('#divParent'),
+                        adjust: {
+                            method: 'none shift'
+                        }
+                    }
+                });
+                var _pageSizeDefault = _historyData.pageSize ? _historyData.pageSize : 50;
+                var pageSizeGrid = $('#dataTable_length select').val();
+                if (_pageSizeDefault != pageSizeGrid) {
+                    storageSession();
+                    _pageSizeDefault = pageSizeGrid;
+                }
+                $(".with-tip").tip();
+                auditCheckbox();
+            },
+            fnInitComplete: function () {
+                tranformSearchInputDataTable('dataTable_filter');
+                var elAction = $(".btn-action-table")
+                $(".block-custom-header .data-table-action").prepend(elAction);
+                $(".list-parent .block-custom-header").append($('#formCheckDeactivate'));
+                $('#formCheckDeactivate').show()
+                elAction.show();
+            }
+        }
+        $("#dataTable").data("options", options);
+    }
+
+    function buildHtmlForSchoolNames(schoolNames) {
+
+        if (!schoolNames || schoolNames.length == 0) {
+            return "";
+        }
+
+        return schoolNames.map(function (item, index) {
+            var _toolTip = item.SchoolName;
+            return item.StudentNames.map(function (stuName) {
+                return { html: '<div><span class="tipSchoolNameDetail" title="' + _toolTip + '">' + stuName + '</span></div>', studentName: stuName };
+
+            });
+        }).flat()
+            .sort(function (student1, student2) {
+                return (student1.studentName || '').toLowerCase() >= (student2.studentName || '').toLowerCase() ? 1 : -1;
+            }).map(function (studentDetail) {
+                return studentDetail.html;
+            }).join('<br>');
+    }
+
+    function setIconVisibility(userId, active) {
+        var iconString = "";
+
+        var detailsIcon = '<span class="icon fa-solid fa-pencil icon-grey"></span>';
+        var detailsString = '<input type="checkbox" did="' + userId + '" class="rcode" onchange="rcode_onchange(this,' + userId + ')" />';
+        detailsString += '<a title="Edit" class="with-tip" href="@Url.Action("Edit", "ManageParent")/?parentUserId=' + userId + '">' + detailsIcon +'</a>';
+
+        var actionIcon = '';
+        var actionString = '';
+        if (active == true) {
+            actionIcon = '<span class="icon fa-solid fa-circle-minus icon-red"></span>';
+            actionString = '<a href="javascript:void(0);" class="with-tip" title="Deactivate" onclick="deactivateParent(event,' + userId + ')">' + actionIcon +'</a>';
+        } else {
+            actionIcon = '<span class="icon fa-solid fa-circle-plus icon-green"></span>';
+            actionString = '<a href="javascript:void(0);" class="with-tip" title="Activate" onclick="activateParent(event,' + userId + ')">' + actionIcon +'</a>';
+        }
+
+        iconString += detailsString + actionString;
+
+        return '<div class="d-flex flex-row align-items-center justify-content-between">' + iconString + '</div>';
+    }
+
+    $('#btnShowInactiveParent').click(function() {
+        showInactiveParent = !showInactiveParent;
+        if (_historyData) {
+            _historyData.showInactive = showInactiveParent;
+        }
+        $("#showInactiveParentText").html(showInactiveParent ? "On" : "Off");
+        // Just apply searching when Apply filter button is active
+        if ($('#filterSheets').attr('disabled') != 'disabled') {
+            var dataTable = $('#dataTable').dataTable();
+            var settings = dataTable.fnSettings();
+            dataTable.fnDraw();
+
+            storageSession();
+        }
+
+        $('#rcodeCheckAll').prop("checked", isAllSelected);
+        if (!isAllSelected) {
+            $('#rcodeCheckAll').removeClass("input-checked-v2");
+        }
+    });
+
+
+    function auditCheckbox() {
+        var isChecked = $('#rcodeCheckAll').is(":checked");
+        if (!isChecked) {
+            $('#rcodeCheckAll').removeClass("input-checked-v2");
+        }
+    }
+
+    function activateParent(event, parentId) {
+        event.preventDefault();
+
+        var confirmMessage = "Do you want to activate this parent?";
+        var params = { parentId, cbYesBtnFuncName: 'confirmActiveParent(' + parentId + ')', cbCancelBtnFuncName: 'closeDiloagCustomDialogV2()' }
+        showCustomDialogV2(confirmMessage, params)
+    }
+
+    function confirmActiveParent(parentId) {
+        ShowBlock($('#divParent'), 'Loading');
+        $.post('@Url.Action("ActivateParent")', { parentUserId: parentId }, function(response) {
+            $('#divParent').unblock();
+            if (response.Success == true) {
+                LinkIt.success('#divNotifications', 'Parent is activated');
+                ui.dataTable.fnDraw();
+            } else {
+                alert('An error has occured. Please try again.');
+            }
+            closeDiloagCustomDialogV2();
+        });
+    }
+
+
+    function deactivateParent(event, parentId) {
+        event.preventDefault();
+
+        var confirmMessage = "Do you want to deactivate this parent?";
+        var params = { parentId, cbYesBtnFuncName: 'confirmDeactiveParent(' + parentId + ')', cbCancelBtnFuncName: 'closeDiloagCustomDialogV2()' }
+        showCustomDialogV2(confirmMessage, params)
+
+    }
+
+    function confirmDeactiveParent(parentId) {
+        ShowBlock($('#divParent'), 'Loading');
+        $.post('@Url.Action("DeactivateParent")', { parentUserId: parentId }, function (response) {
+            $('#divParent').unblock();
+
+            if (response.Success == true) {
+                LinkIt.success('#divNotifications', 'Parent is deactivated');
+                ui.dataTable.fnDraw();
+            } else {
+                var vMessage = 'An error has occured. Please try again.';
+                showCustomDialogV2(vMessage, { cbYesBtnFuncName: 'closeDiloagCustomDialogV2()' })
+            }
+            closeDiloagCustomDialogV2();
+        });
+    }
+
+    function closeDiloagCustomDialogV2() {
+        $("#customDialogMessageV2").dialog("close")
+    }
+
+    function showCustomDialogV2( message, params) {
+        var confirmParams = { message, cbYesBtnFuncName: params.cbYesBtnFuncName };
+
+        if (params.cbCancelBtnFuncName) {
+            confirmParams.cbCancelBtnFuncName = params.cbCancelBtnFuncName;
+        }
+
+        if (params.cbCloseBtnFuncName) {
+            confirmParams.cbCloseBtnFuncName = params.cbCloseBtnFuncName;
+        }
+        confirmMessageV2(
+            confirmParams,
+            {
+                dialogAttr: {
+                    attr: {
+                        id: 'customDialogMessageV2'
+                    }
+                }
+            }
+        )
+    }
+
+    function redirectToAddParentPage() {
+        var link = '@Url.Action("Add", "ManageParent")';
+        window.location.href = link;
+    }
+
+    function rcode_onchange(t, parentId) {
+        var isAllSelected = true;
+        ManageParentApp.updateSelectedUsers();
+        $("input.rcode").each(function (index, elem) {
+            if (!$(elem).is(':checked')) {
+                isAllSelected = false;
+            }
+        });
+
+        $('#rcodeCheckAll').prop("checked", isAllSelected);
+        if (!isAllSelected) {
+            $('#rcodeCheckAll').removeClass("input-checked-v2");
+        }
+    }
+
+    $('#btnGenRCode').click(function () {
+        var idlist = '';
+        $("input.rcode:checked").each(function (index, elem) {
+            idlist += $(elem).attr('did') + ',';
+        });
+
+        if (idlist == '') {
+            CustomAlert('Please select parent.');
+            return;
+        } else {
+            ShowBlock($('#divParent'), 'Loading');
+            $.post('@Url.Action("GenRCode")', { idList: idlist }, function (response) {
+                $('#divParent').unblock();
+                if (response.Result == true) {
+                    LinkIt.success('#divNotifications', 'Registration code(s) generated successfully');
+                    ui.dataTable.fnDraw();
+                } else {
+                    alert('An error has occured. Please try again.');
+                }
+            });
+        }
+    });
+
+    $('#rcodeCheckAll').click(function () {
+        $("input.rcode").each(function (index, elem) {
+            $(elem).prop("checked", $('#rcodeCheckAll').is(':checked'));
+        });
+        ManageParentApp.updateSelectedUsers();
+    });
+
+        function closePrintPopup() {
+        $("#idPopupPrintConfirm").dialog("close");
+    }
+</script>
+

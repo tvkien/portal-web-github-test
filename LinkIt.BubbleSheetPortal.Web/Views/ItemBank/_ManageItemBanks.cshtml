@@ -1,0 +1,655 @@
+<style type="text/css">
+     tr.even.row_selected td {
+         background-color: #82CAFA!important;
+     }
+     tr.odd.row_selected td {
+         background-color: #82CAFA!important;
+     }
+     #dataTableItemBank_wrapper {
+         margin-top: 34px;
+     }
+     #dataTableItemBank tbody tr {
+         height: 100% !important;/* Fix for IE9 */
+     }
+     #dataTableItemBank tr td {
+         padding-left: 4px;
+         padding-right: 4px;
+     }
+     /* No data available in table */
+     #dataTableItemBank .dataTables_empty div {
+         width: 455px !important;
+     }
+     .scrollItem thead,
+     .scrollItem tbody{display: block;}
+     .scrollItem tbody{
+         height: 400px;
+         overflow: auto;
+         overflow-x: hidden;
+     }
+     .scrollItem{
+         width: 463px !important;
+     }
+     .scrollItem tbody td {
+         /*word-break: break-all;*/ /* Not apply for whole table, just apply for long word in each td*/
+         word-wrap: break-word;
+     }
+     .scrollItem tbody td:nth-of-type(1) div {
+         width: 50px;
+     }
+     .scrollItem tbody td:nth-of-type(2) div
+     {
+         width: 227px;
+     }
+     .scrollItem tbody td:nth-of-type(3) div
+     {
+         width: 145px;
+     }
+     .noscrollItem tbody td:nth-of-type(3) div
+     {
+         width: 160px;
+     }
+
+     /*For IE9*/
+     /*header*/
+    #dataTableItemBankHeader thead tr td:nth-of-type(1) {
+        width: 44px;
+    }
+    #dataTableItemBankHeader thead tr td:nth-of-type(2) {
+        width: 245px;
+    }
+    #dataTableItemBankHeader thead tr td:nth-of-type(3) {
+        width: 165px;
+    }
+    /*body*/
+    .scrollItemIE9 {
+        width: 463px !important;
+    }
+     .scrollItemIE9 tbody td:nth-of-type(2) div
+    {
+         width: 224px;
+    }
+    .scrollItemIE9 tbody td:nth-of-type(3) div
+    {
+        width: 145px;
+        padding-right: 15px;
+    }
+    .noscrollItemIE9 tbody td:nth-of-type(3) div
+    {
+        width: 157px;
+        padding-right: 18px;
+    }
+    #divdataTableItemBank {
+        height: -20px;
+    }
+    #divdataTableItemBank {
+        margin-top: -20px !important;
+    }
+ </style>
+<article class="container_12" style="width: 100%">
+    <section class="grid_12" style="width: 93%">
+        <div class="block-border" style="width: 100%">
+            <div class="block-content form" id="divOnTop" style="background-color: #fcfcfc">
+                <h1>Item Banks
+                    <a href="javascript:void(0)" class="CreateNewBank">
+                        <img src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                        Add New Item Bank
+                    </a>
+                    <div class="clearfix"></div>
+                </h1>
+                @if (ViewBag.IsNetworkAdmin)
+                {
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <label>State</label>
+                                <select id="selectState" class="full-width"></select>
+                            </p>
+                        </div>
+                        <div class="colx2-right">
+                            <p>
+                                <label>@LabelHelper.DistrictLabel</label>
+                                <select id="selectDistrict" class="full-width"></select>
+                            </p>
+                        </div>
+                    </div>
+                }
+                @if (ViewBag.AbleToViewHideTeacherBanks)
+                {
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <input type="checkbox" id="ckbHideTeacherBanks" checked="checked"><!-- Hide banks created by teachers-->
+                                <label>Hide banks created by teachers</label>
+                            </p>
+                        </div>
+                        <div class="colx2-right">
+                            <p>
+                                <input type="checkbox" id="ckbHideOtherPeopleBanks"><!-- Hide banks created by other people-->
+                                <label>Hide banks created by other people</label>
+                            </p>
+                        </div>
+                    </div>
+                }
+
+                    <table id="dataTableItemBank" class="datatable table no-margin scrollItem">
+                        <thead>
+                            <tr>
+                                <th scope="col"></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Item Bank
+                                </th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Author Group
+                                </th>
+                                <th scope="col"></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Author Name
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody style="cursor: pointer"></tbody>
+                    </table>
+</div>
+        </div>
+    </section>
+</article>
+<script type="text/javascript">
+    var oTableItemBank;
+    var itemBankId = 0;
+    var itemDistrictId = 0;
+    var keepCurrentPageItemBank = 0;
+    var displayStartItemBank = 0;
+
+    $(function() {
+        removeTips();
+
+        if ('@ViewBag.IsNetworkAdmin' === 'True') {
+            $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function(states) {
+                addDefaultOption($('#selectState'), "State");
+                addSelectListItems($('#selectState'), states);
+                $('#selectState').val(@ViewBag.StateId);
+                $('#selectState').trigger('change');
+            });
+
+            $('#selectState').change(function() {
+                populateDistricts();
+            });
+
+            $('#selectDistrict').change(function() {
+                if ($('#selectDistrict').val() != 'select') {
+                    oTableItemBank.fnDraw();
+                }
+            });
+        }
+
+        $('#dataTableItemBank tbody').unbind('click');
+        $('#dataTableItemBank tbody').on('click', function(event) {
+            var target = event.target;
+            var targetId = target.id;
+            var targetTagName = target.tagName;
+            var targetParent = target.parentNode;
+            var targetParentId = targetParent.id;
+            var targetParentTagName = targetParent.tagName;
+            var isTarget = targetTagName.toUpperCase() == 'TD' && targetId != null && targetId.length > 0;
+            var isTargetParent = targetParentTagName.toUpperCase() == 'TD' && targetParentId != null && targetParentId.length > 0;
+
+            $(oTableItemBank.fnSettings().aoData).each(function() {
+                $(this.nTr).removeClass('row_selected');
+            });
+
+            if ('@ViewBag.IsNetworkAdmin' == 'True') {
+                itemDistrictId = $('#selectDistrict').val();
+            }
+
+            if (isTarget) {
+                $(targetParent).addClass('row_selected');
+                itemBankId = targetId;
+            }
+
+            // now there is always a div inside td
+            // event.target is now div not td
+            if (isTargetParent) {
+                $(targetParent.parentNode).addClass('row_selected');
+                itemBankId = targetParentId;
+            }
+
+            if (isTarget || isTargetParent) {
+                $('#SelectedItemBankId').val(itemBankId);
+                //ui.dataTableSet.fnReloadAjax('@Url.Action("LoadItemSets")?itemBankId=' + itemBankId + '&districtId=' + itemDistrictId);
+
+                // Fix issue: LNKT-31965
+                ui.dataTableSet.fnReloadAjax('@Url.Action("LoadItemSets")?itemBankId=' + itemBankId);
+                //oTableItemSet.fnDraw();
+            }
+        });
+
+        var optionsItemBank = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            sAjaxSource: getAjaxSource(),
+            fnServerParams: function (aoData) {
+                var isHideTeacherBanks = $('#ckbHideTeacherBanks').is(':checked');
+                var isHideOtherPeopleBanks = $('#ckbHideOtherPeopleBanks').is(':checked');
+
+                aoData.push(
+                    { name: 'hideTeacherBanks', value: isHideTeacherBanks },
+                    { name: 'hideOtherPeopleBanks', value: isHideOtherPeopleBanks }
+                );
+
+                if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                    var stateIdVal = $('#selectState').val();
+                    var districtIdVal = $('#selectDistrict').val();
+                    if (districtIdVal != null && districtIdVal != 'select') {
+                        aoData.push(
+                            { name: 'stateId', value: stateIdVal },
+                            { name: 'districtId', value: districtIdVal }
+                        );
+                    }
+                }
+
+                //TuanVo:encode text in filter searchbox
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(htmlEncode(item.value));
+                        }
+                        break;
+                    }
+                }
+            },
+            bAutoWidth: false,
+            iDisplayLength: 100,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTIBankId', bSearchable: false, bSortable: false, sWidth: "44px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true, sWidth: "245px" },
+                { sType: 'string', sName: 'AuthorGroup', bSearchable: true, bSortable: true, sWidth: "165px" },
+                { sType: 'integer', sName: 'AuthorGroupId', bSearchable: false, bSortable: false, sWidth: "0px", bVisible: false },
+                { sType: 'string', sName: 'AuthorName', bSearchable: true, bSortable: false, sWidth: "0px", bVisible: false }
+            ],
+            fnRowCallback: function(nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibility(aData[0], aData[1]));
+                $('td:eq(1)', nRow).attr('id', aData[0]); //TuanVo: Add attribute Id for column Item Bank as QTIBankId
+                $('td:eq(2)', nRow).attr('id', aData[0]); //TuanVo: Add attribute Id for column Item Bank as QTIBankId
+                $('td:eq(2)', nRow).html(SetDefaultAuthorGroupName(aData[0], aData[3], aData[2]));
+                addWordBreakToTableCell($('td:eq(2)', nRow), 15, aData[2]);
+                addWordBreakToTableCell($('td:eq(1)', nRow), 25, aData[1]);
+            },
+            fnPreDrawCallback: function() {
+                ShowBlock($('#dataTableItemBank'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function() {
+                $('#dataTableItemBank').unblock();
+                $('.with-tip').tip();
+                formatTableForAddingVertialScrollBar('dataTableItemBank', 'scrollItem', 'noscrollItem', 'scrollItemIE9', 'noscrollItemIE9');
+            }
+        };
+
+        var $dataTableItemBank = $('#dataTableItemBank');
+        $dataTableItemBank.data("options", optionsItemBank);
+        oTableItemBank = $dataTableItemBank.dataTable();
+        oTableItemBank.fnSetFilteringDelay(500); //TuanVo: delay searching when user type in search box to save time of query
+
+        $('#ckbHideTeacherBanks').change(function () {
+            oTableItemBank.fnDraw();
+        });
+        $('#ckbHideOtherPeopleBanks').change(function () {
+            oTableItemBank.fnDraw();
+        });
+
+        function SetDefaultAuthorGroupName(itemBankId, authorGroupId, strName) {
+            var addAuthorGroup = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle.png")';
+            var addAuthorGroupString = '<a href="javascript:void(0)" style="float:right;" title="Assign Author Group " itembankId="' + itemBankId + '" class="with-tip AddAuthorGroup"><img src="' + addAuthorGroup + '" width="16" height="16"></a>';
+
+            var removeAuthorGroup = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/minus-red.png")';
+            var removeAuthorGroupString = '<a href="javascript:void(0)" style="float:right;" title="Deassign Author Group" itembankId="' + itemBankId + '" authorGroupId="' + authorGroupId + '" class="with-tip removeAuthorGroup"><img src="' + removeAuthorGroup + '" width="16" height="16"></a>';
+
+            if (authorGroupId <= 0)
+                return addAuthorGroupString;
+            return '<span style="font-size:11px">' + strName + '</span>' + ' ' + removeAuthorGroupString;
+        }
+
+        function setIconVisibility(itemBankId, itemName) {
+            var editIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/pencil.png")';
+            var editString = '<a href="javascript:void(0)" title="Item Bank Properties" itemBankId="' + itemBankId + '" class="with-tip EditItemBank"><img src="' + editIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+            var deleteIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/cross-circle.png")';
+            var deleteIconString = '<a href="javascript:void(0)" itemName="' + itemName + '" title="Delete Item Bank" itemBankId="' + itemBankId + '" class="with-tip deleteItembanks"><img src="' + deleteIcon + '" width="16" height="16" style="margin-right: 0px"></a>';
+
+            return editString + deleteIconString;
+        }
+
+        $('.deleteItembanks').live('click', function () {
+            var itemBankId = $(this).attr('itemBankId');
+            var itemBankName = $(this).attr('itemName');
+            LoadConfirmDeleteItemBank(itemBankId, itemBankName);
+        });
+
+        $('.AddAuthorGroup').live('click', function () {
+            ShowBlock($('#dataTableItemBank'), "Loading");
+            var itemBankId = $(this).attr('itemBankId');
+            var worker = $('<div />');
+
+            worker
+                .addClass("dialog")
+                .attr("id", "AddAuthorGroupDialog")
+                .appendTo("body")
+                .load('@Url.Action("LoadAuthorGroupListForItemBank", "Assessment")/?itemBankId=' + itemBankId, function () {
+                    worker.dialog({
+                        title: $(this).attr("Add @LabelHelper.DistrictLabel to group"),
+                        close: function () {
+                            $('.ui-widget-overlay').remove();
+                            $(this).remove();
+                            $('#dataTableItemBank').dataTable().fnDraw(false);
+                        },
+                        modal: false,
+                        width: 980,
+                        resizable: false
+                    });
+                });
+
+            showModalDialogBG();
+        });
+
+        $('.removeAuthorGroup').live('click', function () {
+            if (confirm('Are you sure you want to remove this AuthorGroup?')) {
+                var itemBankId = $(this).attr('itemBankId');
+                var authorGroupId = $(this).attr('authorGroupId');
+                $.post('@Url.Action("RemoveAuthorGroup")', { itemBankId: itemBankId, authorGroupId: authorGroupId }, function (response) {
+                    if (response == true) {
+                        $('#dataTableItemBank').dataTable().fnDraw(false);
+                    } else {
+                        //alert(response.message);
+                        CustomAlert(response.message, true);
+                    }
+                });
+            }
+        });
+
+        $('.viewItemSet').live('click', function () {
+            var itemBankId = $(this).attr('itemBankId');
+            //set selected color for row
+            $(oTableItemBank.fnSettings().aoData).each(function () {
+                $(this.nTr).removeClass('row_selected');
+            });
+            $(this.parentNode.parentNode).addClass('row_selected');//row_selected is defined in Index.cshtml
+
+            //showItemSet
+            $("#SelectedItemBankId").val(itemBankId);
+            oTableItemSet.fnDraw();
+        });
+
+        $('.EditItemBank').live('click', function () {
+            var itemBankId = $(this).attr('itemBankId');
+            LoadEditItemBak(itemBankId);
+        });
+
+        var isOpenAddNewItemBank = false;
+        $('.CreateNewBank').live('click', function () {
+            var url = '@Url.Action("LoadCreateItemBank", "ItemBank")';
+            if (isOpenAddNewItemBank == true) {
+                return;
+            }
+            isOpenAddNewItemBank = true;
+            $.ajax(
+                {
+                    url: url,
+                    cache: false
+                })
+                .done(function (html) {
+                    $("#divOnTop").append('<div id="PopupCreateItemBank" class="dialog"></div>');
+                    $("#PopupCreateItemBank").append(html);
+                    $('#PopupCreateItemBank').dialog({
+                        title: "",
+                        open: function () {
+                            //Create overlay for popup
+                            $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        },
+                        beforeclose: function () {
+                            //TODO if you want do anything after close popup.
+                            return true;
+                        },
+                        close: function () {
+                            $('#dataTableItemBank').dataTable().fnDraw(false);
+                            $('#PopupCreateItemBank').remove();
+                            $("body .my-overlay").remove();
+                            isOpenAddNewItemBank = false;
+                        },
+                        modal: false,
+                        width: 500,
+                        resizable: false
+                    });
+
+                });
+
+            $(".close").unbind("click");
+            $(".close").live("click", function (e) {
+                e.preventDefault();
+            });
+        });
+
+    });
+
+    function DeleteItemBankByID(Id) {
+        $.post('@Url.Action("DeleteItemBank")', { itemBankId: Id }, function (response) {
+            $(".dialog").dialog("close");
+            if (response == true) {
+                $('#dataTableItemBank').dataTable().fnDraw(false);
+            } else {
+                alert(response.message);
+            }
+        });
+    }
+
+    function LoadConfirmDeleteItemBank(itemBankId, itemBankName) {
+        itemBankName = htmlEncode(itemBankName);
+        var url = '@Url.Action("LoadConfirmDeleteItemBank", "ItemBank")/?itembankId=' + itemBankId + '&itembankName=' + encodeURIComponent( itemBankName);
+        $.ajax({
+            url: url,
+            cache: false
+        })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="PopupConfirmDeleteItemBank" class="dialog"></div>');
+                $("#PopupConfirmDeleteItemBank").append(html);
+                $('#PopupConfirmDeleteItemBank').dialog({
+                    title: "Popup Confirm Delete Item Bank",
+                    open: function () {
+                        //Create overlay for popup
+                        $("body").append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+
+                        $('#PopupConfirmDeleteItemBank').remove();
+                        $("body .my-overlay").remove();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    function getAjaxSource() {
+        if ('@ViewBag.IsNetworkAdmin' === 'True') {
+            return '@Url.Action("LoadItemBanksForNetworkAdmin")';
+        }
+
+        return '@Url.Action("LoadItemBanks")';
+    }
+
+    function populateDistricts() {
+        $('#selectDistrict').empty();
+        var stateValue = $('#selectState').val();
+        if (stateValue != 'select') {
+            $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function(districts) {
+                addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                addSelectListItems($('#selectDistrict'), districts);
+            });
+        }
+    }
+
+    function LoadEditItemBak(itemBankId) {
+        ShowBlock($('#dataTableItemBank'), "Loading");
+        var url = '@Url.Action("EditItemBank", "ItemBank")?itemBankId=' + itemBankId;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divOnTop").append('<div id="PopupEditItemBank" class="dialog"></div>');
+                $("#PopupEditItemBank").append(html);
+                $('#PopupEditItemBank').dialog({
+                    title: "",
+                    open: function () {
+                        $('body').append('<div class="my-overlay" style="z-index: ' + ($.ui.dialog.currentZ() - 1) + ';width:' + $(document).width() + 'px;height:' + $(document).height() + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('body .my-overlay').remove();
+                        $('#PopupEditItemBank').remove();
+                        $('#dataTableItemBank').dataTable().fnDraw(false);
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+    }
+
+    function saveItemBank() {
+        //TODO: Update ItemBank
+        var QtiBankId = $('#QtiBankId').val();
+        var vName = $('#Name').val();
+        if (vName.trim() != '') {
+            $('#btnSaveItemBank').attr('disabled', true);
+            $.ajax({
+                url: '@Url.Action("UpdateItemBank")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ QtiBankId: QtiBankId, Name: vName }),
+                success: function (response) {
+                    if (response == true) {
+                        $('#success-message').show();
+                        setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                    } else {
+                        addErrorMessages(response);
+                        $('#btnSaveItemBank').removeAttr('disabled');
+                    }
+                }
+            });
+        }
+        else {
+            var errorMessage = { ErrorList: [{ ErrorMessage: 'Please input Item Bank Name' }] };
+            addErrorMessages(errorMessage);
+        }
+    }
+
+    function cancelItemBank() {
+        $(".dialog").dialog("close");
+    }
+
+    function createItemBank() {
+        //Check exist ItemBank with UserID
+        var vBankName = $("#inputItemBankName").val();
+        if (vBankName.trim() != '') {
+
+            $('#btnCreateItemBank').attr('disabled', true);
+            vBankName = encodeURIComponent(htmlEncode(vBankName));
+            $.post('@Url.Action("CreateItemBank")', { bankName: vBankName }, function (response) {
+                if (response == true) {
+                    $('#success-message').show();
+                    setTimeout(function () { $(".dialog").dialog("close"); }, 2000);
+                } else {
+                    addErrorMessages(response);
+                    $('#btnCreateItemBank').removeAttr('disabled');
+                }
+            });
+        } else {
+            var response = { ErrorList: [{ ErrorMessage: 'Please input Item Bank Name' }] };
+            addErrorMessages(response);
+        }
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+
+    (function ($) {
+        $.fn.hasScrollBar = function () {
+            return this.get(0).scrollHeight > this.height();
+        }
+
+        $.fn.createHeader = function (options) {
+            var settings = $.extend({
+                contentHeight: 300
+            }, options);
+
+            var newTable = $(this).clone();
+
+            //Clear all content of tbody
+            newTable.css({ "margin": "0px" }).attr({ "id": $(this).attr("id") + "_Header" }).find("tbody").remove();
+
+            //Create html for new header
+            if ($(this).parents(".tblScroll").length == 0) {
+                $(this).wrap("<div class='tblScroll' style='margin-top: -1.667em; position: relative;'></div>");
+                $(this).parents(".tblScroll").prepend("<div class='tblHeader' style='position: absolute; z-index: 2'>" + newTable.prop("outerHTML") + "</div>");
+                $(this).css({ "margin": "0px" });
+                $(this).wrap("<div class='tblContent'></div>").parents(".tblContent").css({ "height": settings.contentHeight + "px", "overflow-x": "hidden", "overflow-y": "auto" });
+                var lastTD = $(this).find("tbody tr").find("td:last");
+
+                var isCurrentOverflow = $('body, html').css("overflow");
+                $('body, html').css('overflow', 'hidden');
+                var screenWidth1 = $(window).width();
+                $('body, html').css('overflow', 'visible');
+                var screenWidth2 = $(window).width();
+                widthOfScrollBar = screenWidth1 - screenWidth2;
+
+                lastTD.css({ "padding-right": widthOfScrollBar + "px" });
+                //Revert status of overflow
+                $('body, html').css('overflow', isCurrentOverflow);
+            }
+        }
+    })(jQuery);
+</script>

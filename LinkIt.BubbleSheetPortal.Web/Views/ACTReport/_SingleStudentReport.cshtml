@@ -1,0 +1,118 @@
+
+@using System.Linq
+@using LinkIt.BubbleSheetPortal.Common
+@using LinkIt.BubbleSheetPortal.Common.Enum
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.ACTReport.ACTReportMasterViewModel
+
+<script>
+    var _actReport = new ACTReport();
+</script>
+
+@if (Model.ReportContentOption == Util.ACTSATReportContentOption_EssayOnly)
+{
+    foreach (var essayFile in Model.BubbleSheetFileSubViewModels)
+    {
+        if (essayFile.PageType == Util.BubbleSheetFileEssayPageType)
+        {
+            <img style="width:200mm;margin-left:-50px;margin-top:-40px" src="@essayFile.ImageUrl" />
+        }
+    }
+}
+else
+{
+    <h1 style="display:none" id="current-date-time"></h1>
+    <h2 style="display:none">
+        @Model.StudentInformation.StudentName
+    </h2>
+    <div class="container_12" style="overflow: visible !important; background-color: white !important;">
+        <div class="grid_12" style="width: 180mm; margin-left: 0px; margin-right: 0px;">
+            <div>
+                <div style="width:50%;float:left">
+                    @if (string.IsNullOrEmpty(Model.DistrictLogoUrl))
+                    {
+                        <p style="font-size:18pt;margin-bottom:5px;">@Model.DistrictName</p>
+                    }
+                    else
+                    {
+                        <img class="district-logo" src="@Model.DistrictLogoUrl" /><br />
+                    }
+
+                    @if (Model.VirtualTestSubTypeId != (int)VirtualTestSubType.NewACT)
+                    {
+                        <span style="font-size:16pt">OLD&nbsp;</span>
+                    }
+
+                    <span style="font-size:16pt">ACT STUDENT REPORT</span><br />
+                    <span style="font-size:11pt">Test: </span><span style="font-weight: bold;font-size:11pt">@Model.StudentInformation.TestName</span>
+                    <span style="font-size:11pt">Test Date: </span><span style="font-weight: bold;font-size:11pt">@Model.StudentInformation.TestDate.DisplayDateWithFormat()</span>
+                </div>
+                <div style="width:45%;float:right;margin-top:5px">
+                    @Html.Partial("_StudentInformation", Model)
+                </div>
+            </div>
+            <div style="clear:both">
+                @Html.Partial("_DiagnosticHistory", Model)
+
+                @if (Model.VirtualTestSubTypeId == (int)VirtualTestSubType.NewACT || Model.UseNewACTStudentFormat)
+                {
+                    if (Model.DiagnosticHistoryViewModel.TestAndScoreViewModels.Any(x => x.VirtualTestSubTypeID == (int)VirtualTestSubType.NewACT))
+                    {
+                        @Html.Partial("_DiagnosticHistoryNewACT", Model)
+                    }
+                }
+            </div>
+            <div style="clear: both;" class="non-break-inside">
+                <p class="black-title">
+                    <span>SCORE IMPROVEMENT</span>
+                </p>
+                <div id="score-improvement-chart"></div>
+            </div>
+            <div>
+                @Html.Partial("_SectionWithTagReport", Model)
+            </div>
+            @if (Model.ReportContentOption == Util.ACTSATReportContentOption_ScoreAndEssay && Model.SectionTagViewModels.Count >= 4
+                && Model.BubbleSheetFileSubViewModels.Any()
+                && Model.BubbleSheetFileSubViewModels.Count > 0)
+            {
+                <div class="break-before">
+                    @foreach (var essayFile in Model.BubbleSheetFileSubViewModels)
+                    {
+                        if (essayFile.PageType == Util.BubbleSheetFileEssayPageType)
+                        {
+                            <img style="width:200mm;margin-left:-50px;margin-top:-40px" src="@essayFile.ImageUrl" />
+                        }
+                    }
+                </div>
+            }
+            @if (Model.NewACTEssayComments.Any())
+            {
+                <div class="clear-25 non-break-inside break-before"></div>
+                @Html.Partial("_EssayComment", Model)
+            }
+        </div>
+    </div>
+}
+
+<script>
+    _actReport.renderScoreImprovementBarChart("score-improvement-chart");
+
+    var date = new Date();
+    var dateString = (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear()
+        + ' ' + formatAMPM(date);
+    $("#current-date-time").html(dateString);
+
+
+    function formatAMPM(date) {
+        var hours = date.getHours();
+        var minutes = date.getMinutes();
+        var seconds = date.getSeconds();
+        var ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        seconds = seconds < 10 ? '0' + seconds : seconds;
+        var strTime = hours + ':' + minutes + ':' + seconds + ' ' + ampm;
+        return strTime;
+    }
+</script>

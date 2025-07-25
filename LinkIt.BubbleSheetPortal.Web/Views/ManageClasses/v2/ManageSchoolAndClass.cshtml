@@ -1,0 +1,195 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SchoolAndClassViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.DataAdmin, "Manage Schools and Terms");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+
+    }
+}
+
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+<link href="@BundleHelper.Version("~/Content/css/v2/manage-school-and-class.css")" rel="stylesheet" type="text/css" />
+
+@section meta {
+    <meta name="viewport" content="width=device-width">
+}
+
+<style>
+    .block-border .background-filter::after,
+    .block-border .filter-group::after,
+    #manageClass .block-border::after,
+    #manageClass::after,
+    .block-border .filter-group .btn-filter::after {
+        display: table;
+        clear: both;
+        content: '';
+    }
+
+    .block-border .filter-group .select-state {
+        width: 350px;
+    }
+
+    .block-border .filter-group .lable {
+        margin: 0;
+        text-transform: capitalize;
+        color: var(--grey);
+        font-weight: bold;
+    }
+
+    .block-border .filter-group .btn-clear-filter:disabled:hover, .block-border .filter-group .btn-clear-filter:disabled {
+        border-color: #e9f2f6 #c4c3c3 #a2a2a2 #e3e2e2;
+        background: #c8c8c8 url(../images/old-browsers-bg/button-element-disabled-bg.png) repeat-x top;
+        background: -moz-linear-gradient(top, #f0f2f2,#c8c8c8);
+        text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.75);
+        background: -webkit-gradient(linear, left top, left bottom, from(#f0f2f2), to(#c8c8c8));
+        color: #bfbfbf;
+    }
+
+    .hidden-title .grid-full-with .class-title {
+        display: none;
+    }
+</style>
+<div id="manageClass">
+    <div class="block-border form">
+        <div class="filter-group  block-content">
+            <h1>Filter Schools</h1>
+            <fieldset class="background-filter">
+                <div v-if="userRole === roles.PUBLISHER || userRole === roles.NETWORKADMIN" class="fileter-item">
+                    <label>State</label>
+                    <select v-model="selectedState" v-on:change="selectStates" class="full-width">
+                        <option v-for="item in states" :value="item.id">{{item.name}}</option>
+                    </select>
+                </div>
+                <div v-if="userRole !== roles.DISTRICTADMIN" class="fileter-item block-content-dropdown-marquee">
+                    <label>@LabelHelper.DistrictLabel</label>
+                    <div class="block-text-name ">
+                        <select id="selectDistrictOption" v-model="selectedDistrictId" v-on:change="onDistrictChange" class="full-width" id="selectedDistrictId">
+                            <option v-for="item in districts" :value="item.id">{{item.name}}</option>
+                        </select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="fileter-item block-content-dropdown-marquee">
+                    <label>School</label>
+                    <div class="block-text-name ">
+                        <select id="selectSchoolOption" v-model="selectedSchool" v-on:change="selectSchool" class="full-width">
+                            <option v-for="item in school" :value="item.id">{{item.name}}</option>
+                        </select>
+                        <div class="box-select">
+                            <span class="overlay"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="fileter-item btn-container">
+                    <button v-on:click="onClearFilter" :disabled='disabledFilter ? true : false' class="btn-blue" type="submit">Clear Filters</button>
+                    <button v-on:click="onFilterSchool" id="btnFilter" :disabled='disabled ? true : false' class="btn-red" type="submit">Apply Filters</button>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+</div>
+<div id="detailDiv"></div>
+
+<script type="text/javascript">
+    var DistrictLabel = '@LabelHelper.DistrictLabel';
+    var RoleID = parseInt('@ViewBag.RoleID');
+    var CurrentDistrictID = '@ViewBag.CurrentDistrictID';
+
+    function loadDistrictDetailData(districtId, schoolId) {
+        $('#detailDiv').load('@Url.Action("LoadDistrictDetailV2")', { districtId: districtId, schoolId: schoolId }, function (response) {
+            if (typeof (showFooter) === 'function') showFooter();
+            if (response == false) {
+                alert("Error happen. Please refresh page.");
+            }
+
+             $('.btnAddNew').on('click', function (e) {
+                 var selectedDistrictId = $('#selectDistrictOption').val();
+
+                if ((!selectedDistrictId || parseInt(selectedDistrictId) <= 0) && RoleID != 3) {
+                    e.preventDefault();
+                }
+            });
+        });
+    }
+
+    function emptyDetailDiv(){
+        $('#detailDiv').empty();
+    }
+
+
+    window.addEventListener("beforeunload", function (event) {
+        var textSearch = $('#detailDiv #dataTable_filter input').val();
+        var textTermSearch = $('#detailDiv #dataTableTerms_filter input').val();
+        sessionStorage.setItem('ManageSchoolAndClass', false);
+
+        if(textTermSearch) {
+           sessionStorage.setItem('textTermSearch', textTermSearch);
+        } else {
+            sessionStorage.setItem('textTermSearch', '');
+        }
+
+        if(textSearch) {
+            sessionStorage.setItem('textSearch', textSearch);
+        } else {
+            sessionStorage.setItem('textSearch', '');
+        }
+
+    });
+
+    $(document).ready(function () {
+        $('#selectDistrictOption').marquee();
+        $('#selectSchoolOption').marquee();
+        sessionStorage.setItem('isApplyFilter', false);
+        var ManageSchoolAndClass = JSON.parse(sessionStorage.getItem('ManageSchoolAndClass'));
+        sessionStorage.setItem('ManageSchoolAndClass', false);
+        if (ManageSchoolAndClass) {
+            if (sessionStorage.getItem('selectedDistrictId') && sessionStorage.getItem('schoolId')) {
+                var districtId = JSON.parse(sessionStorage.getItem('selectedDistrictId'));
+                var schoolId = JSON.parse(sessionStorage.getItem('schoolId'));
+                loadDistrictDetailData(districtId, schoolId);
+            }
+            else {
+                var schoolId = $("#selectSchoolOption option:selected").value == null ? "" : $("#selectSchoolOption option:selected").value;
+                var districtId = districtId != undefined ? districtId : -1;
+                loadDistrictDetailData(districtId, schoolId);
+            }
+        }
+        else {
+            loadDistrictDetailData(-1, 0);
+        }
+    });
+
+    function searchDelay(inputFilter, dataTable) {
+       var delay = null;
+
+       inputFilter.off('keyup.DT input.DT');
+
+       inputFilter.on("keyup", function () {
+           var search = inputFilter.val();
+           clearTimeout(delay);
+           delay = setTimeout(function () {
+               if (search != null) {
+                   dataTable.dataTable().fnFilter(search);
+               }
+           }, 1000);
+       });
+   }
+
+</script>
+
+
+<script src="@Url.Content("~/Scripts/ManageClass/api.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/ManageClass/ManageClassV2.js")" type="text/javascript"></script>

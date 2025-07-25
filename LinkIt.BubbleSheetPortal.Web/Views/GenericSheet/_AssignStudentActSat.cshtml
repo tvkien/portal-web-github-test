@@ -1,0 +1,113 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.GenericSheets.AssignGenericSheetViewModel
+
+@{
+    Layout = null;
+}
+
+<section class="grid_7">
+    <div class="block-border" id="blockAssignStudent">
+        <div class="block-content form">
+            <h1>Assign and Grade</h1>
+            <ul style="display: none" id="error-messages" class="message error"></ul>
+            <fieldset class="grey-bg">
+                <legend>Details</legend>
+                @using (Html.BeginForm("SubmitGenericSheetAssignmentActSat", "GenericSheet", FormMethod.Post, new { id = "formAssignStudent" }))
+                {
+                    @Html.HiddenFor(x => x.BubbleSheetFileId)
+                    <div class="columns">
+                        <div class="colx3-left">
+                            @if (string.IsNullOrEmpty(Model.ImageUrl))
+                            {
+                                <img src="@Url.Content("~/Content/images/noimage.png")" width="128px" height="170px" />
+                            }
+                            else
+                            {
+                                if (!Model.OnlyOnePage && (Model.VirtualTestSubTypeId == 2 || Model.VirtualTestSubTypeId == 3 || Model.VirtualTestSubTypeId == 6 || Model.VirtualTestSubTypeId == 7))
+                                {
+                                    <div onclick="DisplayBubbleSheetFileByBubbleSheetID(@Model.BubbleSheetFileId); ">
+                                        <img src="@Model.ImageUrl" width="128px" height="170px" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <a href="@Model.ImageUrl" target="_new">
+                                        <img src="@Model.ImageUrl" width="128px" height="170px" />
+                                    </a>
+                                }
+                            }
+
+                        </div>
+                        <div class="colx3-right-double studentDetails">
+                            <p><b>File Name:</b> @Model.FileName</p>
+                            <p style="padding-top: 5px">
+                                <input type="checkbox" name="IsAllStudentsChecked" id="chkShowAllStudents" value="true" />&nbsp;
+                                <label for="chkShowAllStudents">Show All Students</label>
+                            </p>
+                            @if (Model.ClassId.HasValue)
+                            {
+                                <input type="hidden" id="selectClass" name="selectClass" value="@Model.ClassId.Value"/>
+                                
+                                @*<p id="remainingStudentsList"><b>Student:</b> @Html.DropDownList("SelectedRemainingStudentsId", Model.RemainingStudents, "Select Student")</p>
+                                <p id="allStudentsList" style="display: none"><b>Student:</b> @Html.DropDownList("SelectedAllStudentsId", Model.AllStudents, "Select Student")</p>*@
+                            }
+                            else
+                            {
+                                <p><b style="padding-right: 20px">Class:</b> @Html.DropDownList("selectClass", Model.Classes, "Select Class", new {@style="width: 200px;"})</p>                                
+                            }
+
+                            <p><b style="padding-right: 9px;">Student:</b><select id="selectStudent" name="selectStudent" style="width: 200px;"></select></p>
+                        </div>
+                    </div>
+                    <button id="btnSubmitGenericSheetAssignment" class="float-right" type="submit">Submit</button>
+                    <button id="btnCancelStudentAssignment" class="float-right grey" type="button">Cancel</button>
+                    <button id="btnCreateStudentAssignGeneric" class="float-left" type="button">Add New Student</button>
+                }
+            </fieldset>
+        </div>
+    </div>
+</section>
+
+<div id="divListBubbleSheetFileSub" style="display: none;"></div>
+<div id="divCreateStudentAssignGeneric" style="display: none;"></div>
+
+<script>
+    $('#selectClass').change(function() {
+        populateStudents();
+
+        if ($('#selectClass').val() == '' || '@Model.IsStudentDetected' == 'True') {
+            $('#btnCreateStudentAssignGeneric').attr('disabled', 'disabled');
+        } else {
+            $('#btnCreateStudentAssignGeneric').removeAttr('disabled');
+        }
+    });
+
+    $('#btnCreateStudentAssignGeneric').click(function () {
+        var bubbleSheetId = '@Model.BubbleSheetFileId';
+
+        // Function at AssignStudentsTotestActSat.cshtml
+        CreateStudentAssignGeneric(bubbleSheetId, $('#selectClass').val());
+    });
+
+    $('#chkShowAllStudents').change(function () {
+        populateStudents();
+    });
+
+    // Load student for Generic BubbleSheet only (not a large group)
+    if ('@Model.ClassId.HasValue' == 'True') {
+        populateStudents();
+    } else {
+        $('#btnCreateStudentAssignGeneric').attr('disabled', 'disabled');
+    }
+
+    function populateStudents() {
+        $('#selectStudent').empty();
+
+        var classId = $('#selectClass').val();
+        if (classId != '') {
+            $.get('@Url.Action("GetStudents")', { ticket : '@Model.Ticket', bubbleSheetFileId: $('#BubbleSheetFileId').val(), classId: classId, showAllStudent: $('#chkShowAllStudents').is(':checked') }, function (students) {
+                addDefaultOption($('#selectStudent'), "Student");
+                addSelectListItems($('#selectStudent'), students);
+                });
+            }
+        }
+</script>

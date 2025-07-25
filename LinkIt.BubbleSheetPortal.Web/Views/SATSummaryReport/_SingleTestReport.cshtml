@@ -1,0 +1,137 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers;
+@using LinkIt.BubbleSheetPortal.Web.ViewModels.SATSummaryReport
+
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.SATSummaryReport.SATSingleTestReportViewModel
+           
+@{
+    var testClassCol = "col" + (3 - Model.Index % 3).ToString();
+    var divStyle = "wrapper";
+
+    if (Model.TestName == "Baseline")
+    {
+        divStyle = "baseline";
+    }
+}
+
+
+@*<div id="@divStyle" class="@testClassCol">*@
+<div id="baseline" class="@testClassCol">
+
+    @{
+        var colCount = Model.ReportType == SATSummaryReportType.ClassLevel ? 6 : 7;
+        if (Model.ListDataInTest.Any())
+        {
+            var maxItem = Model.ListDataInTest.Max(x => x.SubScores.Count);
+            var firstDataInTest = Model.ListDataInTest.FirstOrDefault(x => x.SubScores.Count == maxItem);
+            colCount = firstDataInTest.SubScores.Select(x => x.SectionName).Distinct().ToList().Count();
+            if (Model.ReportType != SATSummaryReportType.ClassLevel)
+            {
+                colCount += 1;
+            }
+        }
+        var isDisplayName = Model.Index % 3 == 0;
+    }
+    <div class="right-col">
+        <table cellpadding="0" cellspacing="0">
+            <tr style="height: 29px">
+                <td></td>
+                <td colspan="@colCount">@Model.TestName</td>
+            </tr>
+            <tr style="height: 29px">
+                <td></td>
+                @*<td>C</td>*@
+
+                @if (!Model.ListDataInTest.Any())
+                {
+                    return;
+                }
+
+                @{
+                    //var maxItem = Model.ListDataInTest.Max(x => x.SubScores.Count);
+                    //var firstDataInTest = Model.ListDataInTest.FirstOrDefault(x => x.SubScores.Count == maxItem);
+                    //var subScoreList = firstDataInTest.SubScores.Select(x => x.SectionName).ToList();
+                    var maxItem1 = Model.ListDataInTest.Max(x => x.SubScores.Count);
+                    var firstDataInTest1 = Model.ListDataInTest.FirstOrDefault(x => x.SubScores.Count == maxItem1);
+                    var subScoreList = firstDataInTest1.SubScores.Select(x => x.SectionName).Distinct().ToList();
+                    foreach (var item in subScoreList)
+                    {
+                        if (item != "Composite")
+                        {
+                            <td>@item.ExtractFirstCharacterForEachWord()</td>
+                        }
+                        else
+                        {
+                            <td>T</td>
+                        }
+
+                    }
+                }
+                @if (Model.ReportType != SATSummaryReportType.ClassLevel)
+                {
+                    <text>
+                        <td>#</td>
+                    </text>
+                }
+
+            </tr>
+
+
+            @foreach (var dataInTest in Model.ListDataInTest)
+            {
+                <tr>
+                    <td style="word-wrap: break-word;">@dataInTest.DisplayName</td>
+                    @*<td>@Util.FormatSATSummaryScore(dataInTest.CompositeScore, Model.ReportType)</td>*@
+
+                    @foreach (var item in subScoreList)
+                    {
+                        var scoreItem = dataInTest.SubScores.FirstOrDefault(x => x.SectionName == item);
+                        if (scoreItem != null)
+                        {
+                            <td>@Util.FormatSATSummaryScore(scoreItem.Score, Model.ReportType)</td>
+                        }
+                        else
+                        {
+                            <td>-</td>
+                        }
+                        @*<td>@Util.FormatSATSummaryScore(item.Score, Model.ReportType)</td>*@
+                    }
+                    @if (Model.ReportType != SATSummaryReportType.ClassLevel)
+                    {
+                        <text>
+                            <td>@(dataInTest.TotalStudents == 0 ? "-" : dataInTest.TotalStudents.ToString())</td>
+                        </text>
+                    }
+                </tr>
+            }
+            <tr style="height: 29px">
+                <td>
+                    Average
+                </td>
+
+                @*<td>@Util.FormatSATSummaryScore(Model.AverageScores.CompositeScore, Model.ReportType)</td>subScoreList*@
+                @*@foreach (var item in Model.AverageScores.SubScores)*@
+                @foreach (var subscore in subScoreList)
+                {
+                    var item = Model.AverageScores.SubScores.FirstOrDefault(x => x.SectionName == subscore);
+                    if (item != null)
+                    {
+                        <td>@Util.FormatSATSummaryScore(item.Score, Model.ReportType)</td>
+                    }
+                    else
+                    {
+                        <td>@Util.FormatSATSummaryScore(0, Model.ReportType)</td>
+                    }
+
+                }
+                @if (Model.ReportType != SATSummaryReportType.ClassLevel)
+                {
+                    <text>
+                        <td>@(Model.AverageScores.TotalStudents == 0 ? "-" : Model.AverageScores.TotalStudents.ToString())</td>
+                    </text>
+                }
+
+            </tr>
+        </table>
+    </div>
+</div>
+

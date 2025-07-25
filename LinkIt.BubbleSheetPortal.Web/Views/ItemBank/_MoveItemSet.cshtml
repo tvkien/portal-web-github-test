@@ -1,0 +1,187 @@
+﻿@model LinkIt.BubbleSheetPortal.Web.ViewModels.AuthorGroup.AuthorGroupListViewModel
+@{
+    ViewBag.Title = "Manage Author Groups";
+}
+
+
+<article class="container_12" style="margin-top: 0px; width: 700px;">
+    <section class="grid_9">
+        <div class="block-border">
+            <div class="block-content form" id="divMoveItemSet">
+                <h1>Move Item Set                    
+                </h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                        
+                </ul>
+                @if (!string.IsNullOrWhiteSpace(ViewBag.ErrorMessage))
+                {
+                    <ul class="message error">
+                        <li>
+                            @Html.Raw(ViewBag.ErrorMessage)
+                        </li>
+                    </ul>
+                }
+                else
+                {
+                     <fieldset id="publisherContent" class="grey-bg">
+                    <div class="columns">
+                        <div class="colx2-left">
+                            <p>
+                                <input type="checkbox" id="createACopy" name="CreateACopy" />
+                                <label for="createACopy">Create a Copy</label>                                
+                            </p>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="clear-10"></div>
+
+                <div class="no-margin last-child">
+                    <table id="dataTableItemBankOnTop" class="datatable table no-margin" width="100%">
+                        <thead>
+                            <tr>
+                                <th scope="col"></th>
+                                <th scope="col">
+                                    <span class="column-sort">
+                                        <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                        <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                    </span>
+                                    Item Bank
+                                </th>                                
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                }
+               
+            </div>
+        </div>
+    </section>
+</article>
+
+<script type="text/javascript">
+    $(function () {
+        var options = {
+            bServerSide: true,
+            bDestroy: true,
+            bStateSave: false,
+            sAjaxSource: getAjaxSource(),
+            fnServerParams: function (aoData) {
+                var item = null;
+                for (var i = 0; i < aoData.length; i++) {
+                    item = aoData[i];
+                    if (item.name == 'sSearch') {
+                        do {
+                            item.value = item.value.replace('""', '"');
+                        } while (item.value.indexOf('""') >= 0)
+
+                        if (item.value == '"') {
+                            item.value = item.value.replace('"', "''"); // when user type " or "", or """,...in searchbox, system will issue an error, this code fix that error
+                        } else {
+                            item.value = encodeURIComponent(item.value);
+                        }
+                        break;
+                    }
+                }
+
+            },
+            bAutoWidth: false,
+            iDisplayLength: 10,
+            aaSorting: [[1, "asc"]],
+            aoColumns: [
+                { sType: 'integer', sName: 'QTIBankId', bSearchable: false, bSortable: false, sWidth: "30px" },
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true}                
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setIconVisibilityMoveCopy(aData[0]));
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTableItemBankOnTop'), "Loading");
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTableItemBankOnTop').unblock();
+                $('.with-tip').tip();
+            }
+        };
+
+        $("#dataTableItemBankOnTop").data("options", options);
+        initializeDataTable($("#dataTableItemBankOnTop"));
+    });
+
+    function getAjaxSource() {
+        return '@Url.Action("LoadItemBanks", "ItemBank")';
+    }
+
+    function setIconVisibilityMoveCopy(itemBankId) {
+        var moveItemSetIcon = '@Url.Content("~/Content/themes/Constellation/images/icons/fugue/move-icon.png")';
+        var moveItemSetString = '<a href="javascript:void(0)" onclick="MoveItemSet(this);" title="Move\/Copy Item Set" itemBankId="' + itemBankId + '" class="with-tip"><img src="' + moveItemSetIcon + '" width="16" height="16" style="margin-right: 4px"></a>';
+
+        return moveItemSetString;
+    }
+
+    function MoveItemSet(control) {
+        //TODO: Update ItemBank
+        var itemBankId = $(control).attr('itemBankId');
+        var itemSetId = '@ViewBag.ItemSetId';
+        var itemSetName = '@ViewBag.ItemSetName'; //ViewBag.ItemSetName will be automatically encoded html
+        var createACopy = $('#createACopy').is(':checked');
+        //if (createACopy) {
+        //    ShowBlock($('#dataTableItemBankOnTop'), "Copying");
+        //}
+        //else {
+        //    ShowBlock($('#dataTableItemBankOnTop'), "Moving");
+        //}
+
+        //Show confirm dialog
+        var url = '@Url.Action("LoadMoveItemSetConfirmDialog", "ItemBank")?qtiGroupId=' + itemSetId + '&toQtiBankId=' + itemBankId + '&createACopy=' + createACopy ;
+        $.ajax(
+            {
+                url: url,
+                cache: false
+            })
+            .done(function (html) {
+                $("#divMoveItemSet").append('<div id="divPopupMoveItemSetConfirmDialog" class="dialog"></div>');
+                $("#divPopupMoveItemSetConfirmDialog").append(html);
+                $('#divPopupMoveItemSetConfirmDialog').dialog({
+                    title: "",
+                    open: function () {
+                        //Create overlay for popup
+                        var zindex = $('#divMoveCopyItemSetDialog').parent().css('z-index');
+                        var zIndexConfirm = parseInt(zindex) + 1;
+                        var zIndexDialog = parseInt(zindex) + 2;
+                        $("body").append('<div class="my-overlay" style="z-index: ' + zIndexConfirm  + ';width:' + $(document).width() + 'px;height:2000' + 'px;background-color: black;opacity: 0.3;position: absolute;top:0px;left: 0px;"></div>');
+                        $('#divPopupMoveItemSetConfirmDialog').parent().css('z-index', zIndexDialog);
+                    },
+                    beforeclose: function () {
+                        //TODO if you want do anything after close popup.
+                        return true;
+                    },
+                    close: function () {
+                        $('#divPopupMoveItemSetConfirmDialog').remove();
+                        $("body .my-overlay:last").remove();//remove the last only
+                        $('#dataTableItemBankOnTop').unblock();
+                    },
+                    modal: false,
+                    width: 500,
+                    resizable: false
+                });
+
+            });
+
+        $(".close").unbind("click");
+        $(".close").live("click", function (e) {
+            e.preventDefault();
+        });
+        
+    }
+
+    function showModalDialogBG() {
+        var win = $('body');
+        $('body').prepend('<div class="ui-widget-overlay" style="width: ' + win.width() + 'px; height: ' + win.height() + 'px; z-index: 1001;"></div>');
+    }
+	
+
+	
+</script>

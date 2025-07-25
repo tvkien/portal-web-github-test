@@ -1,0 +1,133 @@
+@model LinkIt.BubbleSheetPortal.Models.School
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@{
+    ViewBag.Title = "Edit School";
+}
+<script src="@Url.Content("~/Scripts/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+<article class="container_12">
+    <section class="grid_7">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>
+                    Edit School
+                </h1>
+                <ul style="display: none" id="error-messages" class="message error"></ul>
+                <ul style="display: none" id="success-message" class="message success">
+                    <li>School successfully updated.</li>
+                </ul>
+                @using (Html.BeginForm("SchoolDetail", "ManageClasses", FormMethod.Post, new { id = "editSchoolForm", @class = "form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.ValidationSummary(true)
+                    <fieldset>
+                        <legend>School Detail</legend>
+                        <div class="columns">
+                            <p>
+                                <label>
+                                    School Name</label>
+                                <span class="relative">
+                                    @Html.HiddenFor(model => model.Id)
+                                    @Html.HiddenFor(model => model.DistrictId)
+                                    @Html.TextBoxFor(model => model.Name, new { @class = "full-width", tabindex = "1", maxlength = 99 })
+                                    @Html.ValidationMessageFor(model => model.Name)
+                                </span>
+                            </p>
+                            <p>
+                                <label>@LabelHelper.SchoolCode</label>
+                                <span class="relative">
+                                    @Html.TextBoxFor(model => model.Code, new { @class = "full-width", tabindex = "2", maxlength = 19 })
+                                    @Html.ValidationMessageFor(model => model.Code)
+                                </span>
+                            </p>
+                            <p>
+                                <label>@LabelHelper.SchoolStateCode</label>
+                                <span class="relative">
+                                    @Html.TextBoxFor(model => model.StateCode, new { @class = "full-width", tabindex = "3", maxlength = 19 })
+                                    @Html.ValidationMessageFor(model => model.StateCode)
+                                </span>
+                            </p>
+                        </div>
+                    </fieldset>
+                      
+                     <ul class="tabs js-tabs">
+	                    <li class="current"><a href="#tab-users">Users</a></li>
+                    </ul>
+                    <div class="tabs-content">
+                        <div id="tab-students">
+                            <a id="btnAddMoreUserToSchool" href="javascript:void(0);" class="button studentOperation">
+                                <img alt="#" src="@Url.Content("~/Content/themes/Constellation/images/icons/fugue/plus-circle-blue.png")" />
+                                Add User 
+                            </a>
+                            <div id="divTeacherSchool"></div>
+                        </div>
+                    </div>
+                    <br />
+                    <p>
+                        <button id="btnSubmit" type="submit" name="Save">Submit</button>
+                        <button id="btnCancel" type="button" class="grey">Back</button>
+                    </p>
+                }
+            </div>
+        </div>
+    </section>
+    <div id="divListuserNotMatchSchoolContainer"></div>
+</article>
+<script type="text/javascript">
+    sessionStorage.setItem('ManageSchoolAndClass', true);
+    $(function () {
+        loadTeacherSchool();
+        $('.dataadmin').addClass('current');
+        $('#dtaManageSchools').addClass('current');
+    });
+
+    $('#btnAddMoreUserToSchool').click(function () {
+        $('#divListuserNotMatchSchoolContainer').load('@Url.Action("UserNotMatchSchool", new { schoolId = Model.Id })');
+    });
+
+    $('#editSchoolForm').submit(function (event) {
+        event.preventDefault();
+        $('#btnSubmit').disableBt();
+
+        $.ajax({
+            url: $(this).target,
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function (response) {
+                if (response.Success != false) {
+                    $('#error-messages').hide();
+                    $('#success-message').show();
+                }
+                else {
+                    addErrorMessages(response);
+                    $("html, body").animate({ scrollTop: 0 }, 200);
+                }
+                $('#btnSubmit').enableBt();
+            },
+            failure: function (response) {
+                alert(response);
+            }
+        });
+    });
+
+    $('#btnCancel').click(function () {
+        sessionStorage.setItem('ManageSchoolAndClass', true);
+        location.href = '@Url.Action("ManageSchoolAndClass")';
+    });
+
+    function loadTeacherSchool() {
+        $('#divTeacherSchool').load('@Url.Action("GetTeachersForSchool", new { schoolId = Model.Id })', function (response) {
+            if (response == false) {
+                //alert('Invalid user, please try again.');
+                $("#fsListUserBySchool").hide();
+            }
+            else {
+                $("#fsListUserBySchool").show();
+            }
+        });
+    }
+
+    function CloseListUser() {
+        $('#divListuserNotMatchSchoolContainer').html('');
+    }
+</script>

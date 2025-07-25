@@ -1,0 +1,444 @@
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.BubbleSheetReviewDetailsViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@using LinkIt.BubbleSheetPortal.Models
+@{
+    ViewBag.Title = HelperExtensions.FormatPageTitle(ContaintUtil.Managebubblesheets, "Bubble Sheet Details");
+    var currentUser = HttpContext.Current.GetCurrentUser();
+    if (currentUser != null)
+    {
+        var isUseNewDesign = HelperExtensions.IsUseNewDesign(currentUser.DistrictId ?? 0);
+        if (isUseNewDesign)
+        {
+            Layout = "~/Views/Shared/_Layout_v2.cshtml";
+        }
+    }
+}
+@section jQuery {
+    @BundleHelper.jQueryUpgrade()
+}
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleDataLockerTemplateBundle()
+<link href="@BundleHelper.Version("~/Content/css/v2/review-bubble-sheet.css")" rel="stylesheet" type="text/css" />
+
+@section stylesheet {
+    <link rel="stylesheet" href="/Content/css/vue-components/vue-modal.css">
+    <link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/BubbleSheetClassReview.css">
+    <link rel="stylesheet" href="/Content/themes/BubbleSheetClassReview/Common.css">
+}
+
+<style>
+    td.is-missing {
+        background-color: #ff0000;
+    }
+
+    td.is-multi-mark {
+        background-color: #ed7d31;
+    }
+
+    td.is-incomplete {
+        background-color: #ffff00;
+    }
+
+    td.is-open-ended {
+        background-color: var(--blue9);
+    }
+
+    .student-active td {
+        background-color: blanchedalmond !important;
+    }
+
+    .positionAdd {
+        position: relative;
+        right: -6px;
+        top: 26px;
+    }
+
+    .ui-widget-header {
+        border: 0px solid var(--grey0) !important;
+        background: transparent !important;
+        position: relative;
+        top: 34px;
+    }
+
+    .ui-dialog {
+        background: transparent;
+        border: 0;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close {
+            position: absolute;
+            right: 7px;
+            top: -8px;
+        }
+
+    .ui-widget-header .ui-icon {
+        background-image: url("/Content/themes/base/images/fancy_close.png");
+    }
+
+    .ui-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .ui-icon-closethick {
+        background-position: 2px 2px;
+    }
+
+    .ui-widget-header .ui-state-hover {
+        border: 0;
+        background: transparent !important;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        width: 30px;
+        height: 42px;
+    }
+
+    .ui-widget-overlay {
+        background: var(--dark) !important;
+    }
+
+    .coolfieldset, .coolfieldset.expanded {
+        border: 1px solid var(--grey0);
+    }
+
+        .coolfieldset.collapsed {
+            border: 0;
+            border-top: 1px solid var(--grey0);
+        }
+
+        .coolfieldset legend[name="AdvancedOption"] {
+            padding-left: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .coolfieldset legend[name="AdvancedOption"], .coolfieldset.expanded legend[name="AdvancedOption"] {
+            background: transparent url(/Content/themes/base/images/expanded.gif) no-repeat center left;
+            background-size: 10px 10px;
+        }
+
+        .coolfieldset.collapsed legend[name="AdvancedOption"] {
+            background: transparent url(/Content/themes/base/images/collapsed.gif) no-repeat center left;
+            background-size: 10px 10px;
+        }
+</style>
+
+<script type="text/javascript" src="@BundleHelper.Version("/Scripts/manualentryV2.js")"></script>
+
+<article class="container_12 custom-zindex bubbleSheetReviewDetails-page custom-resize-img" id="parentContainer" vue="bubbleSheetReviewDetails">
+    <input type="hidden" id="selectedStudentIndex" value="0" />
+    <input type="hidden" id="hiddenTicket" value="@Model.Ticket" />
+    <input type="hidden" id="hiddenClassId" value="@Model.ClassId" />
+    <input type="hidden" id="hiddenGetBubbleSheetDetailUrl" value="@Url.Action("GetSATBubbleSheetDetails", "BubbleSheetReviewDetails")" />
+
+    <section>
+        <div class="block-content mb-4">
+            <div class="d-flex justify-content-end align-items-center mb-3">
+                <div>
+                    <a href="/BubbleSheetReview" class="btn-reviewbbs btn btn-link d-block p-0 position-static">
+                        <i class="fa-solid fa-arrow-left me-2"></i>
+                        Back to Review Bubble Sheets
+                    </a>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <p class="mb-0">
+                        <b class="text-dark-blue">Test Name: <span class="fw-normal">@Model.TestName</span></b>
+                    </p>
+                    @if (Model.CanAccess && Model.HasGenericSheet)
+                    {
+                        <p class="mt-2">
+                            This test contains generic sheets.
+                            <a href="@Url.Action("AssignStudentsToTestActSat", "GenericSheet", new { qticket = Model.Ticket, qclassId = Model.ClassId })">Click here to assign students.</a>
+                        </p>
+                    }
+                </div>
+
+                <div>
+                    @if (Model.CanAccess)
+                    {
+                        <script type="text/javascript">
+                            function pad(number, length) {
+                                var str = '' + number;
+                                while (str.length < length) {
+                                    str = '0' + str;
+                                }
+
+                                return str;
+                            }
+
+                            function getRefreshTime() {
+                                var lastUpdated = new Date();
+                                var hours = lastUpdated.getHours();
+                                var ampm = "am";
+                                if (hours > 12) {
+                                    hours -= 12;
+                                    ampm = "pm";
+                                }
+
+                                $("#refreshTime").html(hours + ':' + pad(lastUpdated.getMinutes(), 2) + ampm);
+                            }
+                        </script>
+
+                        <div class="d-flex justify-content-end align-items-center" style="transform: translateY(5px);">
+                            <a onclick="javascript:refreshStudentsGrid();" href="#" class="btn btn-link d-block p-0">
+                                Refresh
+                                <i class="fa-solid fa-arrow-rotate-right ms-1"></i>
+                            </a>
+                            <span class="mx-3" style="height: 32px; width: 0.64px; background: #F0F0F0;"></span>
+                            <font size="-1" class="text-dark-blue">
+                                Last update:
+                                <span id="refreshTime">
+                                    <script type="text/javascript">getRefreshTime();</script>
+                                </span>
+                            </font>
+                        </div>
+                        <span id="refreshTime">
+                            <script type="text/javascript">getRefreshTime();</script>
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="block-content form">
+                        <div id="title-students" style="display: none; position: absolute; margin-top: 10px;">
+                            <p class="title-large m-0">Students</p>
+                        </div>
+
+                        @if (!Model.CanAccess)
+                        {
+                            <ul class="message error">
+                                <li>You do not have access to that test, or it does not exist.</li>
+                            </ul>
+                        }
+                        else
+                        {
+                            <div class="last-child">
+                                <table id="dataTable" class="datatable table table-bubblesheet-page-detail" width="100%">
+                                    <thead>
+                                        <tr>
+                                            <th colspan="4">
+                                                <label class="d-inline-flex align-items-center me-4" for="statusComplete">
+                                                    <input type="checkbox" id="statusComplete" class="statusFilter" />
+                                                    <span class="icon-status status-green"></span>
+                                                    <span class="fw-bold">Finished</span>
+                                                </label>
+                                                <label class="d-inline-flex align-items-center me-4" for="statusReview">
+                                                    <input type="checkbox" id="statusReview" class="statusFilter" checked="checked" />
+                                                    <span class="icon-status status-yellow"></span>
+                                                    <span class="fw-bold">Review</span>
+                                                </label>
+                                                <label class="d-inline-flex align-items-center" for="statusNotRead">
+                                                    <input type="checkbox" id="statusNotRead" class="statusFilter" checked="checked" />
+                                                    <span class="icon-status status-red"></span>
+                                                    <span class="fw-bold">Not Graded</span>
+                                                </label>
+                                            </th>
+                                        </tr>
+                                        <tr>
+                                            <th scope="col">
+                                                <span class="column-sort">
+                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                </span>
+                                                Student
+                                            </th>
+                                            <th scope="col" class="th-status">
+                                                <span class="column-sort">
+                                                    <a href="javascript:void(0)" title="Sort Up" class="sort-up"></a>
+                                                    <a href="javascript:void(0)" title="Sort Down" class="sort-down"></a>
+                                                </span>
+                                                Status
+                                            </th>
+                                            <th scope="col" class="th-items-processed">
+                                                Items (Pages) Processed
+                                            </th>
+                                            <th scope="col" class="th-points-earned">
+                                                Points Earned
+                                            </th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody style="cursor: pointer"></tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div id="bubbleSheetDetails"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @Html.Partial("v2/_ViewBubbleSheetImage")
+</article>
+<script type="text/javascript">
+    var FINAL_STATUS = {
+        Finished: 1,
+        Review: 2,
+        NotGrade: 3
+    }
+    $(function () {
+        $('#generateTab').addClass('current');
+        $('#managebubblesheetsReview').addClass('current');
+        var options = {
+            sAjaxSource: '@Url.Action("SATGetStudentsForTest", "BubbleSheetReviewDetails")/' + '@Model.Ticket' + '?classId=' + '@Model.ClassId',
+            bAutoWidth: false,
+            iDisplayLength: 25,
+            aaSorting: [[0, "asc"]],
+            oLanguage: {
+                sSearch: ""
+            },
+            aoColumns: [
+                { sType: 'string', sName: 'Name', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Status', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'Graded', bSearchable: true, bSortable: false, sClass: 'columnRight' },
+                { sType: 'string', sName: 'PointsEarned', bSearchable: true, bSortable: false, sClass: 'columnRight' },
+                { sType: 'integer', sName: 'Id', bSearchable: true, bSortable: true, bVisible: false },
+                { sType: 'integer', sName: 'BubbleSheetFinalStatus', bSearchable: false, bSortable: false, bVisible: false }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).parent().attr('StudentId', aData[4]).addClass('student');
+                $('td:eq(1)', nRow).html(assignKeyword(aData[1], aData[4]));
+                return nRow;
+            },
+            fnInitComplete: function () {
+                $('#statusComplete').change();
+
+                var elSearchLabel = $('#dataTable_filter');
+                var elSearchInput = elSearchLabel.find('input');
+                elSearchInput.attr('style', 'padding-left: 32px !important; position: relative;');
+                $('#dataTable_filter').addClass('data-search');
+
+                $("#dataTable_wrapper .data-table-action").prepend($("#title-students").prop('outerHTML'));
+                $("#title-students").css("display", "inline-flex");
+            },
+            fnDrawCallback: function (oSettings) {
+
+            }
+        };
+
+        $("#dataTable").data("options", options);
+
+        $('.statusFilter').change(function () {
+            var filters = buildFilter();
+            var joinedFilters = filters.join("|");
+            ui.dataTable.fnFilter(joinedFilters, 5, true);
+        });
+
+        $('.student').live('click', function () {
+            $('#selectedStudentIndex').val($('#dataTable .student').index($(this)));
+            viewBubbleSheetDetail();
+        });
+    });
+
+    function buildFilter() {
+        var filter = [];
+        if ($('#statusComplete').is(':checked')) {
+            filter.push(FINAL_STATUS.Finished);
+        }
+        if ($('#statusReview').is(':checked')) {
+            filter.push(FINAL_STATUS.Review);
+        }
+        if ($('#statusNotRead').is(':checked')) {
+            filter.push(FINAL_STATUS.NotGrade);
+        }
+
+        return filter;
+    }
+
+    function assignKeyword(keyword, studentId) {
+        var html = '<ul studentId="' + studentId + '" class="keywords">';
+
+        if (keyword) {
+            var array = [];
+
+            if (keyword.length && typeof keyword === 'object') {
+                array = keyword;
+            } else {
+                array = keyword.split('|');
+            }
+
+            for (var i = 0; i < array.length; i++) {
+                switch (array[i]) {
+                    case 'Auto':
+                        html += '<li class="green-keyword">Auto</li>';
+                        break;
+                    case 'Absent':
+                        html += '<li class="green-keyword">Absent</li>';
+                        break;
+                    case 'Confirmed':
+                        html += '<li class="green-keyword">Confirmed</li>';
+                        break;
+                    case 'Complete':
+                        html += '<li class="green-keyword">Complete</li>';
+                        break;
+                    case 'Missing':
+                        html += '<li class="red-keyword">Missing</li>';
+                        break;
+                    case 'Multi-Mark':
+                        html += '<li class="orange-keyword">Multi-Mark</li>';
+                        break;
+                    case 'Blank':
+                        html += '<li class="orange-keyword">Blank</li>';
+                        break;
+                    case 'Incomplete':
+                        html += '<li class="orange-keyword">Incomplete</li>';
+                        break;
+                    case 'Manual':
+                        html += '<li class="orange-keyword">Manual</li>';
+                        break;
+                    case 'Unavailable':
+                        html += '<li class="red-keyword">Unavailable</li>';
+                        break;
+                    case 'Invalid':
+                        html += '<li class="orange-keyword">Invalid</li>';
+                        break;
+                    case 'Loading':
+                        html += '<li class="orange-keyword">Loading</li>';
+                        break;
+                    default:
+                        html += '<li class="red-keyword">Unavailable</li>';
+                }
+            }
+        }
+
+        html += '</ul>';
+        return html;
+    }
+
+    var timer = setInterval(refreshStudentsGrid, 30000000);
+
+    function refreshStudentsGrid() {
+        ui.dataTable.fnReloadAjax();
+        stopTimer();
+        getRefreshTime();
+    }
+
+    function stopTimer() {
+        clearInterval(timer);
+    }
+
+    function restartTimer() {
+        timer = setInterval(refreshStudentsGrid, 10000);
+    }
+</script>
+
+@section scripts {
+    <script src='@Url.Content("~/Scripts/BubbleSheetClassReview/BubbleSheetReview.js")'></script>
+    <script src='@Url.Content("~/Scripts/BubbleSheetReviewDetails/BubbleSheetReviewDetailsV2.js")'></script>
+}
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        breadcrumbDetailPage('#generateTab', '#managebubblesheetsReview');
+    })
+</script>

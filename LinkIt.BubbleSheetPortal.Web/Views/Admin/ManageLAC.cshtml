@@ -1,0 +1,428 @@
+@using LinkIt.BubbleSheetPortal.Web.ViewModels
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.TestDataUploadViewModel
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+
+@{
+    ViewBag.Title = "Generic Test Data Upload";
+}
+@*@MvcHtmlString.Create(Bundle.Css()
+                    .Add(@Url.Content("~/Content/css/custom.css"))
+                    .Render("/Content/themes/Constellation/css/ManageLAC_combined_#.css"))
+
+    @MvcHtmlString.Create(Bundle.JavaScript()
+                .Add("/Content/themes/TestMaker/ckeditor_utils.js")
+                .Render("/Content/themes/Constellation/js/ManageLAC_combined_#.js"))*@
+
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.StyleCustomBundle()
+@LinkIt.BubbleSheetPortal.Web.Helpers.BundleHelper.ScriptCKEditorUtilsBundle()
+<link rel="stylesheet" href="https://cdn.materialdesignicons.com/5.0.45/css/materialdesignicons.min.css">
+<link href="/Content/libs/select2/comboTreePlugin.css" rel="stylesheet" />
+<style type="text/css">
+    .walkme-player {
+        position: fixed !important;
+        z-index: 2147483640 !important;
+        cursor: pointer !important;
+    }
+</style>
+<script src="/Content/libs/select2/comboTreePlugin.js"></script>
+<article class="container_12">
+    <section class="grid_12">
+        <div class="block-border">
+            <div class="block-content form">
+                <h1>Upload Test Data</h1>
+                @*<ul class="message warning no-margin">
+            <li>
+                Click the <span class="lowercase">Select File(s)</span> button below to select a file or multiple files for upload.
+                Files will start as soon as they are selected.
+            </li>
+        </ul>*@
+                <ul style="display: none" id="error-messages" class="message error no-margin"></ul>
+                @if (Model.IsPublisherUploading || (ViewBag.IsNetworkAdmin != null && ViewBag.IsNetworkAdmin))
+                {
+                    <p id="states">
+                        <label>Select State</label>
+                        <div class="manage-alc-select">
+                            @Html.DropDownListFor(x => x.StateId, Model.AvailableStates, new { id = "selectState", @class = "u-full-width" })
+                        </div>
+                    </p>
+                    <p id="districts">
+                        <label>Select @LabelHelper.District</label>
+                        <div class="manage-alc-select">
+                            @Html.DropDownListFor(x => x.DistrictId, Model.AvailableDistricts, new { id = "selectDistrict", @class = "u-full-width" })
+                        </div>
+                    </p>
+                }
+
+                <p>
+                    <label>Category</label>
+                    <div class="manage-alc-select">
+                        <input type="text" id="selectCategoryIDDropdown" placeholder="Select Category" autocomplete="off" class="u-full-width" />
+                    </div>
+                </p>
+
+                <p id="pselectAchievementLevelId">
+                    <label>Achievement Level</label>
+                    <div class="manage-alc-select">
+                        @Html.DropDownListFor(x => x.AchievementLeveIdSelected, Model.AchievementLeveIds, new { id = "selectAchievementLevelId", @class = "u-full-width" })
+                    </div>
+                </p>
+
+                <div id="idLACOption">
+                    <p>
+                        @*@Html.CheckBoxFor(o => o.IncludeProgram, new { id = "isIncludeProgramData",  })*@
+                        <input type="checkbox" id="isIncludeProgramData" checked="checked" />
+                        <label for="isIncludeProgramData">Include test file program data</label>
+                    </p>
+                    <p>
+                        <input type="checkbox" id="isIncludeRosterProgramData" />
+                        <label for="isIncludeRosterProgramData">Include roster program data</label>
+                        <br />
+                        <div id="divIncludeRosterProgramData" style="display:none;">
+                            <div id="idPopulateProgram">
+                            </div>
+                            <div style="margin-top:10px;">
+                                <button id="btselectalllistedprograms" type="button">Select All Programs</button>
+                                <button id="btselectnoprogram" type="button">Select None</button>
+                            </div>
+                        </div>
+                    </p>
+                    <p>
+                        <input type="checkbox" id="isOmitsubjectfromtestname" />
+                        <label for="isOmitsubjectfromtestname">Omit subject from test name</label>
+                    </p>
+                </div>
+
+                <p>
+                    <input type="checkbox" id="isNotCreateNewStudent" />
+                    <label for="isNotCreateNewStudent">Do not create new students</label>
+                </p>
+                <p>
+                    <input type="checkbox" id="isApplyPerformanceBankds" checked="checked"/>
+                    <label for="isApplyPerformanceBankds">Apply automated performance band</label>
+                </p>
+                <input id="file_upload" name="file_upload" type="file" />
+                <br />
+                <button id="btUploadTestData">Submit</button>
+            </div>
+        </div>
+    </section>
+</article>
+<table>
+    <tr>
+        <td style="margin-left: 30px;"></td>
+    </tr>
+</table>
+<script type="text/javascript">
+    var listAttendanceDistrict =  @Html.Raw(Json.Encode(@Model.ListAttendance));
+    $(function ()
+    {
+
+        populateStates();
+
+        $('.walkme-player').css({ 'z-index': 0 });
+        $('div').css({ 'z-index': 'unset' });
+        $('.comboTreeWrapper').css({ 'z-index': 'unset' });
+
+        $('#selectState').change(function ()
+        {
+            if ($(this).val() != 'select') {
+                populateDistricts();
+            }
+            else {
+                $('#selectDistrict').empty();
+            }
+        });
+
+        var auth = '@(Request.Cookies[FormsAuthentication.FormsCookieName] == null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
+
+        if (window.FormData !== undefined)
+        {
+            $('#file_upload').uploadifive({
+                'uploadScript': '@Url.Action("UploadTestData")',
+                'overrideEvents': ['onDialogClose'],
+                'buttonText': 'Select File(s)',
+                'fileObjName': 'postedFile',
+                'multi': true,
+                'fileSizeLimit': '71680KB',
+                'removeCompleted': true,
+                'width': 100,
+                'auto': false,
+                'fileType': 'text/plain',
+                'onUpload': function (file) {
+                    $('#file_upload').data('uploadifive').settings.formData = getFormData(auth);
+                    $('#error-messages').hide();
+                    $('#error-messages').empty();
+                },
+                'onUploadComplete': function (file, data) {
+                    var result = $.parseJSON(data);
+                    if (result == undefined) {
+                        var mess = '<div class="text-left"> An error has occured.  Please try again </div>';
+                        popupAlertMessage('alert', mess, 400, 500);
+                    }
+
+                    if (result.success == true) {
+                        return;
+                    } else {
+                        addErrorMessages(result);
+                        $('#file_upload').uploadifive('cancel');
+                    }
+                },
+                'onError': function (errorType, file) {
+                    var alertMessage = '';
+                    if (errorType == "FORBIDDEN_FILE_TYPE") {
+                        alertMessage = '<div class="text-left">File is not an allowed file type. Please select a text (.txt) file.</div>';
+                        popupAlertMessage('alert', alertMessage, 400, 500);
+                        setTimeout(function () {
+                            $('#uploadifive-file_upload-queue .uploadifive-queue-item').remove();
+                        }, 3000);
+                    } else {
+                        alertMessage = '<div class="text-left">The file ' + file.name + ' returned an error and was not added to the queue.</div>';
+                        popupAlertMessage('alert', alertMessage, 400, 500);
+                    }
+                }
+            });
+
+            $('#uploadifive-file_upload').css({ 'z-index': 0 });
+        }
+
+        function getFormData(auth)
+        {
+            var stateId = $("#selectState").val();
+            var districtId = $("#selectDistrict").val();
+            var achievementLevelId = $('#selectAchievementLevelId').val();
+            var includeProgram = $('#isIncludeProgramData').prop('checked');
+            var listProgramSelected = getProgramIds();
+            var excludeSubject = $('#isOmitsubjectfromtestname').prop('checked');
+            var notCreateNewStudent = $('#isNotCreateNewStudent').prop('checked');
+            var isApplyPerformanceBankds = $('#isApplyPerformanceBankds').prop('checked');
+            var categoModelyId = 0;
+            if (comboTree1 && comboTree1._selectedItem) {
+                categoryId = comboTree1._selectedItem.id;
+            }
+            return {
+                'AUTHID': auth,
+                'stateId': stateId,
+                'districtId': districtId,
+                'achievementLevelId': achievementLevelId,
+                'categoryId': categoryId,
+                'userProgram': includeProgram,
+                'listProgramIds': listProgramSelected,
+                'isExcludeSubject': excludeSubject,
+                'isNotCreateNewStudent': notCreateNewStudent,
+                'isApplyPerformanceBankds': isApplyPerformanceBankds
+            };
+        }
+
+        function populateStates()
+        {
+            var stateSelect = $('#selectState');
+            stateSelect.empty();
+            if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetStatesForNetworkAdmin", "PopulateStateDistrict")', function (states) {
+                    addDefaultOption($('#selectState'), "State");
+                    addSelectListItems($('#selectState'), states);
+                    if('@ViewBag.StateId' != null)
+                    {
+                        $('#selectState').val(@ViewBag.StateId);
+                        $('#selectState').trigger('change');
+                    }
+                });
+            } else {
+                $.get('@Url.Action("GetStates")', function (response) {
+                    addDefaultOption(stateSelect, "State");
+                    addSelectListItems(stateSelect, response);
+                });
+            }
+        }
+
+        function populateDistricts()
+        {
+            var districtSelect = $('#selectDistrict');
+            districtSelect.empty();
+            var stateValue = $('#selectState').val();
+            if ('@ViewBag.IsNetworkAdmin' === 'True') {
+                $.get('@Url.Action("GetDistrictsForNetworkAdmin", "PopulateStateDistrict")', { stateId: stateValue }, function (districts) {
+                    addDefaultOption($('#selectDistrict'), "@LabelHelper.DistrictLabel");
+                    addSelectListItems($('#selectDistrict'), districts);
+                });
+            } else {
+                $.get('@Url.Action("GetDistricts")', { stateId: stateValue }, function (response) {
+                    addDefaultOption(districtSelect, "@LabelHelper.DistrictLabel");
+                    addSelectListItems(districtSelect, response);
+                });
+            }
+        }
+
+        $('#selectDistrict').change(function () {
+            if ($(this).val() != 'select') {
+                populateProgram();
+                GetDataSetCategories();
+                //$(categoryElementId).change();
+            }
+            else {
+                $('#divIncludeRosterProgramData').hide();
+            }
+        });
+    });
+
+    $("#btUploadTestData").click(function ()
+    {
+        if (window.FormData !== undefined) {
+            var categoryId = 0;
+            if ($('#selectCategoryIDDropdown').val() === '') {
+                $('#error-messages').html('<li> Please select the category name. </li>');
+                $('#error-messages').show();
+                $('#success-message').hide();
+                return;
+            }
+            if (comboTree1 && comboTree1._selectedItem) {
+                categoryId = comboTree1._selectedItem.id;
+            }
+            if (!categoryId) {
+                $('#error-messages').html('<li> Please select the category name. </li>');
+                $('#error-messages').show();
+                $('#success-message').hide();
+                return;
+            }
+            $('#error-messages').hide();
+            $('#file_upload').uploadifive('upload');
+        }
+    });
+
+    $("#btselectalllistedprograms").click(function () {
+        $('#idPopulateProgram :checkbox:enabled').prop('checked', true);
+    });
+
+    $("#btselectnoprogram").click(function () {
+        $('#idPopulateProgram :checkbox:enabled').prop('checked', false);
+    });
+    var comboTree1 = null;
+    var categoryElementId = '#selectCategoryIDDropdown';
+
+    function GetDataSetCategories() {
+
+        $.get('@Url.Action("GetDataSetCategoriesToComboTreeByDistrictId", "CategoriesAPI")' + '?districtid=' + $('#selectDistrict').val(), function (categoryList) {
+            //defaul linkit category
+
+            if (!comboTree1) {
+                comboTree1 = $(categoryElementId).comboTree({
+                    source: categoryList,
+                    isMultiple: false,
+                    cascadeSelect: true,
+                    collapse: false,
+                    selected: []
+                });
+            $(categoryElementId).change(function(e) {
+                $(this).val(comboTree1 ? comboTree1.getSelectedNames() : '');
+
+                if (comboTree1 != null && (comboTree1.getSelectedIds() || []).length == 1) {
+                    var districtId = $("#selectDistrict").val() || @Model.DistrictId;
+                    var isAttendanceImport = listAttendanceDistrict.filter(function (x) {
+                        return x.DistrictID == districtId && x.DataSetCategoryID == comboTree1.getSelectedIds()[0];
+                    }).length > 0;
+                    if (isAttendanceImport) {
+                        $("#isIncludeProgramData").prop("checked", false);
+                        $("#isIncludeRosterProgramData").prop("checked", false);
+                        $("#isOmitsubjectfromtestname").prop("checked", true);
+                        $('#pselectAchievementLevelId').hide();
+                        $('#selectAchievementLevelId').hide();
+                        $('#idLACOption').hide();
+                    }
+                    else {
+                        $("#isIncludeProgramData").prop("checked", true);
+                        $("#isIncludeRosterProgramData").prop("checked", false);
+                        $("#isOmitsubjectfromtestname").prop("checked", false);
+                        $('#pselectAchievementLevelId').show();
+                        $('#selectAchievementLevelId').show();
+                        $('#idLACOption').show();
+                    }
+                }
+            });
+            } else {
+                comboTree1.setSource(categoryList);
+            }
+        });
+    }
+    function populateProgram ()
+    {
+        $('#idPopulateProgram').html('');
+        var districtId = 0;
+        if($('#selectDistrict').length > 0)
+        {
+            districtId = $('#selectDistrict').val();
+            if (districtId == 'select' || districtId == null)
+            {
+                return;
+            }
+        }
+        if($('#isIncludeRosterProgramData').is(":checked") && districtId > -1)
+        {
+            //TODO:
+            $.get('@Url.Action("GetProgramLAC")', { districtId: districtId }, function (response)
+            {
+                if (response.Data != null)
+                {
+                    var vTable = "<table>";
+                    var vRows = "";
+                    $.each(response.Data, function (i, value)
+                    {
+                        //return $('<div />').text(value.Name).html();
+                        //$('<div />').html(value.Name).text()
+                        var vProgramName = $('<div />').text(value.Name).html();
+                        if ((i + 1) % 3 === 0 )
+                        {
+                            vRows += "<td>"
+                                  + "<input type=\"checkbox\" id=\"Program-" + value.Id + "\" value=\"" + vProgramName + "\" key='" + value.Id + "' />"
+                                  + "<label for=\"Program-" + value.Id + "\">  " + vProgramName + "</label>"
+                                  + "</td>";
+                            vTable += "<tr>" + vRows + "</tr>";
+                            vRows = "";
+                        } else
+                        {
+                            vRows += "<td>"
+                                  + "<input type=\"checkbox\" id=\"Program-" + value.Id + "\" value=\"" + vProgramName + "\" key='" + value.Id + "' />"
+                                  + "<label for=\"Program-" + value.Id + "\">  " + vProgramName + "</label>"
+                                  + "</td>";
+                        }
+                    });
+                    if (vRows != "")
+                    {
+                        vTable += "<tr>" + vRows + "</tr>";
+                        vRows = "";
+                    }
+                    vTable += "</table>";
+                    $('#idPopulateProgram').html(vTable);
+                    $('#divIncludeRosterProgramData').show();
+                }
+            });
+        }
+    }
+
+    $("#isIncludeRosterProgramData").change(function () {
+        if (this.checked) {
+            populateProgram();
+        }
+        else
+        {
+            $('#idPopulateProgram').html('');
+            $('#divIncludeRosterProgramData').hide();
+        }
+    });
+
+    function getProgramIds()
+    {
+        var lstPrgIds = [];
+        $('#idPopulateProgram input:checked').each(function ()
+        {
+            lstPrgIds.push($(this).attr('key'));
+        });
+        if (lstPrgIds.length > 0)
+        {
+            var vresult = lstPrgIds.join(",");
+            return vresult;
+        }
+        else {
+            return '';
+        }
+    }
+</script>

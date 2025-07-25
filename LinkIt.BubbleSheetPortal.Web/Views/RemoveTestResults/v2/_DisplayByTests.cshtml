@@ -1,0 +1,236 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+<table id="dataTable" class="datatable table" width="100%">
+    <thead>
+        <tr>
+            <th scope="col" style="width: 50px; text-align: center;">
+                <input class="m-0" type="checkbox" id="chkAllTestResult" />
+            </th>
+            <th scope="col">
+                <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                Test Name
+            </th>
+            <th scope="col">
+                <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                Category
+            </th>
+            <th scope="col">
+                <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                @LabelHelper.TestGrade
+            </th>
+            <th scope="col">
+                <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                @LabelHelper.Subject
+            </th>
+            <th scope="col">
+                <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                Result Count
+            </th>
+            <th scope="col">
+                <span class="column-sort"><a href="javascript:void(0)" title="Sort Up" class="sort-up"></a><a href="javascript:void(0)" title="Sort Down" class="sort-down"></a></span>
+                Student List
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+<script type="text/javascript">
+    $(function () {
+
+        setTimeout(function () {
+            searchDelay();
+        }, 2000);
+
+        var options = {
+            bDestroy: true,
+            bServerSide: true,
+            sAjaxSource: '@Url.Action("GetVirtualTestToViewV2")',
+            fnServerData: function (sSource, aoData, fnCallback, oSettings) {
+                oSettings.jqXHR = $.ajax({
+                    "url": sSource,
+                    "data": aoData,
+                    "success": function (result) {
+                        $('#inputTotalTest').val(result.iTotalVirtualTests);
+                        $('#inputTotalTestResult').val(result.iTotalTestResults);
+                        $('#inputTotalStudent').val(result.iTotalStudents);
+                        fnCallback(result);
+                    },
+                    "failure": function (result) {
+                    }
+                });
+            },
+            fnServerParams: function (aoData) {
+                aoData.push(
+                    { name: "districtId", value: '@Model.DistrictId' },
+                    { name: "schoolIds", value: '@Model.SchoolIds' },
+                    { name: "categoryIds", value: '@Model.CategoryIds' },
+                    { name: "gradeIds", value: '@Model.GradeIds' },
+                    { name: "subjectNames", value: '@Model.SubjectNames' },
+                    { name: "classId", value: '@Model.ClassId' },
+                    { name: "termId", value: '@Model.TermId' },
+                    { name: "teacherName", value: '@Model.TeacherName' },
+                    { name: "studentName", value: '@Model.StudentName' },
+                    { name: "fromResultDate", value: '@(string.IsNullOrEmpty(Model.FromResultDate) ? "" : Model.FromResultDate)' },
+                    { name: "toResultDate", value: '@(string.IsNullOrEmpty(Model.ToResultDate) ? "" : Model.ToResultDate)' },
+                    { name: "fromCreatedDate", value: '@(string.IsNullOrEmpty(Model.FromCreatedDate) ? "" : Model.FromCreatedDate)' },
+                    { name: "toCreatedDate", value: '@(string.IsNullOrEmpty(Model.ToCreatedDate) ? "" : Model.ToCreatedDate)' },
+                    { name: "fromUpdatedDate", value: '@(string.IsNullOrEmpty(Model.FromUpdatedDate) ? "" : Model.FromUpdatedDate)' },
+                    { name: "toUpdatedDate", value: '@(string.IsNullOrEmpty(Model.ToUpdatedDate) ? "" : Model.ToUpdatedDate)' },
+                    { name: "virtualTestName", value: '@Model.VirtualTestName' }
+                );
+            },
+            bAutoWidth: false,
+            iDisplayLength: 50,
+            aLengthMenu: [50, 100, 500, 1000],
+            aaSorting: [[1, "asc"]],
+            oLanguage: { "sEmptyTable": "Match Not Found", "sSearch": "" },
+            aoColumns: [
+                { sType: 'int', sName: 'VirtualTestID', bSearchable: false, bSortable: false },
+                { sType: 'string', sName: 'VirtualTestName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'CategoryName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'GradeName', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'SubjectName', bSearchable: true, bSortable: true },
+                { sType: 'int', sName: 'ResultCount', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'StudentNameList', bSearchable: true, bSortable: true },
+                { sType: 'string', sName: 'TestResultIDList', bSearchable: true, bSortable: true, sClass: 'test-result-id-list d-none' },
+                { sType: 'string', sName: 'StudentIDList', bSearchable: true, bSortable: true, sClass: 'd-none' }
+            ],
+            fnRowCallback: function (nRow, aData) {
+                $('td:eq(0)', nRow).html(setCheckBox(aData[0]));
+                $('td:eq(0)', nRow).addClass('text-center');
+                $('td:eq(6)', nRow).html(displayStudents(aData));
+                getStudentsQtip($('td:eq(6)', nRow), aData[6]);
+                return nRow;
+            },
+            fnPreDrawCallback: function () {
+                ShowBlock($('#dataTable'), "Loading");
+
+                var dataTableAction = $("#test-result-export .data-table-action");
+                dataTableAction.addClass('w-100');
+
+                if ($("#groupBtn").length) {
+                    $("#groupBtn").prependTo(dataTableAction);
+                    $("#groupBtn").css("display", "inline-flex");
+                }
+
+                if ($("#switchControl").length) {
+                    $("#switchControl").prependTo(dataTableAction);
+                    $("#switchControl").css("display", "inline-flex");
+                }
+
+                var elSearchLabel = $('#dataTable_filter');
+                var elSearchInput = elSearchLabel.find('input');
+                elSearchInput.attr('style', 'padding-left: 32px !important; position: relative;');
+                elSearchLabel.addClass('data-search');
+                elSearchLabel.find('label').css("margin", 0);
+
+                return true;
+            },
+            fnDrawCallback: function () {
+                $('#dataTable').unblock();
+                $('#tips').html('');
+                $('.with-tip').tip();
+                ReloadTestResult();
+                var oSettings = $('#dataTable').dataTable().fnSettings();
+                if (oSettings != null) {
+                    var iTotalRecords = oSettings.fnRecordsTotal();
+                    if (iTotalRecords == 0) {
+                        $('#btnSubmitAll').disableBt();
+                    }
+                    else {
+                        $('#btnSubmitAll').enableBt();
+                    }
+                }
+            },
+            timeout: 300000
+        };
+
+        function setCheckBox(testResultId) {
+            var checkboxString = '<div style="text-align: center;">' +
+                '<input style="text-align: center;" type="checkbox" name="chkTestResult" value="' + testResultId + '" /> </div>';
+            return checkboxString;
+        }
+
+        function searchDelay() {
+            var inputFilter = $("#dataTable_filter input[type='text']");
+            var dataTable = $("#dataTable");
+            var delay = null;
+
+            inputFilter.off('keyup.DT input.DT');
+
+            inputFilter.on("keyup", function () {
+                var search = inputFilter.val();
+                clearTimeout(delay);
+                delay = setTimeout(function () {
+                    if (search != null) {
+                        dataTable.dataTable().fnFilter(search);
+
+                    }
+                }, 1000);
+            });
+        }
+
+        $("#dataTable").data("options", options);
+        initializeDataTable($("#dataTable"));
+    });
+
+    function displayStudents(studentNames) {
+        var studentElement = '<span class="js-tooltip-students"><span class="icon icon-24 icon-students"></span></span>';
+        return studentElement;
+    }
+
+    function getStudentsQtip(el, data) {
+        el.qtip({
+            content: {
+                text: function (event, api) {
+                    return getStudentsTitleWithIcon(data);
+                }
+            },
+            hide: {
+                fixed: true,
+                delay: 300
+            },
+            style: {
+                classes: 'qtip-students qtip-bootstrap qtip-shadow'
+            },
+            position: {
+                at: 'center left',
+                my: 'right center',
+                viewport: $('#removeTestResults'),
+                adjust: {
+                    method: 'none shift'
+                }
+            }
+        });
+    }
+
+    function getStudentsTitleWithIcon(studentNames) {
+        var studentsTitle = '';
+        var studentList = studentNames.split('|');
+
+        studentList = studentList.filter(function (stuName) {
+            return stuName.trim() !== '';
+        }).sort(function (a, b) {
+            a = a.toLowerCase().trim();
+            b = b.toLowerCase().trim();
+
+            if (a < b) {
+                return -1;
+            }
+
+            if (a > b) {
+                return 1;
+            }
+
+            return 0;
+        }).map(function (stuName) {
+            return "<span class='icon icon-16 icon-student icon-student-offset'></span> " + stuName + '<br/>';
+        });
+
+        studentsTitle = studentList.join('');
+
+        return studentsTitle;
+    }
+
+</script>
