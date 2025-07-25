@@ -110,6 +110,10 @@ namespace LinkIt.BubbleSheetPortal.VaultProvider
                         }
                     }
 
+                    if (secret.ContainsKey(nameof(vault.CognitoCredential)))
+                    {
+                        vault.CognitoCredential = JsonConvert.DeserializeObject<CognitoCredential>(secret[nameof(vault.CognitoCredential)]);
+                    }
                 }
 
                 foreach (var databaseServer in vault.DBServers)

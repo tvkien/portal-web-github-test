@@ -11,5 +11,6 @@ namespace LinkIt.BubbleSheetPortal.Models.Configugration
         public AppSettings AppSettings { get; set; }
         public TTLConfigsModel TTLConfigs { get; set; }
         public List<EmailCredentialSetting> EmailCredentialSettings { get; set; }
+        public CognitoCredentialSetting CognitoCredentialSetting { get; set; }
     }
 }

@@ -778,6 +778,14 @@ namespace LinkIt.BubbleSheetPortal.Models
             }
         }
 
+        public bool IsDisplayDadSecuritySetting
+        {
+            get
+            {
+                return HasDisplayedItem(ContaintUtil.DadSecuritySettings);
+            }
+        }
+
         public bool HasDisplayedItem(string item)
         {
             //if (RoleId == (int)Permissions.Publisher)

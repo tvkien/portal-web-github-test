@@ -13,5 +13,6 @@ namespace LinkIt.BubbleSheetPortal.VaultProvider.Model
         public TTLConfigs TTLConfigs { get; set; }
         public string SecretManager { get; set; }
         public ASPStateDto ASPState { get; set; }
+        public CognitoCredential CognitoCredential { get; set; }
     }
 }

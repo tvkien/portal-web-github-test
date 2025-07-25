@@ -1,0 +1,171 @@
+@using LinkIt.BubbleSheetPortal.Web.Helpers
+@model LinkIt.BubbleSheetPortal.Web.ViewModels.MfaSettings.MfaVerificationVM
+@{
+    Layout = "~/Views/Shared/_LogOnPartial_v2.cshtml";
+}
+
+<script src="@Url.Content("~/Scripts/customV2.js")" type="text/javascript"></script>
+
+<section id="mfa-block">
+    <div>
+        <div class="block-header">LinkIt! MFA Code </div>
+        <div class="block-content">
+            @using (Html.BeginForm("Verify", "MfaVerification", FormMethod.Post, new { @class = "form", id = "mfa-form" }))
+            {
+                <div class="mfa-form account-login-form">
+                    <div>
+                        <label for="code">
+                            <span class="big">Enter MFA Code sent to your work email! Code expires in 10 minutes.</span>
+                        </label>
+                        <input type="text" placeholder="Enter your code" name="code" id="code" class="full-width first-focus" value="" maxlength="20"/>
+                    </div>
+                    <div style="text-align: right; margin-top: 5px;">
+                        <span id="countdown-block">Resend code (<span style="color: var(--bs-red)" id="countdown">60s</span>)</span>
+                        <a id="btnResend" href="javascript:void(0)" class="btn btn-link pe-0" style="display:none">Resend Code</a>
+                    </div>
+                    <div id="divCaptcha" style="display:none" class="g-recaptcha recatcha" data-sitekey="6Lf7ggwTAAAAABY1PZKfYruOIvY8oZae2obJH0os" data-callback="enableBtn"></div>
+                    <button form="mfa-form" style="width:100%" type="submit" class="btn-accept" id="btnVerify">Verify And Login</button>
+                </div>
+            }
+        </div>
+    </div>
+    <div id="custom-footer-logon" style="bottom: 15px; position: fixed; right: 10%;">
+        <img src="../../Content/images/loog-linkit-16x16.png" style="position: relative; top: 5px;"></img>
+        <span style="font-size: 11px;">Copyright &copy; @DateTime.Now.ToString("yyyy") | Powered by LinkIt!</span>
+    </div>
+</section>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var secondsRemaining;
+        var timer;
+
+        if ('@Model.HasEmailAddress' == 'False') {
+            $('#mfa-block').removeBlockMessages({ animate: false })
+                .blockMessage('If you do not have email, please contact to your admin to update!', { type: 'error', animate: false });
+            $('#btnVerify').disableBt();
+            $('#btnResend').attr('disabled', 'disabled');
+            $('#code').prop('disabled', true);
+        }
+
+        if ('@SessionManager.ShowCaptcha' == 'True') {
+            $('#divCaptcha').show();
+            //$('#btnVerify').disableBt();
+        }
+
+        $('#mfa-form').submit(function (event) {
+            event.preventDefault();
+            $('#btnVerify').disableBt();
+            stopTimer();
+
+            var data = {
+                code: $('#code').val(),
+                g_recaptcha_response: $('#g-recaptcha-response').val(),
+            };
+
+            $('#mfa-block').removeBlockMessages({ animate: false }).blockMessage('Please wait, checking login...', { type: 'loading', animate: false });
+
+            $.ajax({
+                url: '@Url.Action("MfaVerification", "Account")',
+                dataType: 'json',
+                type: 'POST',
+                data: data,
+                success: function (data) {
+                    $('#btnVerify').enableBt();
+                    if (data.IsSuccess) {
+                        location.href = data.RedirectUrl || '/';
+                    } else {
+                        if (data.ShowCaptcha) {
+                            $('#divCaptcha').show();
+                            //reload recatcha
+                            grecaptcha.reset();
+                        }
+                        $('#mfa-block').removeBlockMessages({ animate: false })
+                            .blockMessage(data.ErrorMessage, { type: 'error', animate: false });
+                        resumeTimer();
+                    }
+                },
+                error: function (XMLHttpRequest, textStatus, errorThrown) {
+                    // Message
+                    $('#mfa-block').removeBlockMessages({ animate: false })
+                        .blockMessage('Error while contacting server, please try again', { type: 'error', animate: false });
+
+                    $('#btnVerify').enableBt();
+                    resumeTimer();
+                }
+            });
+        });
+
+        $('#btnResend').click(function () {
+            $('#btnResend').attr('disabled', 'disabled');
+            $('#mfa-block').removeBlockMessages({ animate: false }).blockMessage('Please wait, sending...', { type: 'loading', animate: false });
+            $.ajax({
+                url: '@Url.Action("ResendMfaVerification", "Account")',
+                dataType: 'json',
+                type: 'POST',
+                success: function (data) {
+                    if (data.IsSuccess) {
+                        $('#btnResend').removeAttr('disabled');
+                        $('#mfa-block')
+                            .removeBlockMessages({ animate: false }).blockMessage('An OTP send to your email!', { type: 'success', animate: false });
+                        startTimer();
+                    }
+                    else {
+                        $('#btnResend').removeAttr('disabled');
+                        $('#mfa-block').removeBlockMessages({ animate: false })
+                            .blockMessage(data.ErrorMessage || 'An error occurred, please try again later!', { type: 'error', animate: false });
+                    }
+                },
+                error: function (XMLHttpRequest, textStatus, errorThrown) {
+                    // Message
+                    $('#mfa-block')
+                        .removeBlockMessages({ animate: false })
+                        .blockMessage('Error while contacting server, please try again', { type: 'error', animate: false });
+
+                    $('#btnResend').removeAttr('disabled');
+                }
+            });
+        });
+
+        $('#code').on('input', function () {
+            let val = $(this).val().replace(/[^a-zA-Z0-9]/g, '');
+            $(this).val(val);
+
+            if (val.length > 0) {
+                $('#btnVerify').enableBt();
+            } else {
+                $('#btnVerify').disableBt();
+            }
+        })
+
+        function updateCountdown() {
+            secondsRemaining--;
+            if (secondsRemaining <= 0) {
+                clearInterval(timer);
+                $('#countdown-block').hide();
+                $('#btnResend').show();
+                return;
+            }
+            $('#countdown').text(`${secondsRemaining}s`)
+        }
+
+        function startTimer() {
+            $('#countdown-block').show();
+            $('#btnResend').hide();
+            secondsRemaining = 60;
+            timer = setInterval(updateCountdown, 1000);
+            updateCountdown();
+        }
+
+        function stopTimer() {
+            clearInterval(timer);
+        }
+
+        function resumeTimer() {
+            timer = setInterval(updateCountdown, 1000);
+            updateCountdown();
+        }
+
+        $('#btnVerify').disableBt();
+        startTimer();
+    })
+</script>

@@ -177,7 +177,21 @@ namespace LinkIt.BubbleSheetPortal.Web.DataScopeManager
             result.AppSettings = BuildAppSettings(vault.AppSetting);
             result.TTLConfigs = BuildTTLConfigs(vault.TTLConfigs);
             result.EmailCredentialSettings = BuildEmailSettings(vault.EmailCredentials);
+            result.CognitoCredentialSetting = BuildCognitoCredentialSetting(vault.CognitoCredential);
             return result;
+        }
+
+        private static CognitoCredentialSetting BuildCognitoCredentialSetting(CognitoCredential cognitoCredential)
+        {
+            if (cognitoCredential == null)
+                new CognitoCredentialSetting();
+
+            return new CognitoCredentialSetting
+            {
+                ClientID = cognitoCredential.ClientID,
+                ClientSecret = cognitoCredential.ClientSecret,
+                UserPoolID = cognitoCredential.UserPoolID,
+            };
         }
 
         private static List<EmailCredentialSetting> BuildEmailSettings(List<EmailCredential> emailCredentials)

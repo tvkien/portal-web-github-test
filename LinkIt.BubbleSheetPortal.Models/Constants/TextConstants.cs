@@ -67,7 +67,8 @@ namespace LinkIt.BubbleSheetPortal.Models.Constants
 
         public static string GRADE_OTHER = "Other";
         public static string SURVEY_PREFERENCES_LABEL = "survey";
-        public static string TEST_PREFERENCES_LABEL = "test";        
+        public static string TEST_PREFERENCES_LABEL = "test";
+        public static string SECURITY_PREFERENCES_LABEL = "security";
         public const string PASSWORD_RESET_MESSAGE = "If the LinkIt! username is associated with your email address, you will receive a password reset link. The link will expire in {0} minutes. If you do not receive the email, check your Spam folder and contact your administrator for support before making another reset request.";
         public const string NOT_FOUND_CLEVER_DISTRICT_ID_ON_VAULT = "NOT_FOUND_CLEVER_DISTRICT_ID_ON_VAULT";
 
@@ -75,5 +76,15 @@ namespace LinkIt.BubbleSheetPortal.Models.Constants
         public const string IMPORT_INVALID_MULTIPART = "One or more multi-part items are currently unsupported. Please choose another item from the item bank.";
 
         public const string ACCOUNT_NO_PASSWORD = "This account has no password. Please use the registration code to update a new password.";
+
+        // Security Settings
+        public const string ENABLE_MFA_EMAIL_PUBLISHER = "enableMFAEmail_publisher";
+        public const string ENABLE_MFA_EMAIL_NETWORKADMIN = "enableMFAEmail_networkAdmin";
+        public const string ENABLE_MFA_EMAIL_DISTRICTADMIN = "enableMFAEmail_districtAdmin";
+        public const string ENABLE_MFA_EMAIL_SCHOOLADMIN = "enableMFAEmail_schoolAdmin";
+        public const string ENABLE_MFA_EMAIL_TEACHER = "enableMFAEmail_teacher";
+        public const string ENABLE_MFA_EMAIL_STUDENT = "enableMFAEmail_student";
+        public const string ENABLE_MFA_EMAIL_PARENT = "enableMFAEmail_parent";
+        public const string ENABLE_MFA_EMAIL_USER = "enableMFAEmail_user";
     }
 }

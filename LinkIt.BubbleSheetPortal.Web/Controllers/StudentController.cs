@@ -14,8 +14,10 @@ using LinkIt.BubbleSheetPortal.Common;
 using LinkIt.BubbleSheetPortal.Models;
 using LinkIt.BubbleSheetPortal.Models.Constants;
 using LinkIt.BubbleSheetPortal.Models.DTOs.ManageParent;
+using LinkIt.BubbleSheetPortal.Models.DTOs.MfaSettings;
 using LinkIt.BubbleSheetPortal.Models.Interfaces;
 using LinkIt.BubbleSheetPortal.Services;
+using LinkIt.BubbleSheetPortal.Services.MfaServices;
 using LinkIt.BubbleSheetPortal.Web.DataScopeManager;
 using LinkIt.BubbleSheetPortal.Web.Helpers;
 using LinkIt.BubbleSheetPortal.Web.Helpers.SSO;
@@ -37,6 +39,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
         private readonly EmailService _emailService;
         private readonly PasswordResetQuestionService _passwordResetQuestionService;
         private readonly UserLogonService _userLogonService;
+        private readonly MfaService _mfaService;
 
         private const string StudentDefaultPassword = "StudentDefaultPassword";
 
@@ -49,7 +52,8 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
             StudentMetaService studentMetaService,
             EmailService emailService,
             PasswordResetQuestionService passwordResetQuestionService,
-            UserLogonService userLogonService)
+            UserLogonService userLogonService,
+            MfaService mfaService)
         {
             _userService = userService;
             _formsAuthenticationService = formsAuthenticationService;
@@ -61,6 +65,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
             _emailService = emailService;
             _passwordResetQuestionService = passwordResetQuestionService;
             _userLogonService = userLogonService;
+            _mfaService = mfaService;
         }
 
         private const string TempPasswordExpired = "TempPasswordExpired";
@@ -186,9 +191,10 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
                 user = _userService.GetStudentByUserName(model.UserName, model.DistrictId, roleName);
             }
 
+            MfaSettingDto mfaSetting = null;
             if (user != null)
             {
-                AuthenticateUser(model, user, isFromRegistrationCode);
+                mfaSetting = AuthenticateUser(model, user, isFromRegistrationCode);
             }
 
             model = CheckShowCaptchar(model);
@@ -204,27 +210,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
                             Response.Cookies.Remove(item.ToString());
                     }
 
-                    LoginAccountViewModel accModel = new LoginAccountViewModel();
-                    accModel.AnnouncementText = model.AnnouncementText;
-                    accModel.District = model.DistrictId;
-                    accModel.HasEmailAddress = model.HasEmailAddress;
-                    accModel.HasSecurityQuestion = model.HasSecurityQuestion;
-                    accModel.HasTemporaryPassword = model.HasTemporaryPassword;
-                    accModel.IsAuthenticated = model.IsAuthenticated;
-                    accModel.IsKeepLoggedIn = model.KeepLogged;
-                    accModel.IsNetworkAdmin = false;
-                    accModel.IsShowWarningLogOnUser = false;
-                    accModel.LogOnHeaderHtmlContent = model.LogOnHeaderHtmlContent;
-                    accModel.Message = model.Message;
-                    accModel.MessageWarningLogOnUser = string.Empty;
-                    accModel.Password = model.Password;
-                    accModel.RedirectUrl = model.RedirectUrl;
-                    accModel.ShowAnnouncement = model.ShowAnnouncement;
-                    accModel.ShowCaptcha = model.ShowCaptcha;
-                    accModel.Type = model.Type;
-                    accModel.UrlRecomment = string.Empty;
-                    accModel.UserID = model.UserID;
-                    accModel.UserName = model.UserName;
+                    LoginAccountViewModel accModel = MappingToLoginAccountViewModel(model);
 
                     // save info to session
                     HttpContext.Session["BeforeLoginSession"] = new Tuple<LoginAccountViewModel, int, int>(accModel,
@@ -254,10 +240,48 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
                             model.RedirectUrl = Request.Url.GetLeftPart(UriPartial.Authority);
                         }
                     }
+
+                    if (mfaSetting?.IsEnableMfa == true)
+                    {
+                        LoginAccountViewModel accModel = MappingToLoginAccountViewModel(model);
+
+                        Session["LoginAccountViewModel"] = accModel;
+                        Session["MfaSetting"] = mfaSetting;
+                        model.RedirectUrl = new UrlHelper(Request.RequestContext).Action("MfaVerification", "Account");
+                    }
                 }
             }
 
             return Json(model);
+        }
+
+        private LoginAccountViewModel MappingToLoginAccountViewModel(StudentLoginViewModel model)
+        {
+            LoginAccountViewModel accModel = new LoginAccountViewModel
+            {
+                AnnouncementText = model.AnnouncementText,
+                District = model.DistrictId,
+                HasEmailAddress = model.HasEmailAddress,
+                HasSecurityQuestion = model.HasSecurityQuestion,
+                HasTemporaryPassword = model.HasTemporaryPassword,
+                IsAuthenticated = model.IsAuthenticated,
+                IsKeepLoggedIn = model.KeepLogged,
+                IsNetworkAdmin = false,
+                IsShowWarningLogOnUser = false,
+                LogOnHeaderHtmlContent = model.LogOnHeaderHtmlContent,
+                Message = model.Message,
+                MessageWarningLogOnUser = string.Empty,
+                Password = model.Password,
+                RedirectUrl = model.RedirectUrl,
+                ShowAnnouncement = model.ShowAnnouncement,
+                ShowCaptcha = model.ShowCaptcha,
+                Type = model.Type,
+                UrlRecomment = string.Empty,
+                UserID = model.UserID,
+                UserName = model.UserName
+            };
+
+            return accModel;
         }
 
         private StudentLoginViewModel CheckShowCaptchar(StudentLoginViewModel model)
@@ -585,16 +609,16 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
 
         }
 
-        private void AuthenticateUser(StudentLoginViewModel model, User student, bool isFromRegistrationCode = false)
+        private MfaSettingDto AuthenticateUser(StudentLoginViewModel model, User student, bool isFromRegistrationCode = false)
         {
             if (!string.IsNullOrEmpty(model.Password))
                 model.Password = model.Password.Trim();
-            if (!_userService.IsValidUser(student, model.Password)) return;
+            if (!_userService.IsValidUser(student, model.Password)) return null;
 
             if (!student.UserStatusId.Equals((int)UserStatus.Active))
             {
                 model.Message = "Your username and password do not match our records.";
-                return;
+                return null;
             }
 
             var passwordResetYears = 0;
@@ -603,6 +627,18 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
                 || student.LastLoginDate < DateTime.MinValue.AddYears(1990)
                 || student.LastLoginDate < DateTime.UtcNow.AddYears(passwordResetYears * -1)
                 || (!_studentService.HasStudentSecret(student.Id) && !Regex.IsMatch(model.Password, ConfigurationManager.AppSettings["PasswordRegex"]));
+
+            if (!isFromRegistrationCode && !model.HasTemporaryPassword)
+            {
+                var cognitoCredentialSetting = LinkitConfigurationManager.GetLinkitSettings().CognitoCredentialSetting;
+                var mfaSetting = _mfaService.CheckFlowMfa(cognitoCredentialSetting, student);
+                if (mfaSetting.IsEnableMfa)
+                {
+                    model.IsAuthenticated = true;
+                    model.UserID = student.Id;
+                    return mfaSetting;
+                }
+            }
 
             student.SessionCookieGUID = Guid.NewGuid().ToString();
             student.GUIDSession = Guid.NewGuid().ToString();
@@ -619,6 +655,7 @@ namespace LinkIt.BubbleSheetPortal.Web.Controllers
 
             model.IsAuthenticated = true;
             model.UserID = student.Id;
+            return null;
         }
 
         private StudentMeta InitStudentMeta(int studentId, string name, string data)

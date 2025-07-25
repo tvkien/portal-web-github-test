@@ -52,6 +52,10 @@ using LinkIt.BubbleSheetPortal.Services.Reporting;
 using LinkIt.BubbleSheetPortal.Data.Repositories.SharingGroup.IService;
 using LinkIt.BubbleSheetPortal.Data.Repositories.SharingGroup.Service;
 using Amazon.CloudWatchLogs;
+using LinkIt.BubbleSheetPortal.Services.MfaServices;
+using Amazon.CognitoIdentityProvider;
+using Amazon.Runtime;
+using Amazon;
 
 namespace LinkIt.BubbleSheetPortal.Web.App_Start
 {
@@ -172,6 +176,7 @@ namespace LinkIt.BubbleSheetPortal.Web.App_Start
             containerBuilder.RegisterType<RosterUploadService>().As<IRosterUploadService>();
             containerBuilder.RegisterType<HelpResourceService>().As<IHelpResourceService>();
             containerBuilder.RegisterType<ConversionSetService>().As<IConversionSetService>();
+            containerBuilder.RegisterType<MfaService>().As<IMfaService>();
 
             containerBuilder.RegisterType<StudentTestLaunchControllerParameters>().PropertiesAutowired().AsSelf();
             containerBuilder.RegisterType<TDLSManageControllerParameters>().PropertiesAutowired().AsSelf();
@@ -203,6 +208,11 @@ namespace LinkIt.BubbleSheetPortal.Web.App_Start
 
             containerBuilder.RegisterType<ReportingHttpClient>().As<IReportingHttpClient>()
                 .InstancePerHttpRequest();
+
+            containerBuilder.Register<IAmazonCognitoIdentityProvider>(c =>
+            {
+                return new AmazonCognitoIdentityProviderClient();
+            }).SingleInstance();
 
             containerBuilder.RegisterS3Service();
             containerBuilder.RegisterControllers();
